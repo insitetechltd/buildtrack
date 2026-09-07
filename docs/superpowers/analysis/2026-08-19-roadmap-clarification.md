@@ -149,4 +149,8 @@ Locked model: `docs/superpowers/plans/2026-08-24-company-user-project-model.md`.
 
 **Construct lock (evening GO):** CA / PM / Worker seats + **PA as project grant** (crownable on CA or PM only — never worker). Same field UI for all; CA management via avatar; CA sees project KPIs not every task; drop trade title picker; CA may take field authority on a job via PA. PM remains necessary for field managers who are not the billing admin. Runtime still catching up (admin tab shell, all-company task lists, ProjectRole picker).
 
+### Addendum 2026-09-05 — field write-path performance (M-PERF-04)
+
+Dogfood: Create Task, Update Progress, and evidence photo uploads feel intolerably slow. Logged as **`WS-PERF / M-PERF-04`** (Order 15.0575) — Gate A idle-parallel / dogfood P0. Owns latency of the write path (capture → compress → Storage → task/activity insert → UI unblock). Distinct from **M-PERF-01** (list thumbs), **M-PERF-03** (library picker), **M-PERF-02** (upload byte policy). Must **not** jump App Store / Stripe commercial spine.
+
 *(Append dated bullets here when this discussion is revisited. Do not rewrite the locks above unless the user explicitly changes them.)*

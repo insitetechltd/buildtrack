@@ -294,7 +294,11 @@ export async function createSignedFileUrl(
       .createSignedUrl(path, expiresInSeconds);
 
     if (error || !data?.signedUrl) {
-      console.error('❌ [File Upload] createSignedUrl failed:', error?.message || 'no signedUrl');
+      if (error?.message?.includes('Object not found')) {
+        console.warn('⚠️ [File Upload] Storage object not found:', path);
+      } else {
+        console.warn('⚠️ [File Upload] createSignedUrl failed:', error?.message || 'no signedUrl');
+      }
       return signedUrlCache.get(path)?.url ?? null;
     }
 

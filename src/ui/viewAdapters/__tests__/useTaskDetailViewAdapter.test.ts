@@ -584,8 +584,10 @@ describe("useTaskDetailViewAdapter", () => {
       assignedByLabel: "User user-1",
       assignedToLabel: "User user-2, User user-3",
       primaryOwnerLabel: "User user-2",
+      showEditAction: true,
     });
     expect(result.current.output.infoCard?.detailRows).toEqual([]);
+    expect(result.current.output.banners).toEqual([]);
   });
 
   it("omits delegation from the hero model and keeps delegation only in the info card", () => {
@@ -699,7 +701,655 @@ describe("useTaskDetailViewAdapter", () => {
     ).toBe(false);
     expect(
       result.current.output.actionItems.find((action) => action.actionId === "submit_review"),
-    ).toBeTruthy();
+    ).toBeUndefined();
+  });
+
+  it("emits awaiting_review detailDock for assignee after submit", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Worker Assignee",
+        role: "worker",
+        systemPermission: "member",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-submitted-for-review",
+          title: "Submitted for Review Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "Waiting on reviewer decision.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-submitted-for-review",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "awaiting_review",
+      completionPercentage: 100,
+    });
+  });
+
+  it("emits review_decision detailDock for PM who is not the task creator", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Sam PM",
+        role: "manager",
+        systemPermission: "manager",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-pm-review",
+          title: "Submitted by other creator",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "other-pm",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "PM should still Accept / Reject.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-pm-review",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "review_decision",
+      completionPercentage: 100,
+    });
+  });
+
+  it("emits review_decision even when completionPercentage is missing for PM", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Sam PM",
+        role: "manager",
+        systemPermission: "manager",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-pm-review-no-pct",
+          title: "Submitted without pct",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "other-pm",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "Legacy row.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-pm-review-no-pct",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "review_decision",
+      completionPercentage: 100,
+    });
+  });
+
+  it("emits review_decision detailDock for creator after assignee submits", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-ready-for-creator-review",
+          title: "Ready for creator review",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "user-1",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "Waiting on creator Accept / Reject.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-ready-for-creator-review",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "review_decision",
+      completionPercentage: 100,
+    });
+    expect(
+      result.current.output.actionItems.some((action) => action.actionId === "approve_task"),
+    ).toBe(true);
+    expect(
+      result.current.output.actionItems.some((action) => action.actionId === "reject_task"),
+    ).toBe(true);
+  });
+
+  it("emits report_reply detailDock for worker reporter without PM reportTriage", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Worker Reporter",
+        role: "worker",
+        systemPermission: "member",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-worker-report",
+          title: "Worker filed report",
+          projectId: "project-1",
+          assignedTo: [],
+          assignedBy: "user-1",
+          dueDate,
+          status: "reported",
+          priority: "medium",
+          category: "general",
+          description: "Leak near loading bay.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-worker-report",
+      }),
+    );
+
+    expect(result.current.output.reportTriage).toBeUndefined();
+    expect(result.current.output.detailDock).toEqual({
+      mode: "report_reply",
+      completionPercentage: 0,
+    });
+  });
+
+  it("emits archive detailDock after approval for creator", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-approved",
+          title: "Approved work",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "user-1",
+          dueDate,
+          status: "approved",
+          priority: "medium",
+          category: "general",
+          description: "Done.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-approved",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "archive",
+      completionPercentage: 100,
+    });
+  });
+
+  it("emits archive detailDock after report is resolved", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-resolved",
+          title: "Resolved report",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
+          assignedBy: "user-1",
+          dueDate,
+          status: "resolved",
+          priority: "medium",
+          category: "general",
+          description: "Closed with note.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-resolved",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "archive",
+      completionPercentage: 0,
+    });
+  });
+
+  it("marks due date critical when due falls in the local week (dashboard critical list rule)", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    // Fixed "today" week: due next few days from a mid-week reference via real calendar.
+    const now = new Date();
+    const dueThisWeek = new Date(now);
+    dueThisWeek.setHours(12, 0, 0, 0);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-due-week",
+          title: "Due this week work",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "user-1",
+          dueDate: dueThisWeek.toISOString(),
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Should show red due.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 40,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-due-week",
+      }),
+    );
+
+    expect(result.current.output.infoCard?.isCritical).toBe(true);
+    expect(result.current.output.infoCard?.dueDateLabel).toBeTruthy();
+  });
+
+  it("emits reassign detailDock after decline for PM who is not the creator", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Sam PM",
+        role: "manager",
+        systemPermission: "manager",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-declined",
+          title: "Declined work",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "creator-1",
+          dueDate,
+          status: "declined",
+          priority: "medium",
+          category: "general",
+          description: "No capacity.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-declined",
+      }),
+    );
+
+    expect(result.current.output.infoCard?.showReassignAction).toBe(true);
+    expect(result.current.output.detailDock).toEqual({
+      mode: "reassign",
+      completionPercentage: 0,
+    });
+  });
+
+  it("emits awaiting_review even when completionPercentage is missing on submitted tasks", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Worker Assignee",
+        role: "worker",
+        systemPermission: "member",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-submitted-legacy",
+          title: "Legacy Submitted Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "Older row without synced completion.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-submitted-legacy",
+      }),
+    );
+
+    expect(result.current.output.detailDock).toEqual({
+      mode: "awaiting_review",
+      completionPercentage: 100,
+    });
   });
 
   it("disables assignee update once a task is submitted for review", () => {
@@ -755,7 +1405,7 @@ describe("useTaskDetailViewAdapter", () => {
     ).toBeUndefined();
   });
 
-  it("excludes add_subtask on subtask detail active work", () => {
+  it("does not emit add_subtask while subtask create UI is deferred", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     useTaskStore.mockReturnValue({
@@ -764,8 +1414,8 @@ describe("useTaskDetailViewAdapter", () => {
           id: "task-parent",
           title: "Parent Task",
           projectId: "project-1",
-          assignedTo: ["user-2"],
-          primaryAssigneeId: "user-2",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
           assignedBy: "manager-1",
           dueDate,
           status: "in_progress",
@@ -777,26 +1427,6 @@ describe("useTaskDetailViewAdapter", () => {
           updates: [],
           activities: [],
           completionPercentage: 50,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "task-subtask",
-          title: "Subtask",
-          projectId: "project-1",
-          parentTaskId: "task-parent",
-          assignedTo: ["user-1"],
-          primaryAssigneeId: "user-1",
-          assignedBy: "manager-1",
-          dueDate,
-          status: "in_progress",
-          priority: "medium",
-          category: "general",
-          description: "Subtask work item.",
-          attachments: [],
-          tags: [],
-          updates: [],
-          activities: [],
-          completionPercentage: 35,
           createdAt: new Date().toISOString(),
         },
       ],
@@ -816,11 +1446,12 @@ describe("useTaskDetailViewAdapter", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
         taskId: "task-parent",
-        subTaskId: "task-subtask",
       }),
     );
 
-    expect(result.current.output.quickActions).toBeUndefined();
+    expect(
+      result.current.output.actionItems.find((action) => action.actionId === "add_subtask"),
+    ).toBeUndefined();
   });
 
   it("shows edit_task for the task creator", () => {
@@ -870,14 +1501,42 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.actionItems.map((item) => item.actionId)).toContain("edit_task");
   });
 
-  it("hides edit_task for non-creators", () => {
+  it("allows edit_task for PM who is not the creator", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
         taskId: "task-parent",
       }),
     );
 
-    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain("edit_task");
+    // beforeEach: auth user-1 is manager; assignedBy is manager-1
+    expect(result.current.output.actionItems.map((item) => item.actionId)).toContain(
+      "edit_task",
+    );
+    expect(result.current.output.infoCard?.showEditAction).toBe(true);
+  });
+
+  it("hides edit_task for worker non-creators", () => {
+    const { useAuthStore } = require("@/state/authStore");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        name: "Worker",
+        role: "worker",
+        systemPermission: "member",
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
+      "edit_task",
+    );
+    expect(result.current.output.infoCard?.showEditAction).toBe(false);
   });
 
   it("maps task activities into readable work-thread events", () => {
@@ -1465,5 +2124,134 @@ describe("useTaskDetailViewAdapter", () => {
       isAssignedToCurrentUser: true,
     });
     expect(result.current.output.header.title).toBe("Task Details");
+  });
+
+  it("shows report attachments on issue_reported rows and hides 0% progress", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useAuthStore } = require("@/state/authStore");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "manager-1",
+        name: "Sam",
+        role: "manager",
+        systemPermission: "manager",
+      },
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      projectIdsByUser: {
+        "manager-1": ["project-1"],
+      },
+      projects: [{ id: "project-1", companyId: "company-1" }],
+      getProjectUserAssignments: jest.fn().mockReturnValue([]),
+      fetchProjectUserAssignments: jest.fn(),
+    });
+
+    const { useUserStore } = require("@/state/userStore.supabase");
+    useUserStore.mockReturnValue({
+      getUserById: jest.fn((id: string) => ({
+        id,
+        name: `User ${id}`,
+      })),
+      getAllUsers: jest.fn(() => [
+        { id: "manager-1", name: "Sam", systemPermission: "manager" },
+        { id: "worker-1", name: "John", systemPermission: "member" },
+      ]),
+      fetchUsersByCompany: jest.fn(),
+      fetchUsers: jest.fn(),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "report-1",
+          title: "Test Report Up",
+          projectId: "project-1",
+          assignedTo: [],
+          assignedBy: "worker-1",
+          dueDate,
+          status: "reported",
+          priority: "medium",
+          category: "general",
+          description: "Leak on level 3",
+          attachments: ["company-1/tasks/report-1/site-photo.jpg"],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "activity-reply",
+              taskId: "report-1",
+              userId: "manager-1",
+              activityType: "assigner_comment",
+              timestamp: activityTimestampLatest,
+              description: "Test reply",
+              data: {
+                description: "Test reply",
+                photos: ["https://example.com/reply-photo.jpg"],
+              },
+              completionPercentage: 0,
+              status: "reported",
+            },
+            {
+              id: "activity-report",
+              taskId: "report-1",
+              userId: "worker-1",
+              activityType: "issue_reported",
+              timestamp: activityTimestampOlder,
+              description: "Issue reported by John",
+              data: {
+                title: "Test Report Up",
+                assignedBy: "worker-1",
+                photos: [],
+              },
+              completionPercentage: 0,
+              status: "reported",
+            },
+          ],
+          completionPercentage: 0,
+          createdAt: activityTimestampOlder,
+          updatedAt: activityTimestampLatest,
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      archiveTask: jest.fn(),
+      updateTask: mockUpdateTask,
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      triageTask: jest.fn(),
+      resolveReport: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "report-1",
+      }),
+    );
+
+    const reportRow = result.current.output.activityThread.find(
+      (row) => row.id === "activity-report",
+    );
+    const replyRow = result.current.output.activityThread.find(
+      (row) => row.id === "activity-reply",
+    );
+
+    expect(reportRow?.photoUrls).toEqual([
+      "https://cdn.example.com/company-1/tasks/report-1/site-photo.jpg",
+    ]);
+    expect(reportRow?.progressLabel).toBe("—");
+    expect(replyRow?.photoUrls).toEqual(["https://example.com/reply-photo.jpg"]);
+    expect(replyRow?.progressLabel).toBe("—");
   });
 });

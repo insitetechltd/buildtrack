@@ -1,6 +1,6 @@
 import { CommonActions, StackActions } from "@react-navigation/native";
 
-import type { PhotoSelectionParams } from "./navigationTypes";
+import type { PhotoSelectionParams, SelectedPhoto } from "./navigationTypes";
 
 /** Routes that belong to the library → select-photos flow (should not nest). */
 export const PHOTO_FLOW_ROUTE_NAMES = new Set([
@@ -127,6 +127,78 @@ export function returnToTaskDetailAfterUpdateProgress(
   }
 
   navigation.navigate?.(detailRoute, params);
+}
+
+/**
+ * After Select Photos Accept from Task Detail report-reply Add Photos:
+ * pop CaptureSession + PhotoSelection and deliver drafts onto the existing detail.
+ */
+export function returnToTaskDetailWithSelectedPhotos(
+  navigation: PhotoFlowStackNav & {
+    setParams?: (params: Record<string, unknown>) => void;
+  },
+  params: {
+    taskId: string;
+    subTaskId?: string;
+    selectedPhotos: SelectedPhoto[];
+  },
+) {
+  const state = navigation.getState?.();
+  if (!state?.routes?.length) {
+    navigation.navigate?.("TaskDetail", params);
+    return;
+  }
+
+  const currentIndex =
+    typeof state.index === "number" ? state.index : state.routes.length - 1;
+
+  let detailIndex = -1;
+  for (let i = currentIndex - 1; i >= 0; i -= 1) {
+    const routeName = state.routes[i]?.name;
+    if (routeName && TASK_DETAIL_ROUTE_NAMES.has(routeName)) {
+      detailIndex = i;
+      break;
+    }
+  }
+
+  if (detailIndex < 0) {
+    const isDashboardStack = state.routes.some(
+      (route) =>
+        route.name === "DashboardMain" || route.name === "TaskDetailFromDashboard",
+    );
+    const detailRoute = isDashboardStack
+      ? "TaskDetailFromDashboard"
+      : "TaskDetail";
+    navigation.navigate?.(detailRoute, params);
+    return;
+  }
+
+  const detailKey = state.routes[detailIndex]?.key;
+  const popCount = currentIndex - detailIndex;
+  if (popCount > 0 && navigation.dispatch) {
+    navigation.dispatch(StackActions.pop(popCount));
+  } else if (navigation.canGoBack?.() !== false) {
+    navigation.goBack();
+  }
+
+  setTimeout(() => {
+    if (detailKey && navigation.dispatch) {
+      navigation.dispatch({
+        ...CommonActions.setParams({
+          taskId: params.taskId,
+          subTaskId: params.subTaskId,
+          selectedPhotos: params.selectedPhotos,
+        }),
+        source: detailKey,
+      });
+      return;
+    }
+    navigation.setParams?.({
+      taskId: params.taskId,
+      subTaskId: params.subTaskId,
+      selectedPhotos: params.selectedPhotos,
+    });
+  }, 150);
 }
 
 /**

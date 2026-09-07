@@ -1,4 +1,7 @@
-import { isCompletedLifecycleStatus } from "../taskLifecycleStatus";
+import {
+  isArchivableLifecycleStatus,
+  isCompletedLifecycleStatus,
+} from "../taskLifecycleStatus";
 
 describe("isCompletedLifecycleStatus", () => {
   it("allows archive only after sign-off", () => {
@@ -13,5 +16,15 @@ describe("isCompletedLifecycleStatus", () => {
     expect(isCompletedLifecycleStatus("submitted_for_review")).toBe(false);
     expect(isCompletedLifecycleStatus("declined")).toBe(false);
     expect(isCompletedLifecycleStatus("cancelled")).toBe(false);
+    expect(isCompletedLifecycleStatus("resolved")).toBe(false);
+  });
+});
+
+describe("isArchivableLifecycleStatus", () => {
+  it("includes approved sign-off and resolved reports", () => {
+    expect(isArchivableLifecycleStatus("approved")).toBe(true);
+    expect(isArchivableLifecycleStatus("resolved")).toBe(true);
+    expect(isArchivableLifecycleStatus("dismissed")).toBe(true);
+    expect(isArchivableLifecycleStatus("in_progress")).toBe(false);
   });
 });

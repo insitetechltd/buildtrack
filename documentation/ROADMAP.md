@@ -49,6 +49,7 @@ flowchart TB
   subgraph gateA ["Gate A — NOW while ENV-01 elsewhere"]
     P03["M-PERF-03 L3 native thumbs"] --> D05A["M-DATA-05 Phase A"]
     D05A --> UX01R["S-UX-01R optional"]
+    P04["M-PERF-04 field write-path review"]
   end
 
   subgraph gateB ["Gate B — after App Store + live Stripe"]
@@ -69,8 +70,8 @@ flowchart TB
 
 | Gate | When | Start | Do not start |
 | --- | --- | --- | --- |
-| **A · NOW** | While `M-OPS-ENV-01` owned elsewhere | `M-PERF-03` (L3 idle-parallel) → `M-DATA-05` A → optional `S-UX-01R` | Secrets / PROD create / ENV plan edits |
-| **B · Post-Store** | After App Store + Stripe live on PROD | `M-DATA-05` B · privilege RLS · `M-PERF-01` B if dogfood hurts · `M-PERF-02` | During ENV cutover week |
+| **A · NOW** | While `M-OPS-ENV-01` owned elsewhere | `M-PERF-03` (L3 idle-parallel) → `M-DATA-05` A → optional `S-UX-01R`; **`M-PERF-04`** field write-path (create / update / upload) review when dogfood hurts | Secrets / PROD create / ENV plan edits |
+| **B · Post-Store** | After App Store + Stripe live on PROD | `M-DATA-05` B · privilege RLS · `M-PERF-01` B if dogfood hurts · `M-PERF-02` · continue `M-PERF-04` fixes if still open | During ENV cutover week |
 | **C · Post-AUTHZ** | After `M-AUTHZ-02` | `M-DAILY-01` Phases 1–2 (Phase 3 with `M-AI-01`) | Daily DDL before Human Gate |
 
 **Frozen until product GO / later gate:** `M-CAPTURE-01` / `M-CAPTURE-02`, `M-BILL-F` / `M-BILL-01G`, `M-SEC-03`, `WS-STORAGE`, Wave 2 live DDL, privilege RLS **apply** during ENV-01, `M-AI-01` **build** before `M-AUTHZ-02`.
@@ -88,21 +89,22 @@ flowchart TB
   AUTHZ022 --> DAILY2["M-DAILY-01"]
   DAILY2 --> AI012
   CAP["captureSession ✓"] --> PERF03["M-PERF-03"]
+  CAP --> PERF04["M-PERF-04"]
   CAP --> DAILY2
   DATA04["M-DATA-04 ✓"] --> DATA03["M-DATA-03 app ✓"]
   DATA03 --> DATA05["M-DATA-05"]
   DATA05 --> RLS2["Privilege RLS"]
   DATA05 --> PERF01["M-PERF-01"]
+  PERF04 --> PERF02["M-PERF-02"]
   STORE2 --> RLS2
   AI012 --> WAVE22["Wave 2 DMS/web"]
 ```
-
 **Read:** solid arrows = unlocks / feeds. Cyan idle tracks hang off foundation or spine gates above — they must not reorder the orange commercial path.
 
 ### Cheat sheet
 
 1. **#1 spine:** `M-OPS-ENV-01` (other chat may own cutover).
-2. **#1 idle (this chat pattern):** `M-PERF-03` → then `M-DATA-05` Phase A.
+2. **#1 idle (this chat pattern):** `M-PERF-03` → then `M-DATA-05` Phase A; **dogfood P0:** `M-PERF-04` when create/update/upload feel intolerably slow.
 3. **Next commercial:** App Store → Stripe live PROD → `M-OPS-03` → `M-AUTHZ-02` → `M-AI-01` → Wave 2.
 
 ## Milestone Inventory
@@ -194,6 +196,7 @@ flowchart TB
 | WS-PERF / M-PERF-03 | Device photo library picker perf & progressive grid UX | Pipeline — **L3 first-screen proven TF 213**; **Photos index in TF 214 (headed: continuous yes, first-12 ~11s + jumpy scroll)** | captureSession Closed; TF200 hybrid lag fix | 15.0561 | **On-device Photos.** Shared `LibraryPhotoGrid` + FlatList (no FlashList v2). **E2E bar:** `../docs/superpowers/analysis/2026-08-29-instagram-class-picker-e2e.md`. **Done on device:** L1 HUD, L2 skeletons, **L3 native thumbs** (TF 213: first 12 ~69–240ms, `path native`). **TF 214 headed:** `meta/row/12 ~11420ms` then continuous fill; jumpy while scrolling. Cause: sync `openLibrary` + 3-col `getItemLayout`. Fix (async Recents + row list) → TF 215. Idle-parallel; does **not** block RC. |
 | WS-FIELD / M-CAPTURE-01 | Camera zoom control | Pipeline — **tabled 2026-08-28**; later camera/picker phase | captureSession Closed | 15.0562 | Pinch/slider zoom. **Same later phase as** M-CAPTURE-02 + opportunistic/HQ picker thumbs (fast-path `.fastFormat` does not sharpen tiles). **Do not plan or build now.** Must not jump `M-OPS-ENV-01`. |
 | WS-UX / M-CAPTURE-02 | Library picker tile resize | Pipeline — **tabled 2026-08-28**; later camera/picker phase | captureSession Closed | 15.0563 | User-resizable tiles (grip). Larger tiles need HQ/opportunistic PhotoKit — not first-paint fast path. **Do not plan or build now.** Must not jump `M-OPS-ENV-01`. |
+| WS-PERF / M-PERF-04 | Field write-path performance review (create / update / photo upload) | Pipeline — **opened 2026-09-05**; Gate A idle-parallel (dogfood P0) | captureSession Closed; overlaps M-PERF-02 / M-DATA-05 | 15.0575 | **Opened 2026-09-05** from field dogfood: Create Task, Update Progress, and evidence photo uploads feel **intolerably slow**. **Not** picker first-paint (**M-PERF-03**) and **not** list thumb display (**M-PERF-01**). **Scope:** instrument + profile end-to-end write path — capture → compress → Storage upload → task/activity insert → UI unblock; find serial awaits, double-compress, over-fetch after save, blocking signed-URL work, and main-thread stalls. **Deliverables:** timing baseline (sim + 1 device), ranked bottlenecks, then smallest fix slices (optimistic UI / background upload / fewer round-trips). Shares upload SoT with **M-PERF-02** (bytes policy) but owns **latency / perceived wait**. Must **not** jump App Store / Stripe spine. Does **not** block commercial sequence; schedule when dogfood hurts. |
 | WS-PERF / M-PERF-02 | Evidence photo upload downscaling (storage conservation) | Pipeline — **post-RC cost hygiene** (idle-parallel ok) | M-SUPABASE-03c Closed; M-PERF-01 app-side | 15.058 | **Opened 2026-08-24.** Downscale/compress task evidence photos **before** upload to `buildtrack-files` to slow tenant storage growth and align with plan-cap metering (**M-DMS-DATA**). **Today:** `src/api/imageCompressionService.ts` adapts JPEG quality toward a **5 MB file-size cap** with **max long edge 1920**. **Slice A (2026-08-31):** Accept/Select Photos no longer exports full-res; PhotoKit `requestImage` at 1920 only at annotation or upload confirm. **Scope:** define upload policy (max long edge, quality floor, HEIC→JPEG, orientation/EXIF, skip double-compress on draw bakes/edits); wire at upload SoT (`fileUploadService`, create/update progress paths). **Must not** degrade field inspection detail (fasteners, labels/barcode path for **M-AI-03**). Human Gate only if stored artifact contract changes. Does **not** block RC. |
 | WS-UX / M-UX-01 / S-UX-01R | Retire Add Comment dead path (field narrative → Update Description) | Pipeline — **post-RC dead-code hygiene** (idle-parallel ok; pair with M-OPS-02 nav shrink) | First commercial RC | 15.057 | **Opened 2026-08-19.** W-D05 **Exempt** in MAINTABS — Task Detail no longer exposes `add_comment`; workers use Update Progress description (`W-D03` / `W-C07`). **Phase A:** delete `AddCommentScreen` + nav routes; route `actionType: comment` → UpdateProgress; strip `add_comment` adapter/screen wiring. **Phase B (defer):** `assigner_comment` DB/display + `addAssignerComment` until product confirms no assigner-only path. Plan: `../docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`. Evidence: `../docs/superpowers/evidence/2026-08-19-w-d05-gap-no-comment-chip.png`. Does **not** block RC. |
 | WS-FIELD / M-DAILY-01 | Camera + voice memo → daily report → PM → AI corpus | Pipeline — **Phase 0 locked; build parked** | Prefer M-AUTHZ-02 before Phase 2; Phase 3 with M-AI-01; **captureSession Closed 2026-08-27** (Phase 1 host ready) | 15.065 | **2026-08-27 Phase 0:** Daily Report = **first-class project-day artifact** (not only task updates). Vision: `../docs/superpowers/analysis/2026-08-27-daily-capture-memo-vision.md`. Phases 1–3 kickoff: `../docs/superpowers/plans/2026-08-27-daily-report-phases-1-3-kickoff.md`. Capture host closed: `../docs/superpowers/reports/2026-08-27-capture-session-close.md`. **No live DDL / no daily-report build** until Human Gate + spine. |
@@ -261,7 +264,7 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 - **Roadmap discussion lock (2026-08-19):** `../docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` — revisit this file when discussing sequence, AI, DMS, drawings, cost, or owner console. Append addenda; do not silently replace. Execution order: `../docs/superpowers/plans/2026-08-19-post-rc-boring-loop.md`.
 - Post-RC / commercial readiness sequence (2026-08-26; **M-AUTHZ-RC Closed 2026-08-27**; **visual SoT 2026-08-29**): see **§ Commercial sequence map** above. Text spine: **M-OPS-ENV-01** (PROD empty DB first) → App Store submit flips PROD to Stripe live → **M-OPS-03** Owner management interface → **M-AUTHZ-02** → **M-DAILY-01** / **M-AI-01** → Wave 2 **DMS**. (`M-BILL-01` DEV MVP Closed 2026-08-27 — live Stripe stays Store gate.) Drawing inference stays out of scope. Membership product SoT: `./multi-company-project-membership.md`.
 - **Customer-managed storage (2026-08-21):** Premium enterprise/privacy capability (`WS-STORAGE / M-STORAGE-01`…`05`, Deferred). **Must not jump** RC, `M-OPS-01`, `M-OPS-02`, `M-AI-01`, or Wave 2 / `M-DMS-01`. Reopen only after DMS starts and demand justifies architecture cost. Slotting plan: `../docs/superpowers/plans/2026-08-21-customer-managed-storage-slotting.md`. Clarification addendum: `../docs/superpowers/analysis/2026-08-19-roadmap-clarification.md`.
-- **Post-RC resilience/perf/hygiene (2026-08-19; + M-DATA-05 2026-08-27):** **M-DATA-03** pull/sync resilience + **M-DATA-05** client cache hygiene & bandwidth (Phase A list/activities + TTL polls; Phase B logout/GC) + **M-PERF-01** evidence photo display + **M-PERF-02** upload downscaling (storage conservation) + **S-UX-01R** Add Comment dead-code removal — Pipeline idle-parallel; **must not jump** `M-OPS-ENV-01` / BILL / App Store. M-DATA-05 plan: `../docs/superpowers/plans/2026-08-27-m-data-05-cache-hygiene-action-plan.md`. Investigation: `../docs/superpowers/analysis/2026-08-19-photo-sync-resilience-investigation.md`. S-UX-01R plan: `../docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`.
+- **Post-RC resilience/perf/hygiene (2026-08-19; + M-DATA-05 2026-08-27; + M-PERF-04 2026-09-05):** **M-DATA-03** pull/sync resilience + **M-DATA-05** client cache hygiene & bandwidth (Phase A list/activities + TTL polls; Phase B logout/GC) + **M-PERF-01** evidence photo display + **M-PERF-02** upload downscaling (storage conservation) + **M-PERF-04** field write-path latency (create / update / photo upload) + **S-UX-01R** Add Comment dead-code removal — Pipeline idle-parallel; **must not jump** `M-OPS-ENV-01` / BILL / App Store. M-DATA-05 plan: `../docs/superpowers/plans/2026-08-27-m-data-05-cache-hygiene-action-plan.md`. Investigation: `../docs/superpowers/analysis/2026-08-19-photo-sync-resilience-investigation.md`. S-UX-01R plan: `../docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`.
 - **Device library picker (2026-08-28):** **M-PERF-03** — progressive grid paint + 2× thumbs on the hybrid library. Device proof pending. Study: `../docs/superpowers/analysis/2026-08-28-device-photo-library-picker-perf-discussion.md`. Separate from **M-PERF-01** remote evidence track.
 - **Custom company banner (2026-08-25):** Parked — Admin Overview / “Banner →” entry points removed; field header strip not mounted. Not RC-critical. Inventory: `./EXPIRED_SURFACES_INVENTORY.md`. Reopen only with product GO after commercial RC.
 - **Capture camera zoom + picker tile resize (2026-08-28):** Tabled — `M-CAPTURE-01` (camera zoom) and `M-CAPTURE-02` (library tile resize). Not this TestFlight. Must not jump `M-OPS-ENV-01`.

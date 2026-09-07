@@ -8,6 +8,7 @@ import ModalHandle from "@/components/ModalHandle";
 import type {
   TasksOverdueWindowValue,
   TasksQueueFilterValue,
+  TasksSortOrderValue,
   TasksStatusFilterValue,
 } from "@/ui/contracts/viewAdapters";
 import { cn } from "@/utils/cn";
@@ -17,12 +18,14 @@ interface TasksFiltersBottomSheetProps {
   stagedQueue: TasksQueueFilterValue;
   stagedStatus: TasksStatusFilterValue;
   stagedOverdueWindow: TasksOverdueWindowValue;
+  stagedSortOrder: TasksSortOrderValue;
   onClose: () => void;
   onResetAll: () => void;
   onApply: () => void;
   onStageQueue: (value: TasksQueueFilterValue) => void;
   onStageStatus: (value: TasksStatusFilterValue) => void;
   onStageOverdueWindow: (value: TasksOverdueWindowValue) => void;
+  onStageSortOrder: (value: TasksSortOrderValue) => void;
 }
 
 interface FilterOptionProps {
@@ -198,6 +201,44 @@ export default function TasksFiltersBottomSheet(props: TasksFiltersBottomSheetPr
                 selected={props.stagedStatus === "overdue"}
                 tone="red"
                 onPress={() => props.onStageStatus("overdue")}
+              />
+            </FilterSection>
+
+            <FilterSection title="ORDER">
+              <FilterOption
+                testID="tasks-filters-sheet__sort_newest_created"
+                label="Newest created"
+                selected={props.stagedSortOrder === "newest_created"}
+                tone="navy"
+                onPress={() => props.onStageSortOrder("newest_created")}
+              />
+              <FilterOption
+                testID="tasks-filters-sheet__sort_oldest_created"
+                label="Oldest created"
+                selected={props.stagedSortOrder === "oldest_created"}
+                tone="navy"
+                onPress={() => props.onStageSortOrder("oldest_created")}
+              />
+              <FilterOption
+                testID="tasks-filters-sheet__sort_due_soonest"
+                label="Due soonest"
+                selected={props.stagedSortOrder === "due_soonest"}
+                tone="navy"
+                onPress={() => props.onStageSortOrder("due_soonest")}
+              />
+              <FilterOption
+                testID="tasks-filters-sheet__sort_due_latest"
+                label="Due latest"
+                selected={props.stagedSortOrder === "due_latest"}
+                tone="navy"
+                onPress={() => props.onStageSortOrder("due_latest")}
+              />
+              <FilterOption
+                testID="tasks-filters-sheet__sort_recently_updated"
+                label="Recently updated"
+                selected={props.stagedSortOrder === "recently_updated"}
+                tone="navy"
+                onPress={() => props.onStageSortOrder("recently_updated")}
               />
             </FilterSection>
 

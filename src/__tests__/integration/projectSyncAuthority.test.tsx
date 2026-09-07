@@ -75,10 +75,14 @@ describe("project sync authority", () => {
       return { useAuthStore };
     });
 
+    jest.doMock("../../api/supabaseSessionGate", () => ({
+      getSessionScopedSupabase: jest.fn().mockResolvedValue({}),
+    }));
+
     const { triggerRefresh } = require("../../utils/DataRefreshManager");
 
-    now = 2000;
-    await triggerRefresh();
+    now = 35000;
+    await triggerRefresh({ force: true });
 
     expect(supabaseFetchProjects).toHaveBeenCalledWith(true);
     expect(supabaseFetchAssignments).toHaveBeenCalledWith("user-1", true);

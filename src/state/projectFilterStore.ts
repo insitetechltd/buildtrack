@@ -90,15 +90,35 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       lastSelectedProjects: {}, // Store last selected project per user
       
       setSelectedProject: async (projectId: string | null, userId?: string) => {
-        set({ selectedProjectId: projectId });
+        const current = get().selectedProjectId ?? null;
+        const next = projectId ?? null;
+        const lastForUser = userId ? get().lastSelectedProjects[userId] : undefined;
+
+        // No-op when selection (+ last-selected) already match — stops gate/dashboard loops.
+        if (current === next) {
+          if (!userId) {
+            return;
+          }
+          if (next != null && lastForUser === next) {
+            return;
+          }
+          if (next == null && !(userId in get().lastSelectedProjects)) {
+            return;
+          }
+        } else {
+          set({ selectedProjectId: next });
+        }
         
         // Save as last selected for this user
-        if (userId && projectId) {
+        if (userId && next) {
+          if (get().lastSelectedProjects[userId] === next) {
+            return;
+          }
           // Update local storage (for offline fallback)
           set(state => ({
             lastSelectedProjects: {
               ...state.lastSelectedProjects,
-              [userId]: projectId,
+              [userId]: next,
             },
           }));
           
@@ -107,7 +127,7 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
             try {
               const { error } = await supabase
                 .from('users')
-                .update({ last_selected_project_id: projectId })
+                .update({ last_selected_project_id: next })
                 .eq('id', userId);
               
               if (error) {
@@ -121,8 +141,11 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
               // Continue - local storage already updated
             }
           }
-        } else if (userId && projectId === null) {
+        } else if (userId && next === null) {
           // Clear selection - also clear from database
+          if (!(userId in get().lastSelectedProjects)) {
+            return;
+          }
           set(state => ({
             lastSelectedProjects: Object.fromEntries(
               Object.entries(state.lastSelectedProjects).filter(([key]) => key !== userId)

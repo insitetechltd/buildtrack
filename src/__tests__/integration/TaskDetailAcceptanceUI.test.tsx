@@ -28,9 +28,45 @@ jest.mock("../../components/primitives/container/ContainerCard", () => ({
 }));
 
 jest.mock("../../state/authStore", () => ({
-  useAuthStore: () => ({
-    user: { id: "user-1", companyId: "company-1", name: "Casey" },
+  useAuthStore: (selector?: (state: { user: { id: string; companyId: string; name: string } }) => unknown) => {
+    const state = { user: { id: "user-1", companyId: "company-1", name: "Casey" } };
+    return typeof selector === "function" ? selector(state) : state;
+  },
+}));
+
+jest.mock("@react-navigation/native", () => ({
+  useNavigation: () => ({
+    navigate: jest.fn(),
+    push: jest.fn(),
+    getParent: () => ({ getState: () => undefined }),
   }),
+}));
+
+jest.mock("../../navigation/captureFirstCameraFlow", () => ({
+  navigateToAddPhotosCaptureSession: jest.fn(),
+}));
+
+jest.mock("../../navigation/reportTriageSpeedDialStore", () => ({
+  useReportTriageDialExpanded: () => false,
+  setReportTriageDialExpanded: jest.fn(),
+  toggleReportTriageDialExpanded: jest.fn(),
+}));
+
+jest.mock("../../navigation/taskDetailBackNavigation", () => ({
+  navigateReportTriageAction: jest.fn(),
+}));
+
+jest.mock("../../api/fileUploadService", () => ({
+  ...jest.requireActual("../../api/fileUploadService"),
+  uploadFileWithVerification: jest.fn(),
+}));
+
+jest.mock("../../utils/ensureCappedLocalPhoto", () => ({
+  ensureCappedLocalPhoto: jest.fn(async (photo: { uri: string }) => photo.uri),
+}));
+
+jest.mock("expo-file-system/legacy", () => ({
+  getInfoAsync: jest.fn(async () => ({ exists: true })),
 }));
 
 jest.mock("../../state/companyStore", () => ({
@@ -226,6 +262,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     approveTask: jest.fn(),
     toggleCriticalThisWeek: jest.fn(),
     cancelTask: jest.fn(),
+    replyToReport: jest.fn().mockResolvedValue(undefined),
     fetchTask: jest.fn(),
   });
 
@@ -499,6 +536,31 @@ describe("TaskDetailScreen acceptance UI", () => {
   it("does not render Add Photos or Add Comment on task detail", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "action-approve",
+              actionId: "approve_task",
+              label: "Approve",
+              icon: "checkmark-circle-outline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+            {
+              id: "action-reject",
+              actionId: "reject_task",
+              label: "Reject",
+              icon: "close-circle-outline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
         actionItems: [
           {
             id: "action-update",
@@ -514,24 +576,6 @@ describe("TaskDetailScreen acceptance UI", () => {
             actionId: "add_comment",
             label: "Add Comment",
             icon: "chatbubble-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "ready",
-          },
-          {
-            id: "action-approve",
-            actionId: "approve_task",
-            label: "Approve",
-            icon: "checkmark-circle-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "ready",
-          },
-          {
-            id: "action-reject",
-            actionId: "reject_task",
-            label: "Reject",
-            icon: "close-circle-outline",
             isDisabled: false,
             density: "standard",
             structuralState: "ready",
@@ -580,15 +624,24 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByText("Submitted task for review")).toBeTruthy();
   });
 
-  it("renders the critical badge inside the Task Details chip row and no standalone critical section", () => {
+  it("highlights due date in red when critical this week (no separate Priority badge)", () => {
     const baseOutput = createAdapterOutput();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
+        infoCard: {
+          ...baseOutput.infoCard,
+          isCritical: true,
+          dueDateLabel: "Jul 10, 2026",
+          criticalLabel: undefined,
+          showEditAction: true,
+          editActionLabel: "Edit Task Details",
+        },
         taskHero: {
           ...baseOutput.taskHero,
           isCritical: true,
-          criticalLabel: "Critical this week",
+          dueDateLabel: "Jul 10, 2026",
+          criticalLabel: undefined,
         },
       }),
       actions: createAdapterActions(),
@@ -597,9 +650,18 @@ describe("TaskDetailScreen acceptance UI", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.queryByTestId("task-detail__header_badges")).toBeNull();
-    expect(within(screen.getByTestId("task-detail__status_chips")).getByText("Critical this week")).toBeTruthy();
+    expect(screen.queryByText("Critical this week")).toBeNull();
+    expect(screen.getByTestId("task-detail__info_card_edit")).toBeTruthy();
     fireEvent.press(screen.getByTestId("task-detail__status_chips__toggle"));
-    expect(within(screen.getByTestId("task-detail__status_chips")).getByText("Priority")).toBeTruthy();
+    expect(screen.queryByText("Priority")).toBeNull();
+    expect(screen.getByTestId("task-detail__due_date")).toBeTruthy();
+    const dueText = within(screen.getByTestId("task-detail__due_date")).getByText(
+      "Jul 10, 2026",
+    );
+    expect(dueText).toBeTruthy();
+    expect(dueText.props.style).toEqual(
+      expect.objectContaining({ color: "#DC2626" }),
+    );
     expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
   });
 
@@ -646,9 +708,11 @@ describe("TaskDetailScreen acceptance UI", () => {
     fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1"));
 
     expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
-      uri: "https://example.com/activity-photo-2.jpg",
-    });
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual(
+      expect.objectContaining({
+        uri: "https://example.com/activity-photo-2.jpg",
+      }),
+    );
     expect(screen.getByText("2 / 2")).toBeTruthy();
   });
 
@@ -715,9 +779,14 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.queryByText("Hero Project Label")).toBeNull();
   });
 
-  it("keeps secondary actions visible inline for creators and demotes edit below the promoted primary action", () => {
+  it("hides Other actions card; edit lives on the hero card when allowed", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
+        infoCard: {
+          ...createAdapterOutput().infoCard!,
+          showEditAction: true,
+          editActionLabel: "Edit Task Details",
+        },
         actionItems: [
           {
             id: "action-edit",
@@ -744,15 +813,16 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
-    expect(screen.getByText("Other actions")).toBeTruthy();
-    expect(screen.getByText("Edit Task Details")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__secondary-actions")).toBeNull();
+    expect(screen.queryByText("Other actions")).toBeNull();
+    expect(screen.getByTestId("task-detail__info_card_edit")).toBeTruthy();
     expect(screen.queryByText("Add Comment")).toBeNull();
   });
 
   it("hides edit action for non-creators while omitting photos and comment from the screen", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
+    expect(screen.queryByTestId("task-detail__info_card_edit")).toBeNull();
     expect(screen.queryByText("Edit Task Details")).toBeNull();
     expect(screen.queryByText("Add Comment")).toBeNull();
     expect(screen.queryByText("Add Photos")).toBeNull();

@@ -1,16 +1,18 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
-import { useFocusEffect } from "@react-navigation/native";
+import { NavigationContext } from "@react-navigation/native";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 import { usePullToRefresh } from "@/utils/usePullToRefresh";
+import { useTabletCardGridLayout } from "@/utils/useTabletCardGridLayout";
 import { useTranslation } from "@/utils/useTranslation";
+import { TABLET_RAIL_CARD_HEIGHT } from "@/components/cards/ActivityStyleRowCard";
 
 interface DashboardScreenProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
@@ -45,6 +47,7 @@ function DraftDeleteAction({
 
 export default function DashboardScreen(props: DashboardScreenProps) {
   const t = useTranslation();
+  const { isGrid, itemWidth, gap: gridGap } = useTabletCardGridLayout();
   const { output, visibility, actions } = useDashboardViewAdapter();
   const { isPullRefreshing, handlePullRefresh } = usePullToRefresh();
   const [isDraftsExpanded, setIsDraftsExpanded] = useState(false);
@@ -52,11 +55,34 @@ export default function DashboardScreen(props: DashboardScreenProps) {
     Record<string, "active" | "dismissed">
   >({});
 
-  useFocusEffect(
-    useCallback(() => {
-      actions.markActivityFeedSeen();
-    }, [actions.markActivityFeedSeen]),
-  );
+  const cardGridStyle = isGrid
+    ? {
+        flexDirection: "row" as const,
+        flexWrap: "wrap" as const,
+        gap: gridGap,
+        alignItems: "stretch" as const,
+      }
+    : undefined;
+  const railCellStyle = itemWidth
+    ? { width: itemWidth, ...(isGrid ? { height: TABLET_RAIL_CARD_HEIGHT } : null) }
+    : undefined;
+  const postCellStyle = itemWidth ? { width: itemWidth } : undefined;
+
+  const navigation =
+    NavigationContext && typeof NavigationContext === "object"
+      ? (useContext(NavigationContext) as { addListener?: (event: string, cb: () => void) => () => void } | undefined)
+      : undefined;
+
+  useEffect(() => {
+    actions?.markActivityFeedSeen?.();
+
+    if (navigation && typeof navigation.addListener === "function") {
+      const unsubscribe = navigation.addListener("focus", () => {
+        actions?.markActivityFeedSeen?.();
+      });
+      return unsubscribe;
+    }
+  }, [actions?.markActivityFeedSeen, navigation]);
 
   const setDraftSwipeBlockState = useCallback(
     (taskId: string, nextState?: "active" | "dismissed") => {
@@ -98,16 +124,16 @@ export default function DashboardScreen(props: DashboardScreenProps) {
 
   const handleDraftDeletePress = useCallback(
     (localDraftId: string) => {
-      Alert.alert(t.activity.deleteDraftTitle, t.activity.deleteDraftMessage, [
-        { text: t.common.cancel, style: "cancel" },
+      Alert.alert(t?.activity?.deleteDraftTitle || "Delete draft?", t?.activity?.deleteDraftMessage || "This saved draft will be removed from this device.", [
+        { text: t?.common?.cancel || "Cancel", style: "cancel" },
         {
-          text: t.common.delete,
+          text: t?.common?.delete || "Delete",
           style: "destructive",
           onPress: () => {
             void actions.deleteDraftTask(localDraftId).catch((error) => {
               Alert.alert(
-                t.activity.unableToDeleteDraft,
-                error instanceof Error ? error.message : t.activity.tryAgain,
+                t?.activity?.unableToDeleteDraft || "Unable to delete draft",
+                error instanceof Error ? error.message : t?.activity?.tryAgain || "Please try again.",
               );
             });
           },
@@ -120,12 +146,12 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   return (
     <SafeAreaView
       testID="dashboard-screen__root"
-      edges={["left", "right", "bottom"]}
+      edges={["left", "right"]}
       className="flex-1 bg-canvas dark:bg-canvas-dark"
     >
         <AppScreenHeader
           title="Taskr"
-          titleNode={<BrandHeaderTitle subtitle={t.activity.siteActivity} />}
+          titleNode={<BrandHeaderTitle subtitle={t?.activity?.siteActivity || "Site activity"} />}
           showProfileTrigger={visibility.showProfileShortcut}
           onNavigateToProfile={props.onNavigateToProfile}
           onNavigateToProjectPicker={visibility.showProjectPickerShortcut ? props.onNavigateToProjectPicker : undefined}
@@ -175,30 +201,40 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           {output.projectSummaryCard ? (
             <View className="mb-5">
               <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-                {t.activity.criticalThisWeek}
+                {t?.activity?.criticalThisWeek || "This Week's Critical Tasks"}
               </Text>
               {output.projectSummaryCard.criticalDates.length > 0 ? (
-                <View className="gap-3">
+                <View
+                  testID="dashboard-screen__critical_tasks_grid"
+                  className={isGrid ? undefined : "gap-3"}
+                  style={cardGridStyle}
+                >
                   {output.projectSummaryCard.criticalDates.map((item) => (
-                    <ActivityStyleRowCard
+                    <View
                       key={item.id}
-                      testID={`dashboard-screen__critical_task_${item.id}`}
-                      variant="critical"
-                      title={item.title}
-                      subtitle={item.subtitle}
-                      metaLabel="Due this week"
-                      badgeLabel={item.dateLabel}
-                      imageUri={item.imageUri}
-                      topLeftMarker={
-                        <View
-                          testID={`dashboard-screen__critical_task_${item.id}:this-week`}
-                          className="rounded-full bg-amber-500 px-2.5 py-1"
-                        >
-                          <Text className="text-xs font-semibold text-white">This week</Text>
-                        </View>
-                      }
-                      onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
-                    />
+                      testID={`dashboard-screen__critical_task_wrapper_${item.id}`}
+                      style={railCellStyle}
+                    >
+                      <ActivityStyleRowCard
+                        testID={`dashboard-screen__critical_task_${item.id}`}
+                        variant="critical"
+                        fillHeight={isGrid}
+                        title={item.title}
+                        subtitle={item.subtitle}
+                        metaLabel="Due this week"
+                        badgeLabel={item.dateLabel}
+                        imageUri={item.imageUri}
+                        topLeftMarker={
+                          <View
+                            testID={`dashboard-screen__critical_task_${item.id}:this-week`}
+                            className="rounded-full bg-amber-500 px-2.5 py-1"
+                          >
+                            <Text className="text-xs font-semibold text-white">This week</Text>
+                          </View>
+                        }
+                        onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
+                      />
+                    </View>
                   ))}
                 </View>
               ) : (
@@ -253,9 +289,13 @@ export default function DashboardScreen(props: DashboardScreenProps) {
 
           <View className="mb-4">
             <Text className="mb-2 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-              {t.activity.recentActivity}
+              {t?.activity?.recentActivity || "Recent Activity"}
             </Text>
-            <View className="gap-3">
+            <View
+              testID="dashboard-screen__recent_activity_grid"
+              className={isGrid ? undefined : "gap-3"}
+              style={cardGridStyle}
+            >
               {output.activityItems.length > 0 ? (
                 output.activityItems.map((item) => {
                   const photoUris =
@@ -265,33 +305,40 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                         ? [item.previewPhotoUri]
                         : [];
                   return (
-                  <ActivityStyleRowCard
-                    key={item.id}
-                    testID={`dashboard-screen__activity_${item.id}`}
-                    variant="activity"
-                    layout="post"
-                    title={item.title}
-                    subtitle={item.subtitle}
-                    actorLabel={item.actorLabel}
-                    metaLabel={item.timestampLabel}
-                    imageUri={photoUris[0]}
-                    imageUris={photoUris.length > 0 ? photoUris : undefined}
-                    disabled={item.taskId?.startsWith("project:") ?? false}
-                    onPress={() => {
-                      actions.markActivityFeedSeen();
-                      if (item.taskId) {
-                        props.onNavigateToTaskDetail?.(item.taskId);
-                      }
-                    }}
-                  />
+                    <View
+                      key={item.id}
+                      testID={`dashboard-screen__activity_wrapper_${item.id}`}
+                      style={postCellStyle}
+                    >
+                      <ActivityStyleRowCard
+                        testID={`dashboard-screen__activity_${item.id}`}
+                        variant="activity"
+                        layout="post"
+                        fillHeight={isGrid}
+                        title={item.title}
+                        subtitle={item.subtitle}
+                        actorLabel={item.actorLabel}
+                        actorUserId={item.actorUserId}
+                        metaLabel={item.timestampLabel}
+                        imageUri={photoUris[0]}
+                        imageUris={photoUris.length > 0 ? photoUris : undefined}
+                        disabled={item.taskId?.startsWith("project:") ?? false}
+                        onPress={() => {
+                          actions.markActivityFeedSeen();
+                          if (item.taskId) {
+                            props.onNavigateToTaskDetail?.(item.taskId);
+                          }
+                        }}
+                      />
+                    </View>
                   );
                 })
               ) : (
-                <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
+                <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4" style={isGrid ? { width: "100%" } : undefined}>
                   <Text className="text-lg leading-6 text-[#577783]">
                     {output.activeProject
-                      ? t.activity.noRecentActivity
-                      : t.activity.selectProjectForActivity}
+                      ? t?.activity?.noRecentActivity || "No recent activity for the current project yet."
+                      : t?.activity?.selectProjectForActivity || "Select a project to view recent activity."}
                   </Text>
                 </View>
               )}
@@ -303,19 +350,19 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               <Pressable
                 testID="dashboard-screen__drafts_toggle"
                 accessibilityRole="button"
-                accessibilityLabel={t.activity.savedDrafts}
+                accessibilityLabel={t?.activity?.savedDrafts || "Saved drafts"}
                 onPress={() => setIsDraftsExpanded((current) => !current)}
                 className="mb-2 flex-row items-center justify-between"
                 hitSlop={12}
               >
                 <Text className="text-base font-semibold uppercase tracking-wider text-slate-500">
-                  {t.activity.savedDrafts}
+                  {t?.activity?.savedDrafts || "Saved drafts"}
                 </Text>
                 <Text
                   testID="dashboard-screen__drafts_show_hide"
                   className="text-base font-semibold text-slate-500"
                 >
-                  {isDraftsExpanded ? t.activity.hide : t.activity.show}
+                  {isDraftsExpanded ? t?.activity?.hide || "Hide" : t?.activity?.show || "Show"}
                 </Text>
               </Pressable>
               {isDraftsExpanded ? (

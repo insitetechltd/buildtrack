@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, FlatList, Alert, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Contacts from "expo-contacts";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface Contact {
   id: string;
@@ -94,11 +95,13 @@ export default function ContactPicker({ onSelectContact, onClose }: ContactPicke
             onPress={() => handleSelectContact(item)}
             className="bg-white border-b border-gray-100 px-6 py-4 flex-row items-center"
           >
-            <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-3">
-              <Text className="text-blue-600 font-bold text-xl">
-                {item.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <UserAvatar
+              userId={item.id}
+              name={item.name}
+              email={item.emails?.[0]?.email}
+              size={48}
+              className="mr-3"
+            />
             <View className="flex-1">
               <Text className="font-semibold text-gray-900 text-lg">
                 {item.name}

@@ -41,26 +41,30 @@ export function areAssigneesLockedForStatus(status?: TaskStatusLike): boolean {
       status !== "new" &&
       status !== "not_started" &&
       status !== "rejected" &&
-      status !== "declined",
+      status !== "declined" &&
+      status !== "reported",
   );
 }
 
 /**
  * Whether the actor may change primary assignee and/or delegates.
  * Create flow: always allowed for the signed-in creator (caller is composing a new task).
+ * Triage flow: PM/admin promoting a report may choose assignees (defaults to reporter).
  */
 export function canEditTaskDelegation(args: {
   actorUserId?: string | null;
   taskAssignedBy?: string | null;
   taskStatus?: TaskStatusLike;
   isCreateFlow?: boolean;
+  /** Create-task-from-report — unlock assignees for the triaging PM. */
+  isTriageFlow?: boolean;
 }): boolean {
   const actorId = args.actorUserId == null ? "" : String(args.actorUserId).trim();
   if (!actorId) {
     return false;
   }
 
-  if (args.isCreateFlow) {
+  if (args.isCreateFlow || args.isTriageFlow) {
     return true;
   }
 

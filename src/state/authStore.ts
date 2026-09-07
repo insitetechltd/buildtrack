@@ -9,6 +9,7 @@ import {
   UserRole,
 } from "../types/buildtrack";
 import { useUserStore } from "./userStore.supabase";
+import { clearWorkspaceSessionState } from "./clearWorkspaceSession";
 
 export function readMustSetPassword(
   user: Record<string, unknown> | null | undefined,
@@ -30,15 +31,20 @@ export function readMustSetPasswordFromAuthMetadata(
   );
 }
 
-/** users row is SoT; auth metadata covers invite flow when users UPDATE is blocked. */
+/**
+ * Prefer the `users` row once loaded. Auth metadata is only a fallback when
+ * the profile row is missing (invite edge). Never OR metadata over a false
+ * row — that traps invitees on Set Password after every app restart when
+ * JWT user_metadata still has must_set_password: true.
+ */
 export function resolveMustSetPassword(
   userRow: Record<string, unknown> | null | undefined,
   authMetadata?: Record<string, unknown> | null,
 ): boolean {
-  return (
-    readMustSetPassword(userRow) ||
-    readMustSetPasswordFromAuthMetadata(authMetadata)
-  );
+  if (userRow) {
+    return readMustSetPassword(userRow);
+  }
+  return readMustSetPasswordFromAuthMetadata(authMetadata);
 }
 
 const SAME_PASSWORD_ERROR = /different from the old password|same as the old|should be different/i;
@@ -286,6 +292,11 @@ export const useAuthStore = create<AuthStore>()(
                 
                 console.log('✅ Login successful:', transformedUser.name);
                 console.log('Setting state: isAuthenticated=true, isLoading=false, isInitialized=true');
+
+                const previousUserId = get().user?.id ?? null;
+                if (previousUserId !== transformedUser.id) {
+                  clearWorkspaceSessionState("login-user-switch");
+                }
                 
                 set({ 
                   user: transformedUser, 
@@ -379,6 +390,7 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
+        clearWorkspaceSessionState("logout");
         if (supabase) {
           supabase.auth.signOut();
         }
@@ -987,6 +999,7 @@ export const useAuthStore = create<AuthStore>()(
 
       signOut: async () => {
         try {
+          clearWorkspaceSessionState("signOut");
           if (supabase) {
             await supabase.auth.signOut();
           }
@@ -999,6 +1012,7 @@ export const useAuthStore = create<AuthStore>()(
           });
         } catch (error: any) {
           console.error('Logout error:', error);
+          clearWorkspaceSessionState("signOut-error");
           // Clear state anyway
           set({ 
             user: null,
@@ -1067,12 +1081,16 @@ export const useAuthStore = create<AuthStore>()(
             set({ user: null, session: null, isAuthenticated: false, isInitialized: true });
           }
         } catch (error: any) {
-          console.error('Error restoring session:', error);
-          
-          // If it's an auth error, clear session completely
-          if (error?.message?.includes('Invalid Refresh Token') || 
-              error?.message?.includes('Refresh Token Not Found')) {
-            console.log('🔴 Invalid refresh token exception - clearing auth state');
+          const isExpectedAuthLoss =
+            error?.message?.includes('Invalid Refresh Token') ||
+            error?.message?.includes('Refresh Token Not Found') ||
+            error?.message?.includes('Auth session missing') ||
+            error?.name === 'AuthSessionMissingError';
+
+          if (isExpectedAuthLoss) {
+            console.log('🔴 Session not present or token expired - clearing auth state');
+          } else {
+            console.error('Error restoring session:', error);
           }
           
           set({ user: null, session: null, isAuthenticated: false, isInitialized: true });
@@ -1086,8 +1104,11 @@ export const useAuthStore = create<AuthStore>()(
           const { data, error } = await supabase.auth.refreshSession();
 
           if (error) {
-            console.error('Session refresh error:', error);
-            
+            // Missing session is an expected non-authenticated/idle state
+            if (error.message?.includes('Auth session missing') || error.name === 'AuthSessionMissingError') {
+              return;
+            }
+
             // If refresh token is invalid/expired, log user out
             if (error.message?.includes('Invalid Refresh Token') || 
                 error.message?.includes('Refresh Token Not Found')) {
@@ -1095,6 +1116,8 @@ export const useAuthStore = create<AuthStore>()(
               get().logout();
               return;
             }
+
+            console.error('Session refresh error:', error);
             return;
           }
 
@@ -1102,14 +1125,19 @@ export const useAuthStore = create<AuthStore>()(
             set({ session: data.session });
           }
         } catch (error: any) {
-          console.error('Error refreshing session:', error);
-          
+          if (error?.message?.includes('Auth session missing') || error?.name === 'AuthSessionMissingError') {
+            return;
+          }
+
           // If it's an auth error, log user out
           if (error?.message?.includes('Invalid Refresh Token') || 
               error?.message?.includes('Refresh Token Not Found')) {
             console.log('🔴 Invalid refresh token detected - logging out user');
             get().logout();
+            return;
           }
+
+          console.error('Error refreshing session:', error);
         }
       },
 
@@ -1184,12 +1212,28 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           try {
-            await supabase
+            const { error: profileError } = await supabase
               .from("users")
               .update({ must_set_password: false })
               .eq("id", currentUser.id);
+            if (profileError) {
+              console.warn(
+                "⚠️ [completeFirstLoginPassword] users.must_set_password clear failed:",
+                profileError.message,
+              );
+            }
+          } catch (profileException) {
+            console.warn(
+              "⚠️ [completeFirstLoginPassword] users.must_set_password clear exception:",
+              profileException,
+            );
+          }
+
+          // Refresh so session.user_metadata matches the cleared flag on next cold start.
+          try {
+            await supabase.auth.refreshSession();
           } catch {
-            // users UPDATE may fail on legacy tenants until updated_at repair is applied.
+            // Non-fatal — users row is SoT on initialize().
           }
 
           const updatedUser = normalizeAuthUser({

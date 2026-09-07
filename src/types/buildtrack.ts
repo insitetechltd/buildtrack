@@ -63,6 +63,8 @@ export type Priority = "low" | "medium" | "high" | "critical";
 
 // Unified task status system - replaces old currentStatus + accepted + readyForReview + reviewAccepted
 export type TaskStatus = 
+  | "reported"               // Field issue/snag reported by worker, awaiting PM triage
+  | "resolved"               // Report closed without promotion; row kept for audit
   | "new"                    // Created by assigner, waiting for assignee response
   | "declined"               // Declined by assignee (goes back to assigner)
   | "accepted"               // Accepted by assignee (ready to start work)
@@ -71,6 +73,7 @@ export type TaskStatus =
   | "approved"               // Review approved by assigner
   | "rejected"               // Review rejected by assigner (needs rework)
   | "cancelled"              // Task cancelled by creator
+  | "dismissed"              // Legacy: issue dismissed during triage (prefer resolved)
   // Legacy statuses kept for backward compatibility during the migration sweep
   | "not_started"
   | "completed"
@@ -489,7 +492,11 @@ export type ActivityType =
   | 'delegation_added'
   | 'delegation_removed'
   | 'photo_batch_attached'
-  | 'draft_completed';
+  | 'draft_completed'
+  | 'issue_reported'
+  | 'triaged_to_task'
+  | 'issue_dismissed'
+  | 'issue_resolved';
 
 // Type-specific data structures for each activity type
 export interface ProgressUpdateData {

@@ -1,8 +1,47 @@
 import { resolveStandaloneTaskAction } from "../taskActionRouting";
 import {
+  resolveReportTriageShortcut,
   resolveTaskDetailUpdateShortcut,
   resolveTasksListCreateShortcut,
 } from "../photoShortcutRoutes";
+
+jest.mock("../../state/taskStore.supabase", () => ({
+  useTaskStore: {
+    getState: jest.fn(() => ({
+      tasks: [{ id: "task-9", status: "in_progress" }],
+    })),
+  },
+}));
+
+jest.mock("../../state/authStore", () => ({
+  useAuthStore: {
+    getState: jest.fn(() => ({
+      user: {
+        id: "manager-1",
+        role: "manager",
+        systemPermission: "manager",
+      },
+    })),
+  },
+}));
+
+const reportedDetailTabState = {
+  index: 2,
+  routes: [
+    { name: "Activity" },
+    { name: "Camera" },
+    {
+      name: "Tasks",
+      state: {
+        index: 1,
+        routes: [
+          { name: "TasksList" },
+          { name: "TaskDetail", params: { taskId: "task-9" } },
+        ],
+      },
+    },
+  ],
+};
 
 describe("taskActionRouting", () => {
   it("routes photos/update to UpdateProgress", () => {
@@ -46,9 +85,33 @@ describe("taskActionRouting", () => {
       })?.kind,
     ).toBe("createTask");
   });
+
+  it("routes triage to CreateTask with actionType triage", () => {
+    expect(
+      resolveStandaloneTaskAction({
+        editTaskId: "task-report-1",
+        actionType: "triage",
+        sourceScreen: "tasks",
+      }),
+    ).toEqual({
+      kind: "createTask",
+      params: expect.objectContaining({
+        editTaskId: "task-report-1",
+        actionType: "triage",
+        sourceScreen: "tasks",
+      }),
+    });
+  });
 });
 
 describe("resolveTaskDetailUpdateShortcut", () => {
+  beforeEach(() => {
+    const { useTaskStore } = require("../../state/taskStore.supabase");
+    useTaskStore.getState.mockReturnValue({
+      tasks: [{ id: "task-9", status: "in_progress" }],
+    });
+  });
+
   it("resolves Tasks TaskDetail to UpdateProgress params", () => {
     expect(
       resolveTaskDetailUpdateShortcut({
@@ -75,6 +138,20 @@ describe("resolveTaskDetailUpdateShortcut", () => {
         subTaskId: "sub-2",
         sourceScreen: "tasks",
       }),
+    });
+  });
+
+  it("does not auto-open UpdateProgress when report triage dial applies", () => {
+    const { useTaskStore } = require("../../state/taskStore.supabase");
+    useTaskStore.getState.mockReturnValue({
+      tasks: [{ id: "task-9", status: "reported" }],
+    });
+
+    expect(resolveTaskDetailUpdateShortcut(reportedDetailTabState)).toBeUndefined();
+    expect(resolveReportTriageShortcut(reportedDetailTabState)).toEqual({
+      tabName: "Tasks",
+      taskId: "task-9",
+      subTaskId: undefined,
     });
   });
 });

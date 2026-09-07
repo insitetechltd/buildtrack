@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef, useContext } from "react";
 import {
   View,
   Text,
@@ -22,9 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   type NavigationProp,
-  useFocusEffect,
-  useNavigation,
-  useRoute,
+  NavigationContext,
 } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useCreateTaskViewAdapter } from "../ui/viewAdapters/useCreateTaskViewAdapter";
@@ -35,6 +33,7 @@ import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
+import { UserAvatar } from "@/components/UserAvatar";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
@@ -98,7 +97,7 @@ interface CreateTaskScreenProps {
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
   localDraftId?: string; // Resume a saved local draft
-  actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
+  actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign' | 'triage'; // Action type for different task actions
   cameraLaunchContext?: CameraLaunchContext;
   postCaptureDefault?: CameraPostCaptureDefault;
   updateTargetSubTaskId?: string;
@@ -107,6 +106,8 @@ interface CreateTaskScreenProps {
   onClearDraftPayloads?: () => void;
   clearForm?: boolean; // Flag to clear form when "Create New Task" is pressed
   clearFormTimestamp?: number; // Timestamp to track when clearForm was set
+  /** Peer entry from Report | New Task chooser. */
+  intent?: "report" | "create";
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
@@ -130,6 +131,7 @@ export default function CreateTaskScreen({
   onClearDraftPayloads,
   clearForm,
   clearFormTimestamp,
+  intent,
   onNavigateToProfile,
   onNavigateToProjectPicker
 }: CreateTaskScreenProps) {
@@ -151,6 +153,7 @@ export default function CreateTaskScreen({
       onClearDraftPayloads={onClearDraftPayloads}
       clearForm={clearForm}
       clearFormTimestamp={clearFormTimestamp}
+      intent={intent}
       onNavigateToProfile={onNavigateToProfile}
       onNavigateToProjectPicker={onNavigateToProjectPicker}
     />
@@ -174,6 +177,7 @@ function CreateTaskEditorScreen({
   onClearDraftPayloads,
   clearForm,
   clearFormTimestamp,
+  intent,
   onNavigateToProfile,
   onNavigateToProjectPicker
 }: CreateTaskScreenProps) {
@@ -183,13 +187,22 @@ function CreateTaskEditorScreen({
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { getAllUsers } = useUserStore();
-  const navigation = useNavigation<
-    NavigationProp<{
-      PhotoSelection: PhotoSelectionParams;
-      InAppLibraryPicker: InAppLibraryPickerParams;
-      CaptureSession: import("../navigation/navigationTypes").CaptureSessionParams;
-    }>
-  >();
+  // Prefer NavigationContext so we don't throw when rendered outside a container (tests / edge mounts).
+  const navigationFromContext = useContext(
+    NavigationContext as React.Context<NavigationProp<Record<string, object | undefined>> | undefined>,
+  );
+  const navigation = navigationFromContext as
+    | (NavigationProp<{
+        PhotoSelection: PhotoSelectionParams;
+        InAppLibraryPicker: InAppLibraryPickerParams;
+        CaptureSession: import("../navigation/navigationTypes").CaptureSessionParams;
+      }> & {
+        addListener?: (event: string, cb: (event: any) => void) => () => void;
+        dispatch?: (action: unknown) => void;
+        navigate: (name: string, params?: object) => void;
+        push?: (name: string, params?: object) => void;
+      })
+    | undefined;
 
   const scrollViewRef = useRef<ScrollView>(null);
   const titleInputRef = useRef<TextInput>(null);
@@ -225,6 +238,8 @@ function CreateTaskEditorScreen({
     parentSubTaskId,
     clearForm,
     clearFormTimestamp,
+    intent,
+    actionType,
   });
 
   const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, locationPicker, projects, modals } = output;
@@ -250,6 +265,11 @@ function CreateTaskEditorScreen({
     dismissSuggestionPreview,
     suggestTaskFromText,
   } = actions;
+
+  const isTriageFlow = actionType === "triage";
+  const isExistingEdit = Boolean(editTaskId) && !isTriageFlow;
+  const isReportIntent = !isExistingEdit && !isTriageFlow && formData.intentMode === 'report_issue';
+  const isMyTaskIntent = !isExistingEdit && !isTriageFlow && formData.intentMode === 'my_task';
 
   const handleTitleChange = (val: string) => updateField('title', val);
   const handleDescriptionChange = (val: string) => updateField('description', val);
@@ -358,7 +378,7 @@ function CreateTaskEditorScreen({
 
   const handleOpenPhotoSelection = () => {};
   const handleAddPhotos = async () => {
-    if (!user) return;
+    if (!user || !navigation) return;
 
     navigateToAddPhotosCaptureSession(navigation, {
       returnScreen: "CreateTask",
@@ -402,7 +422,8 @@ function CreateTaskEditorScreen({
   const promptDiscardIfNeeded = useCallback(
     (onDiscard: () => void) => {
       if (!hasUnsavedFormData()) {
-        void discardFormState().finally(onDiscard);
+        void discardFormState();
+        onDiscard();
         return;
       }
 
@@ -432,6 +453,9 @@ function CreateTaskEditorScreen({
   };
 
   useEffect(() => {
+    if (!navigation?.addListener) {
+      return;
+    }
     const unsubscribe = navigation.addListener("beforeRemove", (event) => {
       if (allowNavigationExitRef.current) {
         return;
@@ -457,7 +481,7 @@ function CreateTaskEditorScreen({
             onPress: () => {
               allowNavigationExitRef.current = true;
               void discardFormState().finally(() => {
-                navigation.dispatch(event.data.action);
+                navigation.dispatch?.(event.data.action);
               });
             },
           },
@@ -468,20 +492,27 @@ function CreateTaskEditorScreen({
     return unsubscribe;
   }, [discardFormState, hasUnsavedFormData, navigation]);
 
-  const isExistingEdit = Boolean(editTaskId);
-
   const headerSubtitle = context.draftBadgeLabel
     ? context.draftBadgeLabel
-    : isExistingEdit
+    : isTriageFlow
+      ? t.createTask.headerCreateSubtitle || "Create task"
+      : isExistingEdit
       ? t.createTask.headerEditSubtitle
-      : t.createTask.headerCreateSubtitle;
+      : isReportIntent
+        ? (t.createTask.headerReportSubtitle || t.createTask.reportIssueSubtitle || "Report")
+        : (t.createTask.headerCreateSubtitle);
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
     if (wasSuccessful) {
-      if (isExistingEdit) {
+      if (isExistingEdit || isTriageFlow) {
         allowNavigationExitRef.current = true;
         onNavigateBack();
+      } else if (isReportIntent) {
+        setSubmitSuccessState({
+          title: t.createTask.issueReported,
+          message: t.createTask.issueReportedSuccess,
+        });
       } else if (parentTaskId && parentSubTaskId) {
         setSubmitSuccessState({
           title: t.createTask.subTaskCreated,
@@ -508,7 +539,7 @@ function CreateTaskEditorScreen({
     if (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task") {
       const photos: SelectedPhoto[] =
         (selectedPhotosProp?.length ? selectedPhotosProp : []) as SelectedPhoto[];
-      navigation.navigate("PhotoSelection", {
+      navigation?.navigate("PhotoSelection", {
         initialPhotos: photos,
         uploadedPhotoUrls: uploadedPhotoUrls,
         saveIntent: "attach_task",
@@ -868,201 +899,223 @@ function CreateTaskEditorScreen({
                 </View>
               </CreateTaskInputField>
 
-              <CreateTaskInputField label={t.tasks.priority} required>
-                <View className="flex-row flex-wrap gap-2">
-                  {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
-                    const isSelected = formData.priority === priority;
-                    const label = t.tasks[priority as keyof typeof t.tasks] || priority;
-
-                    return (
-                      <Pressable
-                        key={priority}
-                        testID={`createTask-priority-${priority}`}
-                        onPress={() => handlePriorityChange(priority)}
-                        accessibilityState={{ selected: isSelected }}
-                        className={cn(
-                          "rounded-full border px-4 py-2.5",
-                          isSelected ? "border-blue-600 bg-blue-50" : "border-gray-300 bg-white"
-                        )}
-                      >
-                        <Text
-                          className={cn(
-                            "text-sm font-medium",
-                            isSelected ? "text-blue-700" : "text-gray-700"
-                          )}
-                        >
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                  <Pressable
-                    testID="create-task__toggle_critical_this_week"
-                    accessibilityRole="button"
-                    accessibilityLabel="Critical this week"
-                    accessibilityState={{ selected: formData.isCriticalThisWeek }}
-                    onPress={() =>
-                      updateField("isCriticalThisWeek", !formData.isCriticalThisWeek)
-                    }
-                    className={cn(
-                      "flex-row items-center rounded-full border px-4 py-2.5",
-                      formData.isCriticalThisWeek
-                        ? "border-amber-500 bg-amber-50"
-                        : "border-gray-300 bg-white"
-                    )}
-                  >
-                    <Ionicons
-                      name={formData.isCriticalThisWeek ? "flag" : "flag-outline"}
-                      size={14}
-                      color={formData.isCriticalThisWeek ? "#b45309" : "#6b7280"}
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text
-                      className={cn(
-                        "text-sm font-medium",
-                        formData.isCriticalThisWeek ? "text-amber-800" : "text-gray-700"
-                      )}
-                    >
-                      This week
-                    </Text>
-                  </Pressable>
-                </View>
-              </CreateTaskInputField>
-
-              <CreateTaskInputField label={t.tasks.assignTo} required error={errors.assignedTo}>
-                {(() => {
-                  const isDisabled = isLoadingUsers || context.assigneesLocked;
-                  const hasSelection =
-                    !isLoadingUsers && !context.assigneesLocked && selectedUsers.length > 0;
-                  const showPlaceholder =
-                    !isLoadingUsers && !context.assigneesLocked && selectedUsers.length === 0;
-
-                  return (
-                    <Pressable
-                      testID="create-task__assignee-picker-trigger"
-                      onPress={handleOpenUserPicker}
-                      disabled={isDisabled}
-                      className={cn(
-                        errors.assignedTo
-                          ? CREATE_TASK_CONTROL_SHELL_ERROR
-                          : CREATE_TASK_CONTROL_SHELL,
-                        context.assigneesLocked && "bg-slate-100",
-                        isDisabled && "opacity-60",
-                      )}
-                    >
-                      <Text
-                        className={cn(
-                          showPlaceholder
-                            ? CREATE_TASK_CONTROL_PLACEHOLDER
-                            : CREATE_TASK_CONTROL_TEXT,
-                          context.assigneesLocked && "text-slate-500",
-                        )}
-                      >
-                        {isLoadingUsers
-                          ? t.createTask.loadingUsers
-                          : context.assigneesLocked
-                            ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
-                            : hasSelection
-                              ? t.createTask.usersSelected(selectedUsers.length)
-                              : t.createTask.selectUsersToAssign}
-                      </Text>
-                      {isLoadingUsers ? (
-                        <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
-                      ) : context.assigneesLocked ? (
-                        <Ionicons name="lock-closed" size={20} color="#9ca3af" />
-                      ) : (
-                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
-                      )}
-                    </Pressable>
-                  );
-                })()}
-              </CreateTaskInputField>
-
-              {selectedUsers.length > 0 && (
-                <View
-                  testID="create-task__selected_assignees"
-                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
-                >
-                  <Text className="mb-2 text-base font-semibold text-slate-900">
-                    {t.createTask.selectedUsers}
-                  </Text>
-                  <View className="flex-row flex-wrap">
-                    {selectedUsers.map((userId) => {
-                      const selectedUser = assigneePicker.availableUsers.find((assignee) => assignee.id === userId);
-                      if (!selectedUser) return null;
-                      const isPrimary = formData.primaryAssigneeId === userId;
+              {!isReportIntent && (
+                <CreateTaskInputField label={t.tasks.priority} required>
+                  <View className="flex-row flex-wrap gap-2">
+                    {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
+                      const isSelected = formData.priority === priority;
+                      const label = t.tasks[priority as keyof typeof t.tasks] || priority;
 
                       return (
-                        <View
-                          key={userId}
+                        <Pressable
+                          key={priority}
+                          testID={`createTask-priority-${priority}`}
+                          onPress={() => handlePriorityChange(priority)}
+                          accessibilityState={{ selected: isSelected }}
                           className={cn(
-                            "rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center",
-                            isPrimary ? "bg-amber-100 border border-amber-300" : "bg-blue-100",
+                            "rounded-full border px-4 py-2.5",
+                            isSelected ? "border-blue-600 bg-blue-50" : "border-gray-300 bg-white"
                           )}
                         >
+                          <Text
+                            className={cn(
+                              "text-sm font-medium",
+                              isSelected ? "text-blue-700" : "text-gray-700"
+                            )}
+                          >
+                            {label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                    <Pressable
+                      testID="create-task__toggle_critical_this_week"
+                      accessibilityRole="button"
+                      accessibilityLabel="Critical this week"
+                      accessibilityState={{ selected: formData.isCriticalThisWeek }}
+                      onPress={() =>
+                        updateField("isCriticalThisWeek", !formData.isCriticalThisWeek)
+                      }
+                      className={cn(
+                        "flex-row items-center rounded-full border px-4 py-2.5",
+                        formData.isCriticalThisWeek
+                          ? "border-amber-500 bg-amber-50"
+                          : "border-gray-300 bg-white"
+                      )}
+                    >
+                      <Ionicons
+                        name={formData.isCriticalThisWeek ? "flag" : "flag-outline"}
+                        size={14}
+                        color={formData.isCriticalThisWeek ? "#b45309" : "#6b7280"}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text
+                        className={cn(
+                          "text-sm font-medium",
+                          formData.isCriticalThisWeek ? "text-amber-800" : "text-gray-700"
+                        )}
+                      >
+                        This week
+                      </Text>
+                    </Pressable>
+                  </View>
+                </CreateTaskInputField>
+              )}
+
+              {!isReportIntent && (
+                isMyTaskIntent ? (
+                  <CreateTaskInputField label={t.tasks.assignTo} required={false}>
+                    <View
+                      testID="create-task__self_assign_badge"
+                      className="flex-row items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3"
+                    >
+                      <Ionicons name="person-circle-outline" size={20} color="#1d4ed8" />
+                      <Text className="text-base font-semibold text-blue-900">
+                        {t.createTask.assignedToSelf || "Assigned to You (Self)"}
+                      </Text>
+                    </View>
+                  </CreateTaskInputField>
+                ) : (
+                  <>
+                    <CreateTaskInputField label={t.tasks.assignTo} required error={errors.assignedTo}>
+                      {(() => {
+                        const isDisabled = isLoadingUsers || context.assigneesLocked;
+                        const hasSelection =
+                          !isLoadingUsers && !context.assigneesLocked && selectedUsers.length > 0;
+                        const showPlaceholder =
+                          !isLoadingUsers && !context.assigneesLocked && selectedUsers.length === 0;
+
+                        return (
                           <Pressable
-                            testID={`create-task__set_primary_${userId}`}
-                            disabled={context.assigneesLocked}
-                            onPress={() => setPrimaryAssignee(userId)}
+                            testID="create-task__assignee-picker-trigger"
+                            onPress={handleOpenUserPicker}
+                            disabled={isDisabled}
+                            className={cn(
+                              errors.assignedTo
+                                ? CREATE_TASK_CONTROL_SHELL_ERROR
+                                : CREATE_TASK_CONTROL_SHELL,
+                              context.assigneesLocked && "bg-slate-100",
+                              isDisabled && "opacity-60",
+                            )}
                           >
                             <Text
                               className={cn(
-                                "text-sm font-medium mr-1",
-                                isPrimary ? "text-amber-900" : "text-blue-900",
+                                showPlaceholder
+                                  ? CREATE_TASK_CONTROL_PLACEHOLDER
+                                  : CREATE_TASK_CONTROL_TEXT,
+                                context.assigneesLocked && "text-slate-500",
                               )}
                             >
-                              {selectedUser.name}
-                              {isPrimary ? " · Primary" : " · Delegate"}
+                              {context.assigneesLocked
+                                ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
+                                : isLoadingUsers
+                                  ? t.createTask.loadingUsers
+                                  : hasSelection
+                                    ? t.createTask.usersSelected(selectedUsers.length)
+                                    : t.createTask.selectUsersToAssign}
                             </Text>
+                            {context.assigneesLocked ? (
+                              <Ionicons name="lock-closed" size={20} color="#9ca3af" />
+                            ) : isLoadingUsers ? (
+                              <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
+                            ) : (
+                              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                            )}
                           </Pressable>
-                          {!context.assigneesLocked ? (
-                            <Pressable
-                              testID={`create-task__remove_assignee_${userId}`}
-                              onPress={() => toggleUserSelection(userId)}
-                            >
-                              <Ionicons
-                                name="close-circle"
-                                size={16}
-                                color={isPrimary ? "#92400e" : "#1e40af"}
-                              />
-                            </Pressable>
-                          ) : null}
+                        );
+                      })()}
+                    </CreateTaskInputField>
+
+                    {selectedUsers.length > 0 && (
+                      <View
+                        testID="create-task__selected_assignees"
+                        className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                      >
+                        <Text className="mb-2 text-base font-semibold text-slate-900">
+                          {t.createTask.selectedUsers}
+                        </Text>
+                        <View className="flex-row flex-wrap">
+                          {selectedUsers.map((userId) => {
+                            const selectedUser = assigneePicker.availableUsers.find((assignee) => assignee.id === userId);
+                            if (!selectedUser) return null;
+                            const isPrimary = formData.primaryAssigneeId === userId;
+
+                            return (
+                              <View
+                                key={userId}
+                                className={cn(
+                                  "rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center",
+                                  isPrimary ? "bg-amber-100 border border-amber-300" : "bg-blue-100",
+                                )}
+                              >
+                                <Pressable
+                                  testID={`create-task__set_primary_${userId}`}
+                                  disabled={context.assigneesLocked}
+                                  onPress={() => setPrimaryAssignee(userId)}
+                                >
+                                  <Text
+                                    className={cn(
+                                      "text-sm font-medium mr-1",
+                                      isPrimary ? "text-amber-900" : "text-blue-900",
+                                    )}
+                                  >
+                                    {selectedUser.name}
+                                    {isPrimary ? " · Primary" : " · Delegate"}
+                                  </Text>
+                                </Pressable>
+                                {!context.assigneesLocked ? (
+                                  <Pressable
+                                    testID={`create-task__remove_assignee_${userId}`}
+                                    onPress={() => toggleUserSelection(userId)}
+                                  >
+                                    <Ionicons
+                                      name="close-circle"
+                                      size={16}
+                                      color={isPrimary ? "#92400e" : "#1e40af"}
+                                    />
+                                  </Pressable>
+                                ) : null}
+                              </View>
+                            );
+                          })}
                         </View>
-                      );
-                    })}
-                  </View>
-                </View>
+                      </View>
+                    )}
+                  </>
+                )
               )}
 
-              <CreateTaskInputField label={t.tasks.dueDate} required error={errors.dueDate}>
-                <Pressable
-                  testID="create-task__due-date-trigger"
-                  onPress={() => {
-                    setShowDatePicker(!showDatePicker);
-                  }}
-                  className={cn(
-                    showDatePicker
-                      ? CREATE_TASK_CONTROL_SHELL_FOCUS
-                      : errors.dueDate
-                        ? CREATE_TASK_CONTROL_SHELL_ERROR
-                        : CREATE_TASK_CONTROL_SHELL,
-                  )}
-                >
-                  <Text
+              {!isReportIntent && (
+                <CreateTaskInputField label={t.tasks.dueDate} required error={errors.dueDate}>
+                  <Pressable
+                    testID="create-task__due-date-trigger"
+                    onPress={() => {
+                      setShowDatePicker(!showDatePicker);
+                    }}
                     className={cn(
-                      CREATE_TASK_CONTROL_TEXT,
-                      showDatePicker && "text-blue-600",
+                      showDatePicker
+                        ? CREATE_TASK_CONTROL_SHELL_FOCUS
+                        : errors.dueDate
+                          ? CREATE_TASK_CONTROL_SHELL_ERROR
+                          : CREATE_TASK_CONTROL_SHELL,
                     )}
                   >
-                    {dateFormatter.formatDateWithWeekday(formData.dueDate)}
-                  </Text>
-                  <Ionicons
-                    name={showDatePicker ? "calendar" : "calendar-outline"}
-                    size={20}
-                    color={showDatePicker ? "#3b82f6" : "#6b7280"}
-                  />
-                </Pressable>
-              </CreateTaskInputField>
+                    <Text
+                      className={cn(
+                        CREATE_TASK_CONTROL_TEXT,
+                        showDatePicker && "text-blue-600",
+                      )}
+                    >
+                      {dateFormatter.formatDateWithWeekday(formData.dueDate)}
+                    </Text>
+                    <Ionicons
+                      name={showDatePicker ? "calendar" : "calendar-outline"}
+                      size={20}
+                      color={showDatePicker ? "#3b82f6" : "#6b7280"}
+                    />
+                  </Pressable>
+                </CreateTaskInputField>
+              )}
 
               {showDatePicker && (
                 <View className="overflow-hidden rounded-xl border border-blue-600 bg-white">
@@ -1107,24 +1160,26 @@ function CreateTaskEditorScreen({
                 </Pressable>
               </CreateTaskInputField>
 
-              <CreateTaskInputField label={t.createTask.billingStatus} required>
-                <Pressable
-                  testID="create-task__billing-picker-trigger"
-                  onPress={() => setShowBillingStatusPicker(true)}
-                  className={CREATE_TASK_CONTROL_SHELL}
-                >
-                  <Text className={CREATE_TASK_CONTROL_TEXT}>
-                    {formData.billingStatus === "billable"
-                      ? t.createTask.billable
-                      : formData.billingStatus === "non_billable"
-                        ? t.createTask.nonBillable
-                        : t.createTask.billed}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
-                </Pressable>
-              </CreateTaskInputField>
+              {!isReportIntent && !isMyTaskIntent && (
+                <CreateTaskInputField label={t.createTask.billingStatus} required>
+                  <Pressable
+                    testID="create-task__billing-picker-trigger"
+                    onPress={() => setShowBillingStatusPicker(true)}
+                    className={CREATE_TASK_CONTROL_SHELL}
+                  >
+                    <Text className={CREATE_TASK_CONTROL_TEXT}>
+                      {formData.billingStatus === "billable"
+                        ? t.createTask.billable
+                        : formData.billingStatus === "non_billable"
+                          ? t.createTask.nonBillable
+                          : t.createTask.billed}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                  </Pressable>
+                </CreateTaskInputField>
+              )}
 
-              <CreateTaskInputField label={t.createTask.locationOnSite} required={false}>
+              <CreateTaskInputField label={t.createTask.locationOnSite} required={isReportIntent}>
                 <Pressable
                   testID="create-task__location-picker-trigger"
                   onPress={() => {
@@ -1156,75 +1211,79 @@ function CreateTaskEditorScreen({
                 ) : null}
               </CreateTaskInputField>
 
-              <CreateTaskInputField label="Tags" required={false}>
-                <View testID="create-task__tags_editor">
-                  <View className="flex-row flex-wrap mb-2">
-                    {formData.customTags.map((tag) => (
-                      <View
-                        key={tag}
-                        className="bg-slate-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
-                      >
-                        <Text className="text-slate-800 text-sm mr-1">{tag}</Text>
-                        <Pressable
-                          testID={`create-task__remove_tag_${tag}`}
-                          onPress={() => removeCustomTag(tag)}
-                        >
-                          <Ionicons name="close-circle" size={16} color="#475569" />
-                        </Pressable>
+              {!isReportIntent && (
+                <>
+                  <CreateTaskInputField label="Tags" required={false}>
+                    <View testID="create-task__tags_editor">
+                      <View className="flex-row flex-wrap mb-2">
+                        {formData.customTags.map((tag) => (
+                          <View
+                            key={tag}
+                            className="bg-slate-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
+                          >
+                            <Text className="text-slate-800 text-sm mr-1">{tag}</Text>
+                            <Pressable
+                              testID={`create-task__remove_tag_${tag}`}
+                              onPress={() => removeCustomTag(tag)}
+                            >
+                              <Ionicons name="close-circle" size={16} color="#475569" />
+                            </Pressable>
+                          </View>
+                        ))}
                       </View>
-                    ))}
-                  </View>
-                  <TextInput
-                    testID="create-task__tag_input"
-                    ref={tagInputRef}
-                    className={CREATE_TASK_CONTROL_INPUT}
-                    placeholder="Add tag, press return"
-                    placeholderTextColor="#64748b"
-                    value={tagDraft}
-                    onChangeText={setTagDraft}
-                    returnKeyType="done"
-                    blurOnSubmit
-                    style={{
-                      height: CREATE_TASK_CONTROL_HEIGHT,
-                      fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
-                      lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
-                    }}
-                    onSubmitEditing={() => {
-                      addCustomTag(tagDraft);
-                      setTagDraft("");
-                    }}
-                  />
-                </View>
-              </CreateTaskInputField>
+                      <TextInput
+                        testID="create-task__tag_input"
+                        ref={tagInputRef}
+                        className={CREATE_TASK_CONTROL_INPUT}
+                        placeholder="Add tag, press return"
+                        placeholderTextColor="#64748b"
+                        value={tagDraft}
+                        onChangeText={setTagDraft}
+                        returnKeyType="done"
+                        blurOnSubmit
+                        style={{
+                          height: CREATE_TASK_CONTROL_HEIGHT,
+                          fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
+                          lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
+                        }}
+                        onSubmitEditing={() => {
+                          addCustomTag(tagDraft);
+                          setTagDraft("");
+                        }}
+                      />
+                    </View>
+                  </CreateTaskInputField>
 
-              <CreateTaskInputField label={t.createTask.taskReference} required={false}>
-                <View testID="create-task__field_taskReference">
-                  <TextInput
-                    testID="createTask-taskReference"
-                    ref={taskReferenceInputRef}
-                    className={CREATE_TASK_CONTROL_INPUT}
-                    value={formData.taskReference}
-                    placeholder={t.createTask.taskReferencePlaceholder}
-                    placeholderTextColor="#64748b"
-                    onChangeText={handleTaskReferenceChange}
-                    maxLength={50}
-                    autoCorrect={false}
-                    returnKeyType="done"
-                    accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
-                    onFocus={() => setActiveFormFocusTarget("taskReference")}
-                    onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
-                    onSubmitEditing={() => {
-                      taskReferenceInputRef.current?.blur();
-                    }}
-                    blurOnSubmit
-                    style={{
-                      height: CREATE_TASK_CONTROL_HEIGHT,
-                      fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
-                      lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
-                    }}
-                  />
-                </View>
-              </CreateTaskInputField>
+                  <CreateTaskInputField label={t.createTask.taskReference} required={false}>
+                    <View testID="create-task__field_taskReference">
+                      <TextInput
+                        testID="createTask-taskReference"
+                        ref={taskReferenceInputRef}
+                        className={CREATE_TASK_CONTROL_INPUT}
+                        value={formData.taskReference}
+                        placeholder={t.createTask.taskReferencePlaceholder}
+                        placeholderTextColor="#64748b"
+                        onChangeText={handleTaskReferenceChange}
+                        maxLength={50}
+                        autoCorrect={false}
+                        returnKeyType="done"
+                        accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
+                        onFocus={() => setActiveFormFocusTarget("taskReference")}
+                        onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
+                        onSubmitEditing={() => {
+                          taskReferenceInputRef.current?.blur();
+                        }}
+                        blurOnSubmit
+                        style={{
+                          height: CREATE_TASK_CONTROL_HEIGHT,
+                          fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
+                          lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
+                        }}
+                      />
+                    </View>
+                  </CreateTaskInputField>
+                </>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -1236,6 +1295,22 @@ function CreateTaskEditorScreen({
             primarySelected={activeFormFocusTarget === "submit"}
             primaryLabel={
               isSubmitting ? t.common.loading : t.createTask.updateTaskButton
+            }
+            onPrimaryPress={handleSubmit}
+            isPrimaryDisabled={isSubmitting}
+          />
+        ) : isTriageFlow ? (
+          <PrimaryActionBar
+            testID="create-task__action_bar"
+            absolute={false}
+            primaryTestID="create-task__submit"
+            primarySelected={activeFormFocusTarget === "submit"}
+            primaryLabel={
+              isSubmitting
+                ? t.common.loading
+                : t.createTask.submitTriage ||
+                  t.createTask.createTaskFromReport ||
+                  "Create task"
             }
             onPrimaryPress={handleSubmit}
             isPrimaryDisabled={isSubmitting}
@@ -1252,7 +1327,11 @@ function CreateTaskEditorScreen({
             primaryTestID="create-task__submit"
             primarySelected={activeFormFocusTarget === "submit"}
             primaryLabel={
-              isSubmitting ? t.common.loading : t.createTask.createTaskButton
+              isSubmitting
+                ? t.common.loading
+                : isReportIntent
+                  ? (t.createTask.submitReport || t.createTask.report || "Report")
+                  : (t.createTask.submitAssign || t.createTask.submitNewTask || t.createTask.assign || t.createTask.createTaskButton || "Assign")
             }
             onPrimaryPress={handleSubmit}
             isPrimaryDisabled={isSubmitting}
@@ -1858,6 +1937,13 @@ function CreateTaskEditorScreen({
                     </View>
 
                     {/* User Info */}
+                    <UserAvatar
+                      userId={assignableUser.id}
+                      name={assignableUser.name}
+                      email={assignableUser.email}
+                      size={40}
+                      className="mr-3"
+                    />
                     <View className="flex-1">
                       <Text className={cn(
                         "text-lg font-semibold",

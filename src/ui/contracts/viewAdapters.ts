@@ -64,6 +64,8 @@ export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   previewPhotoUris?: string[];
   /** Display name of the user who performed this activity event. */
   actorLabel?: string;
+  /** Stable id for per-user avatar color when no photo is uploaded. */
+  actorUserId?: string;
 }
 
 export interface DashboardSummaryPill {
@@ -175,8 +177,16 @@ export type TasksStatusFilterValue = "any_status" | "new" | "doing" | "review" |
 
 export type TasksOverdueWindowValue = "show_all" | "three_active" | "one_week" | "one_month";
 
+/** Tasks list order presets (Filters sheet). Default = newest created first. */
+export type TasksSortOrderValue =
+  | "newest_created"
+  | "oldest_created"
+  | "due_soonest"
+  | "due_latest"
+  | "recently_updated";
+
 export interface TasksActiveFilterChipModel {
-  id: "queue" | "status" | "overdueWindow";
+  id: "queue" | "status" | "overdueWindow" | "sortOrder";
   label: string;
 }
 
@@ -191,6 +201,7 @@ export interface TasksFiltersSheetModel {
   stagedQueue: TasksQueueFilterValue;
   stagedStatus: TasksStatusFilterValue;
   stagedOverdueWindow: TasksOverdueWindowValue;
+  stagedSortOrder: TasksSortOrderValue;
 }
 
 export type TasksQueueId = "my_queue" | "team_queue";
@@ -380,6 +391,12 @@ export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
   criticalLabel?: string;
   /** True when the signed-in user is in assignedTo / primary / delegates. */
   isAssignedToCurrentUser?: boolean;
+  /** Creator edit control — rendered top-right on the hero card. */
+  showEditAction?: boolean;
+  editActionLabel?: string;
+  /** Creator or PM reassign after decline — Team section + reassign dock. */
+  showReassignAction?: boolean;
+  reassignActionLabel?: string;
   detailRows: TaskDetailInfoCardRow[];
 }
 
@@ -404,6 +421,7 @@ export interface TaskDetailActiveStageModel extends PrimitiveReadyItemBase {
 export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
   id: string;
   actorLabel: string;
+  actorUserId?: string;
   eventLabel: string;
   timestampLabel: string;
   progressLabel: string;
@@ -506,6 +524,32 @@ export interface TaskDetailScreenViewAdapterOutput {
   childTasks: TasksScreenRowItem[];
   /** S-UX-01K2: creator + unlocked status may edit primary/delegates. */
   canEditDelegation: boolean;
+  /** PM triage sheet context when status is reported. */
+  reportTriage?: {
+    defaultAssigneeId: string;
+    title: string;
+    availableUsers: Array<{
+      id: string;
+      name: string;
+      email?: string;
+      systemPermission?: string | null;
+      role?: string | null;
+    }>;
+  };
+  /**
+   * Approach B dock on Task Detail (reported reply or live progress).
+   * When set, root tab bar should hide — chrome lives on the screen.
+   */
+  detailDock?: {
+    mode:
+      | "report_reply"
+      | "progress"
+      | "awaiting_review"
+      | "review_decision"
+      | "archive"
+      | "reassign";
+    completionPercentage: number;
+  };
 }
 
 export interface UpdateProgressPhotoModel extends PrimitiveReadyItemBase {
@@ -525,6 +569,12 @@ export interface UpdateProgressFormModel {
   previousPercentage: number;
   isSubmitting: boolean;
   isValid: boolean;
+  /** report_reply = hide % dialer; persist via assigner comment */
+  mode: "progress" | "report_reply";
+  screenTitle: string;
+  submitLabel: string;
+  descriptionLabel: string;
+  descriptionPlaceholder: string;
 }
 
 export interface UpdateProgressScreenViewAdapterOutput {
@@ -1379,6 +1429,7 @@ export interface ProfileScreenSectionModel {
 }
 
 export interface ProfileCardModel {
+  userId?: string;
   initial: string;
   name: string;
   roleLabel: string;
@@ -1496,6 +1547,8 @@ export interface ProfileScreenViewAdapterOutput {
   systemStatusItems: ProfileSystemStatusItem[];
 }
 
+export type CreateTaskIntentMode = "report_issue" | "my_task" | "full_task";
+
 export interface CreateTaskFormModel {
   title: string;
   description: string;
@@ -1517,6 +1570,7 @@ export interface CreateTaskFormModel {
   isCriticalThisWeek: boolean;
   projectId: string;
   attachments: any[]; // Or Attachment type
+  intentMode?: CreateTaskIntentMode;
 }
 
 export interface CreateTaskContextModel {
@@ -1598,6 +1652,11 @@ export interface CreateTaskScreenViewAdapterOutput {
   modals: {
     showEditReasonModal: boolean;
     editReason: string;
+  };
+  intentSelector: {
+    visible: boolean;
+    activeMode: CreateTaskIntentMode;
+    availableModes: Array<{ id: CreateTaskIntentMode; label: string }>;
   };
   aiAssistant: {
     textInput: string;

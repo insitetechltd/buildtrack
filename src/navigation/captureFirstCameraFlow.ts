@@ -3,7 +3,27 @@ import * as ImagePicker from "expo-image-picker";
 import { CommonActions } from "@react-navigation/native";
 import { pinDraftMedia } from "../utils/draftMediaCache";
 import { startLibraryCapturePrefetch } from "../utils/libraryCapturePrefetch";
+import { useAuthStore } from "../state/authStore";
 import type { SelectedPhoto } from "./navigationTypes";
+import type { CreateTaskRouteIntent } from "./newInformationChooser";
+import {
+  promptNewInformationChooser,
+  type NewInformationChooserLabels,
+} from "./newInformationChooser";
+import { getTranslations } from "../utils/useTranslation";
+
+function resolveNewInformationChooserLabels(): NewInformationChooserLabels {
+  const t = getTranslations();
+  return {
+    title: t.createTask.chooserTitle || "What would you like to do?",
+    report: t.createTask.chooserReport || "↑ Report",
+    update: t.createTask.chooserUpdate || "↔ Update",
+    assign: t.createTask.chooserAssign || "↓ Assign",
+    cancel: t.common.cancel || "Cancel",
+    reportComingSoon:
+      t.createTask.reportComingSoonTitle || "Report - Coming soon",
+  };
+}
 
 export type CaptureFirstNavigation = {
   navigate: (screen: string, params?: unknown) => void;
@@ -124,7 +144,8 @@ type AddPhotosNav = {
 };
 
 /**
- * Create Task / Update Progress Add Photos → hybrid CaptureSession (no Take/Library alert).
+ * Create Task / Update Progress / Task Detail report reply Add Photos →
+ * hybrid CaptureSession (no Take/Library alert).
  */
 export function navigateToAddPhotosCaptureSession(
   navigation: AddPhotosNav,
@@ -132,7 +153,7 @@ export function navigateToAddPhotosCaptureSession(
     import("./navigationTypes").CaptureSessionParams,
     undefined
   > & {
-    returnScreen: "CreateTask" | "UpdateProgress";
+    returnScreen: "CreateTask" | "UpdateProgress" | "TaskDetail";
   },
 ): void {
   startLibraryCapturePrefetch();
@@ -233,71 +254,83 @@ export function launchCaptureFirstLibrary(navigation: CaptureFirstNavigation): v
   });
 }
 
+function resetCaptureStackToCreateTask(
+  navigation: CaptureFirstNavigation,
+  photos: SelectedPhoto[],
+  intent: CreateTaskRouteIntent,
+): void {
+  clearCaptureFirstReturnTab();
+  // Keep Select Photos under Create Task so header Back returns there.
+  navigation.dispatch?.(
+    CommonActions.reset({
+      index: 1,
+      routes: [
+        {
+          name: "PhotoSelection",
+          params: buildCaptureFirstPhotoSelectionParams(photos),
+        },
+        {
+          name: "CreateTaskMain",
+          params: {
+            selectedPhotos: photos,
+            intent,
+            clearForm: false,
+            captureFirstFlow: true,
+            _timestamp: Date.now(),
+          },
+        },
+      ],
+    }),
+  );
+}
+
+function resetCaptureStackToUpdate(
+  navigation: CaptureFirstNavigation,
+  photos: SelectedPhoto[],
+): void {
+  navigation.dispatch?.(
+    CommonActions.reset({
+      index: 1,
+      routes: [
+        {
+          name: "PhotoSelection",
+          params: buildCaptureFirstPhotoSelectionParams(photos),
+        },
+        {
+          name: "CaptureTaskPicker",
+          params: { selectedPhotos: photos },
+        },
+      ],
+    }),
+  );
+}
+
 export function promptCaptureFirstDestination({
   navigation,
   photos,
+  labels,
 }: {
   navigation: CaptureFirstNavigation & {
     goBack?: () => void;
     canGoBack?: () => boolean;
   };
   photos: SelectedPhoto[];
+  labels?: NewInformationChooserLabels;
 }): void {
   if (photos.length === 0) {
     return;
   }
 
-  Alert.alert("What would you like to do?", undefined, [
-    { text: "Cancel", style: "cancel" },
-    {
-      text: "Create new task",
-      onPress: () => {
-        clearCaptureFirstReturnTab();
-        // Keep Select Photos under Create Task so header Back returns there.
-        navigation.dispatch?.(
-          CommonActions.reset({
-            index: 1,
-            routes: [
-              {
-                name: "PhotoSelection",
-                params: buildCaptureFirstPhotoSelectionParams(photos),
-              },
-              {
-                name: "CreateTaskMain",
-                params: {
-                  selectedPhotos: photos,
-                  clearForm: false,
-                  captureFirstFlow: true,
-                  _timestamp: Date.now(),
-                },
-              },
-            ],
-          }),
-        );
-      },
-    },
-    {
-      text: "Update existing task",
-      onPress: () => {
-        // Keep Select Photos under the picker so header Back returns there.
-        navigation.dispatch?.(
-          CommonActions.reset({
-            index: 1,
-            routes: [
-              {
-                name: "PhotoSelection",
-                params: buildCaptureFirstPhotoSelectionParams(photos),
-              },
-              {
-                name: "CaptureTaskPicker",
-                params: { selectedPhotos: photos },
-              },
-            ],
-          }),
-        );
-      },
-    },
-  ]);
+  const user = useAuthStore.getState?.()?.user ?? null;
+
+  promptNewInformationChooser({
+    user,
+    includeUpdate: true,
+    labels: labels ?? resolveNewInformationChooserLabels(),
+    onReport: () => resetCaptureStackToCreateTask(navigation, photos, "report"),
+    onAssign: () => resetCaptureStackToCreateTask(navigation, photos, "create"),
+    onUpdate: () => resetCaptureStackToUpdate(navigation, photos),
+  });
 }
 
 export function resetCameraStackAfterHandoff(

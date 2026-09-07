@@ -12,8 +12,9 @@ export function resolveWorkspaceProjectId(
 
   if (selected) {
     if (availableProjectIds.length === 0) {
-      // Projects not loaded yet — keep selection so Create Task can still bind.
-      return selected;
+      // Do not trust a leftover selection while membership is unknown/empty —
+      // that reopens cross-user / cross-tenant Activity bleeds.
+      return null;
     }
     if (availableProjectIds.includes(selected)) {
       return selected;
@@ -25,4 +26,15 @@ export function resolveWorkspaceProjectId(
   }
 
   return null;
+}
+
+/**
+ * Whether login must block the field shell until the user picks a project.
+ * Sole membership is auto-resolved — only multi-project / empty needs the picker.
+ */
+export function needsForcedProjectPicker(
+  selectedProjectId: string | null | undefined,
+  availableProjectIds: readonly string[],
+): boolean {
+  return resolveWorkspaceProjectId(selectedProjectId, availableProjectIds) == null;
 }

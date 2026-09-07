@@ -96,10 +96,10 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         <ModernScreenHeader 
-          title={t.taskDetail.progressUpdate}
+          title={output.form.screenTitle}
           titleNode={(
             <Text testID="update-progress__screen_title" className="text-[28px] leading-8 font-semibold text-[#F8FCFF]">
-              {t.taskDetail.progressUpdate}
+              {output.form.screenTitle}
             </Text>
           )}
           showBackButton={true}
@@ -116,16 +116,17 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
 
   const validPhotos = output.photos.filter(p => !p.isFailed);
   const failedPhotos = output.photos.filter(p => p.isFailed);
+  const isReportReply = output.form.mode === "report_reply";
 
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       <ModernScreenHeader 
-        title={t.taskDetail.progressUpdate}
+        title={output.form.screenTitle}
         titleNode={(
           <Text testID="update-progress__screen_title" className="text-[28px] leading-8 font-semibold text-[#F8FCFF]">
-            {t.taskDetail.progressUpdate}
+            {output.form.screenTitle}
           </Text>
         )}
         showBackButton={true}
@@ -207,18 +208,18 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
             </View>
           )}
 
-        {/* Update Description */}
+        {/* Update / Reply Description */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-slate-900 mb-3">
-            {t.taskDetail.updateDescription}
+            {output.form.descriptionLabel}
           </Text>
           <View testID="update-progress__description--preview">
             <TextInput
               testID="update-progress__description"
-              accessibilityLabel="Update description"
+              accessibilityLabel={output.form.descriptionLabel}
               ref={descriptionInputRef}
               className="border border-gray-300 rounded-lg px-4 py-3 text-lg text-gray-900 bg-white"
-              placeholder={t.taskDetail.updateDescriptionPlaceholder}
+              placeholder={output.form.descriptionPlaceholder}
               value={output.form.description}
               onChangeText={actions.setDescription}
               multiline
@@ -236,22 +237,24 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
           </View>
         </View>
 
-        <View className="mb-6">
-          <Text className="text-lg font-semibold text-slate-900 mb-3">
-            {t.taskDetail.completionPercentage}
-          </Text>
-          <CompletionPercentageDialer
-            value={output.form.completionPercentage}
-            onChange={actions.setCompletionPercentage}
-            previousPercentage={output.form.previousPercentage}
-          />
-        </View>
+        {!isReportReply ? (
+          <View className="mb-6" testID="update-progress__completion_block">
+            <Text className="text-lg font-semibold text-slate-900 mb-3">
+              {t.taskDetail.completionPercentage}
+            </Text>
+            <CompletionPercentageDialer
+              value={output.form.completionPercentage}
+              onChange={actions.setCompletionPercentage}
+              previousPercentage={output.form.previousPercentage}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       <PrimaryActionBar
         testID="update-progress__action_bar"
         primaryTestID="update-progress__submit"
-        primaryLabel={output.form.isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
+        primaryLabel={output.form.isSubmitting ? t.common.loading : output.form.submitLabel}
         onPrimaryPress={actions.handleSubmitUpdate}
         isPrimaryDisabled={output.form.isSubmitting}
       />

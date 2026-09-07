@@ -341,4 +341,29 @@ describe("TaskActivityTimeline", () => {
     expect(onVisibleEntryChange).toHaveBeenCalledWith("activity-newer");
     expect(onEntryLayout).toHaveBeenCalledWith("activity-newer", 24, 92);
   });
+
+  it("hides em-dash progress labels on report-style activity rows", () => {
+    const screen = render(
+      <TaskActivityTimeline
+        thread={[
+          {
+            id: "activity-report",
+            density: "standard",
+            structuralState: "stale",
+            actorLabel: "John",
+            eventLabel: "Issue reported by John",
+            timestampLabel: "Sep 4, 2026 at 10:31PM",
+            progressLabel: "—",
+            photoUrls: ["https://example.com/report.jpg"],
+            statusLabel: "Reported",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Issue reported by John")).toBeTruthy();
+    expect(screen.queryByText("— complete")).toBeNull();
+    expect(screen.queryByText("0% complete")).toBeNull();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-report")).toBeTruthy();
+  });
 });

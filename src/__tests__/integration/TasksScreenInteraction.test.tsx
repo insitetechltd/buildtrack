@@ -46,6 +46,7 @@ describe("TasksScreen Interactions", () => {
   let mockStageQueueFilter: jest.Mock;
   let mockStageStatusFilter: jest.Mock;
   let mockStageOverdueWindowFilter: jest.Mock;
+  let mockStageSortOrderFilter: jest.Mock;
   let mockApplyStagedFilters: jest.Mock;
   let mockResetStagedFilters: jest.Mock;
   let mockRemoveAppliedFilterChip: jest.Mock;
@@ -59,6 +60,7 @@ describe("TasksScreen Interactions", () => {
     mockStageQueueFilter = jest.fn();
     mockStageStatusFilter = jest.fn();
     mockStageOverdueWindowFilter = jest.fn();
+    mockStageSortOrderFilter = jest.fn();
     mockApplyStagedFilters = jest.fn();
     mockResetStagedFilters = jest.fn();
     mockRemoveAppliedFilterChip = jest.fn();
@@ -84,7 +86,7 @@ describe("TasksScreen Interactions", () => {
           selectedProjectId: null,
           sectionFilterLabel: "Search-first list",
           statusFilterLabel: "All projects",
-          sortLabel: "Due date · Earliest first",
+          sortLabel: "Created · Newest first",
         },
         filterButton: {
           label: "Filters",
@@ -96,6 +98,7 @@ describe("TasksScreen Interactions", () => {
           stagedQueue: "outbox",
           stagedStatus: "review",
           stagedOverdueWindow: "show_all",
+          stagedSortOrder: "newest_created",
         },
         activeFilterChips: [
           { id: "queue", label: "Queue: Outbox" },
@@ -162,6 +165,7 @@ describe("TasksScreen Interactions", () => {
         stageQueueFilter: mockStageQueueFilter,
         stageStatusFilter: mockStageStatusFilter,
         stageOverdueWindowFilter: mockStageOverdueWindowFilter,
+        stageSortOrderFilter: mockStageSortOrderFilter,
         applyStagedFilters: mockApplyStagedFilters,
         resetStagedFilters: mockResetStagedFilters,
         removeAppliedFilterChip: mockRemoveAppliedFilterChip,

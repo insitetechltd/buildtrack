@@ -1,35 +1,57 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
+import { useNavigation } from "@react-navigation/native";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import ModernScreenHeader from "@/components/ModernScreenHeader";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
-import { cn } from "@/utils/cn";
+import ReportReplyComposer from "@/components/taskDetail/ReportReplyComposer";
+import { ReportTriageSpeedDial } from "@/components/ReportTriageSpeedDial";
 import ArchiveConfirmSheet from "@/components/ArchiveConfirmSheet";
 import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
-import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
+import type { SelectedPhoto } from "@/utils/usePhotoSelection";
+import { useAuthStore } from "@/state/authStore";
+import { uploadFileWithVerification } from "@/api/fileUploadService";
+import { ensureCappedLocalPhoto } from "@/utils/ensureCappedLocalPhoto";
+import { useTranslation } from "@/utils/useTranslation";
+import { navigateToAddPhotosCaptureSession } from "@/navigation/captureFirstCameraFlow";
+import { mergeUniqueAttachments } from "@/utils/mergeTaskAttachments";
+import {
+  setReportTriageDialExpanded,
+  toggleReportTriageDialExpanded,
+  useReportTriageDialExpanded,
+} from "@/navigation/reportTriageSpeedDialStore";
+import { navigateReportTriageAction } from "@/navigation/taskDetailBackNavigation";
+
+/** Unified Triage Dock height — anchors Create/Resolve satellites above leading +. */
+const REPORT_REPLY_DOCK_HEIGHT = 56;
 
 interface TaskDetailScreenProps {
   taskId: string;
   subTaskId?: string;
+  /** Drafts returned from CaptureSession → Select Photos for report reply. */
+  inboundSelectedPhotos?: SelectedPhoto[];
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (
     parentTaskId?: string,
     parentSubTaskId?: string,
     editTaskId?: string,
-    actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign',
+    actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign' | 'triage',
     updateTargetSubTaskId?: string,
   ) => void;
   onNavigateToRejectTask?: (taskId: string, subTaskId?: string) => void;
@@ -76,54 +98,56 @@ const BannerPrimitive = ({ contract }: { contract: BannerPrimitiveContract }) =>
   );
 };
 
-const ACTION_PRIORITY: Record<string, number> = {
-  approve_task: 0,
-  accept_task: 1,
-  submit_review: 2,
-  update_progress: 3,
-  reassign_task: 4,
-  edit_task: 5,
-  add_comment: 6,
-  decline_task: 7,
-  reject_task: 8,
-};
-
-function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
-  const prioritizedActions = actionItems
-    .map((action, index) => ({
-      action,
-      index,
-      priority: ACTION_PRIORITY[action.actionId] ?? 99,
-    }))
-    .sort((left, right) => {
-      if (left.priority !== right.priority) {
-        return left.priority - right.priority;
-      }
-
-      return left.index - right.index;
-    })
-    .map(({ action }) => action);
-
-  if (prioritizedActions.length === 0) {
-    return {
-      primaryAction: undefined,
-      secondaryActions: [] as TaskDetailActionItem[],
-    };
-  }
-
-  return {
-    primaryAction: undefined,
-    secondaryActions: prioritizedActions,
-  };
-}
-
 export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const { output, actions } = useTaskDetailViewAdapter({
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
+  const t = useTranslation();
+  const user = useAuthStore((state) => state.user);
+  const navigation = useNavigation<{
+    navigate: (name: string, params?: object) => void;
+    push?: (name: string, params?: object) => void;
+    getParent?: () => { getState?: () => unknown } | undefined;
+  }>();
+  const triageDialExpanded = useReportTriageDialExpanded();
   const [isArchiveConfirmVisible, setIsArchiveConfirmVisible] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replyPhotos, setReplyPhotos] = useState<SelectedPhoto[]>([]);
+  const [isReplySubmitting, setIsReplySubmitting] = useState(false);
+  const [dockCompletionPercentage, setDockCompletionPercentage] = useState(0);
+
+  const detailDock =
+    output.detailDock ??
+    (output.reportTriage
+      ? { mode: "report_reply" as const, completionPercentage: 0 }
+      : undefined);
+  const showDetailDock = Boolean(detailDock);
+  const isReportDock = detailDock?.mode === "report_reply";
+  const isPmReportTriage = Boolean(output.reportTriage);
+  const showWorkerReportFab = isReportDock && !isPmReportTriage;
+  const showReportSpeedDial = isPmReportTriage || showWorkerReportFab;
+
+  useEffect(() => {
+    if (
+      detailDock?.mode === "progress" ||
+      detailDock?.mode === "awaiting_review" ||
+      detailDock?.mode === "review_decision" ||
+      detailDock?.mode === "archive"
+    ) {
+      setDockCompletionPercentage(detailDock.completionPercentage);
+    }
+  }, [detailDock?.completionPercentage, detailDock?.mode, props.taskId]);
+
+  useEffect(() => {
+    if (!props.inboundSelectedPhotos?.length) {
+      return;
+    }
+    setReplyPhotos((prev) =>
+      mergeUniqueAttachments(prev, props.inboundSelectedPhotos!) as SelectedPhoto[],
+    );
+  }, [props.inboundSelectedPhotos]);
 
   const handleConfirmArchive = () => {
     setIsArchiving(true);
@@ -142,6 +166,208 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         );
       });
   };
+
+  const handleAddReplyPhotos = useCallback(() => {
+    if (!user?.id || !user.companyId) {
+      return;
+    }
+    navigateToAddPhotosCaptureSession(navigation, {
+      returnScreen: "TaskDetail",
+      taskId: props.taskId,
+      subTaskId: props.subTaskId,
+      companyId: user.companyId,
+      userId: user.id,
+      uploadImmediately: false,
+      entityType: "task-update",
+      sourceTaskId: props.taskId,
+      sourceSubTaskId: props.subTaskId,
+    });
+  }, [navigation, props.subTaskId, props.taskId, user?.companyId, user?.id]);
+
+  const handleWorkerResolveWithComment = useCallback(() => {
+    const note = replyDraft.trim();
+    if (!note) {
+      Alert.alert(
+        "Comment required",
+        "Write a short note in the field, then open + and tap Resolve.",
+      );
+      return;
+    }
+    if (isReplySubmitting) {
+      return;
+    }
+    setIsReplySubmitting(true);
+    void actions
+      .resolveReport(note)
+      .then(() => {
+        setReplyDraft("");
+        setReplyPhotos([]);
+        setIsReplySubmitting(false);
+        props.onNavigateBack?.();
+      })
+      .catch(() => {
+        setIsReplySubmitting(false);
+        Alert.alert(
+          t.errors?.error || "Error",
+          t.createTask?.resolveReportConfirmBody ||
+            "Unable to resolve this report. Try again.",
+        );
+      });
+  }, [
+    actions,
+    isReplySubmitting,
+    props,
+    replyDraft,
+    t.createTask?.resolveReportConfirmBody,
+    t.errors?.error,
+  ]);
+
+  const handleRemoveReplyPhoto = useCallback((index: number) => {
+    setReplyPhotos((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const uploadReplyPhotos = useCallback(
+    async (photosToUpload: SelectedPhoto[]): Promise<string[]> => {
+      if (!user?.id || !user.companyId || photosToUpload.length === 0) {
+        return [];
+      }
+      const uploadedUrls: string[] = [];
+      for (const photo of photosToUpload) {
+        try {
+          const uriToUpload = await ensureCappedLocalPhoto(photo);
+          const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
+          if (!fileInfo.exists) {
+            continue;
+          }
+          const result = await uploadFileWithVerification({
+            file: {
+              uri: uriToUpload,
+              name: photo.fileName,
+              type: "image/jpeg",
+            },
+            entityType: "task-update",
+            entityId: props.taskId,
+            companyId: user.companyId,
+            userId: user.id,
+          });
+          if (result.success && result.file) {
+            uploadedUrls.push(result.file.public_url);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      return uploadedUrls;
+    },
+    [props.taskId, user?.companyId, user?.id],
+  );
+
+  const handleSubmitReply = useCallback(async () => {
+    const description = replyDraft.trim();
+    if (!description || isReplySubmitting || !detailDock) {
+      return;
+    }
+    setIsReplySubmitting(true);
+    try {
+      let photoUrls: string[] = [];
+      if (replyPhotos.length > 0) {
+        photoUrls = await uploadReplyPhotos(replyPhotos);
+        if (photoUrls.length < replyPhotos.length) {
+          const failedCount = replyPhotos.length - photoUrls.length;
+          Alert.alert(
+            "Upload Warning",
+            `${photoUrls.length} of ${replyPhotos.length} photo(s) uploaded. ${failedCount} failed. Reply will send with the successful photos.`,
+          );
+        }
+      }
+      if (detailDock.mode === "progress") {
+        await actions.submitDockProgress({
+          description,
+          photos: photoUrls,
+          completionPercentage: dockCompletionPercentage,
+        });
+      } else {
+        await actions.replyToReport({
+          description,
+          photos: photoUrls,
+        });
+      }
+      setReplyDraft("");
+      setReplyPhotos([]);
+    } catch {
+      Alert.alert(
+        t.errors?.error || "Error",
+        detailDock.mode === "progress"
+          ? t.taskDetail?.failedToSubmitUpdate || "Failed to submit update"
+          : t.createTask?.replyFailed || "Failed to send reply",
+      );
+    } finally {
+      setIsReplySubmitting(false);
+    }
+  }, [
+    actions,
+    detailDock,
+    dockCompletionPercentage,
+    isReplySubmitting,
+    replyDraft,
+    replyPhotos,
+    t.createTask?.replyFailed,
+    t.errors?.error,
+    t.taskDetail?.failedToSubmitUpdate,
+    uploadReplyPhotos,
+  ]);
+
+  const handleCancelDockReview = useCallback(async () => {
+    if (isReplySubmitting || detailDock?.mode !== "awaiting_review") {
+      return;
+    }
+    setIsReplySubmitting(true);
+    try {
+      await actions.cancelDockReview();
+      setReplyDraft("");
+      setReplyPhotos([]);
+    } catch {
+      Alert.alert(
+        t.errors?.error || "Error",
+        t.taskDetail?.failedToSubmitUpdate || "Failed to cancel review",
+      );
+    } finally {
+      setIsReplySubmitting(false);
+    }
+  }, [actions, detailDock?.mode, isReplySubmitting, t.errors?.error, t.taskDetail?.failedToSubmitUpdate]);
+
+  const handleApproveDockReview = useCallback(() => {
+    if (isReplySubmitting || detailDock?.mode !== "review_decision") {
+      return;
+    }
+    setIsReplySubmitting(true);
+    void actions
+      .approveTask()
+      .catch(() => {
+        Alert.alert(
+          t.errors?.error || "Error",
+          t.taskDetail?.failedToSubmitUpdate || "Failed to accept completion",
+        );
+      })
+      .finally(() => {
+        setIsReplySubmitting(false);
+      });
+  }, [actions, detailDock?.mode, isReplySubmitting, t.errors?.error, t.taskDetail?.failedToSubmitUpdate]);
+
+  const handleRejectDockReview = useCallback(() => {
+    if (isReplySubmitting || detailDock?.mode !== "review_decision") {
+      return;
+    }
+    if (props.onNavigateToRejectTask) {
+      props.onNavigateToRejectTask(props.taskId, props.subTaskId);
+    }
+  }, [
+    detailDock?.mode,
+    isReplySubmitting,
+    props.onNavigateToRejectTask,
+    props.subTaskId,
+    props.taskId,
+  ]);
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -214,44 +440,56 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         }
         break;
       case 'add_subtask':
-        // UI shows "+ Add Subtask" as an "other actions" chip, but the screen
-        // must explicitly route it into CreateTaskScreen in nested mode by
-        // providing the parentTaskId.
-        if (props.onNavigateToCreateTask) {
-          props.onNavigateToCreateTask(
-            props.taskId,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-          );
-        }
+        // Deferred product surface (2026-09-07). Handler kept inert so old actionIds
+        // cannot open nested Create Task until a future enhancement re-homes the entry.
         break;
     }
   };
 
-  const criticalThisWeekAction = (output.actionItems ?? []).find(
-    (action) => action.actionId === "toggle_critical_this_week",
-  );
-  const quickActionIds = new Set(
-    (output.quickActions?.actions ?? []).map((action) => action.actionId),
-  );
-  const { secondaryActions } = prioritizeActionItems(
-    (output.actionItems ?? []).filter(
-      (action) =>
-        !quickActionIds.has(action.actionId) &&
-        action.actionId !== "toggle_critical_this_week" &&
-        action.actionId !== "upload_photos" &&
-        action.actionId !== "update_progress" &&
-        action.actionId !== "add_comment",
-    ),
-  );
   const hasQuickActions = Boolean(output.quickActions?.actions?.length);
-  const hasSecondaryActionsCard =
-    secondaryActions.length > 0 || Boolean(criticalThisWeekAction);
-  const scrollRegionBottomPadding = 16;
+  const scrollRegionBottomPadding = showDetailDock ? 24 : 16;
 
   if (!output.readiness.hasUsableData) {
+    if (output.continuity.shouldRenderEmptyState) {
+      return (
+        <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
+          <ModernScreenHeader
+            title="Unavailable"
+            titleNode={(
+              <BrandHeaderTitle
+                label="Unavailable"
+                titleTestID="task-detail__header_title"
+              />
+            )}
+            showBackButton={true}
+            onBackPress={props.onNavigateBack}
+          />
+          <View
+            testID="task-detail__unavailable"
+            className="flex-1 items-center justify-center px-8"
+          >
+            <Text className="text-center text-base font-semibold text-slate-900">
+              This task is no longer available
+            </Text>
+            <Text className="mt-2 text-center text-sm text-slate-500">
+              It may have been archived or removed. Go back to your task list.
+            </Text>
+            {props.onNavigateBack ? (
+              <Pressable
+                testID="task-detail__unavailable_back"
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                onPress={props.onNavigateBack}
+                className="mt-6 min-h-[44px] items-center justify-center rounded-2xl bg-[#08576E] px-5"
+              >
+                <Text className="text-base font-semibold text-white">Go back</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </SafeAreaView>
+      );
+    }
+
     return (
       <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
         <ModernScreenHeader 
@@ -306,6 +544,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
       />
 
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+      >
       <View className="flex-1">
           <View testID="task-detail__scroll_region" className="flex-1">
           <ScrollView
@@ -316,9 +559,24 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               flexGrow: 1,
             }}
             scrollEnabled
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {infoCardModel ? <TaskDetailInfoCard model={infoCardModel} /> : null}
+            {infoCardModel ? (
+              <TaskDetailInfoCard
+                model={infoCardModel}
+                onEditPress={
+                  infoCardModel.showEditAction
+                    ? () => handleActionPress("edit_task")
+                    : undefined
+                }
+                onReassignPress={
+                  infoCardModel.showReassignAction
+                    ? () => handleActionPress("reassign_task")
+                    : undefined
+                }
+              />
+            ) : null}
 
             {output.banners.map(banner => (
               <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
@@ -335,77 +593,103 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               testID="task-detail__activity_thread"
               thread={output.activityThread}
             />
-
-            {hasSecondaryActionsCard ? (
-            <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
-                <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
-                  Other actions
-                </Text>
-
-                {secondaryActions.length > 0 ? (
-                <View className="flex-row flex-wrap gap-2 mb-4">
-                  {secondaryActions.map((action) => (
-                    <Pressable
-                      key={action.id}
-                      testID={`task-detail__quick-action-${action.actionId}`}
-                      accessibilityRole="button"
-                      accessibilityLabel={action.label}
-                      accessibilityState={{ disabled: action.isDisabled }}
-                      disabled={action.isDisabled}
-                      onPress={() => handleActionPress(action.actionId)}
-                      className={cn(
-                        "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
-                        action.isDisabled && "opacity-50",
-                      )}
-                    >
-                      {action.icon ? (
-                        <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
-                      ) : null}
-                      <Text className="text-base font-medium text-gray-700">{action.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                ) : null}
-
-                {criticalThisWeekAction ? (
-                <Pressable
-                  testID="task-detail__toggle_critical_this_week"
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: criticalThisWeekAction.isDisabled, selected: criticalThisWeekAction.isActive }}
-                  disabled={criticalThisWeekAction.isDisabled}
-                  onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
-                  className={cn(
-                    "mb-4 flex-row items-center justify-between rounded-xl border px-4 py-3",
-                    criticalThisWeekAction.isActive
-                      ? "border-amber-300 bg-amber-50"
-                      : "border-amber-200 bg-slate-50",
-                    criticalThisWeekAction.isDisabled && "opacity-50",
-                  )}
-                >
-                  <View className="mr-3 flex-1">
-                    <Text className="text-base font-semibold text-slate-900">
-                      {criticalThisWeekAction.label}
-                    </Text>
-                    <Text className="mt-1 text-base text-slate-600">
-                      {criticalThisWeekAction.isActive
-                        ? "Included in This Week’s Critical Dates."
-                        : "Highlight this task in This Week’s Critical Dates."}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name={criticalThisWeekAction.isActive ? "flag" : "flag-outline"}
-                    size={20}
-                    color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
-                  />
-                </Pressable>
-                ) : null}
-            </View>
-            ) : null}
           </ScrollView>
           </View>
+
+          {showDetailDock && detailDock ? (
+            <ReportReplyComposer
+              mode={detailDock.mode}
+              placeholder={
+                detailDock.mode === "progress"
+                  ? t.taskDetail?.updateDescriptionPlaceholder || "Describe what you've done..."
+                  : t.createTask?.replyPlaceholder || "Write a reply to the reporter…"
+              }
+              sendLabel="Send"
+              draft={replyDraft}
+              photos={replyPhotos}
+              isSubmitting={isReplySubmitting}
+              onChangeDraft={setReplyDraft}
+              onAddPhotos={handleAddReplyPhotos}
+              onRemovePhoto={handleRemoveReplyPhoto}
+              onSubmit={() => {
+                void handleSubmitReply();
+              }}
+              onCancelReview={
+                detailDock.mode === "awaiting_review"
+                  ? () => {
+                      void handleCancelDockReview();
+                    }
+                  : undefined
+              }
+              onApproveReview={
+                detailDock.mode === "review_decision"
+                  ? () => {
+                      handleApproveDockReview();
+                    }
+                  : undefined
+              }
+              onRejectReview={
+                detailDock.mode === "review_decision"
+                  ? () => {
+                      handleRejectDockReview();
+                    }
+                  : undefined
+              }
+              onArchive={
+                detailDock.mode === "archive"
+                  ? () => {
+                      setIsArchiveConfirmVisible(true);
+                    }
+                  : undefined
+              }
+              onReassign={
+                detailDock.mode === "reassign"
+                  ? () => {
+                      handleActionPress("reassign_task");
+                    }
+                  : undefined
+              }
+              onPressTriageActions={
+                showReportSpeedDial
+                  ? () => {
+                      toggleReportTriageDialExpanded();
+                    }
+                  : undefined
+              }
+              onDismissTriageDial={
+                showReportSpeedDial
+                  ? () => {
+                      setReportTriageDialExpanded(false);
+                    }
+                  : undefined
+              }
+              isTriageDialOpen={showReportSpeedDial ? triageDialExpanded : false}
+              showReportFab={showWorkerReportFab}
+              completionPercentage={dockCompletionPercentage}
+              onChangeCompletionPercentage={
+                detailDock.mode === "progress" ? setDockCompletionPercentage : undefined
+              }
+            />
+          ) : null}
       </View>
+      </KeyboardAvoidingView>
 
     </SafeAreaView>
+      {showReportSpeedDial ? (
+        <ReportTriageSpeedDial
+          variant={isPmReportTriage ? "pm_triage" : "worker_report"}
+          dockHeight={REPORT_REPLY_DOCK_HEIGHT}
+          onResolveWithComment={
+            showWorkerReportFab ? handleWorkerResolveWithComment : undefined
+          }
+          onChoose={(action) => {
+            const parentNav = navigation.getParent?.() as
+              | { getState?: () => unknown }
+              | undefined;
+            navigateReportTriageAction(parentNav?.getState?.() as any, action);
+          }}
+        />
+      ) : null}
       <ArchiveConfirmSheet
         visible={isArchiveConfirmVisible}
         testIDPrefix="task-detail"

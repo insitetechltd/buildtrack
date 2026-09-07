@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ModalHandle from "../components/ModalHandle";
+import { UserAvatar } from "../components/UserAvatar";
 import { cn } from "../utils/cn";
 import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
@@ -162,9 +163,13 @@ export default function ProfileScreen({
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="mx-6 mt-4 rounded-xl border border-gray-200 bg-white dark:border-[#1E3A44] dark:bg-surface-dark">
           <View className="items-center py-6">
-            <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-accent-strong">
-              <Text className="text-3xl font-bold text-white">{output.profileCard.initial}</Text>
-            </View>
+            <UserAvatar
+              userId={output.profileCard.userId}
+              name={output.profileCard.name}
+              email={output.profileCard.email}
+              size={80}
+              className="mb-4"
+            />
             <Text className="text-2xl font-bold text-gray-900 dark:text-ink-dark">
               {output.profileCard.name}
             </Text>

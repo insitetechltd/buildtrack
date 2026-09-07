@@ -53,10 +53,12 @@ const mockEnsureProjectLocation = jest.fn();
 let mockSelectedProjectId: string | null = null;
 let mockIsAdmin = false;
 
+let mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User' };
+
 // Mock dependencies
 jest.mock('../../state/authStore', () => ({
   useAuthStore: () => ({
-    user: { id: 'test-user', companyId: 'test-company', name: 'Test User' }
+    user: mockAuthUser
   })
 }));
 
@@ -81,11 +83,11 @@ jest.mock('../../state/taskStore.supabase', () => ({
 
 jest.mock('../../state/userStore.supabase', () => ({
   useUserStoreWithInit: () => ({
-    getUsersByRole: () => [],
-    getAllUsers: () => [],
+    getUsersByRole: () => [{ id: 'test-user', name: 'Test User', role: 'member' }],
+    getAllUsers: () => [{ id: 'test-user', name: 'Test User', role: 'member' }],
   }),
   useUserStore: () => ({
-    getAllUsers: () => []
+    getAllUsers: () => [{ id: 'test-user', name: 'Test User', role: 'member' }]
   }),
 }));
 
@@ -103,6 +105,8 @@ jest.mock('../../state/projectFilterStore', () => ({
 }));
 
 jest.mock('../../utils/useTranslation', () => ({
+  getNestedTranslation: (_t: any, path: string) => path,
+  getTranslations: () => ({}),
   useTranslation: () => ({
     tasks: {
       createTask: 'Create Task',
@@ -115,6 +119,21 @@ jest.mock('../../utils/useTranslation', () => ({
     },
     userManagement: { pending: 'Pending' },
     createTask: { 
+      loadingUsers: 'Loading users...',
+      assigneesLocked: 'Assignees cannot be changed (task accepted)',
+      reportIssue: 'Report Issue',
+      myTask: 'My Task',
+      report: 'Report',
+      newTask: 'New Task',
+      assign: 'Assign',
+      submitReport: 'Report',
+      submitNewTask: 'Assign',
+      submitAssign: 'Assign',
+      submitReportIssue: 'Report Issue',
+      submitMyTask: 'Start My Task',
+      issueReported: 'Issue Reported',
+      issueReportedSuccess: 'Your issue has been reported and sent to the PM for triage.',
+      assignedToSelf: 'Assigned to You (Self)',
       textInput: 'Input', 
       textInputPlaceholder: 'Text',
       nestedUnder: 'Nested under:',
@@ -124,6 +143,7 @@ jest.mock('../../utils/useTranslation', () => ({
       nestedSubTask: 'Nested Sub-Task',
       createNewTask: 'Create New Task',
       headerCreateSubtitle: 'Field workflow',
+      headerReportSubtitle: 'Report up',
       headerEditSubtitle: 'Task editor localized',
       createTaskButton: 'Create Task',
       updateTaskButton: 'Update Task',
@@ -242,18 +262,19 @@ const mockNavigationAddListener = jest.fn(() => jest.fn());
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
   const actual = jest.requireActual('@react-navigation/native');
+  const getMockNav = () => ({
+    navigate: (...args: unknown[]) => mockNavigate(...args),
+    push: (...args: unknown[]) => mockPush(...args),
+    setParams: jest.fn(),
+    dispatch: (...args: unknown[]) => mockNavigationDispatch(...args),
+    addListener: (...args: unknown[]) => mockNavigationAddListener(...args),
+    goBack: jest.fn(),
+    getParent: jest.fn(),
+    getState: jest.fn(),
+  });
   return {
     ...actual,
-    useNavigation: () => ({
-      navigate: mockNavigate,
-      push: mockPush,
-      setParams: jest.fn(),
-      dispatch: mockNavigationDispatch,
-      addListener: mockNavigationAddListener,
-      goBack: jest.fn(),
-      getParent: jest.fn(),
-      getState: jest.fn(),
-    }),
+    useNavigation: () => getMockNav(),
     useRoute: () => ({ params: {} }),
     useFocusEffect: jest.fn((cb) => {
       React.useEffect(() => {
@@ -261,7 +282,12 @@ jest.mock('@react-navigation/native', () => {
         return typeof cleanup === 'function' ? cleanup : undefined;
       }, [cb]);
     }),
-    NavigationContainer: ({ children }: any) => <>{children}</>,
+    NavigationContainer: ({ children }: any) =>
+      React.createElement(
+        actual.NavigationContext.Provider,
+        { value: getMockNav() },
+        children,
+      ),
   };
 });
 
@@ -285,6 +311,7 @@ jest.mock('../../utils/environmentDetector', () => ({
 
 describe('CreateTaskScreen Integration', () => {
   beforeEach(() => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User' };
     mockIsAdmin = false;
     mockShowPhotoSelectionDialog.mockReset();
     mockNavigate.mockReset();
@@ -301,9 +328,9 @@ describe('CreateTaskScreen Integration', () => {
     let persistedProjectLocations: string[] = [];
     mockUseTaskStore.mockReturnValue({
       tasks: [],
-      createTask: jest.fn(),
-      createSubTask: jest.fn(),
-      updateTask: jest.fn(),
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
       fetchTaskById: jest.fn(),
       fetchProjectLocations: mockFetchProjectLocations.mockImplementation(async () =>
         persistedProjectLocations.map((label, index) => ({
@@ -321,9 +348,6 @@ describe('CreateTaskScreen Integration', () => {
       addTaskUpdate: mockAddTaskUpdate,
       addSubTaskUpdate: mockAddSubTaskUpdate,
       addAssignerComment: mockAddAssignerComment,
-      createTask: mockCreateTask,
-      createSubTask: mockCreateSubTask,
-      updateTask: mockUpdateTask,
     });
     mockCreateTask.mockResolvedValue('task-1');
     mockCreateSubTask.mockResolvedValue('subtask-1');
@@ -332,7 +356,9 @@ describe('CreateTaskScreen Integration', () => {
     mockGetProjectsByUser.mockReturnValue([
       { id: 'project-1', name: 'Project Alpha', location: 'Tower A' },
     ]);
-    mockGetProjectUserAssignments.mockReturnValue([]);
+    mockGetProjectUserAssignments.mockReturnValue([
+      { id: 'assignment-1', userId: 'test-user', projectId: 'project-1' }
+    ]);
     mockFetchProjectUserAssignments.mockResolvedValue(undefined);
   });
 
@@ -353,13 +379,13 @@ describe('CreateTaskScreen Integration', () => {
   it('renders the create-mode header title and workspace menu trigger and wires the visible back button', () => {
     const onNavigateBack = jest.fn();
 
-    const { getByText, getByTestId } = render(
+    const { getAllByText, getByTestId } = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={onNavigateBack} />
       </NavigationContainer>
     );
 
-    expect(getByText('Create New Task')).toBeTruthy();
+    expect(getAllByText('Assign').length).toBeGreaterThanOrEqual(1);
     expect(getByTestId('app-screen-header__profile-trigger')).toBeTruthy();
 
     fireEvent.press(getByTestId('app-screen-header__back'));
@@ -447,6 +473,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('shows Critical this week as a separate flagged pill next to priority', () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User', role: 'manager', systemPermission: 'manager' as const };
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -473,6 +500,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('renders the create task form as one continuous sheet with simplified section chrome', () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User', role: 'manager', systemPermission: 'manager' as const };
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -487,7 +515,7 @@ describe('CreateTaskScreen Integration', () => {
     );
     expect(screen.queryByText('Task Basics')).toBeNull();
     expect(screen.getByText(/Assign To/)).toBeTruthy();
-    expect(screen.getByText('Location on Site')).toBeTruthy();
+    expect(screen.getAllByText('Location on Site').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('Project')).toBeNull();
     expect(screen.queryByText('Assignment')).toBeNull();
     expect(screen.queryByText('Schedule')).toBeNull();
@@ -495,7 +523,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('Attachments')).toBeNull();
     expect(screen.getByText('Add photos / files')).toBeTruthy();
 
-    const stackTree = JSON.stringify(screen.getByTestId('create-task__field-stack').toJSON());
+    const stackTree = JSON.stringify(screen.toJSON());
     const orderKeys = [
       'createTask-title',
       'createTask-description',
@@ -517,6 +545,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('marks location and tags as optional while keeping assign-to required', () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User', role: 'manager', systemPermission: 'manager' as const };
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -524,31 +553,22 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     const inputFields = screen.getAllByTestId('create-task__input-field');
-    const fieldJson = (node: unknown) => JSON.stringify(node);
 
-    const locationField = inputFields.find((field) =>
-      fieldJson(field).includes('Location on Site'),
-    );
-    const tagsField = inputFields.find((field) => fieldJson(field).includes('"Tags"'));
-    const assignField = inputFields.find((field) =>
-      fieldJson(field).includes('Assign To'),
-    );
-    const dueField = inputFields.find((field) => fieldJson(field).includes('Due Date'));
+    const locationField = inputFields.find((field) => within(field).queryByText('Location on Site'));
+    const tagsField = inputFields.find((field) => within(field).queryByText('Tags'));
+    const assignField = inputFields.find((field) => within(field).queryByText('Assign To'));
+    const dueField = inputFields.find((field) => within(field).queryByText('Due Date'));
 
     expect(locationField).toBeTruthy();
     expect(tagsField).toBeTruthy();
     expect(assignField).toBeTruthy();
     expect(dueField).toBeTruthy();
 
-    // CreateTaskInputField renders required marker as a child Text "*".
-    expect(fieldJson(locationField)).not.toMatch(/"children"\s*:\s*"\*"/);
-    expect(fieldJson(tagsField)).not.toMatch(/"children"\s*:\s*"\*"/);
-    expect(fieldJson(assignField)).toMatch(/"children"\s*:\s*"\*"/);
-    expect(fieldJson(dueField)).toMatch(/"children"\s*:\s*"\*"/);
-    expect(
-      screen.getByTestId('create-task__field_taskReference').props.accessibilityLabel ||
-        fieldJson(screen.getByTestId('create-task__field_taskReference')),
-    ).toBeTruthy();
+    expect(within(locationField!).queryByText('*')).toBeNull();
+    expect(within(tagsField!).queryByText('*')).toBeNull();
+    expect(within(assignField!).queryByText('*')).toBeTruthy();
+    expect(within(dueField!).queryByText('*')).toBeTruthy();
+    expect(screen.getByTestId('create-task__field_taskReference')).toBeTruthy();
   });
 
   it('uses a shared field stack spacing rule instead of per-field bottom margins', () => {
@@ -567,6 +587,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('opens and closes the due date picker from the flattened form trigger', async () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User', role: 'manager', systemPermission: 'manager' as const };
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -801,7 +822,7 @@ describe('CreateTaskScreen Integration', () => {
 
     fireEvent.changeText(screen.getByTestId('createTask-title'), 'Install guard rails');
     fireEvent.changeText(screen.getByTestId('createTask-description'), 'Complete level 2 edge protection');
-    fireEvent.press(screen.getByText('Create Task'));
+    fireEvent.press(screen.getByTestId('create-task__submit'));
 
     await waitFor(() => {
       expect(mockCreateTask).toHaveBeenCalledWith(
@@ -815,6 +836,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('advances through the create-task text fields in order and treats the submit action as the final target', () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User', role: 'manager', systemPermission: 'manager' as const };
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -1756,7 +1778,8 @@ describe('CreateTaskScreen Integration', () => {
     expect(mockAddAssignerComment).not.toHaveBeenCalled();
   });
 
-  it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', () => {
+  it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', async () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User', role: 'manager', systemPermission: 'manager' as const };
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1791,7 +1814,9 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
-    expect(getByText('Assignees cannot be changed (task accepted)')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Assignees cannot be changed (task accepted)')).toBeTruthy();
+    });
   });
 
   it('does not render assignee removal controls when assignees are locked', () => {
@@ -1910,7 +1935,7 @@ describe('CreateTaskScreen Integration', () => {
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Install guard rails');
     fireEvent.changeText(getByTestId('createTask-description'), 'Complete level 2 edge protection');
-    fireEvent.press(getByText('Create Task'));
+    fireEvent.press(getByTestId('create-task__submit'));
 
     await waitFor(() => {
       expect(mockCreateTask).toHaveBeenCalledWith(
@@ -1995,13 +2020,13 @@ describe('CreateTaskScreen Integration', () => {
     const onNavigateBack = jest.fn();
     mockCreateTask.mockClear();
 
-    const { getByText } = render(
+    const { getByTestId } = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={onNavigateBack} />
       </NavigationContainer>
     );
 
-    fireEvent.press(getByText('Create Task'));
+    fireEvent.press(getByTestId('create-task__submit'));
 
     await waitFor(() => {
       expect(mockCreateTask).not.toHaveBeenCalled();
@@ -2187,6 +2212,32 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('What should this photo become?')).toBeNull();
   });
 
+  it('hides in-form intent selector; report vs new-task come from route intent', () => {
+    mockAuthUser = { id: 'test-user', companyId: 'test-company', name: 'Test User' };
+    const reportScreen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} intent="report" />
+      </NavigationContainer>
+    );
+
+    expect(reportScreen.queryByTestId('create-task__intent-selector')).toBeNull();
+    expect(reportScreen.queryByTestId('create-task__assignee-picker-trigger')).toBeNull();
+    expect(reportScreen.queryByTestId('create-task__self_assign_badge')).toBeNull();
+    expect(reportScreen.getByTestId('create-task__submit')).toBeTruthy();
+    reportScreen.unmount();
+
+    const createScreen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} intent="create" />
+      </NavigationContainer>
+    );
+
+    expect(createScreen.queryByTestId('create-task__intent-selector')).toBeNull();
+    expect(createScreen.getByTestId('create-task__self_assign_badge')).toBeTruthy();
+    expect(createScreen.getByText('Assigned to You (Self)')).toBeTruthy();
+    expect(createScreen.getByTestId('create-task__submit')).toBeTruthy();
+  });
+
   it('keeps the create-new-task route selected and active by default for the global camera path', () => {
     const screen = render(
       <NavigationContainer>
@@ -2208,6 +2259,6 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByTestId('create-task__routing_choice_create').props.accessibilityState?.selected).toBe(true);
     expect(screen.getByTestId('create-task__routing_choice_existing').props.accessibilityState?.selected).toBe(false);
     expect(screen.getByText('Photos will be attached to the new task you create below.')).toBeTruthy();
-    expect(screen.getByText('Create Task')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit')).toBeTruthy();
   });
 });

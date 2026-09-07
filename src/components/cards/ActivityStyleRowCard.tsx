@@ -11,10 +11,8 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { cn } from "@/utils/cn";
 import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
-import {
-  ACTIVITY_FAMILY,
-  activityActorInitial,
-} from "@/ui/contracts/activityFamily";
+import { UserAvatar } from "@/components/UserAvatar";
+import { ACTIVITY_FAMILY } from "@/ui/contracts/activityFamily";
 
 export type ActivityStyleRowVariant = "critical" | "activity" | "task";
 export type ActivityStyleRowMediaSize = "md" | "lg";
@@ -35,6 +33,8 @@ interface ActivityStyleRowCardProps {
   overlayTitle?: string;
   /** Updater / assignee display name. */
   actorLabel?: string;
+  /** Stable id for per-user avatar color (when no uploaded photo). */
+  actorUserId?: string;
   /** @deprecated Prefer actorLabel. */
   heroActorLabel?: string;
   metaLabel?: string;
@@ -54,6 +54,11 @@ interface ActivityStyleRowCardProps {
   badgeVariant?: "plain" | "pill";
   onPress?: () => void;
   disabled?: boolean;
+  /**
+   * Stretch to fill a grid cell so sibling cards in a wrap row share height.
+   * Pins meta/badge (rail) or trailing chrome (post) to the bottom of the cell.
+   */
+  fillHeight?: boolean;
 }
 
 /**
@@ -66,6 +71,9 @@ const MEDIA = {
 } as const;
 
 const CONTENT_GAP = 14;
+/** Tablet grid rail cards: 2-line title + subtitle + meta, independent of sibling content. */
+export const TABLET_RAIL_CARD_HEIGHT = 176;
+const RAIL_GRID_HEIGHT = TABLET_RAIL_CARD_HEIGHT;
 
 function defaultMediaSize(variant: ActivityStyleRowVariant): ActivityStyleRowMediaSize {
   return variant === "task" ? "md" : "lg";
@@ -81,6 +89,7 @@ export default function ActivityStyleRowCard({
   subtitle = "",
   overlayTitle,
   actorLabel,
+  actorUserId,
   heroActorLabel = "",
   metaLabel = "",
   badgeLabel = "",
@@ -97,6 +106,7 @@ export default function ActivityStyleRowCard({
   badgeVariant,
   onPress,
   disabled,
+  fillHeight = false,
 }: ActivityStyleRowCardProps) {
   const resolvedImageUris = useMemo(() => {
     if (Array.isArray(imageUris) && imageUris.length > 0) {
@@ -261,14 +271,12 @@ export default function ActivityStyleRowCard({
                 <View testID={`${testID}:post-header`} className="mb-3">
                   <View className="flex-row items-center gap-3">
                     {hasActor ? (
-                      <View
+                      <UserAvatar
                         testID={`${testID}:actor-avatar`}
-                        className="h-8 w-8 items-center justify-center rounded-full bg-[#0D6E87]"
-                      >
-                        <Text className="text-sm font-semibold text-white">
-                          {activityActorInitial(resolvedActorLabel)}
-                        </Text>
-                      </View>
+                        userId={actorUserId}
+                        name={resolvedActorLabel}
+                        size={32}
+                      />
                     ) : null}
                     <View className="min-w-0 flex-1">
                       {hasActor ? (
@@ -428,6 +436,12 @@ export default function ActivityStyleRowCard({
                   </View>
                 ) : null}
               </View>
+            ) : fillHeight ? (
+              <View
+                testID={`${testID}:hero-spacer`}
+                className="mx-4 mt-3 overflow-hidden rounded-2xl bg-slate-100"
+                style={{ height: ACTIVITY_FAMILY.photoHeight }}
+              />
             ) : null}
 
             <View className="pb-3" />
@@ -444,12 +458,16 @@ export default function ActivityStyleRowCard({
       onPress={onPress}
       disabled={disabled}
       className="overflow-hidden rounded-2xl bg-white"
+      style={fillHeight ? { height: RAIL_GRID_HEIGHT } : undefined}
       accessibilityState={{ disabled: Boolean(disabled) }}
     >
       <View
         testID={`${testID}:variant-${variant}`}
         className="relative"
-        style={{ minHeight: media.minHeight }}
+        style={{
+          height: fillHeight ? RAIL_GRID_HEIGHT : undefined,
+          minHeight: fillHeight ? RAIL_GRID_HEIGHT : media.minHeight,
+        }}
       >
         <View
           testID={`${testID}:layout-rail`}
@@ -509,8 +527,15 @@ export default function ActivityStyleRowCard({
         ) : null}
 
         <View
-          className="min-w-0 justify-center py-4 pr-4"
-          style={{ paddingLeft: contentPaddingLeft, minHeight: media.minHeight }}
+          className="min-w-0 py-4 pr-4"
+          style={{
+            paddingLeft: contentPaddingLeft,
+            minHeight: fillHeight ? RAIL_GRID_HEIGHT : media.minHeight,
+            height: fillHeight ? RAIL_GRID_HEIGHT : undefined,
+            ...(fillHeight
+              ? { justifyContent: "space-between" }
+              : { justifyContent: "center" }),
+          }}
         >
           <View className="min-w-0">
             <Pressable
@@ -536,19 +561,21 @@ export default function ActivityStyleRowCard({
               </Text>
             ) : null}
           </View>
-          {bottomRow}
-          {hasActor ? (
-            <View className="mt-2 flex-row items-center justify-end">
-              <View
-                testID={`${testID}:actor-avatar`}
-                className="h-7 w-7 items-center justify-center rounded-full bg-[#0D6E87]"
-              >
-                <Text className="text-xs font-semibold text-white">
-                  {activityActorInitial(resolvedActorLabel)}
-                </Text>
-              </View>
+          {(bottomRow || hasActor) && (
+            <View>
+              {bottomRow}
+              {hasActor ? (
+                <View className="mt-2 flex-row items-center justify-end">
+                  <UserAvatar
+                    testID={`${testID}:actor-avatar`}
+                    userId={actorUserId}
+                    name={resolvedActorLabel}
+                    size={28}
+                  />
+                </View>
+              ) : null}
             </View>
-          ) : null}
+          )}
         </View>
       </View>
     </Pressable>

@@ -16,24 +16,36 @@ if (__DEV__) {
     "AbortError",
     "Invalid Refresh Token",
     "Refresh Token Not Found",
+    "Auth session missing",
+    "AuthSessionMissingError",
+    "[File Upload] createSignedUrl failed",
+    "Storage object not found",
+    "Object not found",
     "SafeAreaView has been deprecated",
     "The app is running using the Legacy Architecture",
     "Ignoring DevTools app debug target",
     "Failed to open debugger. Please check that the dev server is running and reload the app.",
     "Open debugger to view warnings.",
+    "The action 'SET_PARAMS'",
+    "was not handled by any navigator",
   ]);
 }
 
-// Suppress console errors for refresh token issues (they're handled gracefully)
+// Suppress console errors for refresh token issues and missing storage/auth objects (they're handled gracefully)
 const originalConsoleError = console.error;
 console.error = (...args: any[]) => {
   const errorMessage = args[0]?.message || args[0] || '';
   const errorString = String(errorMessage);
   
-  // Suppress refresh token errors - they're handled by auth store
-  if (errorString.includes('Invalid Refresh Token') || 
-      errorString.includes('Refresh Token Not Found')) {
-    // Silently handle - auth store will clear session
+  // Suppress refresh token / missing session / missing storage object errors - they're handled gracefully
+  if (
+    errorString.includes('Invalid Refresh Token') || 
+    errorString.includes('Refresh Token Not Found') ||
+    errorString.includes('Auth session missing') ||
+    errorString.includes('AuthSessionMissingError') ||
+    errorString.includes('Object not found')
+  ) {
+    // Silently handle - store/component fallbacks handle these gracefully
     return;
   }
   

@@ -89,9 +89,14 @@ function getActiveIndex(state?: RouteStateLike) {
   return routes.length - 1;
 }
 
-export function resolveTaskDetailUpdateShortcut(
+/** Shared Task Detail context for Update vs Report-triage center-FAB routing. */
+export function resolveTaskDetailRouteContext(
   tabState?: RouteStateLike,
-): { tabName: "Activity" | "Tasks"; params: UpdateProgressParams } | undefined {
+): {
+  tabName: "Activity" | "Tasks";
+  taskId: string;
+  subTaskId?: string;
+} | undefined {
   const activeTabIndex = getActiveIndex(tabState);
   const activeTabName =
     activeTabIndex === undefined ? undefined : tabState?.routes?.[activeTabIndex]?.name;
@@ -126,18 +131,77 @@ export function resolveTaskDetailUpdateShortcut(
   const tabName = activeTabName === "Activity" ? "Activity" : "Tasks";
   return {
     tabName,
+    taskId: taskDetailParams.taskId,
+    subTaskId: taskDetailParams.subTaskId,
+  };
+}
+
+export function resolveTaskDetailUpdateShortcut(
+  tabState?: RouteStateLike,
+): { tabName: "Activity" | "Tasks"; params: UpdateProgressParams } | undefined {
+  const context = resolveTaskDetailRouteContext(tabState);
+  if (!context) {
+    return undefined;
+  }
+
+  // Reported + PM triage uses the center "+" dial instead of one-shot Update.
+  if (resolveReportTriageShortcut(tabState)) {
+    return undefined;
+  }
+
+  return {
+    tabName: context.tabName,
     params: {
-      taskId: taskDetailParams.taskId,
-      subTaskId: taskDetailParams.subTaskId,
-      sourceScreen: tabName === "Activity" ? "dashboard" : "tasks",
-      sourceTaskId: taskDetailParams.taskId,
-      sourceSubTaskId: taskDetailParams.subTaskId,
+      taskId: context.taskId,
+      subTaskId: context.subTaskId,
+      sourceScreen: context.tabName === "Activity" ? "dashboard" : "tasks",
+      sourceTaskId: context.taskId,
+      sourceSubTaskId: context.subTaskId,
     },
   };
 }
 
+/**
+ * When true, center FAB should toggle Report triage dial (Reply / Create / Resolve).
+ * Import-time check against stores — keep side-effect free except reads.
+ */
+export function resolveReportTriageShortcut(
+  tabState?: RouteStateLike,
+): {
+  tabName: "Activity" | "Tasks";
+  taskId: string;
+  subTaskId?: string;
+} | undefined {
+  const context = resolveTaskDetailRouteContext(tabState);
+  if (!context) {
+    return undefined;
+  }
+
+  try {
+    // Lazy require avoids circular imports with AppNavigator.
+    const { useTaskStore } = require("../state/taskStore.supabase") as {
+      useTaskStore: { getState: () => { tasks: Array<{ id: string; status?: string }> } };
+    };
+    const { useAuthStore } = require("../state/authStore") as {
+      useAuthStore: { getState: () => { user: unknown } };
+    };
+    const { isManagerOrAdmin } = require("../types/buildtrack") as {
+      isManagerOrAdmin: (user: unknown) => boolean;
+    };
+
+    const task = useTaskStore.getState().tasks.find((entry) => entry.id === context.taskId);
+    const user = useAuthStore.getState().user;
+    if (!task || task.status !== "reported" || !isManagerOrAdmin(user)) {
+      return undefined;
+    }
+    return context;
+  } catch {
+    return undefined;
+  }
+}
+
 export function resolveTasksListCreateShortcut(tabState?: RouteStateLike): boolean {
-  if (resolveTaskDetailUpdateShortcut(tabState)) {
+  if (resolveTaskDetailRouteContext(tabState)) {
     return false;
   }
 

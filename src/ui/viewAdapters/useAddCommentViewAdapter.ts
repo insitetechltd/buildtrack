@@ -122,7 +122,7 @@ export function useAddCommentViewAdapter(): AddCommentViewAdapterHookResult {
       });
       await fetchTaskById(task.id);
 
-      Alert.alert("Success", "Comment added successfully");
+      // Timeline on Task Detail is the confirmation — no success Alert.
       navigation.goBack();
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Failed to add comment");

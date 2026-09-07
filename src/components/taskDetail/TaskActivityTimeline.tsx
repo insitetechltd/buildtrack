@@ -15,8 +15,8 @@ import { cn } from "@/utils/cn";
 import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
 import {
   ACTIVITY_FAMILY,
-  activityActorInitial,
 } from "@/ui/contracts/activityFamily";
+import { UserAvatar } from "@/components/UserAvatar";
 import type {
   TaskDetailActivityModel,
   TaskDetailActivityThreadRow,
@@ -47,6 +47,7 @@ function normalizeActivityRow(
     return {
       ...activity,
       actorLabel: activity.actorLabel || "Unknown actor",
+      actorUserId: activity.actorUserId,
       eventLabel: activity.eventLabel || "Activity update",
       timestampLabel: activity.timestampLabel || "Unknown time",
       progressLabel: activity.progressLabel || "—",
@@ -62,6 +63,7 @@ function normalizeActivityRow(
     density: activity.density,
     structuralState: activity.structuralState,
     actorLabel: activity.userName || "Unknown actor",
+    actorUserId: activity.userId,
     eventLabel: activity.description || "Activity update",
     timestampLabel: Number.isNaN(parsedDate.getTime())
       ? activity.timestamp
@@ -211,14 +213,12 @@ export default function TaskActivityTimeline({
                         testID={`task-activity-timeline__actor-row-${activity.id}`}
                         className="min-w-0 flex-row items-center"
                       >
-                        <View
-                          className="mr-3 h-8 w-8 items-center justify-center rounded-full"
-                          style={{ backgroundColor: ACTIVITY_FAMILY.avatarBg }}
-                        >
-                          <Text className="text-sm font-semibold text-white">
-                            {activityActorInitial(activity.actorLabel)}
-                          </Text>
-                        </View>
+                        <UserAvatar
+                          userId={activity.actorUserId}
+                          name={activity.actorLabel}
+                          size={32}
+                          className="mr-3"
+                        />
                         <Text
                           className={cn("min-w-0 flex-1", ACTIVITY_FAMILY.actorNameClassName)}
                           numberOfLines={1}
@@ -245,9 +245,11 @@ export default function TaskActivityTimeline({
                     >
                       {activity.timestampLabel}
                     </Text>
-                    <Text className={cn("font-semibold", ACTIVITY_FAMILY.metaClassName)}>
-                      {progressCompleteLabel}
-                    </Text>
+                    {progressCompleteLabel !== "—" ? (
+                      <Text className={cn("font-semibold", ACTIVITY_FAMILY.metaClassName)}>
+                        {progressCompleteLabel}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
 

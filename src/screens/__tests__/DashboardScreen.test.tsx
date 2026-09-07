@@ -582,4 +582,146 @@ describe("DashboardScreen", () => {
 
     alertSpy.mockRestore();
   });
+
+  it("renders critical and recent activity as a 2-column grid on iPad portrait", () => {
+    const reactNative = require("react-native");
+    const useWindowDimensionsSpy = jest.spyOn(reactNative, "useWindowDimensions");
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 820,
+      height: 1180,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const { useDashboardViewAdapter } = require("@/ui/viewAdapters/useDashboardViewAdapter");
+    useDashboardViewAdapter.mockReturnValue({
+      output: {
+        screenId: "DashboardScreen",
+        readiness: {
+          hasInitialFrame: true,
+          hasUsableData: true,
+          isBackgroundRefreshing: false,
+          isNavigationTransitionActive: false,
+        },
+        continuity: {
+          isInitialLoading: false,
+          isBackgroundRefreshing: false,
+          hasCachedFrame: true,
+          shouldRenderSkeletonShell: false,
+          shouldRenderEmptyState: false,
+          freshnessLabel: "Ready",
+        },
+        activeProject: {
+          id: "project-1",
+          title: "North Tower",
+          subtitle: "Package A",
+        },
+        projectSummaryCard: {
+          title: "North Tower",
+          todayLabel: "Saturday · Jul 4",
+          elapsedDayLabel: "Day 185",
+          weatherIconLabel: "☁️",
+          weatherTemperatureLabel: "28°C",
+          criticalDates: [
+            {
+              id: "critical-date-1",
+              taskId: "task-critical-1",
+              dateLabel: "Jul 7",
+              title: "Concrete inspection",
+              subtitle: "Submitted For Review · Critical",
+            },
+            {
+              id: "critical-date-2",
+              taskId: "task-critical-2",
+              dateLabel: "Jul 8",
+              title: "Façade punch",
+              subtitle: "Doing · Critical",
+            },
+          ],
+        },
+        queueDashboard: null,
+        activityItems: [
+          {
+            id: "activity-1",
+            title: "Marked complete",
+            subtitle: "Concrete inspection",
+            actorLabel: "Alex",
+            timestampLabel: "2h ago",
+            taskId: "task-critical-1",
+          },
+          {
+            id: "activity-2",
+            title: "Added photos",
+            subtitle: "Façade punch",
+            actorLabel: "Sam",
+            timestampLabel: "3h ago",
+            taskId: "task-critical-2",
+          },
+        ],
+        draftItems: [],
+        scalarMetrics: {
+          inboxNewCount: 0,
+          inboxNewOverdueCount: 0,
+          inboxWipCount: 0,
+          inboxWipOverdueCount: 0,
+          inboxReviewingCount: 0,
+          inboxReviewingOverdueCount: 0,
+          outboxNewCount: 0,
+          outboxNewOverdueCount: 0,
+          outboxWipCount: 0,
+          outboxWipOverdueCount: 0,
+          outboxReviewingCount: 0,
+          outboxReviewingOverdueCount: 0,
+        },
+      },
+      visibility: {
+        showCreateTaskFab: false,
+        showProfileShortcut: true,
+        showProjectPickerShortcut: false,
+        showDeveloperSettingsShortcut: false,
+      },
+      actions: { deleteDraftTask: jest.fn(), markActivityFeedSeen: jest.fn() },
+    });
+
+    const screen = render(
+      <DashboardScreen
+        onNavigateToTasks={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+        onNavigateToProfile={jest.fn()}
+      />,
+    );
+
+    // Available = 820 - 32 = 788. 2 cols -> (788 - 12)/2 = 388
+    expect(screen.getByTestId("dashboard-screen__critical_tasks_grid")).toHaveStyle({
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+      alignItems: "stretch",
+    });
+    expect(screen.getByTestId("dashboard-screen__critical_task_wrapper_critical-date-1")).toHaveStyle({
+      width: 388,
+      height: 176,
+    });
+    expect(screen.getByTestId("dashboard-screen__recent_activity_grid")).toHaveStyle({
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+      alignItems: "stretch",
+    });
+    expect(screen.getByTestId("dashboard-screen__activity_wrapper_activity-1")).toHaveStyle({
+      width: 388,
+    });
+
+    useWindowDimensionsSpy.mockRestore();
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
+  });
 });

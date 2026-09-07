@@ -65,7 +65,10 @@ import { useTranslation } from "@/utils/useTranslation";
  * (post–create-company gate). useFocusEffect throws without a navigator — use this.
  */
 function useFocusOrMountEffect(effect: () => void | (() => void)) {
-  const navigation = useContext(NavigationContext);
+  const navigation =
+    NavigationContext && typeof NavigationContext === "object"
+      ? useContext(NavigationContext)
+      : undefined;
 
   useEffect(() => {
     let cleanup: void | (() => void);

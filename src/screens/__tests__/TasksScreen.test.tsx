@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, TextInput, View } from "react-native";
+import { Platform, Text, TextInput, View } from "react-native";
 import { fireEvent, render, waitFor, within } from "@testing-library/react-native";
 
 import TasksScreen from "../TasksScreen";
@@ -8,6 +8,7 @@ import type {
   TasksOverdueWindowValue,
   TasksQueueFilterValue,
   TasksScreenViewAdapterOutput,
+  TasksSortOrderValue,
   TasksStatusFilterValue,
 } from "@/ui/contracts/viewAdapters";
 
@@ -167,6 +168,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
     queue: "all_queues" as TasksQueueFilterValue,
     status: "any_status" as TasksStatusFilterValue,
     overdueWindow: "show_all" as TasksOverdueWindowValue,
+    sortOrder: "newest_created" as TasksSortOrderValue,
   };
 
   const makeRow = (overrides: Record<string, unknown>) => ({
@@ -255,6 +257,13 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
       chips.push({
         id: "overdueWindow",
         label: `Overdue: ${getOverdueWindowLabel(filters.overdueWindow)}`,
+      });
+    }
+
+    if (filters.sortOrder !== "newest_created") {
+      chips.push({
+        id: "sortOrder",
+        label: `Order: ${filters.sortOrder}`,
       });
     }
 
@@ -349,7 +358,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         selectedProjectId: null,
         sectionFilterLabel: "Search-first list",
         statusFilterLabel: "All projects",
-        sortLabel: "Due date · Earliest first",
+        sortLabel: "Created · Newest first",
       },
       filterButton: {
         label: "Filters",
@@ -361,6 +370,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         stagedQueue: stagedFilters.queue,
         stagedStatus: stagedFilters.status,
         stagedOverdueWindow: stagedFilters.overdueWindow,
+        stagedSortOrder: stagedFilters.sortOrder,
       },
       activeFilterChips,
       resultSummaryLabel: `${filteredRows.length} task${filteredRows.length === 1 ? "" : "s"}`,
@@ -432,6 +442,8 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         setStagedFilters((current) => ({ ...current, status: value })),
       stageOverdueWindowFilter: (value: TasksOverdueWindowValue) =>
         setStagedFilters((current) => ({ ...current, overdueWindow: value })),
+      stageSortOrderFilter: (value: TasksSortOrderValue) =>
+        setStagedFilters((current) => ({ ...current, sortOrder: value })),
       applyStagedFilters: () => {
         setAppliedFilters(stagedFilters);
         setIsFiltersSheetOpen(false);
@@ -443,7 +455,9 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
             ? { queue: "all_queues" as TasksQueueFilterValue }
             : chipId === "status"
               ? { status: "any_status" as TasksStatusFilterValue }
-              : { overdueWindow: "show_all" as TasksOverdueWindowValue };
+              : chipId === "overdueWindow"
+                ? { overdueWindow: "show_all" as TasksOverdueWindowValue }
+                : { sortOrder: "newest_created" as TasksSortOrderValue };
 
         setAppliedFilters((current) => ({ ...current, ...resetValue }));
         setStagedFilters((current) => ({ ...current, ...resetValue }));
@@ -782,5 +796,79 @@ describe("TasksScreen", () => {
 
     expect(screen.getByTestId("tasks-screen__empty_state")).toBeTruthy();
     expect(screen.getByText("No matching tasks")).toBeTruthy();
+  });
+
+  it("renders 2 columns in portrait and 3 columns in landscape on iPad, maintaining single column on iPhone", () => {
+    const reactNative = require("react-native");
+    const useWindowDimensionsSpy = jest.spyOn(
+      reactNative,
+      "useWindowDimensions",
+    );
+
+    // 1. iPhone: 390x844
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 390,
+      height: 844,
+      scale: 3,
+      fontScale: 1,
+    });
+
+    const screenPhone = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
+    );
+    expect(screenPhone.getByTestId("tasks-screen__row_wrapper_task-1")).toHaveStyle({});
+
+    // 2. iPad Portrait: 820x1180
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 820,
+      height: 1180,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const screenPortrait = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
+    );
+
+    // Available = 820 - 32 = 788. 2 cols -> (788 - 12)/2 = 388
+    expect(screenPortrait.getByTestId("tasks-screen__row_wrapper_task-1")).toHaveStyle({
+      width: 388,
+      height: 176,
+    });
+
+    // 3. iPad Landscape: 1180x820
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 1180,
+      height: 820,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const screenLandscape = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
+    );
+
+    // Available = 1180 - 32 = 1148. 3 cols -> (1148 - 24)/3 = 374
+    expect(screenLandscape.getByTestId("tasks-screen__row_wrapper_task-1")).toHaveStyle({
+      width: 374,
+      height: 176,
+    });
+
+    useWindowDimensionsSpy.mockRestore();
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
   });
 });

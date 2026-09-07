@@ -1,6 +1,7 @@
 import {
   canViewerSelectTask,
   filterTasksForViewer,
+  filterViewerProjectIdsForCompany,
   isProjectScopeReady,
   resolveTaskSelectRoleBand,
 } from "../taskVisibilityPermissions";
@@ -160,6 +161,77 @@ describe("taskVisibilityPermissions", () => {
         viewerProjectIds: [],
       }),
     ).toBe(false);
+  });
+
+  it("never surfaces tasks outside the viewer's project membership (cross-tenant wall)", () => {
+    const foreignTask = {
+      id: "foreign",
+      projectId: "proj-other-co",
+      assignedBy: "bob",
+      assignedTo: ["bob"],
+    };
+
+    expect(
+      canViewerSelectTask({
+        viewer: bob,
+        task: foreignTask,
+        project: { id: "proj-other-co", companyId: "co-b" },
+        viewerProjectIds: ["proj-a"],
+      }),
+    ).toBe(false);
+
+    expect(
+      canViewerSelectTask({
+        viewer: john,
+        task: foreignTask,
+        project: { id: "proj-other-co", companyId: "co-b" },
+        viewerProjectIds: ["proj-a"],
+      }),
+    ).toBe(false);
+  });
+
+  it("denies same-membership tasks when the project company differs from the viewer", () => {
+    expect(
+      canViewerSelectTask({
+        viewer: john,
+        task: {
+          projectId: "proj-b",
+          assignedBy: "john",
+          assignedTo: ["bob"],
+        },
+        project: { id: "proj-b", companyId: "co-b" },
+        viewerProjectIds: ["proj-b"],
+      }),
+    ).toBe(false);
+  });
+
+  it("denies membership tasks when the project row has no companyId", () => {
+    expect(
+      canViewerSelectTask({
+        viewer: john,
+        task: {
+          projectId: "proj-orphan",
+          assignedBy: "john",
+          assignedTo: ["bob"],
+        },
+        project: { id: "proj-orphan", companyId: null },
+        viewerProjectIds: ["proj-orphan"],
+      }),
+    ).toBe(false);
+  });
+
+  it("filterViewerProjectIdsForCompany drops foreign and blank company rows", () => {
+    expect(
+      filterViewerProjectIdsForCompany({
+        viewerCompanyId: "co-a",
+        projectIds: ["proj-a", "proj-b", "proj-blank", "proj-pending"],
+        projectsById: {
+          "proj-a": projectA,
+          "proj-b": { id: "proj-b", companyId: "co-b" },
+          "proj-blank": { id: "proj-blank", companyId: "" },
+        },
+      }),
+    ).toEqual(["proj-a", "proj-pending"]);
   });
 
   it("isProjectScopeReady is false until projects exist or fetched once", () => {

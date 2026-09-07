@@ -16,7 +16,12 @@ export type SelectedPhoto = {
   mediaLibraryAssetId?: string;
 };
 
-export type TaskDetailParams = { taskId: string; subTaskId?: string };
+export type TaskDetailParams = {
+  taskId: string;
+  subTaskId?: string;
+  /** Inbound drafts from CaptureSession → Select Photos (report reply composer). */
+  selectedPhotos?: SelectedPhoto[];
+};
 
 export type UpdateProgressParams = {
   taskId: string;
@@ -25,6 +30,8 @@ export type UpdateProgressParams = {
   uploadedPhotoUrls?: string[];
   selectedPhotos?: SelectedPhoto[];
   actionType?: string;
+  /** progress = default Update; report_reply = text+photos, no %, stay reported */
+  mode?: "progress" | "report_reply";
   sourceScreen?: string;
   sourceTaskId?: string;
   sourceSubTaskId?: string;
@@ -42,7 +49,7 @@ export type CreateTaskParams = {
   editTaskId?: string;
   /** Resume an unfinished local draft in Create Task chrome. */
   localDraftId?: string;
-  actionType?: "edit" | "update" | "photos" | "comment" | "reassign";
+  actionType?: "edit" | "update" | "photos" | "comment" | "reassign" | "triage";
   updateTargetSubTaskId?: string;
   sourceTaskId?: string;
   sourceSubTaskId?: string;
@@ -55,6 +62,11 @@ export type CreateTaskParams = {
   _timestamp?: number;
   /** Capture-first camera tab: back should return to Select Photos. */
   captureFirstFlow?: boolean;
+  /**
+   * Peer entry intent from Report | New Task chooser.
+   * `report` → report-up form; `create` → New Task (self for workers, full for PMs).
+   */
+  intent?: "report" | "create";
 };
 
 export type PhotoSelectionSaveIntent = "attach_task" | "project_unattached";
@@ -67,8 +79,15 @@ export type PhotoSelectionParams = {
   userId?: string;
   initialCompletionPercentage?: number;
   initialPhotos?: SelectedPhoto[];
-  returnScreen?: "CreateTask" | "UpdateProgress" | "AddComment" | "PhotoSelection";
+  returnScreen?:
+    | "CreateTask"
+    | "UpdateProgress"
+    | "AddComment"
+    | "PhotoSelection"
+    | "TaskDetail";
   actionType?: CreateTaskParams["actionType"];
+  /** Preserve Update Progress report-reply chrome across photo round-trips */
+  mode?: UpdateProgressParams["mode"];
   entityType?: "task" | "task-update" | "project" | "user";
   uploadImmediately?: boolean;
   parentTaskId?: string;
@@ -88,7 +107,7 @@ export type PhotoSelectionParams = {
   selectionRevision?: number;
   /**
    * Global camera-tab capture-first flow: after Select Photos checkmark,
-   * ask Create new task vs Update existing (not return to a pre-opened form).
+   * ask Report | New Task | Update (not return to a pre-opened form).
    */
   captureFirstFlow?: boolean;
 };
@@ -126,6 +145,7 @@ export type InAppLibraryPickerParams = {
   saveIntent?: PhotoSelectionParams["saveIntent"];
   originRouteName?: string;
   captureFirstFlow?: boolean;
+  mode?: UpdateProgressParams["mode"];
 };
 
 export type CaptureTaskPickerParams = {
@@ -153,6 +173,7 @@ export type CaptureSessionParams =
       sourceTaskId?: string;
       sourceSubTaskId?: string;
       entityType?: PhotoSelectionParams["entityType"];
+      mode?: UpdateProgressParams["mode"];
     };
 
 export type DashboardStackParamList = {

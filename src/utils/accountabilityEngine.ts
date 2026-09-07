@@ -10,7 +10,7 @@ export type ResponsibilityToken =
   | "VOID_ARCHIVED";
 
 function isPreAcceptanceStatus(status: Task["status"]): boolean {
-  return status === "new" || status === "not_started";
+  return status === "new" || status === "not_started" || status === "reported";
 }
 
 function isAssignedToUser(task: Task, currentUserId: string): boolean {
@@ -41,7 +41,8 @@ function getWorkflowPhase(task: Task): WorkflowPhase | null {
     task.status === "approved" ||
     task.status === "completed" ||
     task.status === "done" ||
-    task.status === "cancelled"
+    task.status === "cancelled" ||
+    task.status === "dismissed"
   ) {
     return "TERMINAL";
   }
@@ -114,7 +115,8 @@ export function isTaskOverdue(task: Task): boolean {
     task.status === "approved" ||
     task.status === "completed" ||
     task.status === "done" ||
-    task.status === "cancelled"
+    task.status === "cancelled" ||
+    task.status === "dismissed"
   ) {
     return false;
   }

@@ -16,7 +16,23 @@ jest.mock("@react-navigation/native", () => ({
     getParent: () => ({
       navigate: mockNavigate,
     }),
+    navigate: jest.fn(),
+    push: jest.fn(),
   }),
+}));
+
+jest.mock("../../navigation/captureFirstCameraFlow", () => ({
+  navigateToAddPhotosCaptureSession: jest.fn(),
+}));
+
+jest.mock("../../navigation/reportTriageSpeedDialStore", () => ({
+  useReportTriageDialExpanded: () => false,
+  setReportTriageDialExpanded: jest.fn(),
+  toggleReportTriageDialExpanded: jest.fn(),
+}));
+
+jest.mock("../../navigation/taskDetailBackNavigation", () => ({
+  navigateReportTriageAction: jest.fn(),
 }));
 
 jest.mock("../../components/primitives/container/ContainerCard", () => ({
@@ -29,9 +45,23 @@ jest.mock("../../components/primitives/container/ContainerCard", () => ({
 }));
 
 jest.mock("../../state/authStore", () => ({
-  useAuthStore: () => ({
-    user: { id: "user-1", companyId: "company-1", name: "Casey" },
-  }),
+  useAuthStore: (selector?: (state: { user: { id: string; companyId: string; name: string } }) => unknown) => {
+    const state = { user: { id: "user-1", companyId: "company-1", name: "Casey" } };
+    return typeof selector === "function" ? selector(state) : state;
+  },
+}));
+
+jest.mock("../../api/fileUploadService", () => ({
+  ...jest.requireActual("../../api/fileUploadService"),
+  uploadFileWithVerification: jest.fn(),
+}));
+
+jest.mock("../../utils/ensureCappedLocalPhoto", () => ({
+  ensureCappedLocalPhoto: jest.fn(async (photo: { uri: string }) => photo.uri),
+}));
+
+jest.mock("expo-file-system/legacy", () => ({
+  getInfoAsync: jest.fn(async () => ({ exists: true })),
 }));
 
 jest.mock("../../state/companyStore", () => ({
@@ -162,6 +192,7 @@ describe("TaskDetailScreen header regression", () => {
     approveTask: jest.fn(),
     toggleCriticalThisWeek: jest.fn(),
     cancelTask: jest.fn(),
+    replyToReport: jest.fn().mockResolvedValue(undefined),
     fetchTask: jest.fn(),
   });
 
@@ -183,12 +214,10 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(screen.getByTestId("task-detail__header_title")).toBeTruthy();
     expect(screen.getByText("LOADING...")).toBeTruthy();
-    expect(screen.getByText("Task details")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__back")).toBeTruthy();
-    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
   });
 
-  it("renders the loaded two-line header with a back arrow", () => {
+  it("renders the loaded header with a back arrow", () => {
     const onNavigateBack = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -200,10 +229,8 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(screen.getByTestId("task-detail__header_title_block")).toBeTruthy();
     expect(screen.getByTestId("brand-header-title")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__header_title_subtitle")).toBeTruthy();
-    expect(screen.getByText("Task details")).toBeTruthy();
+    expect(screen.getByText("TASK DETAILS")).toBeTruthy();
     expect(screen.getByTestId("task-detail__header_title").props.className).toContain("text-[24px]");
-    expect(screen.getByTestId("task-detail__header_title_subtitle").props.className).toContain("text-xs");
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__back")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
@@ -216,31 +243,6 @@ describe("TaskDetailScreen header regression", () => {
     expect(within(screen.getByTestId("task-detail__info_card")).getByText("Jul 10, 2026")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__back")).toBeTruthy();
-  });
-
-  it("toggles the task detail header title inline when the title text is pressed", () => {
-    mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: createAdapterOutput({
-        header: {
-          title:
-            "A very long task detail title that should expand inline when the header title text is pressed",
-        },
-      }),
-      actions: createAdapterActions(),
-    } as ReturnType<typeof useTaskDetailViewAdapter>);
-
-    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-    const headerTitle = screen.getByTestId("task-detail__header_title");
-
-    expect(headerTitle.props.numberOfLines).toBe(1);
-
-    fireEvent.press(screen.getByTestId("task-detail__header_title_pressable"));
-
-    expect(screen.getByTestId("task-detail__header_title").props.numberOfLines).toBeUndefined();
-
-    fireEvent.press(screen.getByTestId("task-detail__header_title_pressable"));
-
-    expect(screen.getByTestId("task-detail__header_title").props.numberOfLines).toBe(1);
   });
 
   it("keeps quick actions inside the bounded scroll region between the info card and lower actions", () => {
@@ -294,7 +296,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
     expect(screen.getByTestId("task-detail__workthread_scroll").props.stickyHeaderIndices).toBeUndefined();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__secondary-actions")).toBeNull();
   });
 
   it("routes reject actions to the dedicated reject flow instead of the comment flow", () => {
@@ -303,17 +305,22 @@ describe("TaskDetailScreen header regression", () => {
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
-        actionItems: [
-          {
-            id: "reject-action",
-            actionId: "reject_task",
-            label: "Reject Task",
-            icon: "close-circle",
-            isDisabled: false,
-            density: "comfortable",
-            structuralState: "ready",
-          },
-        ],
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "reject-action",
+              actionId: "reject_task",
+              label: "Reject Task",
+              icon: "close-circle",
+              isDisabled: false,
+              density: "comfortable",
+              structuralState: "ready",
+            },
+          ],
+        },
       }),
       actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
@@ -578,11 +585,11 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
+    expect(screen.queryByTestId("task-detail__secondary-actions")).toBeNull();
     expect(screen.queryByTestId("task-detail__quick-actions")).toBeNull();
-    expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
-    expect(within(secondaryActions).getByText("Edit Task Details")).toBeTruthy();
-    expect(within(secondaryActions).queryByText("Add Comment")).toBeNull();
+    expect(screen.queryByText("Other actions")).toBeNull();
+    expect(screen.queryByText("Edit Task Details")).toBeNull();
+    expect(screen.queryByText("Add Comment")).toBeNull();
     expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();
   });
 

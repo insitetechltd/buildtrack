@@ -17,6 +17,7 @@ describe("taskDelegationPermissions", () => {
       expect(areAssigneesLockedForStatus("not_started")).toBe(false);
       expect(areAssigneesLockedForStatus("rejected")).toBe(false);
       expect(areAssigneesLockedForStatus("declined")).toBe(false);
+      expect(areAssigneesLockedForStatus("reported")).toBe(false);
     });
 
     it("locks after acceptance / active work", () => {
@@ -33,6 +34,17 @@ describe("taskDelegationPermissions", () => {
         canEditTaskDelegation({
           actorUserId: "creator-1",
           isCreateFlow: true,
+        }),
+      ).toBe(true);
+    });
+
+    it("allows triage flow for a PM who did not author the report", () => {
+      expect(
+        canEditTaskDelegation({
+          actorUserId: "pm-1",
+          taskAssignedBy: "worker-1",
+          taskStatus: "reported",
+          isTriageFlow: true,
         }),
       ).toBe(true);
     });

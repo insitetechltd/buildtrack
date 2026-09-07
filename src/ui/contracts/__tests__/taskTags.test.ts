@@ -1,5 +1,6 @@
 import {
   getCustomTaskTags,
+  hasCriticalThisWeekTag,
   mergeTaskTags,
   resolvePrimaryAssigneeId,
   withCriticalThisWeekTag,
@@ -28,6 +29,12 @@ describe("taskTags (S-UX-01J)", () => {
 
   it("strips critical tag from custom tags helper", () => {
     expect(getCustomTaskTags([CRITICAL_THIS_WEEK_TAG, "site_a"])).toEqual(["site_a"]);
+  });
+
+  it("recognizes spaced Critical this week labels", () => {
+    expect(hasCriticalThisWeekTag(["Critical this week"])).toBe(true);
+    expect(hasCriticalThisWeekTag(["critical-this-week"])).toBe(true);
+    expect(getCustomTaskTags(["Critical this week", "hvac"])).toEqual(["hvac"]);
   });
 
   it("resolves primary assignee from preferred id or first assignee", () => {

@@ -79,10 +79,43 @@ describe("taskUpdateValidation", () => {
     expect(projectTaskUpdate(openTask, {}).status).toBe("new");
   });
 
+  it("allows empty assignees while status is reported (PM triage edit)", () => {
+    expect(
+      validateTaskUpdateProjection({
+        ...openTask,
+        status: "reported",
+        assignedTo: [],
+      }),
+    ).toEqual([]);
+
+    expect(() =>
+      assertValidTaskUpdate(
+        {
+          ...openTask,
+          status: "reported",
+          assignedTo: [],
+        },
+        { title: "Clarified report title" },
+      ),
+    ).not.toThrow();
+  });
+
+  it("allows empty assignees on resolved reports", () => {
+    expect(
+      validateTaskUpdateProjection({
+        ...openTask,
+        status: "resolved",
+        assignedTo: [],
+      }),
+    ).toEqual([]);
+  });
+
   it("classifies terminal vs assignee-required statuses", () => {
     expect(isTerminalTaskStatus("approved")).toBe(true);
+    expect(isTerminalTaskStatus("resolved")).toBe(true);
     expect(isTerminalTaskStatus("in_progress")).toBe(false);
     expect(taskRequiresAssignees("cancelled")).toBe(false);
+    expect(taskRequiresAssignees("reported")).toBe(false);
     expect(taskRequiresAssignees("declined")).toBe(true);
   });
 });

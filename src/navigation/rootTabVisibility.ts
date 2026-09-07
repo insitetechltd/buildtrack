@@ -1,5 +1,5 @@
 import type { ViewStyle } from "react-native";
-import { resolveTaskDetailUpdateShortcut } from "./photoShortcutRoutes";
+import { resolveReportTriageShortcut, resolveTaskDetailUpdateShortcut } from "./photoShortcutRoutes";
 
 /** Root bottom-tab chrome — shared by Camera FAB and User Management add-user FAB. */
 export const ROOT_TAB_BAR_STYLE: ViewStyle = {
@@ -7,7 +7,8 @@ export const ROOT_TAB_BAR_STYLE: ViewStyle = {
   overflow: "visible",
   paddingTop: 8,
   paddingBottom: 10,
-  borderTopColor: "#e5e7eb",
+  borderTopWidth: 0,
+  borderTopColor: "transparent",
   backgroundColor: "#ffffff",
 };
 
@@ -109,7 +110,9 @@ export function resolveTaskDetailUpdateLockState(args: {
 export function shouldHideRootSideTabsForTabState(
   tabState?: Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
 ) {
-  return Boolean(resolveTaskDetailUpdateShortcut(tabState));
+  return Boolean(
+    resolveTaskDetailUpdateShortcut(tabState) || resolveReportTriageShortcut(tabState),
+  );
 }
 
 export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
@@ -124,12 +127,35 @@ export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
   );
 }
 
+/** PM reported Task Detail uses Unified Triage Dock — hide competing root FAB/tab chrome. */
+export function shouldHideTabBarForReportTriage(
+  tabState?: Parameters<typeof resolveReportTriageShortcut>[0],
+) {
+  return Boolean(resolveReportTriageShortcut(tabState));
+}
+
+/**
+ * Approach B: Task Detail owns the dock (report reply or live progress).
+ * Hide root tab chrome whenever that dock replaces the center FAB.
+ */
+export function shouldHideTabBarForTaskDetailDock(
+  tabState?: Parameters<typeof resolveReportTriageShortcut>[0],
+) {
+  return (
+    shouldHideTabBarForReportTriage(tabState) ||
+    Boolean(resolveTaskDetailUpdateShortcut(tabState))
+  );
+}
+
 export function buildRootTabBarStyleForRoute(
   routeName?: string,
   initialRouteName?: string,
+  tabState?: Parameters<typeof resolveReportTriageShortcut>[0],
 ): ViewStyle {
   const resolvedRouteName = routeName ?? initialRouteName;
-  const shouldHideTabBar = shouldHideTabBarOnCreateTaskRoute(resolvedRouteName);
+  const shouldHideTabBar =
+    shouldHideTabBarOnCreateTaskRoute(resolvedRouteName) ||
+    shouldHideTabBarForTaskDetailDock(tabState);
 
   if (!shouldHideTabBar) {
     return ROOT_TAB_BAR_STYLE;

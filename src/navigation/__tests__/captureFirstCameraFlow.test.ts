@@ -24,6 +24,32 @@ jest.mock("../../utils/draftMediaCache", () => ({
   pinDraftMedia: jest.fn(async (uri: string) => uri),
 }));
 
+jest.mock("../../state/authStore", () => ({
+  useAuthStore: Object.assign(
+    () => ({ user: { id: "u1", companyId: "c1", role: "worker" } }),
+    {
+      getState: () => ({
+        user: { id: "u1", companyId: "c1", role: "worker" },
+      }),
+    },
+  ),
+}));
+
+jest.mock("../../utils/useTranslation", () => ({
+  getTranslations: () => ({
+    common: { cancel: "Cancel" },
+    createTask: {
+      chooserTitle: "What would you like to do?",
+      chooserReport: "↑ Report",
+      chooserUpdate: "↔ Update",
+      chooserAssign: "↓ Assign",
+      report: "Report",
+      assign: "Assign",
+      newTask: "New Task",
+    },
+  }),
+}));
+
 describe("captureFirstCameraFlow", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -131,7 +157,16 @@ describe("captureFirstCameraFlow", () => {
       text: string;
       onPress?: () => void;
     }>;
-    buttons.find((b) => b.text === "Create new task")?.onPress?.();
+    expect(buttons.map((b) => b.text)).toEqual(
+      expect.arrayContaining(["Cancel", "↑ Report", "↓ Assign", "↔ Update"]),
+    );
+    expect(buttons.map((b) => b.text)).toEqual([
+      "↑ Report",
+      "↔ Update",
+      "↓ Assign",
+      "Cancel",
+    ]);
+    buttons.find((b) => b.text === "↓ Assign")?.onPress?.();
 
     expect(dispatch).toHaveBeenCalledWith(
       CommonActions.reset({
@@ -149,6 +184,7 @@ describe("captureFirstCameraFlow", () => {
             params: expect.objectContaining({
               selectedPhotos: photos,
               captureFirstFlow: true,
+              intent: "create",
             }),
           },
         ],
@@ -169,7 +205,7 @@ describe("captureFirstCameraFlow", () => {
       text: string;
       onPress?: () => void;
     }>;
-    buttons.find((b) => b.text === "Update existing task")?.onPress?.();
+    buttons.find((b) => b.text === "↔ Update")?.onPress?.();
 
     expect(dispatch).toHaveBeenCalledWith(
       CommonActions.reset({
@@ -187,6 +223,32 @@ describe("captureFirstCameraFlow", () => {
             params: { selectedPhotos: photos },
           },
         ],
+      }),
+    );
+  });
+
+  it("promptCaptureFirstDestination Report opens CreateTaskMain with intent report", () => {
+    const dispatch = jest.fn();
+    const photos = [{ uri: "file://x.jpg", fileName: "x.jpg", isAnnotated: false }];
+
+    promptCaptureFirstDestination({ navigation: { dispatch }, photos });
+
+    const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
+    buttons.find((b) => b.text === "↑ Report")?.onPress?.();
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          routes: expect.arrayContaining([
+            expect.objectContaining({
+              name: "CreateTaskMain",
+              params: expect.objectContaining({ intent: "report" }),
+            }),
+          ]),
+        }),
       }),
     );
   });

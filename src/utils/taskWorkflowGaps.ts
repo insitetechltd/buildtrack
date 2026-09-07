@@ -28,6 +28,7 @@ const GAP_PRIMARY_RANK: Record<WorkflowGapCode, number> = {
 };
 
 const INTENDED_OPEN: ReadonlySet<TaskStatus> = new Set([
+  "reported",
   "new",
   "declined",
   "accepted",
@@ -41,6 +42,7 @@ const TERMINAL: ReadonlySet<TaskStatus> = new Set([
   "completed",
   "done",
   "cancelled",
+  "dismissed",
 ]);
 
 /** Legacy aliases that are not intended open/terminal in the current machine. */
@@ -114,7 +116,8 @@ export function classifyTaskWorkflowGaps(
   } else if (
     emptyAssignees &&
     INTENDED_OPEN.has(status) &&
-    !WIP_STATUSES.has(status)
+    !WIP_STATUSES.has(status) &&
+    status !== "reported"
   ) {
     // new / declined / submitted_for_review with no assignees
     codes.push("GAP_UNASSIGNED_OPEN");

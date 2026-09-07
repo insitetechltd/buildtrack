@@ -7,20 +7,29 @@ export function getTaskTags(tags?: string[] | null): string[] {
 }
 
 export function hasCriticalThisWeekTag(tags?: string[] | null): boolean {
-  return getTaskTags(tags).includes(CRITICAL_THIS_WEEK_TAG);
+  return getTaskTags(tags).some((tag) => {
+    const normalized = tag.toLowerCase().replace(/[\s-]+/g, "_");
+    return (
+      normalized === CRITICAL_THIS_WEEK_TAG ||
+      normalized === "critical_this_week" ||
+      tag.toLowerCase() === "critical this week"
+    );
+  });
 }
 
 export function withCriticalThisWeekTag(
   tags: string[] | undefined | null,
   isEnabled: boolean,
 ): string[] {
-  const normalizedTags = getTaskTags(tags).filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG);
+  const normalizedTags = getTaskTags(tags).filter(
+    (tag) => !hasCriticalThisWeekTag([tag]),
+  );
   return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
 }
 
 /** Custom tags only (excludes system critical_this_week). */
 export function getCustomTaskTags(tags?: string[] | null): string[] {
-  return getTaskTags(tags).filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG);
+  return getTaskTags(tags).filter((tag) => !hasCriticalThisWeekTag([tag]));
 }
 
 export function mergeTaskTags(args: {

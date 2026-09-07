@@ -390,6 +390,7 @@ export function useProfileViewAdapter(
         freshnessLabel: hasUsableData ? "Ready" : "Unavailable",
       },
       profileCard: {
+        userId: user?.id,
         initial: user?.name?.charAt(0)?.toUpperCase() || "?",
         name: user?.name || "",
         roleLabel: toRoleLabel(user?.systemPermission || user?.role),

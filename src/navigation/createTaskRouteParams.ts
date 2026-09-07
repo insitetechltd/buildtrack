@@ -41,6 +41,9 @@ export function resolveCreateTaskEntryParams(
     postCaptureDefault: undefined,
     selectedPhotos: undefined,
     uploadedPhotoUrls: undefined,
+    captureFirstFlow: undefined,
+    /** Preserve peer intent across clearForm entry. */
+    intent: routeParams.intent,
     clearForm: true,
     _timestamp: routeParams._timestamp,
   };
@@ -67,6 +70,8 @@ export function buildCreateTaskPhotoReturnParams({
     sourceScreen: routeParams?.sourceScreen,
     cameraLaunchContext: routeParams?.cameraLaunchContext,
     postCaptureDefault: routeParams?.postCaptureDefault,
+    captureFirstFlow: routeParams?.captureFirstFlow,
+    intent: routeParams?.intent,
     selectedPhotos,
     uploadedPhotoUrls,
     clearForm: undefined,

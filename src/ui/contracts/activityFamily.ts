@@ -4,6 +4,10 @@
  * 2. Post (Recent Activity) — change leads + task name
  * 3. Detail (Work thread) — change leads + status/% + rail
  */
+import {
+  getUserAvatarInitial,
+} from "@/utils/userAvatarIdentity";
+
 export const ACTIVITY_FAMILY = {
   avatarBg: "#0D6E87",
   avatarSize: 32,
@@ -28,9 +32,5 @@ export const ACTIVITY_FAMILY = {
 } as const;
 
 export function activityActorInitial(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) {
-    return "?";
-  }
-  return trimmed.charAt(0).toUpperCase();
+  return getUserAvatarInitial(name);
 }

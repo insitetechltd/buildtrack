@@ -14,10 +14,12 @@ import {
 } from "../api/supabase";
 import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
-import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
-import { isCompletedLifecycleStatus } from "../utils/taskLifecycleStatus";
+import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType, TaskCategory } from "../types/buildtrack";
+import { isArchivableLifecycleStatus } from "../utils/taskLifecycleStatus";
+import { isManagerOrAdmin, type User } from "../types/buildtrack";
 import {
   assertValidTaskCreateInput,
+  isCreatorAmongAssignees,
   resolveClientTaskStatus,
   resolveInitialTaskCreateStatus,
 } from "../utils/taskCreateValidation";
@@ -162,7 +164,11 @@ interface TaskStore {
   fetchProjectContainers: (projectId: string) => Promise<ProjectContainerRecord[]>;
   
   // Task management
-  createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">) => Promise<string>;
+  createTask: (
+    task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage"> & {
+      status?: TaskStatus;
+    },
+  ) => Promise<string>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   ensureProjectLocation: (projectId: string, label: string, createdBy?: string) => Promise<void>;
   ensureProjectContainer: (
@@ -174,6 +180,24 @@ interface TaskStore {
   deleteTaskById: (taskId: string, userId: string) => Promise<void>; // Soft delete task (only assigner can delete, maintains audit trail)
   cancelTask: (taskId: string, userId: string) => Promise<void>; // Cancel task (only creator can cancel)
   archiveTask: (taskId: string, userId: string) => Promise<void>; // Archive task (both assigner and assignee can archive when approved)
+  triageTask: (
+    taskId: string,
+    payload: {
+      assignedTo: string[];
+      primaryAssigneeId?: string;
+      delegatedUserIds?: string[];
+      dueDate?: string;
+      priority?: Priority;
+      category?: TaskCategory;
+      billingStatus?: BillingStatus;
+      locationOnSite?: string;
+    },
+    userId: string,
+  ) => Promise<void>;
+  /** Close report without promotion; keeps row for audit (status resolved). */
+  resolveReport: (taskId: string, userId: string, note?: string) => Promise<void>;
+  /** @deprecated Prefer resolveReport */
+  dismissIssue: (taskId: string, userId: string, reason?: string) => Promise<void>;
   
   // Task assignment
   assignTask: (taskId: string, userIds: string[]) => Promise<void>;
@@ -186,9 +210,12 @@ interface TaskStore {
   
   // Review workflow
   submitTaskForReview: (taskId: string) => Promise<void>;
+  /** Assignee withdraws submission → back to in_progress (still at 100%). */
+  cancelTaskReviewSubmission: (taskId: string) => Promise<void>;
   acceptTaskCompletion: (taskId: string, userId: string) => Promise<void>;
   rejectTaskCompletion: (taskId: string, userId: string, reason: string, photos?: string[]) => Promise<void>;
   submitSubTaskForReview: (taskId: string, subTaskId: string) => Promise<void>;
+  cancelSubTaskReviewSubmission: (taskId: string, subTaskId: string) => Promise<void>;
   acceptSubTaskCompletion: (taskId: string, subTaskId: string, userId: string) => Promise<void>;
   rejectSubTaskCompletion: (taskId: string, subTaskId: string, userId: string, reason: string, photos?: string[]) => Promise<void>;
   
@@ -1241,17 +1268,21 @@ export const useTaskStore = create<TaskStore>()(
 
       // CREATE task in Supabase
       createTask: async (taskData) => {
+        const explicitStatus = (taskData as { status?: TaskStatus }).status;
+        const initialStatus =
+          explicitStatus ||
+          resolveInitialTaskCreateStatus(
+            taskData.assignedBy,
+            taskData.assignedTo,
+          );
+
         assertValidTaskCreateInput({
           title: taskData.title,
           projectId: taskData.projectId,
           assignedBy: taskData.assignedBy,
           assignedTo: taskData.assignedTo,
+          status: initialStatus,
         });
-
-        const initialStatus = resolveInitialTaskCreateStatus(
-          taskData.assignedBy,
-          taskData.assignedTo,
-        );
 
         if (!supabase) {
           // Fallback to local creation
@@ -1284,6 +1315,7 @@ export const useTaskStore = create<TaskStore>()(
             assigned_to: taskData.assignedTo,
             assigned_by: taskData.assignedBy,
             billing_status: taskData.billingStatus || "non_billable",
+            status: initialStatus,
           });
 
           const fullInsertPayload = buildSupabaseTaskInsertPayload(
@@ -1346,22 +1378,31 @@ export const useTaskStore = create<TaskStore>()(
             title: taskData.title,
             assignedTo: taskData.assignedTo,
             assignedBy: taskData.assignedBy,
+            // Report (and create) evidence lives on task.attachments; mirror onto the
+            // origin activity so the thread can render photos without a separate fallback.
+            photos: Array.isArray(taskData.attachments) ? taskData.attachments : [],
           };
 
           const creationTimestamp = new Date().toISOString();
           
+          const isIssueReport = initialStatus === "reported";
+          const activityDescription = isIssueReport
+            ? `Issue reported by ${creatorName}`
+            : `Task created by ${creatorName}`;
+          const activityStatus = isIssueReport ? "reported" : "new";
+
           // Create creation activity
           const { data: creationActivity, error: creationError } = await supabase
             .from('task_activities')
             .insert({
               task_id: data.id,
               user_id: taskData.assignedBy,
-              activity_type: 'creation' as ActivityType,
+              activity_type: (isIssueReport ? 'issue_reported' : 'creation') as ActivityType,
               timestamp: creationTimestamp,
               data: creationData,
-              description: `Task created by ${creatorName}`,
+              description: activityDescription,
               completion_percentage: 0,
-              status: "new",
+              status: activityStatus,
             })
             .select()
             .single();
@@ -2180,8 +2221,8 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      // ARCHIVE: hide signed-off work from default lists (Filters → Archived).
-      // Not cancel/delete. Only assigner or assignee, and only after approve/complete.
+      // ARCHIVE: hide signed-off / resolved work from default lists (Filters → Archived).
+      // Not cancel/delete. Assigner, assignee, or manager/admin after approve/complete/resolve.
       archiveTask: async (taskId, userId) => {
         if (!supabase) {
           console.error('Supabase not configured');
@@ -2201,16 +2242,37 @@ export const useTaskStore = create<TaskStore>()(
             throw new Error('Cancelled tasks cannot be archived');
           }
 
-          if (!isCompletedLifecycleStatus(task.status)) {
-            throw new Error('Only completed tasks can be archived');
+          if (!isArchivableLifecycleStatus(task.status)) {
+            throw new Error('Only completed or resolved tasks can be archived');
           }
 
           // Check if user is assigner or assignee
           const isAssigner = task.assignedBy === userId;
           const isAssignee = Array.isArray(task.assignedTo) && task.assignedTo.includes(userId);
-          
-          if (!isAssigner && !isAssignee) {
-            throw new Error('Only the task assigner or assignee can archive this task');
+
+          let archivingUserRow: { name?: string; role?: string; system_permission?: string } | null =
+            null;
+          try {
+            const { data } = await supabase
+              .from('users')
+              .select('name, role, system_permission')
+              .eq('id', userId)
+              .single();
+            archivingUserRow = data;
+          } catch {
+            archivingUserRow = null;
+          }
+
+          const archiverAsUser = {
+            id: userId,
+            name: archivingUserRow?.name || 'Unknown User',
+            role: archivingUserRow?.role,
+            systemPermission: archivingUserRow?.system_permission,
+          } as User;
+          const canArchiveAsManager = isManagerOrAdmin(archiverAsUser);
+
+          if (!isAssigner && !isAssignee && !canArchiveAsManager) {
+            throw new Error('Only the task assigner, assignee, or a manager can archive this task');
           }
 
           // Check if task is already archived
@@ -2219,18 +2281,7 @@ export const useTaskStore = create<TaskStore>()(
           }
 
           // Get user who is archiving to include their name in activity
-          const archivingUser = await (async () => {
-            try {
-              const { data } = await supabase
-                .from('users')
-                .select('name')
-                .eq('id', userId)
-                .single();
-              return data?.name || 'Unknown User';
-            } catch {
-              return 'Unknown User';
-            }
-          })();
+          const archivingUser = archiverAsUser.name;
 
           const archivedAt = new Date().toISOString();
 
@@ -2287,6 +2338,177 @@ export const useTaskStore = create<TaskStore>()(
           });
           throw error;
         }
+      },
+
+      // TRIAGE reported issue to formal task
+      triageTask: async (taskId, payload, userId) => {
+        if (!supabase) {
+          throw new Error('Supabase not configured');
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          const task = get().tasks.find(t => t.id === taskId);
+          if (!task) {
+            throw new Error('Task not found');
+          }
+
+          const isCreatorAssigned = isCreatorAmongAssignees(userId, payload.assignedTo);
+          const nextStatus: TaskStatus = isCreatorAssigned ? 'in_progress' : 'new';
+          const triagingUser = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          const updatePayload: Record<string, unknown> = {
+            status: nextStatus,
+            current_status: nextStatus,
+            assigned_to: payload.assignedTo,
+            primary_assignee_id: payload.primaryAssigneeId || null,
+            delegated_user_ids: payload.delegatedUserIds || null,
+            // Formal task starts at 0% — reports often carry null completion.
+            completion_percentage: 0,
+            updated_at: new Date().toISOString(),
+          };
+          if (payload.dueDate) updatePayload.due_date = payload.dueDate;
+          if (payload.priority) updatePayload.priority = payload.priority;
+          if (payload.category) updatePayload.category = payload.category;
+          if (payload.billingStatus) updatePayload.billing_status = payload.billingStatus;
+          if (payload.locationOnSite) updatePayload.location_on_site = payload.locationOnSite;
+
+          const { error } = await supabase
+            .from('tasks')
+            .update(updatePayload)
+            .eq('id', taskId);
+
+          if (error) throw error;
+
+          const activityTimestamp = new Date().toISOString();
+          await supabase
+            .from('task_activities')
+            .insert({
+              task_id: taskId,
+              user_id: userId,
+              activity_type: 'triaged_to_task' as ActivityType,
+              timestamp: activityTimestamp,
+              data: {
+                fromStatus: task.status,
+                toStatus: nextStatus,
+                assignedTo: payload.assignedTo,
+                reason: `Issue triaged and assigned by ${triagingUser}`,
+              },
+              description: `Issue triaged and assigned by ${triagingUser}`,
+              completion_percentage: 0,
+              status: nextStatus,
+            });
+
+          const updatedTask: Task = {
+            ...task,
+            status: nextStatus,
+            completionPercentage: 0,
+            assignedTo: payload.assignedTo,
+            primaryAssigneeId: payload.primaryAssigneeId || undefined,
+            delegatedUserIds: payload.delegatedUserIds || undefined,
+            dueDate: payload.dueDate || task.dueDate,
+            priority: payload.priority || task.priority,
+            category: payload.category || task.category,
+            billingStatus: payload.billingStatus || task.billingStatus,
+            locationOnSite: payload.locationOnSite || task.locationOnSite,
+            updatedAt: activityTimestamp,
+          };
+
+          get().mergeTask(updatedTask);
+          set({ isLoading: false });
+        } catch (error: any) {
+          console.error('Error triaging issue:', error);
+          set({ error: error.message, isLoading: false });
+          throw error;
+        }
+      },
+
+      // Resolve reported issue without promotion (keep row + audit trail)
+      resolveReport: async (taskId, userId, note) => {
+        if (!supabase) {
+          throw new Error('Supabase not configured');
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          const task = get().tasks.find(t => t.id === taskId);
+          if (!task) {
+            throw new Error('Task not found');
+          }
+
+          const resolvingUser = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          const resolveNote = note?.trim() || 'Resolved without reply';
+          const resolvedAt = new Date().toISOString();
+
+          const { error } = await supabase
+            .from('tasks')
+            .update({
+              status: 'resolved',
+              current_status: 'resolved',
+              updated_at: resolvedAt,
+            })
+            .eq('id', taskId);
+
+          if (error) throw error;
+
+          await supabase
+            .from('task_activities')
+            .insert({
+              task_id: taskId,
+              user_id: userId,
+              activity_type: 'issue_resolved' as ActivityType,
+              timestamp: resolvedAt,
+              data: {
+                fromStatus: task.status,
+                toStatus: 'resolved',
+                reason: resolveNote,
+              },
+              description: `Issue resolved by ${resolvingUser}: ${resolveNote}`,
+              completion_percentage: 0,
+              status: 'resolved',
+            });
+
+          const updatedTask: Task = {
+            ...task,
+            status: 'resolved',
+            updatedAt: resolvedAt,
+          };
+
+          get().mergeTask(updatedTask);
+          set({ isLoading: false });
+        } catch (error: any) {
+          console.error('Error resolving report:', error);
+          set({ error: error.message, isLoading: false });
+          throw error;
+        }
+      },
+
+      // Legacy alias — prefer resolveReport (does not delete the row)
+      dismissIssue: async (taskId, userId, reason) => {
+        await get().resolveReport(taskId, userId, reason);
       },
 
       // Task assignment methods
@@ -2554,6 +2776,53 @@ export const useTaskStore = create<TaskStore>()(
           });
       },
 
+      cancelTaskReviewSubmission: async (taskId) => {
+        const task = get().tasks.find((t) => t.id === taskId);
+        if (!task) {
+          throw new Error("Task not found");
+        }
+        if (task.status !== "submitted_for_review") {
+          throw new Error("Task is not awaiting review");
+        }
+
+        const actorUserId = task.acceptedBy || task.assignedTo?.[0] || task.assignedBy;
+        const actorName = await (async () => {
+          try {
+            if (!supabase || !actorUserId) return "Unknown User";
+            const { data } = await supabase
+              .from("users")
+              .select("name")
+              .eq("id", actorUserId)
+              .single();
+            return data?.name || "Unknown User";
+          } catch {
+            return "Unknown User";
+          }
+        })();
+
+        await get().updateTask(taskId, {
+          status: "in_progress" as TaskStatus,
+          completionPercentage: task.completionPercentage || 100,
+        });
+
+        if (!supabase) throw new Error("Supabase not configured");
+
+        await supabase.from("task_activities").insert({
+          task_id: taskId,
+          user_id: actorUserId,
+          activity_type: "status_change" as ActivityType,
+          timestamp: new Date().toISOString(),
+          data: {
+            fromStatus: "submitted_for_review",
+            toStatus: "in_progress",
+            reason: "review_cancelled",
+          },
+          description: `Review submission cancelled by ${actorName}`,
+          completion_percentage: task.completionPercentage || 100,
+          status: "in_progress",
+        });
+      },
+
       acceptTaskCompletion: async (taskId, userId) => {
         const task = get().tasks.find(t => t.id === taskId);
         if (!task) {
@@ -2660,6 +2929,21 @@ export const useTaskStore = create<TaskStore>()(
       submitSubTaskForReview: async (taskId, subTaskId) => {
         await get().updateSubTask(taskId, subTaskId, {
           status: "submitted_for_review" as TaskStatus
+        });
+      },
+
+      cancelSubTaskReviewSubmission: async (taskId, subTaskId) => {
+        const task = get().tasks.find((t) => t.id === taskId);
+        const subTask = task?.subTasks?.find((s) => s.id === subTaskId);
+        if (!subTask) {
+          throw new Error("Subtask not found");
+        }
+        if (subTask.status !== "submitted_for_review") {
+          throw new Error("Subtask is not awaiting review");
+        }
+        await get().updateSubTask(taskId, subTaskId, {
+          status: "in_progress" as TaskStatus,
+          completionPercentage: subTask.completionPercentage || 100,
         });
       },
 

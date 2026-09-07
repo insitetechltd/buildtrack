@@ -76,6 +76,26 @@ describe("ActivityStyleRowCard", () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it("fills available height when fillHeight is set for grid cells", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:task-fill"
+        variant="task"
+        fillHeight
+        title="Grid cell task"
+        subtitle="North Tower"
+        metaLabel="Task activity"
+        badgeLabel="Doing"
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:task-fill")).toHaveStyle({ height: 176 });
+    expect(screen.getByTestId("shared-card:task-fill:variant-task")).toHaveStyle({
+      height: 176,
+      minHeight: 176,
+    });
+  });
+
   it("renders a labeled floating top-left badge when provided", () => {
     const screen = render(
       <ActivityStyleRowCard

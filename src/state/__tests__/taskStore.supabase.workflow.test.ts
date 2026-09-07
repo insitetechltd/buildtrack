@@ -698,4 +698,69 @@ describe('taskStore.supabase workflow tests', () => {
       }),
     );
   });
+
+  it('sets completion_percentage to 0 when triaging a reported issue into a task', async () => {
+    const updateEq = jest.fn().mockResolvedValue({ error: null });
+    const updateMock = jest.fn().mockReturnValue({ eq: updateEq });
+    const activityInsert = jest.fn().mockResolvedValue({ error: null });
+
+    useTaskStore.setState({
+      tasks: [
+        createTaskState({
+          status: 'reported',
+          completionPercentage: undefined as unknown as number,
+          assignedTo: [],
+          assignedBy: workerId,
+        }),
+      ],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { name: 'Sam PM' },
+              error: null,
+            }),
+          })),
+        };
+      }
+      if (table === 'tasks') {
+        return { update: updateMock };
+      }
+      if (table === 'task_activities') {
+        return { insert: activityInsert };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.triageTask(
+        'task-123',
+        {
+          assignedTo: [workerId],
+          primaryAssigneeId: workerId,
+        },
+        managerId,
+      );
+    });
+
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        completion_percentage: 0,
+        status: 'new',
+      }),
+    );
+    expect(activityInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activity_type: 'triaged_to_task',
+        completion_percentage: 0,
+      }),
+    );
+    expect(result.current.tasks[0].completionPercentage).toBe(0);
+  });
 });

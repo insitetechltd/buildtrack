@@ -4,6 +4,7 @@ import {
   exitUpdateProgressScreen,
   returnToPhotoSelectionFlat,
   returnToTaskDetailAfterUpdateProgress,
+  returnToTaskDetailWithSelectedPhotos,
 } from "../photoFlowNavigation";
 
 describe("photoFlowNavigation", () => {
@@ -295,5 +296,51 @@ describe("photoFlowNavigation", () => {
       }),
     );
     expect(navigate).toHaveBeenCalledWith("TaskDetail", { taskId: "task-2" });
+  });
+
+  it("returnToTaskDetailWithSelectedPhotos pops CaptureSession+PhotoSelection and setParams drafts", () => {
+    jest.useFakeTimers();
+    const dispatch = jest.fn();
+    const navigate = jest.fn();
+    const photos = [{ uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false }];
+
+    returnToTaskDetailWithSelectedPhotos(
+      {
+        getState: () => ({
+          index: 2,
+          routes: [
+            { key: "detail", name: "TaskDetail" },
+            { key: "capture", name: "CaptureSession" },
+            { key: "select", name: "PhotoSelection" },
+          ],
+        }),
+        dispatch,
+        goBack: jest.fn(),
+        navigate,
+      },
+      { taskId: "task-9", selectedPhotos: photos },
+    );
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 2 }),
+      }),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(150);
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "detail",
+        payload: expect.objectContaining({
+          params: expect.objectContaining({
+            taskId: "task-9",
+            selectedPhotos: photos,
+          }),
+        }),
+      }),
+    );
+    jest.useRealTimers();
   });
 });

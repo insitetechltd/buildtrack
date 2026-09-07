@@ -23,6 +23,7 @@ import {
 } from "@/api/fileUploadService";
 import {
   filterTasksForViewer,
+  filterViewerProjectIdsForCompany,
   isProjectScopeReady,
   resolveTaskSelectRoleBand,
 } from "@/ui/contracts/taskVisibilityPermissions";
@@ -40,6 +41,7 @@ import {
 } from "@/utils/localTaskDraftStore";
 import { useTranslation } from "@/utils/useTranslation";
 import { reconcileUnrecoverableWipTasks } from "@/utils/reconcileUnrecoverableWipTasks";
+import { endOfLocalWeek, startOfLocalWeek } from "@/utils/localWeek";
 
 function formatProjectStatusLabel(status: Project["status"] | string): string {
   const normalized = status === "on_hold" ? "active" : status;
@@ -95,22 +97,6 @@ function formatWeekdayLabel(date: Date): string {
   return date.toLocaleDateString("en-US", {
     weekday: "long",
   });
-}
-
-function startOfLocalWeek(date: Date): Date {
-  const start = new Date(date);
-  const currentDay = start.getDay();
-  const daysFromMonday = (currentDay + 6) % 7;
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - daysFromMonday);
-  return start;
-}
-
-function endOfLocalWeek(date: Date): Date {
-  const end = startOfLocalWeek(date);
-  end.setDate(end.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
 }
 
 function formatStatusLabel(status: string): string {
@@ -323,7 +309,28 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     }, [refreshLocalDrafts]),
   );
 
-  const projects = user ? projectStore.getProjectsByUser(user.id) : [];
+  const projectsById = useMemo(() => {
+    const byId: Record<string, { id: string; companyId?: string | null }> = {};
+    for (const project of projectStore.projects ?? []) {
+      byId[project.id] = { id: project.id, companyId: project.companyId };
+    }
+    return byId;
+  }, [projectStore.projects]);
+  const viewerProjectIds = useMemo(() => {
+    const raw = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
+    return filterViewerProjectIdsForCompany({
+      viewerCompanyId: user?.companyId,
+      projectIds: raw,
+      projectsById,
+    });
+  }, [projectStore.projectIdsByUser, projectsById, user]);
+  const projects = useMemo(() => {
+    if (!user) {
+      return [];
+    }
+    const allowed = new Set(viewerProjectIds);
+    return projectStore.getProjectsByUser(user.id).filter((project) => allowed.has(project.id));
+  }, [projectStore, user, viewerProjectIds]);
 
   // Keep filter store aligned with Activity display (single-project auto-select).
   useEffect(() => {
@@ -335,16 +342,8 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       return;
     }
     void setSelectedProject(onlyProjectId, currentUserId);
-  }, [currentUserId, projects, selectedProjectId, setSelectedProject]);
+  }, [currentUserId, projects.length, projects[0]?.id, selectedProjectId, setSelectedProject]);
 
-  const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
-  const projectsById = useMemo(() => {
-    const byId: Record<string, { id: string; companyId?: string | null }> = {};
-    for (const project of projectStore.projects ?? []) {
-      byId[project.id] = { id: project.id, companyId: project.companyId };
-    }
-    return byId;
-  }, [projectStore.projects]);
   const projectScopeReady = useMemo(
     () =>
       isProjectScopeReady({
@@ -598,6 +597,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     const mappedActivityItems: DashboardActivityItem[] = activityFeedRows.map((row) => {
       let previewPhotoUris: string[] = [];
       let actorLabel: string | undefined;
+      let actorUserId: string | undefined;
 
       if (row.taskId.startsWith("project:")) {
         const batchId = row.id.replace(/^unattached-batch-/, "");
@@ -609,9 +609,8 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         previewPhotoUris = (batch?.photoUrls ?? [])
           .map(resolveImageUri)
           .filter((value): value is string => Boolean(value));
-        actorLabel = batch?.userId
-          ? getUserById(batch.userId)?.name
-          : undefined;
+        actorUserId = batch?.userId;
+        actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
       } else {
         const task = taskById.get(row.taskId);
         if (task) {
@@ -623,8 +622,11 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
             : row.id.startsWith("activity-task:")
               ? collectAttachmentPhotoUris(task)
               : [];
-          const actorUserId = update?.userId ?? task.assignedBy;
-          actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
+          const resolvedActorUserId = update?.userId ?? task.assignedBy;
+          actorUserId = resolvedActorUserId;
+          actorLabel = resolvedActorUserId
+            ? getUserById(resolvedActorUserId)?.name
+            : undefined;
         }
       }
 
@@ -640,6 +642,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         previewPhotoUri,
         previewPhotoUris: previewPhotoUris.length > 0 ? previewPhotoUris : undefined,
         actorLabel,
+        actorUserId,
         density: "standard" as const,
         structuralState,
       };

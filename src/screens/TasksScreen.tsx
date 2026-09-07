@@ -1,11 +1,20 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ArchiveConfirmSheet from "@/components/ArchiveConfirmSheet";
-import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
+import ActivityStyleRowCard, {
+  TABLET_RAIL_CARD_HEIGHT,
+} from "@/components/cards/ActivityStyleRowCard";
 import TasksFiltersBottomSheet from "@/components/tasks/TasksFiltersBottomSheet";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TextField from "@/components/primitives/input/TextField";
@@ -13,6 +22,7 @@ import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import type { CreateTaskParams } from "@/navigation/navigationTypes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
 import { usePullToRefresh } from "@/utils/usePullToRefresh";
+import { useTabletCardGridLayout } from "@/utils/useTabletCardGridLayout";
 import { cn } from "@/utils/cn";
 
 interface TasksScreenProps {
@@ -120,6 +130,9 @@ function getActiveChipClasses(chipId: "queue" | "status" | "overdueWindow", chip
 }
 
 export default function TasksScreen(props: TasksScreenProps) {
+  const { columnCount: numColumns, isGrid, itemWidth, gap: GRID_GAP } =
+    useTabletCardGridLayout();
+
   const { output, searchInput, setSearchQuery, visibility, actions } = useTasksViewAdapter({
     onNavigateToTaskDetail: props.onNavigateToTaskDetail,
   });
@@ -228,7 +241,7 @@ export default function TasksScreen(props: TasksScreenProps) {
 
   return (
     <>
-    <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-canvas dark:bg-canvas-dark" edges={["left", "right", "bottom"]}>
+    <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-canvas dark:bg-canvas-dark" edges={["left", "right"]}>
         <AppScreenHeader
           title="Tasks"
           titleNode={<BrandHeaderTitle subtitle="Tasks" />}
@@ -339,72 +352,105 @@ export default function TasksScreen(props: TasksScreenProps) {
           }
         >
           {output.taskRowItems.length > 0 ? (
-            output.taskRowItems.map((row) => (
-              <View
-                key={row.taskId}
-                testID={`tasks-screen__row_wrapper_${row.taskId}`}
-                className={cn(
-                  "mb-3",
-                  row.indentationLevel === 1 ? "ml-6" : row.indentationLevel === 2 ? "ml-10" : "",
-                )}
-              >
-                <Swipeable
-                  testID={`tasks-screen__row_${row.taskId}:swipeable`}
-                  enabled={Boolean(row.canShowTaskUpdateAction || row.canShowArchiveAction)}
-                  overshootLeft={false}
-                  overshootRight={false}
-                  activeOffsetX={[-20, 20]}
-                  failOffsetY={[-12, 12]}
-                  onSwipeableOpenStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
-                  onSwipeableCloseStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
-                  onSwipeableWillOpen={() => setTaskSwipeBlockState(row.taskId, "active")}
-                  onSwipeableClose={() => setTaskSwipeBlockState(row.taskId, "dismissed")}
-                  renderRightActions={
-                    row.canShowArchiveAction
-                      ? () => (
-                          <SwipeActionButton
-                            testID={`tasks-screen__row_${row.taskId}:archive-action`}
-                            icon="archive-outline"
-                            align="right"
-                            tone="destructive"
-                            onPress={() => handleArchivePress(row.taskId)}
-                          />
-                        )
-                      : row.canShowTaskUpdateAction
-                      ? () => (
-                          <SwipeActionButton
-                            testID={`tasks-screen__row_${row.taskId}:update-action`}
-                            icon="camera-outline"
-                            align="right"
-                            onPress={() => handleTaskUpdatePress(row.taskId)}
-                          />
-                        )
+            <View
+              style={
+                isGrid
+                  ? {
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: GRID_GAP,
+                      alignItems: "stretch",
+                    }
+                  : undefined
+              }
+            >
+              {output.taskRowItems.map((row) => (
+                <View
+                  key={row.taskId}
+                  testID={`tasks-screen__row_wrapper_${row.taskId}`}
+                  style={
+                    itemWidth
+                      ? { width: itemWidth, height: TABLET_RAIL_CARD_HEIGHT }
                       : undefined
                   }
+                  className={cn(
+                    numColumns === 1 ? "mb-3" : "",
+                    numColumns === 1
+                      ? row.indentationLevel === 1
+                        ? "ml-6"
+                        : row.indentationLevel === 2
+                          ? "ml-10"
+                          : ""
+                      : "",
+                  )}
                 >
-                  <ActivityStyleRowCard
-                    testID={`tasks-screen__row_${row.taskId}`}
-                    variant="task"
-                    title={row.title}
-                    subtitle={row.contextLine ?? row.projectName}
-                    metaLabel={row.latestUpdateLabel ?? "Task activity"}
-                    badgeLabel={row.statusLabel}
-                    imageUri={row.primaryPhotoUri}
-                    topLeftMarker={
-                      row.isOverdue ? (
-                        <View
-                          testID={`tasks-screen__row_${row.taskId}:overdue-badge`}
-                          className="rounded-full bg-red-500 px-3 py-1.5"
-                        >
-                          <Text className="text-sm font-semibold text-white">Overdue</Text>
-                        </View>
-                      ) : undefined
+                  <Swipeable
+                    testID={`tasks-screen__row_${row.taskId}:swipeable`}
+                    enabled={Boolean(row.canShowTaskUpdateAction || row.canShowArchiveAction)}
+                    overshootLeft={false}
+                    overshootRight={false}
+                    activeOffsetX={[-20, 20]}
+                    failOffsetY={[-12, 12]}
+                    containerStyle={isGrid ? { height: TABLET_RAIL_CARD_HEIGHT } : undefined}
+                    childrenContainerStyle={isGrid ? { height: TABLET_RAIL_CARD_HEIGHT } : undefined}
+                    onSwipeableOpenStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
+                    onSwipeableCloseStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
+                    onSwipeableWillOpen={() => setTaskSwipeBlockState(row.taskId, "active")}
+                    onSwipeableClose={() => setTaskSwipeBlockState(row.taskId, "dismissed")}
+                    renderRightActions={
+                      row.canShowArchiveAction
+                        ? () => (
+                            <SwipeActionButton
+                              testID={`tasks-screen__row_${row.taskId}:archive-action`}
+                              icon="archive-outline"
+                              align="right"
+                              tone="destructive"
+                              onPress={() => handleArchivePress(row.taskId)}
+                            />
+                          )
+                        : row.canShowTaskUpdateAction
+                        ? () => (
+                            <SwipeActionButton
+                              testID={`tasks-screen__row_${row.taskId}:update-action`}
+                              icon="camera-outline"
+                              align="right"
+                              onPress={() => handleTaskUpdatePress(row.taskId)}
+                            />
+                          )
+                        : undefined
                     }
-                    onPress={row.onPress ? () => handleRowPress(row.taskId, row.onPress) : undefined}
-                  />
-                </Swipeable>
-              </View>
-            ))
+                  >
+                    <ActivityStyleRowCard
+                      testID={`tasks-screen__row_${row.taskId}`}
+                      variant="task"
+                      fillHeight={isGrid}
+                      title={row.title}
+                      subtitle={row.contextLine ?? row.projectName}
+                      metaLabel={row.latestUpdateLabel ?? "Task activity"}
+                      badgeLabel={row.statusLabel}
+                      imageUri={row.primaryPhotoUri}
+                      topLeftMarker={
+                        row.isOverdue ? (
+                          <View
+                            testID={`tasks-screen__row_${row.taskId}:overdue-badge`}
+                            className="rounded-full bg-red-500 px-3 py-1.5"
+                          >
+                            <Text className="text-sm font-semibold text-white">Overdue</Text>
+                          </View>
+                        ) : isGrid && row.indentationLevel > 0 ? (
+                          <View className="rounded-full bg-[#08576E]/90 px-2.5 py-1 shadow-sm">
+                            <Text className="text-xs font-semibold text-white">
+                              {row.indentationLevel === 2 ? "Subtask L2" : "Subtask"}
+                            </Text>
+                          </View>
+                        ) : undefined
+                      }
+                      onPress={row.onPress ? () => handleRowPress(row.taskId, row.onPress) : undefined}
+                    />
+                  </Swipeable>
+                </View>
+              ))}
+            </View>
           ) : (
             <View
               testID="tasks-screen__empty_state"
@@ -427,12 +473,14 @@ export default function TasksScreen(props: TasksScreenProps) {
           stagedQueue={output.filterSheet.stagedQueue}
           stagedStatus={output.filterSheet.stagedStatus}
           stagedOverdueWindow={output.filterSheet.stagedOverdueWindow}
+          stagedSortOrder={output.filterSheet.stagedSortOrder}
           onClose={actions.closeFiltersSheet}
           onResetAll={actions.resetStagedFilters}
           onApply={actions.applyStagedFilters}
           onStageQueue={actions.stageQueueFilter}
           onStageStatus={actions.stageStatusFilter}
           onStageOverdueWindow={actions.stageOverdueWindowFilter}
+          onStageSortOrder={actions.stageSortOrderFilter}
         />
     </SafeAreaView>
       <ArchiveConfirmSheet

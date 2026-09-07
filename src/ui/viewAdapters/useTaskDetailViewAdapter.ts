@@ -14,6 +14,7 @@ import {
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
 import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
 import {
+  getCustomTaskTags,
   getTaskTags,
   hasCriticalThisWeekTag,
   resolvePrimaryAssigneeId,
@@ -27,8 +28,10 @@ import {
 import {
   canEditTaskDelegation,
   canSelectUserAsAssignee,
+  filterSelectableAssigneeUsers,
   resolveAssigneeRoleFromUser,
 } from '../contracts/taskDelegationPermissions';
+import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import type {
   TaskDetailActiveStageModel,
   TaskDetailQuickActionRowModel,
@@ -46,9 +49,11 @@ import type {
   TaskDetailSectionModel,
   TaskDetailSubtaskSummaryModel,
 } from '../contracts/viewAdapters';
-import type { Task, TaskActivity, TaskStatus } from '../../types/buildtrack';
+import type { Task, TaskActivity, TaskStatus, Priority, TaskCategory, BillingStatus } from '../../types/buildtrack';
+import { isManagerOrAdmin } from '../../types/buildtrack';
 import type { StatusSemanticToken } from '../contracts/primitives';
-import { isCompletedLifecycleStatus } from '../../utils/taskLifecycleStatus';
+import { isArchivableLifecycleStatus, isCompletedLifecycleStatus, isTerminalTaskStatus } from '../../utils/taskLifecycleStatus';
+import { isDueThisLocalWeek } from '../../utils/localWeek';
 import {
   isPreAcceptanceTaskStatus,
   isTaskAwaitingAssigneeAcceptance,
@@ -305,8 +310,22 @@ function collectCreationPhotoUrls(task: Task): string[] {
   return collectTaskPhotoAttachments(task);
 }
 
-function isCreationActivity(activity: TaskActivity): boolean {
-  return activity.activityType === 'creation';
+/** Origin rows that carry the task's initial evidence attachments. */
+function isOriginEvidenceActivity(activity: TaskActivity): boolean {
+  return (
+    activity.activityType === "creation" ||
+    activity.activityType === "issue_reported"
+  );
+}
+
+function shouldHideActivityProgressLabel(activity: TaskActivity): boolean {
+  return (
+    activity.activityType === "issue_reported" ||
+    activity.activityType === "assigner_comment" ||
+    activity.status === "reported" ||
+    activity.status === "resolved" ||
+    activity.status === "dismissed"
+  );
 }
 
 function collectTaskDocumentAttachment(task: Task): string | undefined {
@@ -449,16 +468,60 @@ export function useTaskDetailViewAdapter({
     removeCustomTag: (tag: string) => Promise<void>;
     archiveTask: () => Promise<void>;
     cancelTask: () => Promise<void>;
+    triageTask: (payload: {
+      assignedTo: string[];
+      primaryAssigneeId?: string;
+      delegatedUserIds?: string[];
+      dueDate?: string;
+      priority?: Priority;
+      category?: TaskCategory;
+      billingStatus?: BillingStatus;
+      locationOnSite?: string;
+    }) => Promise<void>;
+    replyToReport: (payload: { description: string; photos?: string[] }) => Promise<void>;
+    submitDockProgress: (payload: {
+      description: string;
+      photos?: string[];
+      completionPercentage: number;
+    }) => Promise<void>;
+    cancelDockReview: () => Promise<void>;
+    resolveReport: (note?: string) => Promise<void>;
+    /** @deprecated Prefer resolveReport */
+    dismissIssue: (reason?: string) => Promise<void>;
     fetchTask: () => Promise<void>;
   };
 } {
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask, ensureProjectLocation, fetchArchivedTasks } = useTaskStore();
-  const { getUserById } = useUserStore();
+  const taskStore = useTaskStore();
+  const {
+    tasks,
+    fetchTaskById,
+    acceptTask,
+    declineTask,
+    submitTaskForReview,
+    cancelTaskReviewSubmission,
+    acceptTaskCompletion,
+    acceptSubTaskCompletion,
+    submitSubTaskForReview,
+    cancelSubTaskReviewSubmission,
+    acceptSubTask,
+    declineSubTask,
+    archiveTask,
+    cancelTask,
+    updateTask,
+    ensureProjectLocation,
+    fetchArchivedTasks,
+    addAssignerComment,
+    addTaskUpdate,
+    addSubTaskUpdate,
+  } = taskStore;
+  const { getUserById, getAllUsers, fetchUsersByCompany, fetchUsers } = useUserStore();
   const projectStore = useProjectStoreWithInit();
+  const { getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
+  const [detailFetchSettled, setDetailFetchSettled] = useState(false);
 
   const foundTask = tasks.find((t) => t.id === taskId);
   const subTask = subTaskId ? tasks.find((t) => t.id === subTaskId) : foundTask?.parentTaskId ? foundTask : null;
@@ -491,10 +554,75 @@ export function useTaskDetailViewAdapter({
   }, [taskId, subTaskId, fetchTaskById]);
 
   useEffect(() => {
-    fetchTask();
+    let cancelled = false;
+    setDetailFetchSettled(false);
+    void (async () => {
+      try {
+        await fetchTask();
+      } finally {
+        if (!cancelled) {
+          setDetailFetchSettled(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [fetchTask]);
 
   useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
+
+  useEffect(() => {
+    if (
+      !user ||
+      !task?.projectId ||
+      task.status !== "reported" ||
+      !isManagerOrAdmin(user)
+    ) {
+      return;
+    }
+    const userFetch = user.companyId
+      ? fetchUsersByCompany(user.companyId)
+      : fetchUsers();
+    void Promise.all([
+      userFetch,
+      fetchProjectUserAssignments(task.projectId, true),
+    ]);
+  }, [
+    user,
+    task?.projectId,
+    task?.status,
+    fetchUsersByCompany,
+    fetchUsers,
+    fetchProjectUserAssignments,
+  ]);
+
+  const triageAssignableUsers = useMemo(() => {
+    if (
+      !user ||
+      !task?.projectId ||
+      task.status !== "reported" ||
+      !isManagerOrAdmin(user)
+    ) {
+      return [];
+    }
+    const projectMembers = getAssignableProjectUsers({
+      projectId: task.projectId,
+      assignments: getProjectUserAssignments(task.projectId),
+      users: getAllUsers(),
+    });
+    return filterSelectableAssigneeUsers(projectMembers, {
+      actorRole: resolveAssigneeRoleFromUser(user),
+      actorUserId: user.id,
+      resolveRole: resolveAssigneeRoleFromUser,
+    });
+  }, [
+    user,
+    task?.projectId,
+    task?.status,
+    getProjectUserAssignments,
+    getAllUsers,
+  ]);
 
   useEffect(() => {
     if (!task) {
@@ -540,29 +668,36 @@ export function useTaskDetailViewAdapter({
   void signedUrlEpoch;
 
   if (!task || !user) {
+    const unavailable = detailFetchSettled && Boolean(user) && !task;
     return {
       output: {
         screenId: 'TaskDetailScreen',
         readiness: {
-          hasInitialFrame: false,
+          hasInitialFrame: unavailable,
           hasUsableData: false,
           isBackgroundRefreshing: false,
           isNavigationTransitionActive: false,
         },
         continuity: {
-          isInitialLoading: true,
+          isInitialLoading: !unavailable,
           isBackgroundRefreshing: false,
           hasCachedFrame: false,
-          shouldRenderSkeletonShell: true,
-          shouldRenderEmptyState: false,
+          shouldRenderSkeletonShell: !unavailable,
+          shouldRenderEmptyState: unavailable,
           freshnessLabel: '',
         },
-        header: { taskId: '', title: '', statusLabel: '', projectName: '', assigneeSummary: '' },
+        header: {
+          taskId: taskId || '',
+          title: unavailable ? 'Unavailable' : '',
+          statusLabel: '',
+          projectName: '',
+          assigneeSummary: '',
+        },
         taskHero: {
           id: 'task-hero',
           density: 'standard',
           structuralState: 'stale',
-          title: '',
+          title: unavailable ? 'This task is no longer available' : '',
           statusLabel: '',
           projectLabel: '',
           completionLabel: '',
@@ -580,6 +715,7 @@ export function useTaskDetailViewAdapter({
           id: 'task-info-card',
           density: 'standard',
           structuralState: 'stale',
+          title: unavailable ? 'This task is no longer available' : undefined,
           detailRows: [],
         },
         activeStage: {
@@ -618,6 +754,8 @@ export function useTaskDetailViewAdapter({
         assignees: [],
         childTasks: [],
         canEditDelegation: false,
+        reportTriage: undefined,
+        detailDock: undefined,
       },
       actions: {
         acceptTask: async () => {},
@@ -633,6 +771,12 @@ export function useTaskDetailViewAdapter({
         removeCustomTag: async () => {},
         archiveTask: async () => {},
         cancelTask: async () => {},
+        triageTask: async () => {},
+        replyToReport: async () => {},
+        submitDockProgress: async () => {},
+        cancelDockReview: async () => {},
+        resolveReport: async () => {},
+        dismissIssue: async () => {},
         fetchTask,
       },
     };
@@ -660,6 +804,13 @@ export function useTaskDetailViewAdapter({
     taskStatus: displayStatus,
   });
   const isCriticalThisWeek = hasCriticalThisWeekTag(task.tags);
+  /** Same membership rule as Dashboard "This Week's Critical Tasks" (due in local Mon–Sun week). */
+  const isDueThisWeekOnCriticalList =
+    Boolean(task.dueDate) &&
+    !task.archivedAt &&
+    !isTerminalTaskStatus(displayStatus) &&
+    isDueThisLocalWeek(task.dueDate);
+  const showDueDateAsCritical = isDueThisWeekOnCriticalList || isCriticalThisWeek;
   const isAwaitingAcceptance = isTaskAwaitingAssigneeAcceptance({
     viewerUserId: user.id,
     status: displayStatus,
@@ -667,30 +818,42 @@ export function useTaskDetailViewAdapter({
     assignedTo,
     acceptedBy: task.acceptedBy,
   });
+  const isAwaitingReviewStatus =
+    displayStatus === "submitted_for_review" ||
+    task.status === "submitted_for_review" ||
+    displayStatus === "reviewing" ||
+    task.status === "reviewing";
+  const isPMOrAdmin = isManagerOrAdmin(user);
+  // Creator or PM/admin can Accept/Reject. Do not require completion===100 —
+  // submitted rows sometimes miss a synced percentage.
   const isReviewerApprovalState =
-    isTaskCreator && displayStatus === 'submitted_for_review' && task.completionPercentage === 100;
+    (isTaskCreator || isPMOrAdmin) && isAwaitingReviewStatus;
+  // Assignee Cancel-review dock: workers who submitted. PM/creator use Accept/Reject instead.
+  const showAssigneeCancelReviewDock =
+    isAssignedToMe && isAwaitingReviewStatus && !isPMOrAdmin && !isTaskCreator;
   const isContributorReviewState =
     isAssignedToMe &&
     !isTaskCreator &&
-    task.completionPercentage === 100 &&
-    displayStatus !== 'submitted_for_review' &&
+    Number(task.completionPercentage) >= 100 &&
+    !isAwaitingReviewStatus &&
     displayStatus !== 'declined' &&
     displayStatus !== 'cancelled' &&
     !isApprovedTaskStatus(displayStatus) &&
     !isPreAcceptanceTaskStatus(displayStatus);
+  // Lock progress edits for any assignee (incl. self-assign creator) while review is pending.
   const isContributorUpdateLocked =
     isAssignedToMe &&
-    !isTaskCreator &&
-    (displayStatus === 'submitted_for_review' || isApprovedTaskStatus(displayStatus));
+    (isAwaitingReviewStatus || isApprovedTaskStatus(displayStatus));
   const isActiveWorkState = isActiveWorkTaskStatus(displayStatus) && !isContributorReviewState;
   const canArchiveTask =
     !isViewingSubTask &&
     !task.archivedAt &&
-    isCompletedLifecycleStatus(displayStatus) &&
-    (isAssignedToMe || isTaskCreator);
+    isArchivableLifecycleStatus(displayStatus) &&
+    (isAssignedToMe || isTaskCreator || isPMOrAdmin);
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
     switch (status) {
+      case 'reported': return 'task_new';
       case 'new': return 'task_new';
       case 'assigned': return 'task_new';
       case 'received': return 'task_new';
@@ -705,6 +868,8 @@ export function useTaskDetailViewAdapter({
       case 'done': return 'task_approved';
       case 'rejected': return 'task_in_progress';
       case 'cancelled': return 'task_cancelled';
+      case 'dismissed': return 'task_cancelled';
+      case 'resolved': return 'task_cancelled';
       case 'declined': return 'task_submitted_for_review';
       default: return 'custom';
     }
@@ -713,76 +878,28 @@ export function useTaskDetailViewAdapter({
   const getStatusLabel = (status: TaskStatus) =>
     status?.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) || 'New';
 
+  const isTriageState = displayStatus === 'reported';
+  const isReportReporter = String(task.assignedBy || "") === String(user.id);
+  /** Worker reporter or PM can add follow-up on a reported issue via the dock. */
+  const canContributeToReport = isTriageState && (isPMOrAdmin || isReportReporter);
+
+  const reportTriage =
+    isTriageState && isPMOrAdmin
+      ? {
+          defaultAssigneeId: task.assignedBy || "",
+          title: task.title || "",
+          availableUsers: triageAssignableUsers.map((member) => ({
+            id: member.id,
+            name: member.name,
+            email: member.email,
+            systemPermission: member.systemPermission,
+            role: member.role,
+          })),
+        }
+      : undefined;
+
+  // Status is already on Progress in the hero card + timeline — no duplicate banners.
   const banners: TaskDetailBannerModel[] = [];
-
-  if (isAssignedToMe && task.completionPercentage === 100 && task.status === 'submitted_for_review') {
-    banners.push({
-      id: 'banner-submitted',
-      density: 'standard',
-      structuralState: 'stale',
-      type: 'submitted_for_review',
-      title: t.taskDetail.submittedForReview,
-      iconName: 'time-outline',
-      colorScheme: 'amber',
-    });
-  }
-
-  if (isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100) {
-    banners.push({
-      id: 'banner-review-required',
-      density: 'standard',
-      structuralState: 'stale',
-      type: 'review_required',
-      title: 'Please Review Complete Task',
-      iconName: 'time-outline',
-      colorScheme: 'amber',
-    });
-  }
-
-  if (isApprovedTaskStatus(task.status) && task.reviewedBy) {
-    const reviewer = getUserById(task.reviewedBy)?.name || t.projects.unknown;
-    const reviewDate = task.reviewedAt ? ` ${dateFormatter.formatDateShort(task.reviewedAt)}` : '';
-    banners.push({
-      id: 'banner-approved',
-      density: 'standard',
-      structuralState: 'stale',
-      type: 'approved',
-      title: `✓ ${t.taskDetail.taskApproved}`,
-      subtitle: `${t.taskDetail.reviewedAndApproved} ${reviewer}${reviewDate}`,
-      iconName: 'checkmark-done-circle',
-      colorScheme: 'green',
-    });
-  }
-
-  if (task.status === 'declined' && task.assignedBy === user.id) {
-    const declineActivity = task.activities?.find(
-      (a: any) => a.activityType === 'status_change' && a.status === 'declined'
-    );
-    const declinedByUser = declineActivity?.userId ? getUserById(declineActivity.userId) : null;
-    banners.push({
-      id: 'banner-declined',
-      density: 'standard',
-      structuralState: 'stale',
-      type: 'declined',
-      title: declinedByUser ? `Task Declined by ${declinedByUser.name}` : t.taskDetail.taskDeclined,
-      subtitle: task.declinedReason ? `${t.taskDetail.reason} ${task.declinedReason}` : undefined,
-      iconName: 'close-circle',
-      colorScheme: 'red',
-    });
-  }
-
-  if (task.status === 'rejected' && task.completionPercentage === 100 && task.assignedBy === user.id) {
-    banners.push({
-      id: 'banner-rejected',
-      density: 'standard',
-      structuralState: 'stale',
-      type: 'rejected',
-      title: t.taskDetail.taskRejected,
-      subtitle: t.taskDetail.completionRejected || 'Task completion was rejected. The assignee needs to make corrections.',
-      iconName: 'close-circle',
-      colorScheme: 'red',
-    });
-  }
 
   const activities: TaskDetailActivityModel[] = (task.activities || []).map((a: any) => ({
     id: a.id,
@@ -882,21 +999,34 @@ export function useTaskDetailViewAdapter({
     descriptionLabel: task.description || '',
     siteLocationLabel: task.locationOnSite || '',
     assignedByLabel: delegationSummary.assignedByLabel,
-    assignedToLabel: delegationSummary.assignedToLabel,
-    primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
+    assignedToLabel: isTriageState
+      ? (assignees.length > 0
+          ? delegationSummary.assignedToLabel
+          : `Reported by ${delegationSummary.assignedByLabel}`)
+      : delegationSummary.assignedToLabel,
+    primaryOwnerLabel: isTriageState ? undefined : delegationSummary.primaryOwnerLabel,
     primaryAssigneeId: primaryAssigneeId || task.primaryAssigneeId,
-    delegatedUserIds,
-    delegatedLabels: delegatedAssignees.map((d) => d.name),
+    delegatedUserIds: isTriageState ? [] : delegatedUserIds,
+    delegatedLabels: isTriageState ? [] : delegatedAssignees.map((d) => d.name),
     containerId: task.containerId,
     subContainerId: task.subContainerId,
-    tagLabels: getTaskTags(task.tags),
+    tagLabels: getCustomTaskTags(task.tags),
     statusLabel: getStatusLabel(displayStatus),
     categoryLabel: humanizeToken(task.category || 'general'),
-    completionLabel: `${task.completionPercentage}% complete`,
-    dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
-    isCritical: isCriticalThisWeek,
-    criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
+    completionLabel: isTriageState ? undefined : `${task.completionPercentage}% complete`,
+    dueDateLabel: task.dueDate
+      ? dateFormatter.formatDateShort(task.dueDate)
+      : undefined,
+    isCritical: showDueDateAsCritical,
+    criticalLabel: undefined,
     isAssignedToCurrentUser: isAssignedToMe,
+    showEditAction:
+      (isTaskCreator || isPMOrAdmin) && !isTriageState && !isReviewerApprovalState,
+    editActionLabel: t.taskDetail.editTaskDetails,
+    showReassignAction:
+      (isTaskCreator || isPMOrAdmin) &&
+      (task.status === "declined" || displayStatus === "declined"),
+    reassignActionLabel: "Reassign",
     detailRows: [],
   };
 
@@ -926,7 +1056,7 @@ export function useTaskDetailViewAdapter({
     const photoUrls =
       !hasAssignedCreationPhotos &&
       !childTask &&
-      isCreationActivity(activity) &&
+      isOriginEvidenceActivity(activity) &&
       creationPhotoUrls.length > 0
         ? (() => {
             hasAssignedCreationPhotos = true;
@@ -939,10 +1069,12 @@ export function useTaskDetailViewAdapter({
       density: 'standard',
       structuralState: 'stale',
       actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
+      actorUserId: activity.userId,
       eventLabel: buildTaskDetailHeadline(activity, activityHeadlineContextById.get(activity.id)),
       timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
-      progressLabel:
-        activity.completionPercentage !== undefined
+      progressLabel: shouldHideActivityProgressLabel(activity)
+        ? "—"
+        : activity.completionPercentage !== undefined
           ? `${activity.completionPercentage}%`
           : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
       detailLabel: undefined,
@@ -973,7 +1105,7 @@ export function useTaskDetailViewAdapter({
     completionLabel: `${task.completionPercentage}% complete`,
     dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
     nextStepLabel: undefined,
-    isCritical: isCriticalThisWeek,
+    isCritical: showDueDateAsCritical,
     criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
   };
 
@@ -1041,7 +1173,7 @@ export function useTaskDetailViewAdapter({
   };
 
   const wasReassigned = task.status === 'new' && isTaskCreator && (task.activities || []).some((a: any) => a.description?.toLowerCase().includes('reassigned'));
-  const canEditTask = isTaskCreator;
+  const canEditTask = (isTaskCreator || isPMOrAdmin) && !isTriageState;
 
   if (canEditTask && !isReviewerApprovalState) {
     addActionItem({
@@ -1051,7 +1183,7 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  if (isAwaitingAcceptance) {
+  if (!isTriageState && isAwaitingAcceptance) {
     addActionItem({
       actionId: 'accept_task',
       label: t.taskDetail.accept,
@@ -1064,7 +1196,7 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  if (isReviewerApprovalState) {
+  if (!isTriageState && isReviewerApprovalState) {
     addActionItem({
       actionId: 'approve_task',
       label: 'Approve',
@@ -1083,10 +1215,11 @@ export function useTaskDetailViewAdapter({
   }
 
   if (
-    isActiveWorkState ||
-    isContributorReviewState ||
-    isReviewerApprovalState ||
-    isContributorUpdateLocked
+    !isTriageState &&
+    (isActiveWorkState ||
+      isContributorReviewState ||
+      isReviewerApprovalState ||
+      isContributorUpdateLocked)
   ) {
     if (isAssignedToMe || isReviewerApprovalState) {
       addActionItem({
@@ -1103,24 +1236,16 @@ export function useTaskDetailViewAdapter({
       icon: 'chatbubble-outline',
     });
 
-    if (!isViewingSubTask && isActiveWorkState) {
-      addActionItem({
-        actionId: 'add_subtask',
-        label: 'Add Subtask',
-        icon: 'add-circle-outline',
-      });
-    }
+    // Subtask create UI is deferred (product lock 2026-09-07) — do not emit add_subtask.
+    // Domain createSubTask / parentTaskId remain for existing rows + a future enhancement.
   }
 
-  if (isContributorReviewState) {
-    addActionItem({
-      actionId: 'submit_review',
-      label: 'Submit for Review',
-      icon: 'send',
-    });
-  }
+  const canReassignAfterDecline =
+    (isTaskCreator || isPMOrAdmin) &&
+    (task.status === "declined" || displayStatus === "declined");
 
-  if (isTaskCreator && task.status === 'declined') {
+  if (canReassignAfterDecline) {
+    // Reassign: bottom dock + Team section (expanded). Keep actionItem for routing.
     addActionItem({
       actionId: 'reassign_task',
       label: 'Reassign',
@@ -1128,7 +1253,7 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  if (isTaskCreator && wasReassigned) {
+  if (isTaskCreator && wasReassigned && !isTriageState) {
     addActionItem({
       actionId: 'add_comment',
       label: 'Add Comment',
@@ -1137,6 +1262,7 @@ export function useTaskDetailViewAdapter({
   }
 
   if (canArchiveTask) {
+    // Archive lives on the bottom dock after approval.
     addActionItem({
       actionId: 'archive_task',
       label: 'Archive',
@@ -1144,9 +1270,11 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  const quickActionIds = isAwaitingAcceptance
-    ? ['accept_task', 'decline_task']
-    : [];
+  const quickActionIds = isTriageState
+    ? []
+    : isAwaitingAcceptance
+      ? ['accept_task', 'decline_task']
+      : [];
 
   const quickActions: TaskDetailQuickActionRowModel | undefined = quickActionIds.length
     ? {
@@ -1159,7 +1287,52 @@ export function useTaskDetailViewAdapter({
       }
     : undefined;
 
-  if (isTaskCreator && task.status !== 'declined' && !wasReassigned && !isReviewerApprovalState) {
+  const detailDock = canContributeToReport
+    ? {
+        mode: "report_reply" as const,
+        completionPercentage: Number(task.completionPercentage) || 0,
+      }
+    : isReviewerApprovalState
+      ? {
+          // Creator or PM/admin → Accept / Reject (takes priority over assignee cancel).
+          mode: "review_decision" as const,
+          completionPercentage: Math.max(0, Number(task.completionPercentage) || 100),
+        }
+      : showAssigneeCancelReviewDock
+        ? {
+            // Worker assignee submitted → Cancel review.
+            mode: "awaiting_review" as const,
+            completionPercentage: Math.max(0, Number(task.completionPercentage) || 100),
+          }
+        : actionItems.some(
+              (action) => action.actionId === "update_progress" && !action.isDisabled,
+            )
+          ? {
+              mode: "progress" as const,
+              completionPercentage: Number(task.completionPercentage) || 0,
+            }
+          : canArchiveTask
+            ? {
+                mode: "archive" as const,
+                completionPercentage: Math.max(
+                  0,
+                  Number(task.completionPercentage) || 100,
+                ),
+              }
+            : canReassignAfterDecline
+              ? {
+                  mode: "reassign" as const,
+                  completionPercentage: Number(task.completionPercentage) || 0,
+                }
+              : undefined;
+
+  if (
+    !isTriageState &&
+    isTaskCreator &&
+    task.status !== 'declined' &&
+    !wasReassigned &&
+    !isReviewerApprovalState
+  ) {
     addActionItem({
       actionId: 'add_comment',
       label: 'Add Comment',
@@ -1213,6 +1386,8 @@ export function useTaskDetailViewAdapter({
       assignees,
       childTasks,
       canEditDelegation,
+      reportTriage,
+      detailDock,
     },
     actions: {
       acceptTask: async () => {
@@ -1378,6 +1553,89 @@ export function useTaskDetailViewAdapter({
       },
       cancelTask: async () => {
         await cancelTask(task.id, user.id);
+        await fetchTask();
+      },
+      triageTask: async (payload: {
+        assignedTo: string[];
+        primaryAssigneeId?: string;
+        delegatedUserIds?: string[];
+        dueDate?: string;
+        priority?: Priority;
+        category?: TaskCategory;
+        billingStatus?: BillingStatus;
+        locationOnSite?: string;
+      }) => {
+        await taskStore.triageTask(task.id, payload, user.id);
+        await fetchTask();
+      },
+      replyToReport: async (payload: { description: string; photos?: string[] }) => {
+        await addAssignerComment(task.id, {
+          description: payload.description,
+          photos: payload.photos || [],
+          userId: user.id,
+        });
+        await fetchTask();
+      },
+      submitDockProgress: async (payload: {
+        description: string;
+        photos?: string[];
+        completionPercentage: number;
+      }) => {
+        const calculatedStatus: TaskStatus =
+          task.status === "accepted" ||
+          task.status === "in_progress" ||
+          task.status === "submitted_for_review"
+            ? "in_progress"
+            : task.status || "in_progress";
+        const updatePayload = {
+          description: payload.description,
+          photos: payload.photos || [],
+          completionPercentage: payload.completionPercentage,
+          status: calculatedStatus,
+          userId: user.id,
+        };
+        if (isViewingSubTask && subTaskId) {
+          await addSubTaskUpdate(taskId, subTaskId, updatePayload);
+        } else {
+          await addTaskUpdate(task.id, updatePayload);
+        }
+
+        // At 100%, dock Send also submits for review (bottom dock owns this).
+        // Description is required by the composer before Send fires.
+        const shouldSubmitForReview =
+          payload.completionPercentage >= 100 &&
+          isAssignedToMe &&
+          displayStatus !== "submitted_for_review" &&
+          task.status !== "submitted_for_review" &&
+          displayStatus !== "declined" &&
+          displayStatus !== "cancelled" &&
+          !isApprovedTaskStatus(displayStatus) &&
+          !isPreAcceptanceTaskStatus(displayStatus);
+
+        if (shouldSubmitForReview) {
+          if (isViewingSubTask && subTaskId) {
+            await submitSubTaskForReview(taskId, subTaskId);
+          } else {
+            await submitTaskForReview(task.id);
+          }
+        }
+
+        await fetchTask();
+      },
+      cancelDockReview: async () => {
+        if (isViewingSubTask && subTaskId) {
+          await cancelSubTaskReviewSubmission(taskId, subTaskId);
+        } else {
+          await cancelTaskReviewSubmission(task.id);
+        }
+        await fetchTask();
+      },
+      resolveReport: async (note?: string) => {
+        await taskStore.resolveReport(task.id, user.id, note);
+        await fetchTask();
+      },
+      dismissIssue: async (reason?: string) => {
+        await taskStore.resolveReport(task.id, user.id, reason);
         await fetchTask();
       },
       fetchTask,

@@ -244,6 +244,7 @@ export function RealtimeSyncManager() {
               const newTaskId = (payload.new as any)?.id;
               if (newTaskId) {
                 const deletedAt = (payload.new as any)?.deleted_at;
+                const archivedAt = (payload.new as any)?.archived_at;
 
                 if (deletedAt) {
                   invalidateResourceKeys(
@@ -252,6 +253,35 @@ export function RealtimeSyncManager() {
                     })
                   );
                   taskStore.evictTaskFromCache(newTaskId);
+                  return;
+                }
+
+                // Archive soft-hides from active lists. fetchTaskById excludes archived
+                // rows, so refresh would return null and leave open Task Detail stuck
+                // on "Loading…". Evict immediately from the active cache instead.
+                if (archivedAt) {
+                  invalidateResourceKeys(
+                    getMergedTaskResourceKeys(newTaskId, payload.old as any, payload.new as any)
+                  );
+                  const cached = taskStore.tasks.find((task) => task.id === newTaskId);
+                  const archivedTask = cached
+                    ? {
+                        ...cached,
+                        archivedAt: String(archivedAt),
+                        archivedBy: (payload.new as any)?.archived_by
+                          ? String((payload.new as any).archived_by)
+                          : cached.archivedBy,
+                      }
+                    : undefined;
+                  taskStore.evictTaskFromCache(newTaskId);
+                  if (archivedTask) {
+                    useTaskStore.setState((state) => ({
+                      archivedTasks: [
+                        archivedTask,
+                        ...(state.archivedTasks ?? []).filter((t) => t.id !== newTaskId),
+                      ],
+                    }));
+                  }
                   return;
                 }
 

@@ -33,12 +33,14 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="inbox"
         stagedStatus="overdue"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="one_week"
         onClose={jest.fn()}
         onResetAll={jest.fn()}
         onApply={jest.fn()}
         onStageQueue={jest.fn()}
         onStageStatus={jest.fn()}
+        onStageSortOrder={jest.fn()}
         onStageOverdueWindow={jest.fn()}
       />,
     );
@@ -50,6 +52,8 @@ describe("TasksFiltersBottomSheet", () => {
     expect(screen.getByText("Archived")).toBeTruthy();
     expect(screen.getByText("STATUS")).toBeTruthy();
     expect(screen.getByText("Overdue")).toBeTruthy();
+    expect(screen.getByText("ORDER")).toBeTruthy();
+    expect(screen.getByText("Newest created")).toBeTruthy();
     expect(screen.getByText("OVERDUE WINDOW")).toBeTruthy();
     expect(screen.getByText("3 active")).toBeTruthy();
     expect(screen.getByText("1 week")).toBeTruthy();
@@ -65,12 +69,14 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="inbox"
         stagedStatus="any_status"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="show_all"
         onClose={jest.fn()}
         onResetAll={jest.fn()}
         onApply={jest.fn()}
         onStageQueue={jest.fn()}
         onStageStatus={jest.fn()}
+        onStageSortOrder={jest.fn()}
         onStageOverdueWindow={jest.fn()}
       />,
     );
@@ -83,12 +89,14 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="all_queues"
         stagedStatus="new"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="show_all"
         onClose={jest.fn()}
         onResetAll={jest.fn()}
         onApply={jest.fn()}
         onStageQueue={jest.fn()}
         onStageStatus={jest.fn()}
+        onStageSortOrder={jest.fn()}
         onStageOverdueWindow={jest.fn()}
       />,
     );
@@ -99,12 +107,14 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="all_queues"
         stagedStatus="doing"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="show_all"
         onClose={jest.fn()}
         onResetAll={jest.fn()}
         onApply={jest.fn()}
         onStageQueue={jest.fn()}
         onStageStatus={jest.fn()}
+        onStageSortOrder={jest.fn()}
         onStageOverdueWindow={jest.fn()}
       />,
     );
@@ -115,12 +125,14 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="all_queues"
         stagedStatus="review"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="show_all"
         onClose={jest.fn()}
         onResetAll={jest.fn()}
         onApply={jest.fn()}
         onStageQueue={jest.fn()}
         onStageStatus={jest.fn()}
+        onStageSortOrder={jest.fn()}
         onStageOverdueWindow={jest.fn()}
       />,
     );
@@ -131,12 +143,14 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="all_queues"
         stagedStatus="overdue"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="show_all"
         onClose={jest.fn()}
         onResetAll={jest.fn()}
         onApply={jest.fn()}
         onStageQueue={jest.fn()}
         onStageStatus={jest.fn()}
+        onStageSortOrder={jest.fn()}
         onStageOverdueWindow={jest.fn()}
       />,
     );
@@ -147,6 +161,7 @@ describe("TasksFiltersBottomSheet", () => {
     const onStageQueue = jest.fn();
     const onStageStatus = jest.fn();
     const onStageOverdueWindow = jest.fn();
+    const onStageSortOrder = jest.fn();
     const onApply = jest.fn();
     const onResetAll = jest.fn();
     const onClose = jest.fn();
@@ -156,18 +171,21 @@ describe("TasksFiltersBottomSheet", () => {
         visible={true}
         stagedQueue="all_queues"
         stagedStatus="any_status"
+        stagedSortOrder="newest_created"
         stagedOverdueWindow="show_all"
         onClose={onClose}
         onResetAll={onResetAll}
         onApply={onApply}
         onStageQueue={onStageQueue}
         onStageStatus={onStageStatus}
+        onStageSortOrder={onStageSortOrder}
         onStageOverdueWindow={onStageOverdueWindow}
       />,
     );
 
     fireEvent.press(screen.getByTestId("tasks-filters-sheet__queue_outbox"));
     fireEvent.press(screen.getByTestId("tasks-filters-sheet__status_review"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__sort_due_soonest"));
     fireEvent.press(screen.getByTestId("tasks-filters-sheet__overdue_window_three_active"));
     fireEvent.press(screen.getByTestId("tasks-filters-sheet__overdue_window_one_week"));
     fireEvent.press(screen.getByTestId("tasks-filters-sheet__reset"));
@@ -176,6 +194,7 @@ describe("TasksFiltersBottomSheet", () => {
 
     expect(onStageQueue).toHaveBeenCalledWith("outbox");
     expect(onStageStatus).toHaveBeenCalledWith("review");
+    expect(onStageSortOrder).toHaveBeenCalledWith("due_soonest");
     expect(onStageOverdueWindow).toHaveBeenCalledWith("three_active");
     expect(onStageOverdueWindow).toHaveBeenCalledWith("one_week");
     expect(onResetAll).toHaveBeenCalledTimes(1);

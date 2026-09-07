@@ -15,6 +15,7 @@ import type {
   CreateTaskScreenViewAdapterOutput,
   CreateTaskFormModel,
   CreateTaskLocationOptionModel,
+  CreateTaskIntentMode,
 } from '../contracts/viewAdapters';
 import {
   getCustomTaskTags,
@@ -37,13 +38,14 @@ import {
   shouldShowContainerOrganization,
   type ProjectContainerRecord,
 } from '../contracts/taskContainers';
-import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
+import { Priority, TaskCategory, BillingStatus, TaskStatus, isManagerOrAdmin } from '../../types/buildtrack';
 import { getSessionScopedSupabase } from '../../api/supabaseSessionGate';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { resolveWorkspaceProjectId } from '../contracts/workspaceProject';
 import { useTranslation, getNestedTranslation } from '../../utils/useTranslation';
 import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
 import { taskRequiresAssignees } from '../../utils/taskUpdateValidation';
+import { resolveInitialTaskCreateStatus } from '../../utils/taskCreateValidation';
 import {
   deleteLocalTaskDraft,
   deserializeCreateTaskForm,
@@ -60,6 +62,10 @@ export interface UseCreateTaskViewAdapterProps {
   parentSubTaskId?: string;
   clearForm?: boolean;
   clearFormTimestamp?: number;
+  /** Peer entry from Report | New Task chooser. */
+  intent?: "report" | "create";
+  /** edit | triage (promote reported) | other Task Detail actions */
+  actionType?: "edit" | "update" | "photos" | "comment" | "reassign" | "triage";
 }
 const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
 const NOOP_FETCH_PROJECT_LOCATIONS = async () => [];
@@ -67,7 +73,7 @@ const NOOP_ENSURE_PROJECT_LOCATION = async () => undefined;
 const NOOP_FETCH_PROJECT_CONTAINERS = async (): Promise<ProjectContainerRecord[]> => [];
 const NOOP_ENSURE_PROJECT_CONTAINER = async () => null;
 
-function createEmptyFormData(): CreateTaskFormModel {
+function createEmptyFormData(defaultIntent?: CreateTaskIntentMode): CreateTaskFormModel {
   return {
     title: '',
     description: '',
@@ -85,7 +91,23 @@ function createEmptyFormData(): CreateTaskFormModel {
     isCriticalThisWeek: false,
     attachments: [],
     projectId: '',
+    intentMode: defaultIntent ?? 'full_task',
   };
+}
+
+function createFormDataForIntentMode(
+  intentMode: CreateTaskIntentMode,
+  userId?: string,
+): CreateTaskFormModel {
+  const empty = createEmptyFormData(intentMode);
+  if (intentMode === "my_task" && userId) {
+    return {
+      ...empty,
+      assignedTo: [userId],
+      primaryAssigneeId: userId,
+    };
+  }
+  return empty;
 }
 
 function buildRedesignMetadataPayload(formData: CreateTaskFormModel) {
@@ -197,6 +219,8 @@ export function useCreateTaskViewAdapter({
   parentSubTaskId,
   clearForm,
   clearFormTimestamp,
+  intent: routeIntent,
+  actionType,
 }: UseCreateTaskViewAdapterProps) {
   const { user } = useAuthStore();
   const t = useTranslation();
@@ -207,6 +231,7 @@ export function useCreateTaskViewAdapter({
     createTask,
     createSubTask,
     updateTask,
+    triageTask,
     fetchProjectLocations = NOOP_FETCH_PROJECT_LOCATIONS,
     ensureProjectLocation = NOOP_ENSURE_PROJECT_LOCATION,
     fetchProjectContainers = NOOP_FETCH_PROJECT_CONTAINERS,
@@ -217,8 +242,53 @@ export function useCreateTaskViewAdapter({
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   const setSelectedProject = useProjectFilterStore((state) => state.setSelectedProject);
-  
-  const [formData, setFormData] = useState<CreateTaskFormModel>(createEmptyFormData);
+
+  const isWorker = !isManagerOrAdmin(user);
+  const defaultIntentMode: CreateTaskIntentMode = (() => {
+    if (editTaskId || parentTaskId) {
+      return "full_task";
+    }
+    if (routeIntent === "report") {
+      // PMs must not enter report this pass — fall through to create.
+      return isWorker ? "report_issue" : "full_task";
+    }
+    if (routeIntent === "create") {
+      return isWorker ? "my_task" : "full_task";
+    }
+    // Deep links / drafts without chooser: workers default to create-for-self (not report).
+    return isWorker ? "my_task" : "full_task";
+  })();
+
+  const [formData, setFormData] = useState<CreateTaskFormModel>(() =>
+    createFormDataForIntentMode(defaultIntentMode, user?.id),
+  );
+
+  const setIntentMode = useCallback(
+    (intentMode: CreateTaskIntentMode) => {
+      setFormData((previous) => ({
+        ...previous,
+        intentMode,
+        assignedTo:
+          intentMode === 'my_task' && user?.id
+            ? [user.id]
+            : intentMode === 'report_issue'
+              ? []
+              : previous.assignedTo,
+        primaryAssigneeId:
+          intentMode === 'my_task' && user?.id
+            ? user.id
+            : intentMode === 'report_issue'
+              ? ''
+              : previous.primaryAssigneeId,
+      }));
+      setErrors((previous) => {
+        const next = { ...previous };
+        delete next.assignedTo;
+        return next;
+      });
+    },
+    [user?.id],
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -273,9 +343,9 @@ export function useCreateTaskViewAdapter({
     }
 
     handledClearFormRequestRef.current = clearFormRequestKey;
-    setFormData(createEmptyFormData());
+    setFormData(createFormDataForIntentMode(defaultIntentMode, user?.id));
     setActiveLocalDraftId(undefined);
-  }, [clearFormRequestKey]);
+  }, [clearFormRequestKey, defaultIntentMode, user?.id]);
 
   useEffect(() => {
     if (!localDraftId) {
@@ -352,12 +422,21 @@ export function useCreateTaskViewAdapter({
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!activeProjectId) newErrors.projectId = 'Project is required';
 
+    const isReportIntent = formData.intentMode === 'report_issue';
+    const isMyTaskIntent = formData.intentMode === 'my_task';
+
     if (!editTaskId) {
-      const { assignedTo } = buildRedesignMetadataPayload(formData);
-      if (assignedTo.length === 0) {
-        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
+      if (!isReportIntent && !isMyTaskIntent) {
+        const { assignedTo } = buildRedesignMetadataPayload(formData);
+        if (assignedTo.length === 0) {
+          newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
+        }
       }
-    } else if (editTask && taskRequiresAssignees(editTask.status)) {
+    } else if (
+      actionType === "triage" ||
+      editTask?.status === "reported" ||
+      (editTask && taskRequiresAssignees(editTask.status))
+    ) {
       const { assignedTo } = buildRedesignMetadataPayload(formData);
       if (assignedTo.length === 0) {
         newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
@@ -371,7 +450,7 @@ export function useCreateTaskViewAdapter({
       return false;
     }
     return true;
-  }, [activeProjectId, editTask, editTaskId, formData, t]);
+  }, [actionType, activeProjectId, editTask, editTaskId, formData, t]);
   const actorAssigneeRole = useMemo(
     () => resolveAssigneeRoleFromUser(user),
     [user],
@@ -412,6 +491,7 @@ export function useCreateTaskViewAdapter({
     taskAssignedBy: editTask?.assignedBy,
     taskStatus: editTask?.status as TaskStatus | undefined,
     isCreateFlow: !editTaskId,
+    isTriageFlow: actionType === "triage",
   });
 
   const requiresEditReason = requiresEditReasonForStatus(
@@ -421,13 +501,19 @@ export function useCreateTaskViewAdapter({
   const isLocalDraft = Boolean(resolvedLocalDraftId);
 
   const context = useMemo(() => {
-    const headerTitle = editTaskId
+    const isTriageFlow =
+      actionType === "triage" || editTask?.status === "reported";
+    const headerTitle = isTriageFlow
+      ? t.createTask.triageTaskHeader || t.createTask.createTaskFromReport || "Create task"
+      : editTaskId
       ? t.createTask.editTask
       : parentTaskId
         ? parentSubTaskId && parentSubTask
           ? t.createTask.nestedSubTask
           : t.createTask.createSubTask
-        : t.createTask.createNewTask;
+        : formData.intentMode === "report_issue"
+          ? (t.createTask.report || t.createTask.reportIssue || "Report")
+          : (t.createTask.assign || t.createTask.newTask || t.createTask.createNewTask || "Assign");
 
     const parentBanner =
       parentTask && (parentSubTask || parentTask)
@@ -449,10 +535,13 @@ export function useCreateTaskViewAdapter({
       parentBanner,
     };
   }, [
+    actionType,
     activeProject?.name,
     activeProjectId,
     assigneesLocked,
+    editTask?.status,
     editTaskId,
+    formData.intentMode,
     isLocalDraft,
     parentSubTask,
     parentSubTaskId,
@@ -462,10 +551,16 @@ export function useCreateTaskViewAdapter({
     resolvedLocalDraftId,
     t.createTask.createNewTask,
     t.createTask.createSubTask,
+    t.createTask.createTaskFromReport,
     t.createTask.editTask,
     t.createTask.nestedSubTask,
     t.createTask.nestedUnder,
+    t.createTask.assign,
+    t.createTask.newTask,
+    t.createTask.report,
+    t.createTask.reportIssue,
     t.createTask.subTaskOf,
+    t.createTask.triageTaskHeader,
   ]);
 
   const toggleUserSelection = useCallback(
@@ -610,12 +705,18 @@ export function useCreateTaskViewAdapter({
   }, [editTask, suggestTaskFromText, textInput]);
 
   useEffect(() => {
-    if (editTaskId && !localDraftId) {
-      const mergedAssignedTo = mergeAssignedToIds({
+    if (editTaskId && editTask && !localDraftId) {
+      let mergedAssignedTo = mergeAssignedToIds({
         assignedTo: editTask.assignedTo || [],
         primaryAssigneeId: editTask.primaryAssigneeId,
         delegatedUserIds: editTask.delegatedUserIds || [],
       });
+      const isTriagePrefill =
+        actionType === "triage" || editTask.status === "reported";
+      // Default primary assignee = report creator when promoting a report.
+      if (isTriagePrefill && mergedAssignedTo.length === 0 && editTask.assignedBy) {
+        mergedAssignedTo = [editTask.assignedBy];
+      }
       const taggedCritical = hasCriticalThisWeekTag(editTask.tags);
       setFormData({
         title: editTask.title,
@@ -635,9 +736,10 @@ export function useCreateTaskViewAdapter({
         isCriticalThisWeek: taggedCritical,
         attachments: editTask.attachments || [],
         projectId: editTask.projectId || '',
+        intentMode: 'full_task',
       });
     }
-  }, [editTask, editTaskId, localDraftId]);
+  }, [actionType, editTask, editTaskId, localDraftId]);
 
   useEffect(() => {
     if (editTaskId) {
@@ -979,20 +1081,60 @@ export function useCreateTaskViewAdapter({
           formData.attachments,
           editTaskId,
         );
-        await updateTask(editTaskId, {
-          title: formData.title,
-          description: formData.description,
-          taskReference: formData.taskReference || undefined,
-          projectId: submitProjectId,
-          priority: formData.priority as Priority,
-          category: formData.category as TaskCategory,
-          billingStatus: formData.billingStatus as BillingStatus,
-          dueDate: formData.dueDate.toISOString(),
-          locationOnSite: trimmedLocationOnSite,
-          ...redesignMetadata,
-          attachments: [...baseAttachments, ...uploadedAttachments],
-          _editReason: options?.editReason,
-        } as Partial<any>);
+        const isTriageSubmit =
+          actionType === "triage" || editTask?.status === "reported";
+
+        if (isTriageSubmit) {
+          // Persist editable report fields first; promotion MUST go through triageTask
+          // (plain updateTask alone left status stuck on reported — Stage-1 bug).
+          await updateTask(editTaskId, {
+            title: formData.title,
+            description: formData.description,
+            taskReference: formData.taskReference || undefined,
+            projectId: submitProjectId,
+            category: formData.category as TaskCategory,
+            billingStatus: formData.billingStatus as BillingStatus,
+            locationOnSite: trimmedLocationOnSite,
+            containerId: redesignMetadata.containerId,
+            subContainerId: redesignMetadata.subContainerId,
+            tags: redesignMetadata.tags,
+            attachments: [...baseAttachments, ...uploadedAttachments],
+          } as Partial<any>);
+
+          if (!user?.id) {
+            throw new Error("Missing user for triage");
+          }
+          await triageTask(
+            editTaskId,
+            {
+              assignedTo: redesignMetadata.assignedTo,
+              primaryAssigneeId: redesignMetadata.primaryAssigneeId,
+              delegatedUserIds: redesignMetadata.delegatedUserIds,
+              dueDate: formData.dueDate.toISOString(),
+              priority: formData.priority as Priority,
+              category: formData.category as TaskCategory,
+              billingStatus: formData.billingStatus as BillingStatus,
+              locationOnSite: trimmedLocationOnSite,
+            },
+            user.id,
+          );
+          await fetchTaskById(editTaskId);
+        } else {
+          await updateTask(editTaskId, {
+            title: formData.title,
+            description: formData.description,
+            taskReference: formData.taskReference || undefined,
+            projectId: submitProjectId,
+            priority: formData.priority as Priority,
+            category: formData.category as TaskCategory,
+            billingStatus: formData.billingStatus as BillingStatus,
+            dueDate: formData.dueDate.toISOString(),
+            locationOnSite: trimmedLocationOnSite,
+            ...redesignMetadata,
+            attachments: [...baseAttachments, ...uploadedAttachments],
+            _editReason: options?.editReason,
+          } as Partial<any>);
+        }
       } else if (parentTaskId) {
         const createdSubTaskId = await createSubTask(parentTaskId, {
           title: formData.title,
@@ -1018,20 +1160,36 @@ export function useCreateTaskViewAdapter({
           } as Partial<any>);
         }
       } else {
+        const isReportIntent =
+          formData.intentMode === 'report_issue' && redesignMetadata.assignedTo.length === 0;
+        const isMyTaskIntent = formData.intentMode === 'my_task';
+        const submitAssignedTo = isReportIntent
+          ? []
+          : isMyTaskIntent
+            ? [user?.id || '']
+            : redesignMetadata.assignedTo;
+        const submitStatus: TaskStatus = isReportIntent
+          ? 'reported'
+          : isMyTaskIntent
+            ? 'in_progress'
+            : resolveInitialTaskCreateStatus(user?.id || '', submitAssignedTo);
+
         const createdTaskId = await createTask({
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
-          billingStatus: formData.billingStatus as BillingStatus,
+          billingStatus: (formData.billingStatus || 'non_billable') as BillingStatus,
           projectId: submitProjectId,
-          priority: formData.priority as Priority,
-          category: formData.category as TaskCategory,
+          priority: (formData.priority || 'medium') as Priority,
+          category: (formData.category || 'general') as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
           locationOnSite: trimmedLocationOnSite,
           ...redesignMetadata,
+          assignedTo: submitAssignedTo,
           assignedBy: user?.id || '',
+          status: submitStatus,
           attachments: existingAttachmentUrls,
-        });
+        } as Parameters<typeof createTask>[0]);
         const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
           formData.attachments,
           createdTaskId,
@@ -1086,13 +1244,15 @@ export function useCreateTaskViewAdapter({
     }
 
     try {
-      await AsyncStorage.multiRemove([
-        "draftCreateTask",
-        "createTask_camera_return_photos",
-        "createTask_camera_return_context",
-        "createTask_camera_return_timestamp",
-      ]);
-      setFormData(createEmptyFormData());
+      if (typeof AsyncStorage?.multiRemove === "function") {
+        await AsyncStorage.multiRemove([
+          "draftCreateTask",
+          "createTask_camera_return_photos",
+          "createTask_camera_return_context",
+          "createTask_camera_return_timestamp",
+        ]);
+      }
+      setFormData(createEmptyFormData(defaultIntentMode));
     } catch (e) {
       console.error("Failed to clear task draft payloads", e);
     }
@@ -1161,6 +1321,12 @@ export function useCreateTaskViewAdapter({
       showEditReasonModal,
       editReason,
     },
+    intentSelector: {
+      // Peer choice is at entry chooser, not inside the form.
+      visible: false,
+      activeMode: formData.intentMode ?? defaultIntentMode,
+      availableModes: [],
+    },
     aiAssistant: {
       textInput,
       showSuggestionPreview,
@@ -1180,6 +1346,7 @@ export function useCreateTaskViewAdapter({
     actions: {
       clearDraftPayloads,
       updateField,
+      setIntentMode,
       togglePicker,
       submit,
       saveDraft,

@@ -115,7 +115,7 @@ Menu rows must match: Profile & Settings, Change Project, Logout (`__DEV__`: + D
 | W-D03 | Update text | ☐ | **PASS** `E-D03-update-text-only.yaml` headed 2026-08-19 Bob |
 | W-D04 | Update + photo | ☐ | **PASS** `W-D04-update-photo.yaml` headed 2026-08-19 Bob |
 | W-D05 | Add comment | ☐ | **Exempt** — retired UX (2026-07 photo-centric simplification). Field narrative → **Update Description** on Update Progress (`W-D03` / `W-C07`). No Task Detail chip by design. Evidence: `2026-08-19-w-d05-gap-no-comment-chip.png` |
-| W-D06 | Add subtask | ☐ | **PASS** `W-D06-add-subtask.yaml` headed 2026-08-19 Bob — evidence `2026-08-19-w-d06-create-subtask.png` |
+| W-D06 | Add subtask | ☐ | **Deferred (2026-09-07)** — product lock: leave subtask create UI off as future enhancement. Historical headed PASS 2026-08-19 is stale (Other actions / Add Subtask entry removed). Domain `createSubTask` retained. |
 | W-D07 | Submit for review | ☐ | **PASS** `W-D07-submit-review.yaml` headed 2026-08-19 Bob |
 | W-D08 | Edit (creator) | ☐ | **PASS** `W-D08-edit.yaml` headed 2026-08-19 Bob |
 | W-D09 | Photo viewer | ☐ | **PASS** `W-D09-photo-viewer.yaml` headed 2026-08-19 Bob |

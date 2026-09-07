@@ -149,9 +149,29 @@ describe("resolveCreateTaskEntryParams", () => {
       postCaptureDefault: undefined,
       selectedPhotos: undefined,
       uploadedPhotoUrls: undefined,
+      captureFirstFlow: undefined,
+      intent: undefined,
       clearForm: true,
       _timestamp: 12345,
     });
+  });
+
+  it("preserves peer intent across clearForm entry", () => {
+    expect(
+      resolveCreateTaskEntryParams({
+        intent: "report",
+        clearForm: true,
+        _timestamp: 99,
+        editTaskId: "stale",
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        intent: "report",
+        clearForm: true,
+        editTaskId: undefined,
+        _timestamp: 99,
+      }),
+    );
   });
 
   it("leaves ordinary create-task photo return params untouched when no reset is requested", () => {

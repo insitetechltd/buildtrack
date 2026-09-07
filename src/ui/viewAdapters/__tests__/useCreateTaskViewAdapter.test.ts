@@ -94,6 +94,10 @@ jest.mock("../../../utils/useTranslation", () => ({
       createSubTask: "Create Sub-Task",
       nestedSubTask: "Nested Sub-Task",
       createNewTask: "Create New Task",
+      report: "Report",
+      newTask: "New Task",
+      assign: "Assign",
+      reportIssue: "Report Issue",
       nestedUnder: "Nested under:",
       subTaskOf: "Sub-task of:",
       addNewLocation: "Add new location",
@@ -530,7 +534,7 @@ describe("useCreateTaskViewAdapter", () => {
       expect(result.current.output.formData.title).toBe("Draft inspection");
     });
 
-    expect(result.current.output.context.headerTitle).toBe("Create New Task");
+    expect(result.current.output.context.headerTitle).toBe("Assign");
     expect(result.current.output.context.isLocalDraft).toBe(true);
     expect(result.current.output.context.assigneesLocked).toBe(false);
     expect(result.current.output.context.requiresEditReason).toBe(false);
@@ -604,12 +608,78 @@ describe("useCreateTaskViewAdapter", () => {
     expect(mockDeleteLocalTaskDraft).toHaveBeenCalledWith("local-draft-1");
   });
 
+  it("supports worker report intent: submits status reported with empty assignees", async () => {
+    const { result } = renderHook(() =>
+      useCreateTaskViewAdapter({ intent: "report" }),
+    );
+
+    expect(result.current.output.intentSelector.visible).toBe(false);
+    expect(result.current.output.intentSelector.activeMode).toBe("report_issue");
+    expect(result.current.output.context.headerTitle).toMatch(/Report/i);
+
+    act(() => {
+      result.current.actions.updateField("title", "Broken conduit pipe");
+      result.current.actions.updateField("description", "Water leak above conduit");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("locationOnSite", "Basement level B2");
+    });
+
+    await act(async () => {
+      await result.current.actions.submit();
+    });
+
+    expect(mockCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Broken conduit pipe",
+        description: "Water leak above conduit",
+        projectId: "project-1",
+        locationOnSite: "Basement level B2",
+        assignedTo: [],
+        status: "reported",
+        billingStatus: "non_billable",
+        assignedBy: "user-1",
+      }),
+    );
+  });
+
+  it("supports worker create intent: self-assignment and status in_progress", async () => {
+    const { result } = renderHook(() =>
+      useCreateTaskViewAdapter({ intent: "create" }),
+    );
+
+    expect(result.current.output.intentSelector.visible).toBe(false);
+    expect(result.current.output.intentSelector.activeMode).toBe("my_task");
+    expect(result.current.output.formData.assignedTo).toEqual(["user-1"]);
+
+    act(() => {
+      result.current.actions.updateField("title", "Install terminal boxes");
+      result.current.actions.updateField("description", "Direct work today");
+      result.current.actions.updateField("projectId", "project-1");
+    });
+
+    await act(async () => {
+      await result.current.actions.submit();
+    });
+
+    expect(mockCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Install terminal boxes",
+        description: "Direct work today",
+        projectId: "project-1",
+        assignedTo: ["user-1"],
+        status: "in_progress",
+        assignedBy: "user-1",
+      }),
+    );
+  });
+
   it("submits create and edit modes with stable payloads", async () => {
     const { result: createResult } = renderHook(() =>
       useCreateTaskViewAdapter({}),
     );
 
     act(() => {
+      createResult.current.actions.setIntentMode("full_task");
       createResult.current.actions.updateField("title", "New Task");
       createResult.current.actions.updateField("description", "Install rails");
       createResult.current.actions.updateField("projectId", "project-1");
@@ -705,6 +775,7 @@ describe("useCreateTaskViewAdapter", () => {
     const { result } = renderHook(() => useCreateTaskViewAdapter({}));
 
     act(() => {
+      result.current.actions.setIntentMode("full_task");
       result.current.actions.updateField("title", "Critical rail work");
       result.current.actions.updateField("description", "Edge protection");
       result.current.actions.updateField("projectId", "project-1");
@@ -833,6 +904,93 @@ describe("useCreateTaskViewAdapter", () => {
         value: "Level 9 Rooftop",
       },
     ]);
+  });
+
+  it("prefills reporter as assignee and submits via triageTask for actionType triage", async () => {
+    const mockTriageTask = jest.fn().mockResolvedValue(undefined);
+    mockGetAllUsers.mockReturnValue([
+      {
+        id: "worker-reporter",
+        name: "Worker",
+        email: "worker@example.com",
+        systemPermission: "member",
+      },
+      {
+        id: "user-1",
+        name: "Pat",
+        email: "pat@example.com",
+        systemPermission: "manager",
+      },
+    ]);
+    mockGetProjectUserAssignments.mockReturnValue([
+      { userId: "worker-reporter", projectId: "project-1", projectRole: "worker" },
+      { userId: "user-1", projectId: "project-1", projectRole: "project_manager" },
+    ]);
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "report-1",
+          title: "Needs triage report",
+          description: "Leak on level 3",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          projectId: "project-1",
+          assignedTo: [],
+          assignedBy: "worker-reporter",
+          attachments: [],
+          status: "reported",
+        },
+      ],
+      fetchTaskById: mockFetchTaskById,
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      triageTask: mockTriageTask,
+      fetchProjectLocations: mockFetchProjectLocations,
+      ensureProjectLocation: mockEnsureProjectLocation,
+    });
+
+    const { result } = renderHook(() =>
+      useCreateTaskViewAdapter({
+        editTaskId: "report-1",
+        actionType: "triage",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.output.formData.title).toBe("Needs triage report");
+    });
+    expect(result.current.output.formData.assignedTo).toEqual(["worker-reporter"]);
+    expect(result.current.output.formData.primaryAssigneeId).toBe("worker-reporter");
+    expect(result.current.output.context.headerTitle).toMatch(/create task/i);
+    expect(result.current.output.context.assigneesLocked).toBe(false);
+
+    let submitResult: boolean | undefined;
+    await act(async () => {
+      submitResult = await result.current.actions.submit();
+    });
+
+    expect(submitResult).toBe(true);
+    expect(mockCreateTask).not.toHaveBeenCalled();
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      "report-1",
+      expect.objectContaining({
+        title: "Needs triage report",
+        description: "Leak on level 3",
+      }),
+    );
+    expect(mockUpdateTask.mock.calls[0][1]).not.toHaveProperty("assignedTo");
+    expect(mockTriageTask).toHaveBeenCalledWith(
+      "report-1",
+      expect.objectContaining({
+        assignedTo: ["worker-reporter"],
+        primaryAssigneeId: "worker-reporter",
+      }),
+      "user-1",
+    );
   });
 
   it("returns false and does not submit when validation fails", async () => {

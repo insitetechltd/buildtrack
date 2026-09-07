@@ -1517,7 +1517,7 @@ export const useProjectQueryMeta = (resourceKey: string) =>
 // Custom hook that automatically initializes data when accessed
 export const useProjectStoreWithInit = () => {
   useProjectStore();
-  const user = useAuthStore.getState().user;
+  const user = typeof useAuthStore?.getState === "function" ? useAuthStore.getState()?.user : undefined;
   const isSprint7SandboxUser = user
     ? user.id === "sprint7-user-tristan" || user.id === "sprint7-user-herman"
     : false;
@@ -1568,8 +1568,10 @@ export const useProjectStoreWithInit = () => {
 
     console.log('🔄 useProjectStoreWithInit: Initializing project store...');
 
-    const authStore = require('./authStore').useAuthStore.getState();
-    const localUser = authStore.user;
+    const authStoreModule = require('./authStore');
+    const localUser = typeof authStoreModule.useAuthStore?.getState === 'function'
+      ? authStoreModule.useAuthStore.getState()?.user
+      : user;
 
     console.log('👤 Current user:', localUser ? `${localUser.name} (${localUser.id})` : 'none');
     console.log('🔗 Supabase available:', !!supabase);

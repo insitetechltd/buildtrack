@@ -274,6 +274,75 @@ describe("useTasksViewAdapter", () => {
     });
   });
 
+  it("defaults to newest-created order and can switch via Filters order options", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-older",
+          title: "Older task",
+          status: "new",
+          dueDate: "2026-07-01T00:00:00.000Z",
+          createdAt: "2026-07-01T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-newer",
+          title: "Newer task",
+          status: "new",
+          dueDate: "2026-07-20T00:00:00.000Z",
+          createdAt: "2026-07-10T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks: jest.fn(),
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.filterSummary.sortLabel).toBe("Created · Newest first");
+    expect(result.current.output.filterSheet.stagedSortOrder).toBe("newest_created");
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-newer",
+      "task-older",
+    ]);
+    expect(result.current.output.filterButton.activeCount).toBe(0);
+
+    act(() => {
+      result.current.actions.openFiltersSheet();
+      result.current.actions.stageSortOrderFilter("due_soonest");
+      result.current.actions.applyStagedFilters();
+    });
+
+    expect(result.current.output.filterSummary.sortLabel).toBe("Due date · Earliest first");
+    expect(result.current.output.activeFilterChips).toContainEqual({
+      id: "sortOrder",
+      label: "Order: Due soonest",
+    });
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-older",
+      "task-newer",
+    ]);
+
+    act(() => {
+      result.current.actions.removeAppliedFilterChip("sortOrder");
+    });
+
+    expect(result.current.output.filterButton.activeCount).toBe(0);
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-newer",
+      "task-older",
+    ]);
+  });
+
   it("fetches archived tasks when archived queue is requested without archived rows loaded", async () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
     const fetchArchivedTasks = jest.fn();
@@ -475,5 +544,148 @@ describe("useTasksViewAdapter", () => {
     const { result } = renderHook(() => useTasksViewAdapter());
 
     expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual(["task-mine"]);
+  });
+
+  it("soft-scopes the list to the selected workspace project for multi-project PMs", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+
+    setupBaseMocks({ selectedProjectId: "project-1" });
+    useProjectStoreWithInit.mockReturnValue({
+      isLoading: false,
+      getProjectById: jest.fn((id: string) =>
+        id === "project-1"
+          ? { name: "Insite Office", companyId: "company-1" }
+          : { name: "Project A", companyId: "company-1" },
+      ),
+      projectIdsByUser: {
+        "user-1": ["project-1", "project-2"],
+      },
+      projects: [
+        { id: "project-1", companyId: "company-1", name: "Insite Office" },
+        { id: "project-2", companyId: "company-1", name: "Project A" },
+      ],
+      projectQueryMeta: { "projects:all": { hasFetchedOnce: true } },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-office",
+          title: "Office punch",
+          projectId: "project-1",
+          assignedTo: ["bob"],
+          assignedBy: "user-1",
+        }),
+        makeTask({
+          id: "task-site-a",
+          title: "Site A waterproofing",
+          projectId: "project-2",
+          assignedTo: ["bob"],
+          assignedBy: "user-1",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks: jest.fn(),
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual(["task-office"]);
+    expect(result.current.output.filterSummary.statusFilterLabel).toBe("Project scoped");
+    expect(result.current.output.filterSummary.selectedProjectId).toBe("project-1");
+  });
+
+  it("auto-scopes when the PM belongs to only one project even without a stored selection", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+
+    setupBaseMocks({ selectedProjectId: null });
+    useProjectStoreWithInit.mockReturnValue({
+      isLoading: false,
+      getProjectById: jest.fn().mockReturnValue({ name: "Insite Office", companyId: "company-1" }),
+      projectIdsByUser: {
+        "user-1": ["project-1"],
+      },
+      projects: [{ id: "project-1", companyId: "company-1", name: "Insite Office" }],
+      projectQueryMeta: { "projects:all": { hasFetchedOnce: true } },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-office",
+          title: "Office punch",
+          projectId: "project-1",
+          assignedTo: ["bob"],
+          assignedBy: "user-1",
+        }),
+        makeTask({
+          id: "task-leaked",
+          title: "Should not appear",
+          projectId: "project-2",
+          assignedTo: ["bob"],
+          assignedBy: "alice",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks: jest.fn(),
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual(["task-office"]);
+    expect(result.current.output.filterSummary.statusFilterLabel).toBe("Project scoped");
+  });
+
+  it("labels cards with project name in all-projects view so mixed jobs are obvious", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+
+    setupBaseMocks({ selectedProjectId: null });
+    useProjectStoreWithInit.mockReturnValue({
+      isLoading: false,
+      getProjectById: jest.fn((id: string) =>
+        id === "project-1"
+          ? { name: "Insite Office", companyId: "company-1" }
+          : { name: "Project A", companyId: "company-1" },
+      ),
+      projectIdsByUser: {
+        "user-1": ["project-1", "project-2"],
+      },
+      projects: [
+        { id: "project-1", companyId: "company-1", name: "Insite Office" },
+        { id: "project-2", companyId: "company-1", name: "Project A" },
+      ],
+      projectQueryMeta: { "projects:all": { hasFetchedOnce: true } },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-site-a",
+          title: "Site A waterproofing",
+          description: "Site evidence required",
+          projectId: "project-2",
+          assignedTo: ["bob"],
+          assignedBy: "user-1",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks: jest.fn(),
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.filterSummary.statusFilterLabel).toBe("All projects");
+    expect(result.current.output.taskRowItems[0]?.contextLine).toBe(
+      "Project A · Site evidence required",
+    );
   });
 });

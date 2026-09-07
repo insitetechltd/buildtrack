@@ -750,6 +750,48 @@ describe('Authentication Workflow Tests', () => {
       expect(result.current.user?.mustSetPassword).toBe(true);
     });
 
+    it("does not reopen Set Password when users row is false but JWT metadata is stale", async () => {
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: { ...defaultUsersTableRow, must_set_password: false },
+                error: null,
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+      (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: {
+          session: {
+            access_token: "sess",
+            user: {
+              ...defaultAuthUser,
+              user_metadata: { must_set_password: true },
+            },
+          },
+        },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      await act(async () => {
+        await result.current.initialize();
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.user?.mustSetPassword).toBe(false);
+    });
+
     it("completeFirstLoginPassword updates auth and clears the flag", async () => {
       const mockFrom = mockSupabase.from as unknown as jest.Mock;
       const select = jest.fn().mockResolvedValue({

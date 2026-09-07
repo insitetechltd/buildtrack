@@ -1,7 +1,11 @@
 import { CommonActions, StackActions } from "@react-navigation/native";
 import { exitUpdateProgressScreen, type PhotoFlowStackNav } from "./photoFlowNavigation";
 import { promptCaptureFirstSource } from "./captureFirstCameraFlow";
-import { resolveTaskDetailUpdateShortcut, resolveTasksListCreateShortcut } from "./photoShortcutRoutes";
+import {
+  resolveReportTriageShortcut,
+  resolveTaskDetailUpdateShortcut,
+  resolveTasksListCreateShortcut,
+} from "./photoShortcutRoutes";
 import {
   navigateToCreateTaskRoute,
   type CreateTaskRouteNavigation,
@@ -12,6 +16,17 @@ import {
   popCurrentStack,
 } from "./rootNavigationHelpers";
 import type { CreateTaskParams } from "./navigationTypes";
+import type { CreateTaskRouteIntent } from "./newInformationChooser";
+import { rootNavigationRef } from "./rootNavigationRef";
+import {
+  setTasksCreateDialExpanded,
+  toggleTasksCreateDialExpanded,
+} from "./tasksCreateSpeedDialStore";
+import {
+  setReportTriageDialExpanded,
+  toggleReportTriageDialExpanded,
+} from "./reportTriageSpeedDialStore";
+import type { ReportTriageDialAction } from "../components/ReportTriageSpeedDial";
 
 export function returnToCreateTaskRoute(
   navigation: CreateTaskRouteNavigation,
@@ -84,6 +99,93 @@ export function handleUpdateProgressBack(navigation: StackBackNavigation) {
   exitUpdateProgressScreen(navigation as unknown as PhotoFlowStackNav);
 }
 
+export function navigateTasksCreateWithIntent(
+  navigation: {
+    navigate: (screen: string, params?: unknown) => void;
+  },
+  intent: CreateTaskRouteIntent,
+) {
+  setTasksCreateDialExpanded(false);
+  const createParams: CreateTaskParams = {
+    sourceScreen: "tasks",
+    intent,
+    clearForm: true,
+    _timestamp: Date.now(),
+  };
+
+  if (rootNavigationRef.isReady?.()) {
+    rootNavigationRef.navigate("MainTabs", {
+      screen: "Tasks",
+      params: {
+        screen: "CreateTask",
+        params: createParams,
+      },
+    });
+    return;
+  }
+
+  navigation.navigate("Tasks", {
+    screen: "CreateTask",
+    params: createParams,
+  });
+}
+
+export function navigateReportTriageAction(
+  tabState: Parameters<typeof resolveReportTriageShortcut>[0],
+  action: ReportTriageDialAction,
+) {
+  setReportTriageDialExpanded(false);
+  const shortcut = resolveReportTriageShortcut(tabState);
+  if (!shortcut) {
+    return;
+  }
+
+  if (action === "resolve") {
+    try {
+      const { useTaskStore } = require("../state/taskStore.supabase") as {
+        useTaskStore: {
+          getState: () => {
+            resolveReport: (taskId: string, userId: string, note?: string) => Promise<void>;
+          };
+        };
+      };
+      const { useAuthStore } = require("../state/authStore") as {
+        useAuthStore: { getState: () => { user?: { id?: string } | null } };
+      };
+      const userId = useAuthStore.getState().user?.id;
+      if (!userId) {
+        return;
+      }
+      void useTaskStore.getState().resolveReport(shortcut.taskId, userId, "Resolved without reply");
+    } catch {
+      // ignore — store unavailable in tests without mock
+    }
+    return;
+  }
+
+  const tabScreen = shortcut.tabName;
+  const sourceScreen = tabScreen === "Activity" ? "dashboard" : "tasks";
+
+  const createParams: CreateTaskParams = {
+    editTaskId: shortcut.taskId,
+    actionType: "triage",
+    sourceScreen,
+    sourceTaskId: shortcut.taskId,
+    sourceSubTaskId: shortcut.subTaskId,
+    clearForm: false,
+    _timestamp: Date.now(),
+  };
+  if (rootNavigationRef.isReady?.()) {
+    rootNavigationRef.navigate("MainTabs", {
+      screen: tabScreen,
+      params: {
+        screen: "CreateTask",
+        params: createParams,
+      },
+    });
+  }
+}
+
 export function handleCameraTabPress({
   event,
   navigation,
@@ -99,9 +201,17 @@ export function handleCameraTabPress({
 }) {
   event.preventDefault();
   const tabState = navigation.getState();
+  const reportTriage = resolveReportTriageShortcut(tabState);
+  if (reportTriage) {
+    setTasksCreateDialExpanded(false);
+    toggleReportTriageDialExpanded();
+    return;
+  }
+
   const updateShortcut = resolveTaskDetailUpdateShortcut(tabState);
   if (updateShortcut) {
-    // Task Detail: + means start an update on this task.
+    setTasksCreateDialExpanded(false);
+    setReportTriageDialExpanded(false);
     navigation.navigate(updateShortcut.tabName, {
       screen: "UpdateProgress",
       params: updateShortcut.params,
@@ -109,16 +219,11 @@ export function handleCameraTabPress({
     return;
   }
   if (resolveTasksListCreateShortcut(tabState)) {
-    // Tasks list: + opens the create-task form (camera stays on Activity).
-    navigation.navigate("Tasks", {
-      screen: "CreateTask",
-      params: {
-        sourceScreen: "tasks",
-        clearForm: true,
-        _timestamp: Date.now(),
-      },
-    });
+    setReportTriageDialExpanded(false);
+    toggleTasksCreateDialExpanded();
     return;
   }
+  setTasksCreateDialExpanded(false);
+  setReportTriageDialExpanded(false);
   promptCaptureFirstSource(navigation, tabState);
 }

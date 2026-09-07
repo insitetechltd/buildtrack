@@ -17,6 +17,18 @@ jest.mock("@/state/userStore.supabase", () => ({
   useUserStore: jest.fn(),
 }));
 
+jest.mock("@/state/projectStore.supabase", () => ({
+  useProjectStoreWithInit: jest.fn(() => ({
+    projectIdsByUser: {
+      "user-1": ["project-1"],
+      "manager-1": ["project-1"],
+    },
+    projects: [{ id: "project-1", companyId: "company-1", name: "Site A" }],
+    getProjectUserAssignments: jest.fn(() => []),
+    fetchProjectUserAssignments: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 jest.mock("@/utils/dateFormatter", () => ({
   useDateFormatter: jest.fn(),
 }));
@@ -75,8 +87,15 @@ function mockTaskStoreForTask(task: Task) {
     submitSubTaskForReview: jest.fn(),
     acceptSubTask: jest.fn(),
     declineSubTask: jest.fn(),
+    archiveTask: jest.fn(),
     cancelTask: jest.fn(),
     updateTask: jest.fn(),
+    ensureProjectLocation: jest.fn(),
+    fetchArchivedTasks: jest.fn(),
+    addAssignerComment: jest.fn(),
+    triageTask: jest.fn(),
+    resolveReport: jest.fn(),
+    dismissIssue: jest.fn(),
   });
 }
 
@@ -154,6 +173,9 @@ describe("TaskDetailQuickActions", () => {
         id,
         name: `User ${id}`,
       })),
+      getAllUsers: jest.fn(() => []),
+      fetchUsersByCompany: jest.fn().mockResolvedValue(undefined),
+      fetchUsers: jest.fn().mockResolvedValue(undefined),
     });
 
     useDateFormatter.mockReturnValue({
@@ -162,6 +184,16 @@ describe("TaskDetailQuickActions", () => {
     });
 
     useTranslation.mockReturnValue({
+      tasks: {
+        taskDetails: "Task Details",
+      },
+      createTask: {
+        needsTriage: "Needs Triage",
+        issueReported: "Issue Reported",
+        replyToReport: "Reply",
+        createTaskFromReport: "Create task",
+        resolveReport: "Resolve",
+      },
       taskDetail: {
         submittedForReview: "Submitted for Review",
         taskApproved: "Task Approved",
@@ -257,5 +289,40 @@ describe("TaskDetailQuickActions", () => {
     expect(output.quickActions).toBeUndefined();
     expect(output.actionItems.some((action) => action.actionId === "approve_task")).toBe(true);
     expect(output.actionItems.some((action) => action.actionId === "reject_task")).toBe(true);
+  });
+
+  it("does not show triage quick-action pills on reported (FAB dial owns triage)", () => {
+    const { useAuthStore } = require("@/state/authStore");
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "manager-1",
+        companyId: "company-1",
+        name: "Pat",
+        role: "manager",
+        systemPermission: "manager",
+      },
+    });
+
+    mockTaskStoreForTask(
+      buildTask({
+        status: "reported",
+        assignedBy: "worker-1",
+        assignedTo: [],
+        primaryAssigneeId: undefined,
+      }),
+    );
+
+    const { output } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-1",
+      }),
+    ).result.current;
+
+    expect(output.quickActions).toBeUndefined();
+    expect(output.actionItems.some((action) => action.actionId === "reply_report")).toBe(false);
+    expect(output.actionItems.some((action) => action.actionId === "triage_task")).toBe(false);
+    expect(output.actionItems.some((action) => action.actionId === "resolve_report")).toBe(false);
+    expect(output.actionItems.some((action) => action.actionId === "dismiss_issue")).toBe(false);
+    expect(output.reportTriage?.defaultAssigneeId).toBe("worker-1");
   });
 });

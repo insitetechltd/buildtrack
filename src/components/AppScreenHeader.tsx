@@ -1,10 +1,11 @@
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContext } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ProfileMenu from "@/components/ProfileMenu";
+import { UserAvatar } from "@/components/UserAvatar";
 import {
   HEADER_LEADING_CONTROL_SIZE_CLASS,
   HeaderChromeProvider,
@@ -69,7 +70,10 @@ export default function AppScreenHeader({
 
   // Same defaults as ModernScreenHeader — Dashboard/Tasks use AppScreenHeader
   // directly and must still get privilege-aware avatar menu wiring.
-  const navigation = useContext(NavigationContext) as HeaderNavigation | undefined;
+  const navigation =
+    NavigationContext && typeof NavigationContext === "object"
+      ? (useContext(NavigationContext) as HeaderNavigation | undefined)
+      : undefined;
 
   const resolvedNavigateToProfile =
     onNavigateToProfile ??
@@ -111,10 +115,6 @@ export default function AppScreenHeader({
       : undefined);
 
   const topPadding = insets.top > 0 ? insets.top + 4 : 16;
-  const profileInitial = useMemo(() => {
-    const firstCharacter = user?.name?.trim()?.charAt(0);
-    return firstCharacter ? firstCharacter.toUpperCase() : "?";
-  }, [user?.name]);
 
   const handleProfilePress = useCallback(() => {
     if (onProfilePress) {
@@ -181,14 +181,20 @@ export default function AppScreenHeader({
                 <Pressable
                   testID="app-screen-header__profile-trigger"
                   onPress={handleProfilePress}
-                  className={cn(
-                    "h-10 w-10 items-center justify-center rounded-full bg-[#12A8E0]",
-                    rightSlot && "ml-2",
-                  )}
+                  className={cn(rightSlot && "ml-2")}
                   accessibilityRole="button"
                   accessibilityLabel="Open workspace menu"
                 >
-                  <Text className="text-base font-bold text-white">{profileInitial}</Text>
+                  <UserAvatar
+                    userId={user.id}
+                    name={user.name}
+                    email={user.email}
+                    size={40}
+                    style={{
+                      borderWidth: 1.5,
+                      borderColor: "#FFFFFF",
+                    }}
+                  />
                 </Pressable>
               ) : null}
             </View>

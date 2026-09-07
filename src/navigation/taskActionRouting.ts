@@ -57,5 +57,17 @@ export function resolveStandaloneTaskAction(params: {
     };
   }
 
+  if (actionType === "triage") {
+    return {
+      kind: "createTask",
+      params: {
+        editTaskId,
+        actionType: "triage",
+        updateTargetSubTaskId,
+        sourceScreen,
+      },
+    };
+  }
+
   return null;
 }

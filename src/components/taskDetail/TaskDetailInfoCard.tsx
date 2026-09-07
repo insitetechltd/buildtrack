@@ -3,10 +3,11 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { TaskDetailInfoCardModel } from "@/ui/contracts/viewAdapters";
-import { cn } from "@/utils/cn";
 
 interface TaskDetailInfoCardProps {
   model: TaskDetailInfoCardModel;
+  onEditPress?: () => void;
+  onReassignPress?: () => void;
 }
 
 function joinSummary(parts: Array<string | undefined>) {
@@ -27,19 +28,23 @@ function KvRow({
   label,
   value,
   critical = false,
+  testID,
 }: {
   label: string;
   value?: string;
+  /** Critical-this-week: highlight due date in red (not a separate Priority row). */
   critical?: boolean;
+  testID?: string;
 }) {
   return (
-    <View className="flex-row items-center justify-between gap-3 py-1.5">
+    <View
+      testID={testID}
+      className="flex-row items-center justify-between gap-3 py-1.5"
+    >
       <Text className="text-sm text-slate-500">{label}</Text>
       <Text
-        className={cn(
-          "shrink text-right text-sm font-medium",
-          critical ? "text-amber-900" : "text-slate-900",
-        )}
+        className="shrink text-right text-sm font-medium"
+        style={{ color: critical ? "#DC2626" : "#0f172a" }}
       >
         {value?.trim() ? value : "—"}
       </Text>
@@ -51,16 +56,20 @@ function CollapsibleSection({
   title,
   testID,
   summary,
-  badge,
+  summaryCritical = false,
+  defaultOpen = false,
   children,
 }: {
   title: string;
   testID: string;
   summary?: string;
-  badge?: string;
+  /** When true, collapsed summary due/critical cue uses red due emphasis. */
+  summaryCritical?: boolean;
+  /** Open by default (e.g. Team when Reassign is available). */
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <View testID={testID} className="border-b border-slate-100">
@@ -76,18 +85,11 @@ function CollapsibleSection({
           <Text className="text-xs font-semibold uppercase tracking-[1.2px] text-slate-400">
             {title}
           </Text>
-          {badge ? (
-            <Text
-              testID={`${testID}__badge`}
-              className="mt-0.5 text-sm font-semibold text-amber-800"
-            >
-              {badge}
-            </Text>
-          ) : null}
           {!isOpen && summary ? (
             <Text
               testID={`${testID}__summary`}
-              className="mt-0.5 text-sm font-medium text-slate-800"
+              className="mt-0.5 text-sm font-medium"
+              style={{ color: summaryCritical ? "#DC2626" : "#1e293b" }}
               numberOfLines={1}
             >
               {summary}
@@ -105,31 +107,56 @@ function CollapsibleSection({
   );
 }
 
-export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
+export default function TaskDetailInfoCard({
+  model,
+  onEditPress,
+  onReassignPress,
+}: TaskDetailInfoCardProps) {
   const tagLabels = model.tagLabels ?? [];
   const delegatedLabels = model.delegatedLabels ?? [];
   const hasProgress = Boolean(
     model.statusLabel ||
       model.categoryLabel ||
       model.completionLabel ||
-      model.dueDateLabel ||
-      (model.isCritical && model.criticalLabel),
+      model.dueDateLabel,
   );
+  const dueIsCritical = Boolean(model.isCritical && model.dueDateLabel);
 
   const cardTitle = model.title?.trim();
+  const showEdit = Boolean(model.showEditAction && onEditPress);
+  const showReassign = Boolean(model.showReassignAction && onReassignPress);
 
   return (
     <View
       testID="task-detail__info_card"
       className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-[14px]"
     >
-      {cardTitle ? (
-        <Text
-          testID="task-detail__info_card_title"
-          className="text-lg font-semibold text-slate-900"
-        >
-          {cardTitle}
-        </Text>
+      {cardTitle || showEdit ? (
+        <View className="flex-row items-start gap-2">
+          {cardTitle ? (
+            <Text
+              testID="task-detail__info_card_title"
+              className="min-w-0 flex-1 text-lg font-semibold text-slate-900"
+            >
+              {cardTitle}
+            </Text>
+          ) : (
+            <View className="flex-1" />
+          )}
+          {showEdit ? (
+            <Pressable
+              testID="task-detail__info_card_edit"
+              accessibilityRole="button"
+              accessibilityLabel={model.editActionLabel || "Edit Task Details"}
+              onPress={onEditPress}
+              hitSlop={8}
+              style={{ height: 44, width: 44, borderRadius: 22 }}
+              className="items-center justify-center border border-slate-200 bg-slate-50"
+            >
+              <Ionicons name="create-outline" size={20} color="#08576E" />
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
 
       <View className="mt-1">
@@ -137,21 +164,23 @@ export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
           <CollapsibleSection
             title="Progress"
             testID="task-detail__status_chips"
-            badge={model.isCritical ? model.criticalLabel : undefined}
             summary={joinSummary([
               model.statusLabel,
               model.categoryLabel,
               model.completionLabel,
               model.dueDateLabel,
             ])}
+            summaryCritical={dueIsCritical}
           >
-            {model.isCritical && model.criticalLabel ? (
-              <KvRow label="Priority" value={model.criticalLabel} critical />
-            ) : null}
             <KvRow label="Status" value={model.statusLabel} />
             <KvRow label="Category" value={model.categoryLabel} />
             <KvRow label="Completion" value={model.completionLabel} />
-            <KvRow label="Due" value={model.dueDateLabel} />
+            <KvRow
+              label="Due"
+              value={model.dueDateLabel}
+              critical={dueIsCritical}
+              testID="task-detail__due_date"
+            />
           </CollapsibleSection>
         ) : null}
 
@@ -168,6 +197,7 @@ export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
             title="Team"
             testID="task-detail__people_group"
             summary={buildTeamSummary(model)}
+            defaultOpen={showReassign}
           >
             <KvRow label="Assigned by" value={model.assignedByLabel} />
             <KvRow label="Assigned to" value={model.assignedToLabel} />
@@ -176,6 +206,19 @@ export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
             ) : null}
             {delegatedLabels.length > 0 ? (
               <KvRow label="Delegates" value={delegatedLabels.join(", ")} />
+            ) : null}
+            {showReassign ? (
+              <Pressable
+                testID="task-detail__reassign"
+                accessibilityRole="button"
+                accessibilityLabel={model.reassignActionLabel || "Reassign"}
+                onPress={onReassignPress}
+                className="mt-2 min-h-[44px] items-center justify-center rounded-2xl border border-slate-300 bg-slate-50 px-3"
+              >
+                <Text className="text-base font-semibold text-[#08576E]">
+                  {model.reassignActionLabel || "Reassign"}
+                </Text>
+              </Pressable>
             ) : null}
           </CollapsibleSection>
 

@@ -68,6 +68,41 @@ describe("taskCreateValidation", () => {
     expect(resolveInitialTaskCreateStatus("pm-1", ["worker-1"])).toBe("new");
   });
 
+  it("resolves reported for report_issue intent even with empty assignees", () => {
+    expect(
+      validateTaskCreateInput({ ...valid, assignedTo: [], intentMode: "report_issue" }),
+    ).toEqual([]);
+    expect(
+      resolveInitialTaskCreateStatus("worker-1", [], "report_issue"),
+    ).toBe("reported");
+  });
+
+  it("resolves in_progress for my_task intent mode", () => {
+    expect(
+      resolveInitialTaskCreateStatus("worker-1", ["worker-1"], "my_task"),
+    ).toBe("in_progress");
+  });
+
+  it("preserves reported status in resolveClientTaskStatus without altering it", () => {
+    expect(
+      resolveClientTaskStatus({
+        status: "reported",
+        assigned_by: "worker-1",
+        assigned_to: [],
+      }),
+    ).toBe("reported");
+  });
+
+  it("preserves dismissed status in resolveClientTaskStatus without altering it", () => {
+    expect(
+      resolveClientTaskStatus({
+        status: "dismissed",
+        assigned_by: "worker-1",
+        assigned_to: [],
+      }),
+    ).toBe("dismissed");
+  });
+
   it("does not await acceptance for self-assigned tasks still marked new", () => {
     expect(
       isTaskAwaitingAssigneeAcceptance({

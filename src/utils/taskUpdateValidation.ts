@@ -1,5 +1,10 @@
 import type { TaskStatus } from "@/types/buildtrack";
 import {
+  isResolvedReportStatus,
+  isTerminalTaskStatus as isLifecycleTerminalStatus,
+  isTriageStatus,
+} from "./taskLifecycleStatus";
+import {
   normalizeCreateAssigneeIds,
   type TaskCreateValidationErrorCode,
   taskCreateValidationMessage,
@@ -12,13 +17,6 @@ export type TaskUpdateSnapshot = {
   assignedTo?: string[] | undefined;
   status?: TaskStatus;
 };
-
-const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set([
-  "approved",
-  "completed",
-  "done",
-  "cancelled",
-]);
 
 const STRUCTURAL_UPDATE_KEYS = [
   "title",
@@ -40,11 +38,16 @@ const UPDATE_ERROR_MESSAGES: Record<
     "Self-assigned tasks must be in progress, not waiting for acceptance",
 };
 
+/** Prefer shared lifecycle terminal set (includes resolved/dismissed). */
 export function isTerminalTaskStatus(status: TaskStatus | undefined): boolean {
-  return status != null && TERMINAL_STATUSES.has(status);
+  return isLifecycleTerminalStatus(status);
 }
 
 export function taskRequiresAssignees(status: TaskStatus | undefined): boolean {
+  // Reported issues await PM triage — assignees are optional until triageTask.
+  if (isTriageStatus(status) || isResolvedReportStatus(status)) {
+    return false;
+  }
   return !isTerminalTaskStatus(status);
 }
 

@@ -1,7 +1,30 @@
 import { renderHook, act } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { useUpdateProgressViewAdapter } from '../../ui/viewAdapters/useUpdateProgressViewAdapter';
 
-// Mock dependencies
+const mockRouteParams: Record<string, unknown> = {
+  taskId: 'task-1',
+};
+
+const mockAddTaskUpdate = jest.fn();
+const mockAddAssignerComment = jest.fn().mockResolvedValue(undefined);
+const mockFetchTaskById = jest.fn().mockResolvedValue(undefined);
+
+const mockTaskState = {
+  tasks: [
+    {
+      id: 'task-1',
+      title: 'Task 1',
+      completionPercentage: 20,
+      status: 'in_progress',
+    },
+  ],
+  fetchTaskById: mockFetchTaskById,
+  addTaskUpdate: mockAddTaskUpdate,
+  addSubTaskUpdate: jest.fn(),
+  addAssignerComment: mockAddAssignerComment,
+};
+
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     navigate: jest.fn(),
@@ -10,8 +33,8 @@ jest.mock('@react-navigation/native', () => ({
     getParent: jest.fn(),
   }),
   useRoute: () => ({
-    params: {
-      taskId: 'task-1',
+    get params() {
+      return mockRouteParams;
     },
   }),
   useFocusEffect: jest.fn((cb) => cb()),
@@ -28,15 +51,12 @@ jest.mock('../../state/authStore', () => ({
 }));
 
 jest.mock('../../state/taskStore.supabase', () => ({
-  useTaskStore: (selector: any) => {
-    const state = {
-      tasks: [{ id: 'task-1', title: 'Task 1', completionPercentage: 20, status: 'in_progress' }],
-      fetchTaskById: jest.fn(),
-      addTaskUpdate: jest.fn(),
-      addSubTaskUpdate: jest.fn(),
-    };
-    return selector(state);
-  },
+  useTaskStore: Object.assign(
+    (selector: any) => selector(mockTaskState),
+    {
+      getState: () => mockTaskState,
+    },
+  ),
 }));
 
 jest.mock('../../utils/usePhotoSelection', () => ({
@@ -52,6 +72,16 @@ jest.mock('../../utils/useTranslation', () => ({
       submitUpdate: 'Submit Update',
       failedToSubmitUpdate: 'Failed',
       progressUpdateAdded: 'Added',
+      updateDescription: 'Update Description',
+      updateDescriptionPlaceholder: 'Describe…',
+    },
+    createTask: {
+      replyToReport: 'Reply',
+      sendReply: 'Send reply',
+      replyMessage: 'Reply',
+      replyPlaceholder: 'Write a reply…',
+      replySent: 'Reply sent',
+      replyFailed: 'Failed to send reply',
     },
     errors: {
       success: 'Success',
@@ -70,20 +100,46 @@ jest.mock('../../api/fileUploadService', () => ({
   }),
 }));
 
+jest.mock('../../navigation/photoFlowNavigation', () => ({
+  returnToTaskDetailAfterUpdateProgress: jest.fn(),
+}));
+
 describe('useUpdateProgressViewAdapter', () => {
+  beforeEach(() => {
+    mockRouteParams.taskId = 'task-1';
+    delete mockRouteParams.mode;
+    mockTaskState.tasks = [
+      {
+        id: 'task-1',
+        title: 'Task 1',
+        completionPercentage: 20,
+        status: 'in_progress',
+      },
+    ];
+    mockAddTaskUpdate.mockClear();
+    mockAddAssignerComment.mockClear();
+    mockFetchTaskById.mockClear();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('should initialize correctly and return output', () => {
     const { result } = renderHook(() => useUpdateProgressViewAdapter({}));
-    
+
     expect(result.current.output.screenId).toBe('UpdateProgressScreen');
     expect(result.current.output.readiness.hasUsableData).toBe(true);
     expect(result.current.output.form.completionPercentage).toBe(20);
     expect(result.current.output.form.description).toBe('');
+    expect(result.current.output.form.mode).toBe('progress');
     expect(result.current.output.photos).toEqual([]);
   });
 
   it('should allow setting description', () => {
     const { result } = renderHook(() => useUpdateProgressViewAdapter({}));
-    
+
     act(() => {
       result.current.actions.setDescription('New progress');
     });
@@ -94,7 +150,7 @@ describe('useUpdateProgressViewAdapter', () => {
 
   it('should allow updating completion percentage', () => {
     const { result } = renderHook(() => useUpdateProgressViewAdapter({}));
-    
+
     act(() => {
       result.current.actions.setCompletionPercentage(50);
     });
@@ -136,5 +192,67 @@ describe('useUpdateProgressViewAdapter', () => {
     expect(result.current.output.photos).toHaveLength(1);
     expect(result.current.output.photos[0].uri).toBe('file:///annotated-1.jpg');
     expect(result.current.output.photos[0].isAnnotated).toBe(true);
+  });
+
+  it('report_reply mode hides progress chrome and submits via addAssignerComment', async () => {
+    mockRouteParams.mode = 'report_reply';
+    mockTaskState.tasks = [
+      {
+        id: 'task-1',
+        title: 'Needs triage',
+        completionPercentage: 0,
+        status: 'reported',
+      },
+    ];
+
+    const { result } = renderHook(() => useUpdateProgressViewAdapter({}));
+
+    expect(result.current.output.form.mode).toBe('report_reply');
+    expect(result.current.output.form.screenTitle).toBe('Reply');
+    expect(result.current.output.form.submitLabel).toBe('Send reply');
+
+    act(() => {
+      result.current.actions.setDescription('Thanks — looking into it');
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmitUpdate();
+    });
+
+    expect(mockAddAssignerComment).toHaveBeenCalledWith('task-1', {
+      description: 'Thanks — looking into it',
+      photos: [],
+      userId: 'user-1',
+    });
+    expect(mockAddTaskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('reported task without mode still hides % and uses reply submit (photo-return safe)', async () => {
+    delete mockRouteParams.mode;
+    mockTaskState.tasks = [
+      {
+        id: 'task-1',
+        title: 'Test Report Up',
+        completionPercentage: 0,
+        status: 'reported',
+      },
+    ];
+
+    const { result } = renderHook(() => useUpdateProgressViewAdapter({}));
+
+    expect(result.current.output.form.mode).toBe('report_reply');
+    expect(result.current.output.form.screenTitle).toBe('Reply');
+    expect(result.current.output.form.submitLabel).toBe('Send reply');
+
+    act(() => {
+      result.current.actions.setDescription('Got it');
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmitUpdate();
+    });
+
+    expect(mockAddAssignerComment).toHaveBeenCalled();
+    expect(mockAddTaskUpdate).not.toHaveBeenCalled();
   });
 });

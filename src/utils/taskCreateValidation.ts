@@ -6,6 +6,8 @@ export type TaskCreateValidationInput = {
   projectId?: string;
   assignedBy?: string;
   assignedTo?: string[] | undefined;
+  intentMode?: "report_issue" | "my_task" | "full_task";
+  status?: TaskStatus;
 };
 
 export type TaskCreateValidationErrorCode =
@@ -40,6 +42,8 @@ export function validateTaskCreateInput(
   const assignedBy =
     typeof input.assignedBy === "string" ? input.assignedBy.trim() : "";
   const assignees = normalizeCreateAssigneeIds(input.assignedTo);
+  const isReportIntent =
+    input.intentMode === "report_issue" || input.status === "reported";
 
   if (!title) {
     errors.push("NO_TITLE");
@@ -50,7 +54,7 @@ export function validateTaskCreateInput(
   if (!assignedBy) {
     errors.push("NO_ORIGINATOR");
   }
-  if (assignees.length === 0) {
+  if (!isReportIntent && assignees.length === 0) {
     errors.push("NO_ASSIGNEES");
   }
 
@@ -145,6 +149,13 @@ export function resolveClientTaskStatus(row: {
   accepted?: boolean | null;
 }): TaskStatus {
   const effective = taskEffectiveStatus(row) as TaskStatus;
+  if (
+    effective === "reported" ||
+    effective === "resolved" ||
+    effective === "dismissed"
+  ) {
+    return effective;
+  }
   if (!isPreAcceptanceTaskStatus(effective)) {
     return effective;
   }
@@ -166,10 +177,14 @@ export function resolveClientTaskStatus(row: {
   return effective;
 }
 
-/** Self-assigned create → in_progress; delegated → new. Requires valid assignees. */
+/** Self-assigned create → in_progress; reported issue → reported; delegated → new. */
 export function resolveInitialTaskCreateStatus(
   assignedBy: string,
   assignedTo: string[] | undefined,
+  intentMode?: string,
 ): TaskStatus {
+  if (intentMode === "report_issue") {
+    return "reported";
+  }
   return isCreatorAmongAssignees(assignedBy, assignedTo) ? "in_progress" : "new";
 }

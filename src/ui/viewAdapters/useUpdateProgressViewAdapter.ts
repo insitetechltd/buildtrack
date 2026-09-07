@@ -30,6 +30,7 @@ export interface UpdateProgressScreenParams {
   uploadedPhotoUrls?: string[]; 
   selectedPhotos?: SelectedPhoto[]; 
   actionType?: string;
+  mode?: "progress" | "report_reply";
   sourceScreen?: string; 
   sourceTaskId?: string; 
   sourceSubTaskId?: string; 
@@ -46,16 +47,29 @@ export interface UpdateProgressScreenProps {
 export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { taskId, subTaskId, initialCompletionPercentage, sourceScreen, sourceTaskId, sourceSubTaskId } = (route.params || {}) as UpdateProgressScreenParams;
-  
+  const {
+    taskId,
+    subTaskId,
+    initialCompletionPercentage,
+    sourceScreen,
+    sourceTaskId,
+    sourceSubTaskId,
+    mode: routeMode,
+  } = (route.params || {}) as UpdateProgressScreenParams;
+
   const t = useTranslation();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
   const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
   const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
+  const addAssignerComment = useTaskStore(state => state.addAssignerComment);
 
   const task = tasks.find(t => t.id === taskId);
+  // Product: PM reply on a report never shows completion %. Prefer explicit mode;
+  // also derive from status so photo-return navigations that drop `mode` stay correct.
+  const isReportReply =
+    routeMode === "report_reply" || task?.status === "reported";
   const isViewingSubTask = !!subTaskId;
 
   const [description, setDescription] = useState("");
@@ -123,6 +137,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       sourceTaskId: sourceTaskId || task.id,
       sourceSubTaskId: sourceSubTaskId || subTaskId,
       entityType: "task-update",
+      mode: isReportReply ? "report_reply" : routeMode,
     });
   };
 
@@ -186,11 +201,16 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
 
   const handleSubmitUpdate = async () => {
     if (!description.trim()) {
-      Alert.alert("Error", "Please provide a description for this update");
+      Alert.alert(
+        "Error",
+        isReportReply
+          ? "Please provide a reply message"
+          : "Please provide a description for this update",
+      );
       return;
     }
 
-    if (!task) return;
+    if (!task || !user?.id) return;
     setIsSubmitting(true);
 
     try {
@@ -205,40 +225,47 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       }
 
       const allPhotoUrls = [...photos, ...uploadedPhotoUrls];
-      const calculatedStatus: TaskStatus = 
-        (task.status === "accepted" || task.status === "in_progress" || task.status === "submitted_for_review") ? 
-          "in_progress" : task.status || "in_progress";
 
-      const updatePayload = {
-        description: description,
-        photos: allPhotoUrls,
-        completionPercentage: completionPercentage,
-        status: calculatedStatus,
-        userId: user!.id,
-      };
-
-      if (isViewingSubTask && subTaskId) {
-        await addSubTaskUpdate(taskId, subTaskId, updatePayload);
+      if (isReportReply) {
+        await addAssignerComment(task.id, {
+          description: description.trim(),
+          photos: allPhotoUrls,
+          userId: user.id,
+        });
+        await fetchTaskById(task.id);
+        const refreshed = useTaskStore.getState().tasks.find((entry) => entry.id === task.id);
+        if (refreshed && refreshed.status !== "reported") {
+          console.warn(
+            "[report_reply] expected status reported after reply, got",
+            refreshed.status,
+          );
+        }
       } else {
-        await addTaskUpdate(task.id, updatePayload);
+        const calculatedStatus: TaskStatus =
+          task.status === "accepted" ||
+          task.status === "in_progress" ||
+          task.status === "submitted_for_review"
+            ? "in_progress"
+            : task.status || "in_progress";
+
+        const updatePayload = {
+          description: description,
+          photos: allPhotoUrls,
+          completionPercentage: completionPercentage,
+          status: calculatedStatus,
+          userId: user.id,
+        };
+
+        if (isViewingSubTask && subTaskId) {
+          await addSubTaskUpdate(taskId, subTaskId, updatePayload);
+        } else {
+          await addTaskUpdate(task.id, updatePayload);
+        }
+
+        await fetchTaskById(task.id);
       }
 
-      await fetchTaskById(task.id);
-
-      if (completionPercentage === 100) {
-        // PLATFORM LIMITATION: Alert.alert native OK cannot carry testID.
-        // RN Alert.alert buttons are native dialog chrome; cannot attach DOM testID.
-        // Maestro YAML must tap this button via accessibility text label "OK".
-        // Corresponding TESTID_GAPS_TODO.md row: Status=PLATFORM_LIMITATION
-        Alert.alert("Success", "🎉 Task marked as 100% complete! You can submit it for review when ready.");
-      } else {
-        // PLATFORM LIMITATION: Alert.alert native OK cannot carry testID.
-        // RN Alert.alert buttons are native dialog chrome; cannot attach DOM testID.
-        // Maestro YAML must tap this button via accessibility text label "OK".
-        // P0 gap: update-progress__success_confirm — Status=PLATFORM_LIMITATION
-        Alert.alert(t.errors.success, t.taskDetail.progressUpdateAdded);
-      }
-
+      // Timeline on Task Detail is the confirmation — no success Alert.
       // Pop back to the existing Task Detail under this update flow.
       // Do not navigate/push another Task Detail — that leaves Update Progress
       // underneath and makes header Back reopen the last update step.
@@ -247,7 +274,12 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
         subTaskId: sourceSubTaskId || subTaskId,
       });
     } catch (error) {
-      Alert.alert(t.errors.error, t.taskDetail.failedToSubmitUpdate);
+      Alert.alert(
+        t.errors.error,
+        isReportReply
+          ? t.createTask.replyFailed || "Failed to send reply"
+          : t.taskDetail.failedToSubmitUpdate,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -309,6 +341,19 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       previousPercentage: task?.completionPercentage || 0,
       isSubmitting,
       isValid: description.trim().length > 0,
+      mode: isReportReply ? "report_reply" : "progress",
+      screenTitle: isReportReply
+        ? t.createTask.replyToReport || "Reply"
+        : t.taskDetail.progressUpdate,
+      submitLabel: isReportReply
+        ? t.createTask.sendReply || "Send reply"
+        : t.taskDetail.submitUpdate,
+      descriptionLabel: isReportReply
+        ? t.createTask.replyMessage || "Reply"
+        : t.taskDetail.updateDescription,
+      descriptionPlaceholder: isReportReply
+        ? t.createTask.replyPlaceholder || "Write a reply to the reporter…"
+        : t.taskDetail.updateDescriptionPlaceholder,
     },
     photos: outputPhotos,
     scalarMetrics: {

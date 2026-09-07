@@ -19,13 +19,13 @@ describe("readMustSetPassword", () => {
 });
 
 describe("resolveMustSetPassword", () => {
-  it("falls back to auth metadata when the users row is false", () => {
+  it("trusts a false users row even when auth metadata is still true", () => {
     expect(
       resolveMustSetPassword(
         { must_set_password: false },
         { must_set_password: true },
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("prefers a true users row over metadata", () => {
@@ -35,6 +35,12 @@ describe("resolveMustSetPassword", () => {
         { must_set_password: false },
       ),
     ).toBe(true);
+  });
+
+  it("falls back to auth metadata only when the users row is missing", () => {
+    expect(resolveMustSetPassword(null, { must_set_password: true })).toBe(true);
+    expect(resolveMustSetPassword(undefined, { must_set_password: true })).toBe(true);
+    expect(resolveMustSetPassword(null, { must_set_password: false })).toBe(false);
   });
 
   it("reads auth metadata alone", () => {

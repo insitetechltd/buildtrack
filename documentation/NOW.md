@@ -4,7 +4,7 @@
 
 ---
 
-**This session — DEV Internal TF (2026-09-07):** local `./build-and-submit.sh ios dev` → IPA **1.1.3 (245)** submitted to TestFlight Internal (script footer still prints stale app.json `194`; IPA `CFBundleVersion` = **245**). Profile `dev` / EAS `preview` → **DEV**. Includes Approach B Task Detail dock + archive-on-resolved (`f1f9d6b`). Expo doctor warned but build continued. **Idle (next TF):** iPad Recent Activity equal card heights (`TABLET_POST_CARD_HEIGHT`) landed in working tree after 245.
+**This session — DEV Internal TF (2026-09-08):** local `./build-and-submit.sh ios dev` → IPA **1.1.3 (248)** submitted to TestFlight Internal (script footer still prints stale app.json `194`; remote EAS buildNumber / IPA `CFBundleVersion` = **248**). Profile `dev` / EAS `preview` → **DEV**. Includes Recipe B RA stacks + Phase 1 polish + Phase 2 lab (`4aae996`) + Metro blockList fixes for EAS local (`74ffdb5`, `fcdccd3`). Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/1066c658-f01a-460c-a7d5-f3c5077c847a. Prior: **245** (2026-09-07).
 
 ## Doing
 

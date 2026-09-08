@@ -262,6 +262,8 @@ export type ProfileStackParamList = {
   DeveloperSettings: undefined;
   /** Dev-only CaptureSessionModule host (A/B smoke). Not production Camera. */
   CaptureSessionSmoke: undefined;
+  /** Dev-only RA Phase 2 Option A lab (photo↔event highlight). Not production Activity. */
+  ActivityPhotoSyncLab: undefined;
   OwnerConsole: undefined;
   OwnerMonitoring: undefined;
   OwnerEconomics: undefined;

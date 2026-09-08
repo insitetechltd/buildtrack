@@ -87,6 +87,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -139,6 +147,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -192,6 +208,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -242,6 +266,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -313,6 +345,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -424,6 +464,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -539,6 +587,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -654,6 +710,14 @@ describe('taskStore.supabase workflow tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -733,6 +797,14 @@ describe('taskStore.supabase workflow tests', () => {
       if (table === 'task_activities') {
         return { insert: activityInsert };
       }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -753,6 +825,8 @@ describe('taskStore.supabase workflow tests', () => {
       expect.objectContaining({
         completion_percentage: 0,
         status: 'new',
+        assigned_by: managerId,
+        original_assigned_by: workerId,
       }),
     );
     expect(activityInsert).toHaveBeenCalledWith(
@@ -762,5 +836,7 @@ describe('taskStore.supabase workflow tests', () => {
       }),
     );
     expect(result.current.tasks[0].completionPercentage).toBe(0);
+    expect(result.current.tasks[0].assignedBy).toBe(managerId);
+    expect(result.current.tasks[0].originalAssignedBy).toBe(workerId);
   });
 });

@@ -278,6 +278,11 @@ describe("TaskDetailScreen sticky layout", () => {
   it("keeps the screen bounded without rendering a separate hero above the scroll region", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     const workThreadScroll = screen.getByTestId("task-detail__workthread_scroll");
+    const tree = screen.toJSON();
+    const scrollRegionNode = findNodeByTestId(tree, "task-detail__scroll_region");
+    const workThreadScrollNode = findNodeByTestId(tree, "task-detail__workthread_scroll");
+    const scrollRegionIds = collectTestIds(scrollRegionNode);
+    const workThreadIds = collectTestIds(workThreadScrollNode);
 
     expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
     expect(screen.queryByTestId("task-detail__hero")).toBeNull();
@@ -285,6 +290,10 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(screen.getByTestId("task-detail__status_chips")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+    // Info card is pinned above the work thread — not a scroll child.
+    expect(scrollRegionIds).toContain("task-detail__info_card");
+    expect(workThreadIds).not.toContain("task-detail__info_card");
+    expect(workThreadIds).toContain("task-detail__activity_thread");
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(workThreadScroll).toBeTruthy();

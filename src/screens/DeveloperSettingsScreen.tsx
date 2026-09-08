@@ -98,6 +98,9 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
         case "open-capture-session-smoke":
           actions.handleOpenCaptureSessionSmoke();
           break;
+        case "open-activity-photo-sync-lab":
+          actions.handleOpenActivityPhotoSyncLab();
+          break;
         case "force-sync-all":
           actions.handleForceSyncAll();
           break;

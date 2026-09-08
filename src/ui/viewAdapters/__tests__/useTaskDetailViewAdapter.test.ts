@@ -583,9 +583,9 @@ describe("useTaskDetailViewAdapter", () => {
       descriptionLabel: "Confirm supplier lead times before final delivery.",
       assignedByLabel: "User user-1",
       assignedToLabel: "User user-2, User user-3",
-      primaryOwnerLabel: "User user-2",
       showEditAction: true,
     });
+    expect(result.current.output.infoCard?.primaryOwnerLabel).toBeUndefined();
     expect(result.current.output.infoCard?.detailRows).toEqual([]);
     expect(result.current.output.banners).toEqual([]);
   });
@@ -1151,7 +1151,7 @@ describe("useTaskDetailViewAdapter", () => {
 
     expect(result.current.output.detailDock).toEqual({
       mode: "archive",
-      completionPercentage: 0,
+      completionPercentage: 100,
     });
   });
 
@@ -1216,7 +1216,7 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.infoCard?.dueDateLabel).toBeTruthy();
   });
 
-  it("emits reassign detailDock after decline for PM who is not the creator", () => {
+  it("emits archive detailDock after decline (reassign remains in Team)", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
     const { useAuthStore } = require("@/state/authStore");
 
@@ -1280,9 +1280,82 @@ describe("useTaskDetailViewAdapter", () => {
 
     expect(result.current.output.infoCard?.showReassignAction).toBe(true);
     expect(result.current.output.detailDock).toEqual({
-      mode: "reassign",
-      completionPercentage: 0,
+      mode: "archive",
+      completionPercentage: 100,
     });
+    expect(
+      result.current.output.actionItems.some(
+        (action: { actionId: string }) => action.actionId === "reassign_task",
+      ),
+    ).toBe(true);
+  });
+
+  it("shows Owner from originalAssignedBy after report→task triage", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useUserStore } = require("@/state/userStore.supabase");
+
+    useUserStore.mockReturnValue({
+      getUserById: jest.fn((id: string) => {
+        const users: Record<string, { id: string; name: string }> = {
+          "user-1": { id: "user-1", name: "Sam PM" },
+          "worker-9": { id: "worker-9", name: "Worker Nine" },
+        };
+        return users[id] ?? { id, name: `User ${id}` };
+      }),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-triaged",
+          title: "Promoted report",
+          projectId: "project-1",
+          assignedTo: ["worker-9"],
+          primaryAssigneeId: "worker-9",
+          assignedBy: "user-1",
+          originalAssignedBy: "worker-9",
+          dueDate,
+          status: "new",
+          priority: "medium",
+          category: "general",
+          description: "Was a report.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn(),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      cancelTaskReviewSubmission: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      cancelSubTaskReviewSubmission: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+      ensureProjectLocation: jest.fn(),
+      fetchArchivedTasks: jest.fn(),
+      addAssignerComment: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addSubTaskUpdate: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-triaged",
+      }),
+    );
+
+    expect(result.current.output.infoCard?.assignedByLabel).toBe("Sam PM");
+    expect(result.current.output.infoCard?.primaryOwnerLabel).toBe("Worker Nine");
   });
 
   it("emits awaiting_review even when completionPercentage is missing on submitted tasks", () => {
@@ -2111,9 +2184,9 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.delegationSummary).toMatchObject({
       assignedByLabel: "User manager-1",
       assignedToLabel: "User user-1, User user-2",
-      primaryOwnerLabel: "User user-2",
       teamSummaryLabel: "1 delegate: User user-1",
     });
+    expect(result.current.output.delegationSummary?.primaryOwnerLabel).toBeUndefined();
 
     expect(result.current.output.infoCard).toMatchObject({
       title: "Parent Task",

@@ -1111,16 +1111,20 @@ describe("useDashboardViewAdapter", () => {
     });
 
     const { result } = renderHook(() => useDashboardViewAdapter());
-    const acceptRow = result.current.output.activityItems.find(
-      (item: { id: string }) => item.id === "update-accept",
-    );
-    const createRow = result.current.output.activityItems.find(
-      (item: { id: string }) => item.id === "activity-task:task-1",
+    const group = result.current.output.activityItems.find(
+      (item: { taskId?: string }) => item.taskId === "task-1",
     );
 
-    expect(acceptRow?.previewPhotoUri).toBeUndefined();
-    expect(createRow?.previewPhotoUri).toBe("file:///create-only.jpg");
-    expect(createRow?.previewPhotoUris).toEqual(["file:///create-only.jpg"]);
+    expect(group?.id).toBe("activity-group:task-1");
+    expect(group?.previewPhotoUri).toBeUndefined();
+    expect(group?.events?.[0]).toMatchObject({
+      id: "update-accept",
+      photoUris: undefined,
+    });
+    expect(group?.events?.[1]).toMatchObject({
+      id: "activity-task:task-1",
+      photoUris: ["file:///create-only.jpg"],
+    });
   });
 
   it("exposes all update photos for horizontal swipe on activity cards", () => {
@@ -1170,14 +1174,14 @@ describe("useDashboardViewAdapter", () => {
     });
 
     const { result } = renderHook(() => useDashboardViewAdapter());
-    const updateRow = result.current.output.activityItems.find(
-      (item: { id: string }) => item.id === "update-1",
+    const group = result.current.output.activityItems.find(
+      (item: { taskId?: string }) => item.taskId === "task-1",
     );
 
-    expect(updateRow?.previewPhotoUri).toBe(
+    expect(group?.previewPhotoUri).toBe(
       "https://cdn.example.com/company-123/tasks/task-1/photo-1.jpg",
     );
-    expect(updateRow?.previewPhotoUris).toEqual([
+    expect(group?.previewPhotoUris).toEqual([
       "https://cdn.example.com/company-123/tasks/task-1/photo-1.jpg",
       "https://cdn.example.com/company-123/tasks/task-1/photo-2.jpg",
     ]);

@@ -39,6 +39,7 @@ export function buildSupabaseTaskInsertPayload(
     primary_assignee_id: taskData.primaryAssigneeId || null,
     delegated_user_ids: taskData.delegatedUserIds || null,
     assigned_by: taskData.assignedBy,
+    original_assigned_by: taskData.originalAssignedBy || taskData.assignedBy || null,
     container_id: taskData.containerId || null,
     sub_container_id: taskData.subContainerId || null,
     tags: taskData.tags || [],

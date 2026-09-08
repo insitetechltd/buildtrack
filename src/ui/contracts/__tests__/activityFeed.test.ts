@@ -1,8 +1,12 @@
 import {
+  buildActivityFeedGroups,
   buildActivityFeedRows,
   countUnreadActivityFeedRows,
   formatActivityTabBadgeCount,
+  groupActivityFeedRows,
+  RECENT_ACTIVITY_MAX_ITEMS,
   RECENT_ACTIVITY_WINDOW_MS,
+  resolveActivityFeedDotTone,
   resolveActivityFeedSeenAtMs,
 } from "../activityFeed";
 
@@ -53,6 +57,7 @@ describe("activityFeed", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.id).toBe("update-recent");
     expect(rows[0]?.title).toBe("Progress photo added");
+    expect(rows[0]?.dotTone).toBe("caution");
   });
 
   it("includes a create row when create-time photos exist alongside later updates", () => {
@@ -89,6 +94,129 @@ describe("activityFeed", () => {
     expect(rows[1]?.title).toBe("New Task");
   });
 
+  it("groups events by taskId and caps Recent Activity at 20 groups", () => {
+    const tasks = Array.from({ length: RECENT_ACTIVITY_MAX_ITEMS + 5 }, (_, index) => {
+      const timestamp = new Date(now - index * 60_000).toISOString();
+      return {
+        id: `task-${index}`,
+        projectId: "project-1",
+        status: "in_progress" as const,
+        title: `Task ${index}`,
+        createdAt: timestamp,
+        updates: [
+          {
+            id: `update-${index}`,
+            timestamp,
+            status: "in_progress" as const,
+            description: `Update ${index}`,
+          },
+        ],
+      };
+    });
+
+    const groups = buildActivityFeedGroups({
+      projectId: "project-1",
+      tasks,
+      now,
+    });
+
+    expect(groups).toHaveLength(RECENT_ACTIVITY_MAX_ITEMS);
+    expect(groups[0]?.taskId).toBe("task-0");
+    expect(groups[0]?.events[0]?.id).toBe("update-0");
+    expect(groups[RECENT_ACTIVITY_MAX_ITEMS - 1]?.taskId).toBe(
+      `task-${RECENT_ACTIVITY_MAX_ITEMS - 1}`,
+    );
+  });
+
+  it("stacks multiple events for the same task newest-first", () => {
+    const groups = buildActivityFeedGroups({
+      projectId: "project-1",
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          status: "rejected",
+          title: "Door punch",
+          createdAt: new Date(now - 180_000).toISOString(),
+          updates: [
+            {
+              id: "update-progress",
+              timestamp: new Date(now - 120_000).toISOString(),
+              status: "in_progress",
+              description: "Progress photo added",
+              activityType: "progress_update",
+            },
+            {
+              id: "update-reject",
+              timestamp: new Date(now - 60_000).toISOString(),
+              status: "rejected",
+              description: "Rejected — wrong finish",
+              activityType: "review_rejection",
+            },
+          ],
+        },
+      ],
+      now,
+    });
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.events.map((event) => event.id)).toEqual([
+      "update-reject",
+      "update-progress",
+    ]);
+    expect(groups[0]?.events[0]?.dotTone).toBe("negative");
+    expect(groups[0]?.events[1]?.dotTone).toBe("caution");
+  });
+
+  it("tie-breaks equal timestamps with reject over progress", () => {
+    const stamp = new Date(now - 60_000).toISOString();
+    const grouped = groupActivityFeedRows([
+      {
+        id: "progress",
+        taskId: "task-1",
+        title: "Progress",
+        subtitle: "Task",
+        timestampLabel: "now",
+        statusLabel: "In Progress",
+        sortTimestamp: stamp,
+        dotTone: "caution",
+        activityType: "progress_update",
+      },
+      {
+        id: "reject",
+        taskId: "task-1",
+        title: "Rejected",
+        subtitle: "Task",
+        timestampLabel: "now",
+        statusLabel: "Rejected",
+        sortTimestamp: stamp,
+        dotTone: "negative",
+        activityType: "review_rejection",
+      },
+    ]);
+
+    expect(grouped[0]?.events.map((event) => event.id)).toEqual([
+      "reject",
+      "progress",
+    ]);
+  });
+
+  it("maps activity kinds to dot tones", () => {
+    expect(
+      resolveActivityFeedDotTone({ activityType: "review_rejection" }),
+    ).toBe("negative");
+    expect(
+      resolveActivityFeedDotTone({ activityType: "review_acceptance" }),
+    ).toBe("positive");
+    expect(
+      resolveActivityFeedDotTone({ activityType: "progress_update" }),
+    ).toBe("caution");
+    expect(resolveActivityFeedDotTone({ activityType: "creation" })).toBe(
+      "info",
+    );
+    expect(resolveActivityFeedDotTone({ status: "archived" })).toBe("info");
+  });
+
   it("includes saved photo batches in the feed", () => {
     const savedAt = now - 60_000;
 
@@ -110,6 +238,7 @@ describe("activityFeed", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.id).toBe("unattached-batch-batch-1");
     expect(rows[0]?.title).toBe("1 photos captured");
+    expect(rows[0]?.dotTone).toBe("caution");
   });
 
   it("counts unread rows after last seen timestamp", () => {

@@ -157,6 +157,7 @@ export function getProfileStackNavigation(navigation: {
     "CompanyManagement",
     "DeveloperSettings",
     "CaptureSessionSmoke",
+    "ActivityPhotoSyncLab",
   ]);
 }
 

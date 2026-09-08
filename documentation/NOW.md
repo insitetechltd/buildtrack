@@ -4,7 +4,22 @@
 
 ---
 
+**This session — DEV Internal TF (2026-09-07):** local `./build-and-submit.sh ios dev` → IPA **1.1.3 (245)** submitted to TestFlight Internal (script footer still prints stale app.json `194`; IPA `CFBundleVersion` = **245**). Profile `dev` / EAS `preview` → **DEV**. Includes Approach B Task Detail dock + archive-on-resolved (`f1f9d6b`). Expo doctor warned but build continued. **Idle (next TF):** iPad Recent Activity equal card heights (`TABLET_POST_CARD_HEIGHT`) landed in working tree after 245.
+
 ## Doing
+
+**This session — RA stack Phase 1 + Phase 2 lab (2026-09-08):**
+- Phase 1 on live `ActivityStyleRowCard`: fixed meta column (avatars align); `+N` / Show less collapse.
+- Phase 2 Option A is **lab-only** (`ActivityPhotoSyncLabCard` + `ActivityPhotoSyncLabScreen`) — does not replace production RA. Open from Developer Settings → “Open RA photo↔event lab (Option A)”.
+
+**This session — RA Recipe B grouped stack (2026-09-08) BUILT:** One card per `taskId`; title → latest (• + action … avatar · date + colored kind dot) → photos only if latest has them → up to 2 priors (same 16px) → `+N earlier` expands in place then hides. Cap = 20 groups. Dot tones from `activityType`+status (not regex). Dashboard `fillHeight` off for variable stacks. Files: `activityFeed.ts` (`buildActivityFeedGroups`), `ActivityStyleRowCard`, `useDashboardViewAdapter`, `DashboardScreen`.
+
+**This session — RA post layout synthesis lock (2026-09-07):** Prefer = synthesis default (superseded by Recipe B stack above for RA cards).
+
+**This session — archive exit + declined archive + triage assigner (2026-09-07):**
+- Archive (task or report) leaves Detail immediately → Activity/Tasks origin (`onNavigateBack`; `archiveTask` no longer awaits list refresh).
+- Declined is archivable (dock Archive; Reassign stays on Team).
+- Report→task triage: `assigned_by` = PM triager; reporter kept as `original_assigned_by` / Owner row. Writes retry without that col if missing (no new DDL this cycle).
 
 **This session — Approach B Task Detail dual dock (2026-09-06/07):**
 - Dock on Task Detail: `[+]`/`[%]` · text · camera · send; tap-toggle vertical % scrubber.

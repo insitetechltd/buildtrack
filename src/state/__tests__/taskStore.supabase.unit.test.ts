@@ -147,6 +147,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -161,22 +169,22 @@ describe('taskStore.supabase unit tests', () => {
     });
 
     expect(result.current.tasks[0].id).toBe(taskRow.id);
-    // M-DATA-05 Phase A: list path skips task_activities (detail hydrates via fetchTaskById).
+    // M-DATA-05: list hydrates Recent Activity window (may be empty) — not full timeline.
     expect(result.current.tasks[0].activities).toHaveLength(0);
-    expect(mockFrom).toHaveBeenCalledTimes(1);
-    expect(mockFrom).not.toHaveBeenCalledWith('task_activities');
+    expect(mockFrom).toHaveBeenCalledWith('task_activities');
+    expect(mockFrom).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       await result.current.fetchTasks();
     });
 
-    expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(mockFrom).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       await result.current.fetchTasks(true);
     });
 
-    expect(mockFrom).toHaveBeenCalledTimes(2);
+    expect(mockFrom).toHaveBeenCalledTimes(4);
 
     const firstRef = result.current.tasks[0];
     await act(async () => {
@@ -198,6 +206,14 @@ describe('taskStore.supabase unit tests', () => {
           select: jest.fn().mockReturnThis(),
           is: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
       }
       throw new Error(`Unexpected table: ${table}`);
@@ -232,6 +248,14 @@ describe('taskStore.supabase unit tests', () => {
           order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
         };
       }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -262,6 +286,14 @@ describe('taskStore.supabase unit tests', () => {
           select: jest.fn().mockReturnThis(),
           is: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
       }
       throw new Error(`Unexpected table: ${table}`);
@@ -301,6 +333,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -322,6 +362,51 @@ describe('taskStore.supabase unit tests', () => {
 
     expect(result.current.tasks[0].activities).toEqual([
       expect.objectContaining({ id: 'activity-hydrated-1' }),
+    ]);
+  });
+
+  it('hydrates recent window activities on list fetch for Recent Activity', async () => {
+    const taskRow = createTaskRow({ id: 'task-feed-1' });
+    const recentActivityRow = createTaskActivityRow({
+      id: 'activity-recent-1',
+      task_id: 'task-feed-1',
+      user_id: managerId,
+      activity_type: 'review_rejection',
+      description: 'Task Rejected',
+      timestamp: baseTimestamp,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [recentActivityRow], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+
+    expect(result.current.tasks[0].updates).toEqual([
+      expect.objectContaining({
+        id: 'activity-recent-1',
+        description: 'Task Rejected',
+        userId: managerId,
+      }),
     ]);
   });
 
@@ -354,6 +439,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -415,6 +508,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -491,6 +592,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -565,6 +674,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -627,6 +744,101 @@ describe('taskStore.supabase unit tests', () => {
       })
     );
     consoleWarnSpy.mockRestore();
+  });
+
+  it('retries task creation without original_assigned_by when PostgREST schema cache lacks the column', async () => {
+    const taskRow = createTaskRow();
+    const creationActivity = createTaskActivityRow({
+      activity_type: 'issue_reported',
+      status: 'reported',
+    });
+    const taskInsertSingle = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          code: 'PGRST204',
+          message:
+            "Could not find the 'original_assigned_by' column of 'tasks' in the schema cache",
+          details: null,
+          hint: null,
+        },
+      })
+      .mockResolvedValueOnce({ data: taskRow, error: null });
+    const taskInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: taskInsertSingle,
+      }),
+    });
+    const activityInsertSingle = jest.fn().mockResolvedValue({
+      data: creationActivity,
+      error: null,
+    });
+    const activityInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: activityInsertSingle,
+      }),
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return { insert: taskInsert };
+      }
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { name: 'Bob Worker' },
+              error: null,
+            }),
+          })),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          insert: activityInsert,
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let createdTaskId = '';
+    await act(async () => {
+      createdTaskId = await result.current.createTask({
+        title: 'Testing recent activity',
+        description: 'Site report',
+        priority: 'medium',
+        category: 'general',
+        projectId: 'project-123',
+        assignedTo: [workerId],
+        assignedBy: workerId,
+        status: 'reported',
+        dueDate: '2026-06-30T00:00:00.000Z',
+        attachments: [],
+      } as Parameters<typeof result.current.createTask>[0]);
+    });
+
+    expect(createdTaskId).toBe('task-123');
+    expect(taskInsert).toHaveBeenCalledTimes(2);
+    expect(taskInsert.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        original_assigned_by: workerId,
+        status: 'reported',
+      }),
+    );
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        taskInsert.mock.calls[1]?.[0],
+        'original_assigned_by',
+      ),
+    ).toBe(false);
   });
 
   it('prevents assignee changes after a task has been accepted or started', async () => {
@@ -722,6 +934,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -779,6 +999,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -845,6 +1073,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -906,6 +1142,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -967,6 +1211,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1035,6 +1287,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1111,10 +1371,19 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1234,6 +1503,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1297,6 +1574,14 @@ describe('taskStore.supabase unit tests', () => {
           order: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
       }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1334,6 +1619,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1378,6 +1671,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1420,6 +1721,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1453,6 +1762,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1515,6 +1832,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1595,10 +1920,19 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1658,10 +1992,19 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1745,6 +2088,14 @@ describe('taskStore.supabase unit tests', () => {
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1800,10 +2151,19 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1854,10 +2214,19 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
       }
 
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     });
 
@@ -1908,6 +2277,15 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
       }

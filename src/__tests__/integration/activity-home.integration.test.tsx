@@ -139,8 +139,9 @@ describe("Activity home integration", () => {
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("pb-2");
     expect(screen.getByText("This Week's Critical Tasks")).toBeTruthy();
     expect(screen.getByText("Queue Overview")).toBeTruthy();
-    expect(screen.getByText("My Queue")).toBeTruthy();
-    expect(screen.getByText("Team Queue")).toBeTruthy();
+    expect(screen.getByText("Queue")).toBeTruthy();
+    expect(screen.getByText("My")).toBeTruthy();
+    expect(screen.getByText("Team")).toBeTruthy();
     expect(screen.getByText("Concrete pour")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__fab_open_camera")).toBeNull();
 

@@ -434,6 +434,8 @@ export interface TaskUpdate {
   status: TaskStatus;
   timestamp: string;
   userId: string;
+  /** Present when hydrated from task_activities (Recent Activity kind SoT). */
+  activityType?: ActivityType;
 }
 
 /**
@@ -620,7 +622,8 @@ export interface Task {
   primaryAssigneeId?: string;
   delegatedUserIds?: string[];
   assignedBy: string;
-  originalAssignedBy?: string; // Original creator before any delegation
+  /** Original initiator (e.g. report reporter). Survives triage when assignedBy becomes the PM. */
+  originalAssignedBy?: string;
   containerId?: string;
   subContainerId?: string;
   tags?: string[];

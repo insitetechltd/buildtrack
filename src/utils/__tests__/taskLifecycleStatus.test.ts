@@ -21,10 +21,11 @@ describe("isCompletedLifecycleStatus", () => {
 });
 
 describe("isArchivableLifecycleStatus", () => {
-  it("includes approved sign-off and resolved reports", () => {
+  it("includes approved sign-off, resolved reports, and declined", () => {
     expect(isArchivableLifecycleStatus("approved")).toBe(true);
     expect(isArchivableLifecycleStatus("resolved")).toBe(true);
     expect(isArchivableLifecycleStatus("dismissed")).toBe(true);
+    expect(isArchivableLifecycleStatus("declined")).toBe(true);
     expect(isArchivableLifecycleStatus("in_progress")).toBe(false);
   });
 });

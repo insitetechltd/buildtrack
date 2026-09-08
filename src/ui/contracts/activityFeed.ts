@@ -1,4 +1,4 @@
-import type { Task } from "@/types/buildtrack";
+import type { ActivityType, Task } from "@/types/buildtrack";
 import {
   formatLocalizedActivityHeadline,
   formatPhotosCapturedLabel,
@@ -7,6 +7,20 @@ import {
 import { getTranslations } from "@/utils/useTranslation";
 
 export const RECENT_ACTIVITY_WINDOW_MS = 1000 * 60 * 60 * 24 * 5;
+/** Hard cap for Dashboard Recent Activity groups (most recent first). */
+export const RECENT_ACTIVITY_MAX_ITEMS = 20;
+/** Collapsed priors under the latest action before +N expand. */
+export const ACTIVITY_FEED_COLLAPSED_PRIORS = 2;
+
+/** Dot colors — Recipe B lock (red / green / yellow / blue). */
+export type ActivityFeedDotTone = "negative" | "positive" | "caution" | "info";
+
+export const ACTIVITY_FEED_DOT_COLORS: Record<ActivityFeedDotTone, string> = {
+  negative: "#DC2626",
+  positive: "#16A34A",
+  caution: "#CA8A04",
+  info: "#0A728F",
+};
 
 export interface ActivityFeedPhotoBatch {
   id: string;
@@ -19,10 +33,24 @@ export interface ActivityFeedPhotoBatch {
 export interface ActivityFeedRow {
   id: string;
   taskId: string;
+  /** Change / action line. */
   title: string;
+  /** Task name. */
   subtitle: string;
   timestampLabel: string;
   statusLabel: string;
+  sortTimestamp: string;
+  dotTone: ActivityFeedDotTone;
+  activityType?: ActivityType | string;
+  actorUserId?: string;
+}
+
+export interface ActivityFeedGroup {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  /** Newest first. */
+  events: ActivityFeedRow[];
   sortTimestamp: string;
 }
 
@@ -42,6 +70,103 @@ function formatTimestampLabel(isoTimestamp: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+/**
+ * Structured kind → dot tone (Q9–Q12 lock). Prefer activityType; fall back to status.
+ */
+export function resolveActivityFeedDotTone(params: {
+  activityType?: ActivityType | string | null;
+  status?: string | null;
+}): ActivityFeedDotTone {
+  const type = (params.activityType || "").toLowerCase();
+  const status = (params.status || "").toLowerCase();
+
+  if (
+    type === "review_rejection" ||
+    type === "issue_dismissed" ||
+    type === "cancellation"
+  ) {
+    return "negative";
+  }
+  if (type === "review_acceptance" || type === "issue_resolved") {
+    return "positive";
+  }
+  if (
+    type === "issue_reported" ||
+    type === "triaged_to_task" ||
+    type === "creation" ||
+    type === "assignment" ||
+    type === "delegation_added" ||
+    type === "delegation_removed"
+  ) {
+    return "info";
+  }
+  if (
+    type === "progress_update" ||
+    type === "photo_batch_attached" ||
+    type === "review_submission" ||
+    type === "assigner_comment" ||
+    type === "draft_completed"
+  ) {
+    return "caution";
+  }
+
+  if (
+    status === "rejected" ||
+    status === "declined" ||
+    status === "cancelled" ||
+    status === "dismissed"
+  ) {
+    return "negative";
+  }
+  if (
+    status === "accepted" ||
+    status === "approved" ||
+    status === "resolved" ||
+    status === "completed"
+  ) {
+    return "positive";
+  }
+  if (status === "submitted_for_review" || status === "in_progress") {
+    return "caution";
+  }
+  if (
+    status === "reported" ||
+    status === "new" ||
+    status === "not_started" ||
+    status === "archived"
+  ) {
+    return "info";
+  }
+
+  return "caution";
+}
+
+/** Tie-break when timestamps match: reject > submit > progress > create/other. */
+function eventTieBreakRank(row: ActivityFeedRow): number {
+  if (row.dotTone === "negative") {
+    return 0;
+  }
+  if (
+    row.activityType === "review_submission" ||
+    row.statusLabel.toLowerCase().includes("submitted")
+  ) {
+    return 1;
+  }
+  if (row.dotTone === "caution") {
+    return 2;
+  }
+  return 3;
+}
+
+function compareFeedEventsNewestFirst(left: ActivityFeedRow, right: ActivityFeedRow): number {
+  const delta =
+    new Date(right.sortTimestamp).getTime() - new Date(left.sortTimestamp).getTime();
+  if (delta !== 0) {
+    return delta;
+  }
+  return eventTieBreakRank(left) - eventTieBreakRank(right);
 }
 
 function taskHasCreatePhotos(
@@ -77,7 +202,7 @@ function taskHasCreatePhotos(
 }
 
 function buildCreationFeedRow(
-  task: Pick<Task, "id" | "status" | "title" | "createdAt">,
+  task: Pick<Task, "id" | "status" | "title" | "createdAt" | "assignedBy">,
 ): ActivityFeedRow {
   return {
     id: `activity-task:${task.id}`,
@@ -87,19 +212,25 @@ function buildCreationFeedRow(
     timestampLabel: formatTimestampLabel(task.createdAt),
     statusLabel: formatStatusLabel(task.status),
     sortTimestamp: task.createdAt,
+    dotTone: resolveActivityFeedDotTone({
+      activityType: "creation",
+      status: "new",
+    }),
+    activityType: "creation",
+    actorUserId: task.assignedBy ? String(task.assignedBy) : undefined,
   };
 }
 
 function buildTaskActivityRows(
-  task: Pick<Task, "id" | "status" | "title" | "createdAt" | "updates" | "attachments">,
+  task: Pick<
+    Task,
+    "id" | "status" | "title" | "createdAt" | "updates" | "attachments" | "assignedBy"
+  >,
 ): ActivityFeedRow[] {
   const updates = Array.isArray(task.updates) ? task.updates : [];
   const rows: ActivityFeedRow[] = [];
   const t = getTranslations();
 
-  // Creation activities are not mapped into `updates` (only progress/status).
-  // Emit a create row when there are no updates yet, or when create-time photos
-  // exist so Recent Activity can show those attachments.
   if (updates.length === 0 || taskHasCreatePhotos(task.attachments)) {
     rows.push(
       updates.length === 0
@@ -108,9 +239,15 @@ function buildTaskActivityRows(
             taskId: task.id,
             title: formatActivityHeadline(task.status),
             subtitle: task.title,
-            timestampLabel: t.activity.taskActivity,
+            timestampLabel: formatTimestampLabel(task.createdAt),
             statusLabel: formatStatusLabel(task.status),
             sortTimestamp: task.createdAt,
+            dotTone: resolveActivityFeedDotTone({
+              activityType: "creation",
+              status: task.status,
+            }),
+            activityType: "creation",
+            actorUserId: task.assignedBy ? String(task.assignedBy) : undefined,
           }
         : buildCreationFeedRow(task),
     );
@@ -123,6 +260,7 @@ function buildTaskActivityRows(
         description.length > 0
           ? localizeStoredActivityDescription(description, t)
           : formatActivityHeadline(update.status);
+      const activityType = update.activityType;
 
       return {
         id: update.id,
@@ -132,6 +270,12 @@ function buildTaskActivityRows(
         timestampLabel: formatTimestampLabel(update.timestamp),
         statusLabel: formatStatusLabel(update.status),
         sortTimestamp: update.timestamp,
+        dotTone: resolveActivityFeedDotTone({
+          activityType,
+          status: update.status,
+        }),
+        activityType,
+        actorUserId: update.userId ? String(update.userId) : undefined,
       };
     }),
   );
@@ -151,6 +295,8 @@ function buildPhotoBatchRows(batch: ActivityFeedPhotoBatch): ActivityFeedRow {
     timestampLabel: formatTimestampLabel(new Date(batch.savedAt).toISOString()),
     statusLabel: t.activity.savedToProject,
     sortTimestamp: new Date(batch.savedAt).toISOString(),
+    dotTone: "caution",
+    activityType: "photo_batch_attached",
   };
 }
 
@@ -159,7 +305,14 @@ export function buildActivityFeedRows(params: {
   tasks: Array<
     Pick<
       Task,
-      "id" | "projectId" | "status" | "title" | "createdAt" | "updates" | "attachments"
+      | "id"
+      | "projectId"
+      | "status"
+      | "title"
+      | "createdAt"
+      | "updates"
+      | "attachments"
+      | "assignedBy"
     >
   >;
   photoBatches?: ActivityFeedPhotoBatch[];
@@ -184,10 +337,69 @@ export function buildActivityFeedRows(params: {
       return Number.isFinite(timestamp) && timestamp >= recentActivityThreshold;
     });
 
-  return [...batchRows, ...taskRows].sort(
-    (left, right) =>
-      new Date(right.sortTimestamp).getTime() - new Date(left.sortTimestamp).getTime(),
+  return [...batchRows, ...taskRows].sort(compareFeedEventsNewestFirst);
+}
+
+/** Group flat events by taskId — one card per task (Recipe B). */
+export function groupActivityFeedRows(
+  rows: ActivityFeedRow[],
+  maxGroups: number = RECENT_ACTIVITY_MAX_ITEMS,
+): ActivityFeedGroup[] {
+  const byTaskId = new Map<string, ActivityFeedRow[]>();
+
+  for (const row of rows) {
+    const existing = byTaskId.get(row.taskId);
+    if (existing) {
+      existing.push(row);
+    } else {
+      byTaskId.set(row.taskId, [row]);
+    }
+  }
+
+  const groups: ActivityFeedGroup[] = Array.from(byTaskId.entries()).map(
+    ([taskId, events]) => {
+      const sorted = [...events].sort(compareFeedEventsNewestFirst);
+      const latest = sorted[0];
+      return {
+        id: taskId.startsWith("project:")
+          ? latest?.id ?? taskId
+          : `activity-group:${taskId}`,
+        taskId,
+        taskTitle: latest?.subtitle || "",
+        events: sorted,
+        sortTimestamp: latest?.sortTimestamp || "",
+      };
+    },
   );
+
+  return groups
+    .sort(
+      (left, right) =>
+        new Date(right.sortTimestamp).getTime() -
+        new Date(left.sortTimestamp).getTime(),
+    )
+    .slice(0, maxGroups);
+}
+
+export function buildActivityFeedGroups(params: {
+  projectId: string;
+  tasks: Array<
+    Pick<
+      Task,
+      | "id"
+      | "projectId"
+      | "status"
+      | "title"
+      | "createdAt"
+      | "updates"
+      | "attachments"
+      | "assignedBy"
+    >
+  >;
+  photoBatches?: ActivityFeedPhotoBatch[];
+  now?: number;
+}): ActivityFeedGroup[] {
+  return groupActivityFeedRows(buildActivityFeedRows(params));
 }
 
 export function countUnreadActivityFeedRows(

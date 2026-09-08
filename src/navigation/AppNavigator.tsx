@@ -61,6 +61,7 @@ import DevAdminScreen from "../screens/DevAdminScreen";
 import ProjectPickerScreen from "../screens/ProjectPickerScreen";
 import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
 import CaptureSessionSmokeScreen from "../screens/CaptureSessionSmokeScreen";
+import ActivityPhotoSyncLabScreen from "../screens/ActivityPhotoSyncLabScreen";
 import CaptureSessionFlowScreen from "../screens/CaptureSessionFlowScreen";
 import OwnerConsoleScreen from "../screens/OwnerConsoleScreen";
 import OwnerMonitoringScreen from "../screens/OwnerMonitoringScreen";
@@ -1574,6 +1575,11 @@ function ProfileStack() {
         options={{ headerShown: false }}
       />
       <ProfileStackNavigator.Screen
+        name="ActivityPhotoSyncLab"
+        component={ActivityPhotoSyncLabScreenWrapper}
+        options={{ headerShown: false }}
+      />
+      <ProfileStackNavigator.Screen
         name="OwnerConsole"
         component={OwnerConsoleScreenWrapper}
       />
@@ -1757,6 +1763,18 @@ function DeveloperSettingsScreenWrapper({
           );
         }
       }}
+      onOpenActivityPhotoSyncLab={() => {
+        try {
+          navigation.navigate("ActivityPhotoSyncLab");
+        } catch (error) {
+          Alert.alert(
+            "Photo sync lab",
+            `Could not open lab: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }}
     />
   );
 }
@@ -1766,6 +1784,14 @@ function CaptureSessionSmokeScreenWrapper({
 }: NativeStackScreenProps<ProfileStackParamList, "CaptureSessionSmoke">) {
   return (
     <CaptureSessionSmokeScreen onClose={() => navigation.goBack()} />
+  );
+}
+
+function ActivityPhotoSyncLabScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "ActivityPhotoSyncLab">) {
+  return (
+    <ActivityPhotoSyncLabScreen onClose={() => navigation.goBack()} />
   );
 }
 

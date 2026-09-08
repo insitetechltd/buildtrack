@@ -156,6 +156,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       .then(() => {
         setIsArchiving(false);
         setIsArchiveConfirmVisible(false);
+        // Always leave Detail after archive — return to Activity / Tasks origin.
         props.onNavigateBack?.();
       })
       .catch((error) => {
@@ -551,6 +552,23 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       >
       <View className="flex-1">
           <View testID="task-detail__scroll_region" className="flex-1">
+          {/* Info card stays pinned; only the work-thread cards below scroll. */}
+          {infoCardModel ? (
+            <TaskDetailInfoCard
+              model={infoCardModel}
+              onEditPress={
+                infoCardModel.showEditAction
+                  ? () => handleActionPress("edit_task")
+                  : undefined
+              }
+              onReassignPress={
+                infoCardModel.showReassignAction
+                  ? () => handleActionPress("reassign_task")
+                  : undefined
+              }
+            />
+          ) : null}
+
           <ScrollView
             testID="task-detail__workthread_scroll"
             className="flex-1"
@@ -562,22 +580,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {infoCardModel ? (
-              <TaskDetailInfoCard
-                model={infoCardModel}
-                onEditPress={
-                  infoCardModel.showEditAction
-                    ? () => handleActionPress("edit_task")
-                    : undefined
-                }
-                onReassignPress={
-                  infoCardModel.showReassignAction
-                    ? () => handleActionPress("reassign_task")
-                    : undefined
-                }
-              />
-            ) : null}
-
             {output.banners.map(banner => (
               <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
             ))}

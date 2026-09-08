@@ -49,6 +49,17 @@ export interface DashboardQuickActionItem extends PrimitiveReadyItemBase {
   isDisabled: boolean;
 }
 
+export interface DashboardActivityEvent {
+  id: string;
+  action: string;
+  timestampLabel: string;
+  actorLabel?: string;
+  actorUserId?: string;
+  /** red / green / yellow / blue */
+  dotTone: "negative" | "positive" | "caution" | "info";
+  photoUris?: string[];
+}
+
 export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   id: string;
   /** Live task row — not used for local-only drafts. */
@@ -66,6 +77,11 @@ export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   actorLabel?: string;
   /** Stable id for per-user avatar color when no photo is uploaded. */
   actorUserId?: string;
+  /**
+   * Recipe B: newest-first stack for the same task.
+   * When present, Recent Activity card renders grouped truncated stack.
+   */
+  events?: DashboardActivityEvent[];
 }
 
 export interface DashboardSummaryPill {
@@ -1148,6 +1164,7 @@ export type DeveloperSettingsActionColor =
 export type DeveloperSettingsActionId =
   | "open-task-detail-verification"
   | "open-capture-session-smoke"
+  | "open-activity-photo-sync-lab"
   | "force-sync-all"
   | "clear-task-cache"
   | "clear-project-cache"

@@ -2,7 +2,9 @@ import React from "react";
 import { Text, View } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
-import ActivityStyleRowCard from "../ActivityStyleRowCard";
+import ActivityStyleRowCard, {
+  TABLET_POST_CARD_HEIGHT,
+} from "../ActivityStyleRowCard";
 
 describe("ActivityStyleRowCard", () => {
   it("renders the shared activity-style card with a balanced left rail and a no-photo placeholder icon", () => {
@@ -94,6 +96,47 @@ describe("ActivityStyleRowCard", () => {
       height: 176,
       minHeight: 176,
     });
+  });
+
+  it("pins post fillHeight cards to a shared tablet grid height with photo/pager reserve", () => {
+    const withPhotos = render(
+      <ActivityStyleRowCard
+        testID="shared-card:post-fill-photos"
+        variant="activity"
+        layout="post"
+        fillHeight
+        title="Task Completed"
+        subtitle="清理"
+        actorLabel="Bob"
+        metaLabel="Task activity"
+        imageUris={[
+          "https://example.com/a.jpg",
+          "https://example.com/b.jpg",
+        ]}
+      />,
+    );
+    const withoutPhotos = render(
+      <ActivityStyleRowCard
+        testID="shared-card:post-fill-empty"
+        variant="activity"
+        layout="post"
+        fillHeight
+        title="Reported Task"
+        subtitle="testing report up"
+        actorLabel="John"
+        metaLabel="Task activity"
+      />,
+    );
+
+    expect(withPhotos.getByTestId("shared-card:post-fill-photos")).toHaveStyle({
+      height: TABLET_POST_CARD_HEIGHT,
+    });
+    expect(withoutPhotos.getByTestId("shared-card:post-fill-empty")).toHaveStyle({
+      height: TABLET_POST_CARD_HEIGHT,
+    });
+    expect(withoutPhotos.getByTestId("shared-card:post-fill-empty:hero-spacer")).toBeTruthy();
+    expect(withoutPhotos.getByTestId("shared-card:post-fill-empty:hero-pager")).toBeTruthy();
+    expect(withPhotos.getByTestId("shared-card:post-fill-photos:hero-pager")).toBeTruthy();
   });
 
   it("renders a labeled floating top-left badge when provided", () => {
@@ -194,10 +237,11 @@ describe("ActivityStyleRowCard", () => {
     );
 
     expect(screen.getByTestId("shared-card:compact:layout-compact")).toBeTruthy();
-    expect(screen.getByTestId("shared-card:compact:post-header")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:compact:post-footer")).toBeTruthy();
     expect(screen.getByTestId("shared-card:compact:hero-actor-label")).toHaveTextContent(
       "Bob Worker",
     );
+    expect(screen.queryByTestId("shared-card:compact:post-header")).toBeNull();
     expect(screen.queryByTestId("shared-card:compact:thumbnail")).toBeNull();
     expect(screen.queryByTestId("shared-card:compact:thumbnail-placeholder")).toBeNull();
     expect(screen.queryByTestId("shared-card:compact:hero")).toBeNull();
@@ -205,7 +249,7 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByText("Install corridor lighting")).toBeTruthy();
   });
 
-  it("renders post photo layout with change primary, task secondary, photo below, actor in header", () => {
+  it("renders post photo layout with task name, action left, author · date on the right", () => {
     const screen = render(
       <ActivityStyleRowCard
         testID="shared-card:hero"
@@ -222,20 +266,47 @@ describe("ActivityStyleRowCard", () => {
     );
 
     expect(screen.getByTestId("shared-card:hero:layout-photo-hero")).toBeTruthy();
-    expect(screen.getByTestId("shared-card:hero:post-header")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:hero:post-footer")).toBeTruthy();
     expect(screen.getByTestId("shared-card:hero:hero-actor-label")).toHaveTextContent(
       "Alex Chen",
     );
-    expect(screen.getByTestId("shared-card:hero:title")).toHaveTextContent(
+    expect(screen.getByTestId("shared-card:hero:subtitle")).toHaveTextContent(
       "Progress photo added — fixture row B complete",
     );
-    expect(screen.getByTestId("shared-card:hero:title").props.className).toContain("text-lg");
-    expect(screen.getByTestId("shared-card:hero:subtitle")).toHaveTextContent(
+    expect(screen.getByTestId("shared-card:hero:meta")).toHaveTextContent("Jul 4, 9:40 AM");
+    expect(screen.queryByTestId("shared-card:hero:post-header")).toBeNull();
+    expect(screen.getByTestId("shared-card:hero:title")).toHaveTextContent(
       "Install corridor lighting — Level 3",
     );
+    expect(screen.getByTestId("shared-card:hero:title").props.className).toContain("text-lg");
+    expect(screen.getByTestId("shared-card:hero:subtitle").props.className).toContain("text-base");
     expect(screen.getByTestId("shared-card:hero:hero-image")).toBeTruthy();
     expect(screen.queryByTestId("shared-card:hero:overlay-title")).toBeNull();
     expect(screen.queryByTestId("shared-card:hero:thumbnail-placeholder")).toBeNull();
+  });
+
+  it("emphasizes reject action text without color chrome", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:reject"
+        variant="activity"
+        layout="post"
+        title="Rejected — wrong finish on hinges"
+        subtitle="Door hardware punch"
+        actorLabel="Sara CA"
+        metaLabel="Jul 4, 8:20 AM"
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:reject:title")).toHaveTextContent(
+      "Door hardware punch",
+    );
+    expect(screen.getByTestId("shared-card:reject:subtitle").props.className).toContain(
+      "font-semibold",
+    );
+    expect(screen.getByTestId("shared-card:reject:subtitle").props.className).toContain(
+      "text-[#0D2630]",
+    );
   });
 
   it("hides post photo when the hero image errors (text shell remains)", () => {
@@ -288,5 +359,167 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByTestId("shared-card:multi:hero-pager")).toBeTruthy();
     expect(screen.getByTestId("shared-card:multi:hero-image")).toBeTruthy();
     expect(screen.getByTestId("shared-card:multi:hero-image-1")).toBeTruthy();
+  });
+
+  it("Recipe B: stacks priors with dots and expands +N without navigating", () => {
+    const onPress = jest.fn();
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:stack"
+        variant="activity"
+        layout="post"
+        title="Rejected — wrong finish"
+        subtitle="Door hardware punch"
+        onPress={onPress}
+        activityEvents={[
+          {
+            id: "e1",
+            action: "Rejected — wrong finish",
+            actorLabel: "Sara CA",
+            actorUserId: "u-sara",
+            timestampLabel: "Jul 4, 9:40 AM",
+            dotTone: "negative",
+          },
+          {
+            id: "e2",
+            action: "Submitted for review",
+            actorLabel: "Alex",
+            timestampLabel: "Jul 4, 9:10 AM",
+            dotTone: "caution",
+          },
+          {
+            id: "e3",
+            action: "Progress photo added",
+            actorLabel: "Alex",
+            timestampLabel: "Jul 4, 8:50 AM",
+            dotTone: "caution",
+          },
+          {
+            id: "e4",
+            action: "New Task",
+            actorLabel: "Tristan",
+            timestampLabel: "Jul 4, 8:00 AM",
+            dotTone: "info",
+          },
+          {
+            id: "e5",
+            action: "Assigned",
+            actorLabel: "Tristan",
+            timestampLabel: "Jul 4, 7:55 AM",
+            dotTone: "info",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:stack:title")).toHaveTextContent(
+      "Door hardware punch",
+    );
+    expect(screen.getByTestId("shared-card:stack:subtitle")).toHaveTextContent(
+      "Rejected — wrong finish",
+    );
+    expect(
+      screen.getByTestId("shared-card:stack:subtitle").props.className,
+    ).toContain("font-semibold");
+    expect(screen.getByTestId("shared-card:stack:dot").props.style).toEqual(
+      expect.objectContaining({ backgroundColor: "#DC2626" }),
+    );
+    expect(screen.getByTestId("shared-card:stack:prior-0:subtitle")).toHaveTextContent(
+      "Submitted for review",
+    );
+    expect(screen.getByTestId("shared-card:stack:prior-1:subtitle")).toHaveTextContent(
+      "Progress photo added",
+    );
+    expect(screen.queryByTestId("shared-card:stack:prior-2")).toBeNull();
+    expect(screen.getByTestId("shared-card:stack:expand-earlier")).toHaveTextContent(
+      "+2 earlier",
+    );
+    expect(screen.queryByTestId("shared-card:stack:hero")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("shared-card:stack:expand-earlier"));
+    expect(onPress).not.toHaveBeenCalled();
+    expect(screen.getByTestId("shared-card:stack:prior-2:subtitle")).toHaveTextContent(
+      "New Task",
+    );
+    expect(screen.getByTestId("shared-card:stack:prior-3:subtitle")).toHaveTextContent(
+      "Assigned",
+    );
+    expect(screen.queryByTestId("shared-card:stack:expand-earlier")).toBeNull();
+    expect(screen.getByTestId("shared-card:stack:collapse-earlier")).toHaveTextContent(
+      "Show less",
+    );
+
+    fireEvent.press(screen.getByTestId("shared-card:stack:collapse-earlier"));
+    expect(onPress).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("shared-card:stack:prior-2")).toBeNull();
+    expect(screen.getByTestId("shared-card:stack:expand-earlier")).toHaveTextContent(
+      "+2 earlier",
+    );
+    expect(screen.getByTestId("shared-card:stack:meta-column").props.style).toEqual(
+      expect.objectContaining({ width: 140 }),
+    );
+    expect(screen.getByTestId("shared-card:stack:prior-0:meta-column").props.style).toEqual(
+      expect.objectContaining({ width: 140 }),
+    );
+  });
+
+  it("Recipe B: shows photos only when provided for the latest event", () => {
+    const withPhotos = render(
+      <ActivityStyleRowCard
+        testID="shared-card:latest-photo"
+        variant="activity"
+        layout="post"
+        title="Progress photo added"
+        subtitle="Corridor lighting"
+        imageUri="https://example.com/progress.jpg"
+        activityEvents={[
+          {
+            id: "e1",
+            action: "Progress photo added",
+            actorLabel: "Alex",
+            timestampLabel: "Jul 4, 9:40 AM",
+            dotTone: "caution",
+          },
+          {
+            id: "e2",
+            action: "New Task",
+            actorLabel: "Tristan",
+            timestampLabel: "Jul 4, 8:00 AM",
+            dotTone: "info",
+          },
+        ]}
+      />,
+    );
+    expect(withPhotos.getByTestId("shared-card:latest-photo:hero")).toBeTruthy();
+
+    const withoutPhotos = render(
+      <ActivityStyleRowCard
+        testID="shared-card:no-latest-photo"
+        variant="activity"
+        layout="post"
+        title="Task accepted"
+        subtitle="Corridor lighting"
+        activityEvents={[
+          {
+            id: "e1",
+            action: "Task accepted",
+            actorLabel: "Alex",
+            timestampLabel: "Jul 4, 9:40 AM",
+            dotTone: "positive",
+          },
+          {
+            id: "e2",
+            action: "New Task",
+            actorLabel: "Tristan",
+            timestampLabel: "Jul 4, 8:00 AM",
+            dotTone: "info",
+          },
+        ]}
+      />,
+    );
+    expect(withoutPhotos.queryByTestId("shared-card:no-latest-photo:hero")).toBeNull();
+    expect(
+      withoutPhotos.queryByTestId("shared-card:no-latest-photo:hero-spacer"),
+    ).toBeNull();
   });
 });

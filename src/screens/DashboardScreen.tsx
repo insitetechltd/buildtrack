@@ -7,6 +7,7 @@ import { NavigationContext } from "@react-navigation/native";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
+import QueueOverviewBoard from "@/components/dashboard/QueueOverviewBoard";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 import { usePullToRefresh } from "@/utils/usePullToRefresh";
@@ -198,6 +199,19 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             </View>
           )}
 
+          {output.projectSummaryCard && output.queueDashboard ? (
+            <QueueOverviewBoard
+              model={output.queueDashboard}
+              sectionTitle={t?.activity?.queueOverview || "Queue Overview"}
+              queueColumnHeader={t?.activity?.queueColumn || "Queue"}
+              shortLaneLabels={{
+                my_queue: t?.activity?.myQueueShort || "My",
+                team_queue: t?.activity?.teamQueueShort || "Team",
+              }}
+              onCellPress={(payload) => props.onNavigateToTasks(payload)}
+            />
+          ) : null}
+
           {output.projectSummaryCard ? (
             <View className="mb-5">
               <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
@@ -247,46 +261,6 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             </View>
           ) : null}
 
-          {output.projectSummaryCard && output.queueDashboard ? (
-            <View className="mb-5" testID="dashboard-screen__queue_dashboard">
-              <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-                Queue Overview
-              </Text>
-              <View className="gap-4">
-                {output.queueDashboard.groups.map((group) => (
-                  <View key={group.id}>
-                    <Text className="mb-2 text-base font-semibold uppercase tracking-wider text-[#497080]">
-                      {group.title}
-                    </Text>
-                    <View className="flex-row gap-2">
-                      {group.cells.map((cell) => (
-                        <Pressable
-                          key={cell.id}
-                          testID={`dashboard-screen__queue_cell_${cell.queue}_${cell.bucket}`}
-                          onPress={() =>
-                            props.onNavigateToTasks({
-                              launchQueue: cell.queue,
-                              launchBucket: cell.bucket,
-                              launchSource: "activity_dashboard",
-                            })
-                          }
-                          className="min-w-0 flex-1 rounded-2xl border border-[#C8E6EF] bg-white px-3 py-4"
-                        >
-                          <Text className="text-base font-semibold uppercase tracking-wide text-[#497080]">
-                            {cell.title}
-                          </Text>
-                          <Text className="mt-2 text-[30px] leading-8 font-semibold text-[#0D2630]">
-                            {cell.countLabel}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
           <View className="mb-4">
             <Text className="mb-2 text-lg font-semibold uppercase tracking-wider text-[#497080]">
               {t?.activity?.recentActivity || "Recent Activity"}
@@ -314,7 +288,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                         testID={`dashboard-screen__activity_${item.id}`}
                         variant="activity"
                         layout="post"
-                        fillHeight={isGrid}
+                        fillHeight={false}
                         title={item.title}
                         subtitle={item.subtitle}
                         actorLabel={item.actorLabel}
@@ -322,6 +296,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                         metaLabel={item.timestampLabel}
                         imageUri={photoUris[0]}
                         imageUris={photoUris.length > 0 ? photoUris : undefined}
+                        activityEvents={item.events}
                         disabled={item.taskId?.startsWith("project:") ?? false}
                         onPress={() => {
                           actions.markActivityFeedSeen();

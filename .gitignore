@@ -32,6 +32,7 @@ yarn-error.*
 !.env.example
 credentials.json
 credentials.json.*
+credentials/
 
 # EAS local keystore exports and logs (never commit)
 eas-keystores/
@@ -44,7 +45,9 @@ eas-keystores/
 # Machine-local artifacts
 .tmp/
 .cache/
+.dbg/
 .xcode-derived-data/
+.eas/
 .eas/local-build/
 .eas/artifacts/
 .cursor/debug.log

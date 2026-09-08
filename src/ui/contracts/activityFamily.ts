@@ -1,7 +1,7 @@
 /**
  * Shared visual DNA for the three activity depths:
  * 1. Task card (Tasks list) — task name leads
- * 2. Post (Recent Activity) — change leads + task name
+ * 2. Post (Recent Activity) — task name leads + change/description
  * 3. Detail (Work thread) — change leads + status/% + rail
  */
 import {
@@ -20,9 +20,9 @@ export const ACTIVITY_FAMILY = {
   badgeText: "#0A728F",
   placeholderBg: "#E7F4F8",
   placeholderIcon: "#0D6E87",
-  /** Primary content line (change on post/detail, task name on task card). */
+  /** Primary content line (task name on post/task card). */
   titleClassName: "text-lg font-semibold text-[#0D2630]",
-  /** Secondary content line (task name on post). */
+  /** Secondary content line (change/description on post). */
   subtitleClassName: "mt-1.5 text-base text-[#577783]",
   metaClassName: "text-sm font-medium text-[#497080]",
   actorNameClassName: "text-base font-semibold text-[#0D2630]",

@@ -41,6 +41,7 @@ import {
   normalizeProjectLocationLabel,
   normalizeTaskActivityCompatibility,
 } from "./taskNormalization";
+import { RECENT_ACTIVITY_WINDOW_MS } from "../ui/contracts/activityFeed";
 
 export type { QueryMeta } from "../api/supabase";
 export type { TaskDerivedState, TaskPreview } from "./taskDerivedState";
@@ -68,9 +69,140 @@ export interface ProjectContainerRecord {
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
 
+/** Activity types that belong in Dashboard Recent Activity (not full timeline). */
+const RECENT_FEED_ACTIVITY_TYPES = new Set<ActivityType>([
+  "progress_update",
+  "status_change",
+  "assignment",
+  "review_submission",
+  "review_acceptance",
+  "review_rejection",
+  "assigner_comment",
+  "delegation_added",
+  "delegation_removed",
+  "photo_batch_attached",
+  "issue_reported",
+  "triaged_to_task",
+  "issue_dismissed",
+  "issue_resolved",
+]);
+
+const ACTIVITY_ID_CHUNK = 80;
+
+function mapDbActivityToTaskActivity(activity: {
+  id: string;
+  task_id: string;
+  user_id: string;
+  activity_type: string;
+  timestamp: string;
+  data?: unknown;
+  description?: string;
+  completion_percentage?: number;
+  status?: string;
+  notifications_sent?: boolean;
+  notified_at?: string;
+  created_at?: string;
+}): TaskActivity {
+  return {
+    id: activity.id,
+    taskId: activity.task_id,
+    userId: activity.user_id,
+    activityType: activity.activity_type as ActivityType,
+    timestamp: activity.timestamp,
+    data: activity.data,
+    description: activity.description || "",
+    completionPercentage: activity.completion_percentage,
+    status: activity.status as TaskStatus | undefined,
+    notificationsSent: activity.notifications_sent || false,
+    notifiedAt: activity.notified_at,
+    createdAt: activity.created_at,
+  };
+}
+
+function mapActivitiesToCompatUpdates(activities: TaskActivity[]): TaskUpdate[] {
+  return activities
+    .filter((activity) => RECENT_FEED_ACTIVITY_TYPES.has(activity.activityType))
+    .map((activity) => ({
+      id: activity.id,
+      description: activity.description,
+      photos: (activity.data as { photos?: string[] } | undefined)?.photos || [],
+      completionPercentage: activity.completionPercentage || 0,
+      status: (activity.status || "not_started") as TaskStatus,
+      timestamp: activity.timestamp,
+      userId: activity.userId,
+      activityType: activity.activityType,
+    }));
+}
+
+function mergeById<T extends { id: string }>(
+  previous: T[] | undefined,
+  incoming: T[] | undefined,
+): T[] {
+  const byId = new Map<string, T>();
+  for (const item of previous ?? []) {
+    byId.set(item.id, item);
+  }
+  for (const item of incoming ?? []) {
+    byId.set(item.id, item);
+  }
+  return Array.from(byId.values());
+}
+
+/**
+ * M-DATA-05: list fetches stay slim (no full timeline) but hydrate the same
+ * rolling window Recent Activity uses so the feed is not empty after list refresh.
+ */
+async function fetchRecentActivitiesByTaskIds(
+  client: NonNullable<typeof supabase>,
+  taskIds: string[],
+  nowMs: number = Date.now(),
+): Promise<Record<string, TaskActivity[]>> {
+  const byTaskId: Record<string, TaskActivity[]> = {};
+  if (taskIds.length === 0) {
+    return byTaskId;
+  }
+
+  const sinceIso = new Date(nowMs - RECENT_ACTIVITY_WINDOW_MS).toISOString();
+
+  for (let offset = 0; offset < taskIds.length; offset += ACTIVITY_ID_CHUNK) {
+    const chunk = taskIds.slice(offset, offset + ACTIVITY_ID_CHUNK);
+    try {
+      const { data, error } = await client
+        .from("task_activities")
+        .select("*")
+        .in("task_id", chunk)
+        .gte("timestamp", sinceIso)
+        .order("timestamp", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching recent task activities for list feed:", error);
+        continue;
+      }
+
+      for (const row of data || []) {
+        const mapped = mapDbActivityToTaskActivity(row);
+        if (!byTaskId[mapped.taskId]) {
+          byTaskId[mapped.taskId] = [];
+        }
+        byTaskId[mapped.taskId].push(mapped);
+      }
+    } catch (error) {
+      console.error("Error fetching recent task activities for list feed:", error);
+    }
+  }
+
+  return byTaskId;
+}
+
 function isMissingTaskMetadataColumnError(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
-  return error.code === "42703" || /does not exist|42703|PGRST204/i.test(error.message ?? "");
+  // PostgREST puts PGRST204 on `code`; Postgres DDL errors use SQLSTATE 42703.
+  // Message text varies ("does not exist" vs "Could not find … schema cache").
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    /does not exist|42703|PGRST204|schema cache|Could not find/i.test(error.message ?? "")
+  );
 }
 
 /** Contract TASK_LISTABLE + TASK_ASSIGNED_TO_USER — documentation/owner-task-query-contract.md §4.1–4.2 */
@@ -388,16 +520,13 @@ export const useTaskStore = create<TaskStore>()(
           const existingById = new Map(state.tasks.map((task) => [task.id, task]));
           const nextTasks = normalizedTasks.map((incoming) => {
             const previous = existingById.get(incoming.id);
-            // M-DATA-05 Phase A: list fetches omit activity history — keep hydrated timeline.
-            const listSlim =
-              previous &&
-              (incoming.activities?.length ?? 0) === 0 &&
-              (previous.activities?.length ?? 0) > 0;
-            const merged = listSlim
+            // List may bring a 5-day activity window; detail may have fuller history.
+            // Always union by id so neither side wipes the other.
+            const merged = previous
               ? {
                   ...incoming,
-                  activities: previous.activities,
-                  updates: previous.updates,
+                  activities: mergeById(previous.activities, incoming.activities),
+                  updates: mergeById(previous.updates, incoming.updates),
                 }
               : incoming;
             return previous && taskSnapshotsMatch(previous, merged) ? previous : merged;
@@ -425,7 +554,15 @@ export const useTaskStore = create<TaskStore>()(
           const nextTasksById = new Map(state.tasks.map((task) => [task.id, task]));
 
           for (const task of normalizedTasks) {
-            nextTasksById.set(task.id, task);
+            const previous = nextTasksById.get(task.id);
+            const merged = previous
+              ? {
+                  ...task,
+                  activities: mergeById(previous.activities, task.activities),
+                  updates: mergeById(previous.updates, task.updates),
+                }
+              : task;
+            nextTasksById.set(task.id, merged);
           }
 
           const now = Date.now();
@@ -539,14 +676,19 @@ export const useTaskStore = create<TaskStore>()(
 
               if (tasksError) throw tasksError;
 
-              // M-DATA-05 Phase A: list path skips full activity history (detail uses fetchTaskById).
-              const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+              // M-DATA-05: no full timeline on list — hydrate Recent Activity window only.
+              const taskIds = (allTasksData || []).map((task) => String(task.id));
+              const activitiesByTaskId = await fetchRecentActivitiesByTaskIds(
+                supabaseClient,
+                taskIds,
+              );
 
               const transformedTasks = (allTasksData || []).map(task => {
                 const normalizedAssignedTo = Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((id: any) => String(id))
                   : [];
                 const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
+                const taskActivities = activitiesByTaskId[task.id] || [];
 
                 return normalizeTaskActivityCompatibility({
                   id: task.id,
@@ -569,6 +711,9 @@ export const useTaskStore = create<TaskStore>()(
                     ? task.delegated_user_ids.map((userId: unknown) => String(userId))
                     : undefined,
                   assignedBy: normalizedAssignedBy,
+                  originalAssignedBy: task.original_assigned_by
+                    ? String(task.original_assigned_by)
+                    : undefined,
                   containerId: task.container_id ? String(task.container_id) : undefined,
                   subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
                   tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
@@ -589,20 +734,8 @@ export const useTaskStore = create<TaskStore>()(
                   archivedBy: task.archived_by || undefined,
                   createdAt: task.created_at,
                   updatedAt: task.updated_at,
-                  activities: activitiesByTaskId[task.id] || [],
-                  updates: (activitiesByTaskId[task.id] || [])
-                    .filter((activity: TaskActivity) =>
-                      activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-                    )
-                    .map((activity: TaskActivity) => ({
-                      id: activity.id,
-                      description: activity.description,
-                      photos: (activity.data as any)?.photos || [],
-                      completionPercentage: activity.completionPercentage || 0,
-                      status: activity.status || 'not_started' as TaskStatus,
-                      timestamp: activity.timestamp,
-                      userId: activity.userId,
-                    })),
+                  activities: taskActivities,
+                  updates: mapActivitiesToCompatUpdates(taskActivities),
                 });
               });
 
@@ -742,6 +875,9 @@ export const useTaskStore = create<TaskStore>()(
                 ? task.delegated_user_ids.map((userId: unknown) => String(userId))
                 : undefined,
               assignedBy: normalizedAssignedBy,
+              originalAssignedBy: task.original_assigned_by
+                ? String(task.original_assigned_by)
+                : undefined,
               containerId: task.container_id ? String(task.container_id) : undefined,
               subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
               tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
@@ -834,11 +970,17 @@ export const useTaskStore = create<TaskStore>()(
 
               if (tasksError) throw tasksError;
 
-              // M-DATA-05 Phase A: list path skips full activity history.
-              const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+              // M-DATA-05: hydrate Recent Activity window only (not full timeline).
+              const taskIds = (allTasksData || []).map((task) => String(task.id));
+              const activitiesByTaskId = await fetchRecentActivitiesByTaskIds(
+                supabaseClient,
+                taskIds,
+              );
 
               const scopedTaskIds = new Set(get().taskIdsByProject[projectId] || []);
-              const transformedTasks = (allTasksData || []).map(task => normalizeTaskActivityCompatibility({
+              const transformedTasks = (allTasksData || []).map(task => {
+                const taskActivities = activitiesByTaskId[task.id] || [];
+                return normalizeTaskActivityCompatibility({
                 id: task.id,
                 projectId: task.project_id,
                 parentTaskId: task.parent_task_id,
@@ -861,6 +1003,9 @@ export const useTaskStore = create<TaskStore>()(
                   ? task.delegated_user_ids.map((userId: unknown) => String(userId))
                   : undefined,
                 assignedBy: task.assigned_by ? String(task.assigned_by) : '',
+                originalAssignedBy: task.original_assigned_by
+                  ? String(task.original_assigned_by)
+                  : undefined,
                 containerId: task.container_id ? String(task.container_id) : undefined,
                 subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
                 tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
@@ -881,21 +1026,10 @@ export const useTaskStore = create<TaskStore>()(
                 deletedBy: task.deleted_by || undefined,
                 archivedAt: task.archived_at || undefined,
                 archivedBy: task.archived_by || undefined,
-                activities: activitiesByTaskId[task.id] || [],
-                updates: (activitiesByTaskId[task.id] || [])
-                  .filter((activity: TaskActivity) =>
-                    activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-                  )
-                  .map((activity: TaskActivity) => ({
-                    id: activity.id,
-                    description: activity.description,
-                    photos: (activity.data as any)?.photos || [],
-                    completionPercentage: activity.completionPercentage || 0,
-                    status: activity.status || 'not_started' as TaskStatus,
-                    timestamp: activity.timestamp,
-                    userId: activity.userId,
-                  })),
-              }));
+                activities: taskActivities,
+                updates: mapActivitiesToCompatUpdates(taskActivities),
+              });
+              });
 
               const incomingTaskIds = new Set(transformedTasks.map((task) => task.id));
               const staleScopedTaskIds = Array.from(scopedTaskIds).filter(
@@ -960,11 +1094,17 @@ export const useTaskStore = create<TaskStore>()(
 
               if (error) throw error;
 
-              // M-DATA-05 Phase A: list path skips full activity history.
-              const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+              // M-DATA-05: hydrate Recent Activity window only (not full timeline).
+              const taskIds = (data || []).map((task) => String(task.id));
+              const activitiesByTaskId = await fetchRecentActivitiesByTaskIds(
+                supabaseClient,
+                taskIds,
+              );
 
               const scopedTaskIds = new Set(get().taskIdsByUser[userId] || []);
-              const transformedTasks = (data || []).map(task => normalizeTaskActivityCompatibility({
+              const transformedTasks = (data || []).map(task => {
+                const taskActivities = activitiesByTaskId[String(task.id)] || [];
+                return normalizeTaskActivityCompatibility({
                 id: task.id,
                 projectId: task.project_id,
                 parentTaskId: task.parent_task_id,
@@ -984,9 +1124,12 @@ export const useTaskStore = create<TaskStore>()(
                   : [],
                 primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
                 delegatedUserIds: Array.isArray(task.delegated_user_ids)
-                  ? task.delegated_user_ids.map((userId: unknown) => String(userId))
+                  ? task.delegated_user_ids.map((delegatedId: unknown) => String(delegatedId))
                   : undefined,
                 assignedBy: task.assigned_by ? String(task.assigned_by) : '',
+                originalAssignedBy: task.original_assigned_by
+                  ? String(task.original_assigned_by)
+                  : undefined,
                 containerId: task.container_id ? String(task.container_id) : undefined,
                 subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
                 tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
@@ -1007,21 +1150,10 @@ export const useTaskStore = create<TaskStore>()(
                 deletedBy: task.deleted_by || undefined,
                 archivedAt: task.archived_at || undefined,
                 archivedBy: task.archived_by || undefined,
-                activities: activitiesByTaskId[task.id] || [],
-                updates: (activitiesByTaskId[task.id] || [])
-                  .filter((activity: TaskActivity) =>
-                    activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-                  )
-                  .map((activity: TaskActivity) => ({
-                    id: activity.id,
-                    description: activity.description,
-                    photos: (activity.data as any)?.photos || [],
-                    completionPercentage: activity.completionPercentage || 0,
-                    status: activity.status || 'new' as TaskStatus,
-                    timestamp: activity.timestamp,
-                    userId: activity.userId,
-                  })),
-              }));
+                activities: taskActivities,
+                updates: mapActivitiesToCompatUpdates(taskActivities),
+              });
+              });
 
               const incomingTaskIds = new Set(transformedTasks.map((task) => task.id));
               const staleScopedTaskIds = Array.from(scopedTaskIds).filter(
@@ -1160,6 +1292,9 @@ export const useTaskStore = create<TaskStore>()(
               ? taskData.delegated_user_ids.map((userId: unknown) => String(userId))
               : undefined,
             assignedBy: normalizedAssignedBy,
+            originalAssignedBy: taskData.original_assigned_by
+              ? String(taskData.original_assigned_by)
+              : undefined,
             containerId: taskData.container_id ? String(taskData.container_id) : undefined,
             subContainerId: taskData.sub_container_id ? String(taskData.sub_container_id) : undefined,
             tags: Array.isArray(taskData.tags) ? taskData.tags.map((tag: unknown) => String(tag)) : [],
@@ -1329,6 +1464,20 @@ export const useTaskStore = create<TaskStore>()(
             .select()
             .single();
 
+          if (
+            error &&
+            isMissingTaskMetadataColumnError(error) &&
+            /original_assigned_by/i.test(error.message ?? "")
+          ) {
+            const withoutOwner = { ...fullInsertPayload } as Record<string, unknown>;
+            delete withoutOwner.original_assigned_by;
+            ({ data, error } = await supabase
+              .from('tasks')
+              .insert(withoutOwner)
+              .select()
+              .single());
+          }
+
           const deferredField = getDeferredTaskSchemaField(error);
           if (deferredField) {
             const errorCode =
@@ -1345,9 +1494,13 @@ export const useTaskStore = create<TaskStore>()(
               { deferredField }
             );
 
+            const compatibilityPayload = stripDeferredTaskSchemaFields(
+              fullInsertPayload as Record<string, unknown>,
+            );
+            delete compatibilityPayload.original_assigned_by;
             ({ data, error } = await supabase
               .from('tasks')
-              .insert(stripDeferredTaskSchemaFields(fullInsertPayload))
+              .insert(compatibilityPayload)
               .select()
               .single());
           }
@@ -1495,6 +1648,9 @@ export const useTaskStore = create<TaskStore>()(
               ? data.delegated_user_ids.map((userId: unknown) => String(userId))
               : undefined,
             assignedBy: data.assigned_by,
+            originalAssignedBy: data.original_assigned_by
+              ? String(data.original_assigned_by)
+              : undefined,
             containerId: data.container_id ? String(data.container_id) : undefined,
             subContainerId: data.sub_container_id ? String(data.sub_container_id) : undefined,
             tags: Array.isArray(data.tags) ? data.tags.map((tag: unknown) => String(tag)) : [],
@@ -2243,7 +2399,9 @@ export const useTaskStore = create<TaskStore>()(
           }
 
           if (!isArchivableLifecycleStatus(task.status)) {
-            throw new Error('Only completed or resolved tasks can be archived');
+            throw new Error(
+              'Only completed, resolved, or declined tasks can be archived',
+            );
           }
 
           // Check if user is assigner or assignee
@@ -2328,8 +2486,13 @@ export const useTaskStore = create<TaskStore>()(
             isLoading: false,
           }));
 
-          await get().fetchTasks();
-          await get().fetchArchivedTasks();
+          // Refresh lists in background so Detail can navigate away immediately.
+          void get().fetchTasks().catch((refreshError) => {
+            console.warn('[archiveTask] fetchTasks after archive failed', refreshError);
+          });
+          void get().fetchArchivedTasks().catch((refreshError) => {
+            console.warn('[archiveTask] fetchArchivedTasks after archive failed', refreshError);
+          });
         } catch (error: any) {
           console.error('Error archiving task:', error);
           set({
@@ -2355,6 +2518,9 @@ export const useTaskStore = create<TaskStore>()(
 
           const isCreatorAssigned = isCreatorAmongAssignees(userId, payload.assignedTo);
           const nextStatus: TaskStatus = isCreatorAssigned ? 'in_progress' : 'new';
+          // Preserve original report initiator as owner; assigner becomes the PM triaging.
+          const originalOwnerId =
+            task.originalAssignedBy || task.assignedBy || undefined;
           const triagingUser = await (async () => {
             try {
               const { data } = await supabase
@@ -2374,20 +2540,37 @@ export const useTaskStore = create<TaskStore>()(
             assigned_to: payload.assignedTo,
             primary_assignee_id: payload.primaryAssigneeId || null,
             delegated_user_ids: payload.delegatedUserIds || null,
+            // Formal task assigner = PM who promoted the report (not the reporter).
+            assigned_by: userId,
             // Formal task starts at 0% — reports often carry null completion.
             completion_percentage: 0,
             updated_at: new Date().toISOString(),
           };
+          if (originalOwnerId) {
+            updatePayload.original_assigned_by = originalOwnerId;
+          }
           if (payload.dueDate) updatePayload.due_date = payload.dueDate;
           if (payload.priority) updatePayload.priority = payload.priority;
           if (payload.category) updatePayload.category = payload.category;
           if (payload.billingStatus) updatePayload.billing_status = payload.billingStatus;
           if (payload.locationOnSite) updatePayload.location_on_site = payload.locationOnSite;
 
-          const { error } = await supabase
+          let { error } = await supabase
             .from('tasks')
             .update(updatePayload)
             .eq('id', taskId);
+
+          if (
+            error &&
+            isMissingTaskMetadataColumnError(error) &&
+            Object.prototype.hasOwnProperty.call(updatePayload, 'original_assigned_by')
+          ) {
+            delete updatePayload.original_assigned_by;
+            ({ error } = await supabase
+              .from('tasks')
+              .update(updatePayload)
+              .eq('id', taskId));
+          }
 
           if (error) throw error;
 
@@ -2417,6 +2600,8 @@ export const useTaskStore = create<TaskStore>()(
             assignedTo: payload.assignedTo,
             primaryAssigneeId: payload.primaryAssigneeId || undefined,
             delegatedUserIds: payload.delegatedUserIds || undefined,
+            assignedBy: userId,
+            originalAssignedBy: originalOwnerId || task.originalAssignedBy,
             dueDate: payload.dueDate || task.dueDate,
             priority: payload.priority || task.priority,
             category: payload.category || task.category,
@@ -3515,6 +3700,9 @@ export const useTaskStore = create<TaskStore>()(
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
+              originalAssignedBy: data.original_assigned_by
+                ? String(data.original_assigned_by)
+                : undefined,
               locationOnSite: data.location_on_site || undefined,
               location: data.location,
               attachments: data.attachments || [],
@@ -3742,6 +3930,9 @@ export const useTaskStore = create<TaskStore>()(
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
+              originalAssignedBy: data.original_assigned_by
+                ? String(data.original_assigned_by)
+                : undefined,
               locationOnSite: data.location_on_site || undefined,
               location: data.location,
               attachments: data.attachments || [],

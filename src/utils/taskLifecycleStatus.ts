@@ -22,12 +22,16 @@ export function isDismissedStatus(status: TaskStatus | string | undefined): bool
 
 /**
  * Endpoints that may be decluttered via Archive dock / swipe.
- * Approved sign-off + resolved reports.
+ * Approved sign-off + resolved reports + declined (no rework chosen).
  */
 export function isArchivableLifecycleStatus(
   status: TaskStatus | string | undefined,
 ): boolean {
-  return isCompletedLifecycleStatus(status) || isResolvedReportStatus(status);
+  return (
+    isCompletedLifecycleStatus(status) ||
+    isResolvedReportStatus(status) ||
+    status === "declined"
+  );
 }
 
 /** Terminal lifecycle status (no further progress updates). */

@@ -10,6 +10,7 @@ import { useUserStore } from "@/state/userStore.supabase";
 import { type Project, type Task } from "@/types/buildtrack";
 import { resolveWorkspaceProjectId } from "@/ui/contracts/workspaceProject";
 import {
+  buildActivityFeedGroups,
   buildActivityFeedRows,
   resolveActivityFeedSeenAtMs,
 } from "@/ui/contracts/activityFeed";
@@ -586,63 +587,79 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     const activeProjectOverdueTasks = activeProjectOpenTasks.filter((task) =>
       isTaskOverdue(task),
     );
-    const activityFeedRows = resolvedActiveProject
-      ? buildActivityFeedRows({
+    const activityFeedGroups = resolvedActiveProject
+      ? buildActivityFeedGroups({
           projectId: resolvedActiveProject.id,
           tasks: activeProjectTasks,
           photoBatches: unattachedBatchStore.getBatchesForProject(resolvedActiveProject.id),
         })
       : [];
     const taskById = new Map(activeProjectTasks.map((task) => [task.id, task]));
-    const mappedActivityItems: DashboardActivityItem[] = activityFeedRows.map((row) => {
-      let previewPhotoUris: string[] = [];
-      let actorLabel: string | undefined;
-      let actorUserId: string | undefined;
+    const mappedActivityItems: DashboardActivityItem[] = activityFeedGroups.map((group) => {
+      const events = group.events.map((row) => {
+        let previewPhotoUris: string[] = [];
+        let actorLabel: string | undefined;
+        let actorUserId: string | undefined;
 
-      if (row.taskId.startsWith("project:")) {
-        const batchId = row.id.replace(/^unattached-batch-/, "");
-        const batch = resolvedActiveProject
-          ? unattachedBatchStore
-              .getBatchesForProject(resolvedActiveProject.id)
-              .find((entry) => entry.id === batchId)
-          : undefined;
-        previewPhotoUris = (batch?.photoUrls ?? [])
-          .map(resolveImageUri)
-          .filter((value): value is string => Boolean(value));
-        actorUserId = batch?.userId;
-        actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
-      } else {
-        const task = taskById.get(row.taskId);
-        if (task) {
-          const update = task.updates?.find((entry) => entry.id === row.id);
-          // Create rows (`activity-task:…`) are not mapped into updates — show
-          // create-time attachments. Update rows only show THIS event's photos.
-          previewPhotoUris = update
-            ? collectUpdatePhotoUris(update)
-            : row.id.startsWith("activity-task:")
-              ? collectAttachmentPhotoUris(task)
-              : [];
-          const resolvedActorUserId = update?.userId ?? task.assignedBy;
-          actorUserId = resolvedActorUserId;
-          actorLabel = resolvedActorUserId
-            ? getUserById(resolvedActorUserId)?.name
+        if (row.taskId.startsWith("project:")) {
+          const batchId = row.id.replace(/^unattached-batch-/, "");
+          const batch = resolvedActiveProject
+            ? unattachedBatchStore
+                .getBatchesForProject(resolvedActiveProject.id)
+                .find((entry) => entry.id === batchId)
             : undefined;
+          previewPhotoUris = (batch?.photoUrls ?? [])
+            .map(resolveImageUri)
+            .filter((value): value is string => Boolean(value));
+          actorUserId = batch?.userId ?? row.actorUserId;
+          actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
+        } else {
+          const task = taskById.get(row.taskId);
+          if (task) {
+            const update = task.updates?.find((entry) => entry.id === row.id);
+            previewPhotoUris = update
+              ? collectUpdatePhotoUris(update)
+              : row.id.startsWith("activity-task:")
+                ? collectAttachmentPhotoUris(task)
+                : [];
+            const resolvedActorUserId =
+              row.actorUserId ?? update?.userId ?? task.assignedBy;
+            actorUserId = resolvedActorUserId
+              ? String(resolvedActorUserId)
+              : undefined;
+            actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
+          } else {
+            actorUserId = row.actorUserId;
+            actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
+          }
         }
-      }
 
-      const previewPhotoUri = previewPhotoUris[0];
+        return {
+          id: row.id,
+          action: row.title,
+          timestampLabel: row.timestampLabel,
+          actorLabel,
+          actorUserId,
+          dotTone: row.dotTone,
+          photoUris: previewPhotoUris.length > 0 ? previewPhotoUris : undefined,
+        };
+      });
+
+      const latest = events[0];
+      const latestPhotos = latest?.photoUris ?? [];
 
       return {
-        id: row.id,
-        taskId: row.taskId,
-        title: row.title,
-        subtitle: row.subtitle,
-        timestampLabel: row.timestampLabel,
-        statusLabel: row.statusLabel,
-        previewPhotoUri,
-        previewPhotoUris: previewPhotoUris.length > 0 ? previewPhotoUris : undefined,
-        actorLabel,
-        actorUserId,
+        id: group.id,
+        taskId: group.taskId,
+        title: latest?.action ?? "",
+        subtitle: group.taskTitle,
+        timestampLabel: latest?.timestampLabel ?? "",
+        statusLabel: group.events[0]?.statusLabel ?? "",
+        previewPhotoUri: latestPhotos[0],
+        previewPhotoUris: latestPhotos.length > 0 ? latestPhotos : undefined,
+        actorLabel: latest?.actorLabel,
+        actorUserId: latest?.actorUserId,
+        events,
         density: "standard" as const,
         structuralState,
       };

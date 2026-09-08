@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { fireEvent, render, within } from "@testing-library/react-native";
 import DashboardScreen from "../DashboardScreen";
 import type { DashboardScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
+import { TABLET_POST_CARD_HEIGHT } from "@/components/cards/ActivityStyleRowCard";
 
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
@@ -314,11 +315,13 @@ describe("DashboardScreen", () => {
     expect(screen.queryByTestId("dashboard-screen__weather_tile")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:layout-photo-hero")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:hero-actor-label")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-1:post-header")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:post-footer")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:post-header")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:hero-image")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:overlay-title")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-2:layout-compact")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-2:post-header")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-2:post-footer")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-2:post-header")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-2:thumbnail")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-2:thumbnail-placeholder")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-2:no-photo-icon")).toBeNull();
@@ -715,6 +718,11 @@ describe("DashboardScreen", () => {
     });
     expect(screen.getByTestId("dashboard-screen__activity_wrapper_activity-1")).toHaveStyle({
       width: 388,
+    });
+    expect(
+      screen.getByTestId("dashboard-screen__activity_wrapper_activity-1"),
+    ).not.toHaveStyle({
+      height: TABLET_POST_CARD_HEIGHT,
     });
 
     useWindowDimensionsSpy.mockRestore();

@@ -34,6 +34,7 @@ export interface DeveloperSettingsViewAdapterProps {
   onNavigateBack: () => void;
   onOpenTaskDetailVerification: (taskId?: string) => void;
   onOpenCaptureSessionSmoke?: () => void;
+  onOpenActivityPhotoSyncLab?: () => void;
 }
 
 export interface DeveloperSettingsViewAdapterHookResult {
@@ -42,6 +43,7 @@ export interface DeveloperSettingsViewAdapterHookResult {
     handleNavigateBack: () => void;
     handleOpenTaskDetailVerification: () => void;
     handleOpenCaptureSessionSmoke: () => void;
+    handleOpenActivityPhotoSyncLab: () => void;
     handleForceSyncAll: () => void;
     handleClearTaskCache: () => void;
     handleClearProjectCache: () => void;
@@ -79,7 +81,7 @@ function createActionItem(
 export function useDeveloperSettingsViewAdapter(
   props: DeveloperSettingsViewAdapterProps,
 ): DeveloperSettingsViewAdapterHookResult {
-  const { onNavigateBack, onOpenTaskDetailVerification, onOpenCaptureSessionSmoke } =
+  const { onNavigateBack, onOpenTaskDetailVerification, onOpenCaptureSessionSmoke, onOpenActivityPhotoSyncLab } =
     props;
   const { user, logout } = useAuthStore();
   const taskStore = useTaskStore();
@@ -143,6 +145,17 @@ export function useDeveloperSettingsViewAdapter(
     }
     onOpenCaptureSessionSmoke();
   }, [onOpenCaptureSessionSmoke]);
+
+  const handleOpenActivityPhotoSyncLab = useCallback(() => {
+    if (!onOpenActivityPhotoSyncLab) {
+      Alert.alert(
+        "Photo sync lab",
+        "Navigation host is not wired for this build. Reload the JS bundle after pulling latest.",
+      );
+      return;
+    }
+    onOpenActivityPhotoSyncLab();
+  }, [onOpenActivityPhotoSyncLab]);
 
   const handleClearAllLocalData = useCallback(() => {
     Alert.alert(
@@ -524,6 +537,14 @@ export function useDeveloperSettingsViewAdapter(
               "green",
               false,
             ),
+            createActionItem(
+              "open-activity-photo-sync-lab",
+              "Open RA photo↔event lab (Option A)",
+              "Test-only: swipe photos highlight owning visible event — does not replace Activity",
+              "images-outline",
+              "purple",
+              false,
+            ),
           ],
         },
         {
@@ -664,6 +685,7 @@ export function useDeveloperSettingsViewAdapter(
     userStore.users.length,
     verificationTaskId,
     onOpenCaptureSessionSmoke,
+    onOpenActivityPhotoSyncLab,
   ]);
 
   return {
@@ -672,6 +694,7 @@ export function useDeveloperSettingsViewAdapter(
       handleNavigateBack,
       handleOpenTaskDetailVerification,
       handleOpenCaptureSessionSmoke,
+      handleOpenActivityPhotoSyncLab,
       handleForceSyncAll,
       handleClearTaskCache,
       handleClearProjectCache,

@@ -959,6 +959,9 @@ export function useTaskDetailViewAdapter({
   const primaryOwner = task.primaryAssigneeId
     ? getUserById(task.primaryAssigneeId)
     : assignees[0];
+  const ownerUser = task.originalAssignedBy
+    ? getUserById(task.originalAssignedBy)
+    : undefined;
   const primaryAssigneeId =
     resolvePrimaryAssigneeId(assignedTo, primaryOwner?.id || task.primaryAssigneeId) ||
     primaryOwner?.id;
@@ -979,7 +982,8 @@ export function useTaskDetailViewAdapter({
     structuralState: 'stale',
     assignedByLabel: assigners.map((assigner) => assigner.name).join(', ') || 'Unassigned',
     assignedToLabel: assignees.map((assignee) => assignee.name).join(', ') || 'Unassigned',
-    primaryOwnerLabel: primaryOwner?.name,
+    // Owner = original initiator (reporter before triage); not primary assignee.
+    primaryOwnerLabel: ownerUser?.name,
     teamSummaryLabel:
       delegatedAssignees.length > 0
         ? `${delegatedAssignees.length} delegate${delegatedAssignees.length === 1 ? '' : 's'}: ${delegatedAssignees.map((d) => d.name).join(', ')}`

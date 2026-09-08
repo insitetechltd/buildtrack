@@ -8,24 +8,30 @@ const config = getDefaultConfig(__dirname);
 /**
  * Skip machine-local junk during Metro file-map crawl + resolve.
  * These dirs are gitignored / regenerable and were dominating cold start on
- * KooDrive (especially `.cache` multi-GB Maestro dumps).
+ * KooDrive (especially repo-root `.cache` multi-GB Maestro dumps).
  * `resolver.blockList` becomes metro-file-map `ignorePattern`.
  *
- * Do NOT blindly block `/.eas/` — EAS local builds unpack under
- * `.eas/local-build/.../build`, and that absolute path must stay resolvable.
+ * Patterns must be rooted at `__dirname`:
+ * - Do NOT match package caches like `node_modules/react-native-css-interop/.cache/`
+ *   (EAS archive needs SHA-1 for those files).
+ * - Do NOT blindly block `/.eas/` when the project root already lives under
+ *   `.eas/local-build/.../build` (eager bundle must resolve `index.ts`).
  */
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const root = escapeRegExp(__dirname);
 const underEasLocalBuild = /[\/\\]\.eas[\/\\]local-build[\/\\]/.test(__dirname);
+const rootDir = (name) => new RegExp(`^${root}[\\/\\\\]${escapeRegExp(name)}[\\/\\\\]`);
 
 const crawlBlockList = [
-  /[\/\\]\.cache[\/\\]/,
-  /[\/\\]\.dbg[\/\\]/,
-  /[\/\\]\.tmp[\/\\]/,
-  /[\/\\]\.worktrees[\/\\]/,
-  /[\/\\]\.superpowers[\/\\]/,
-  /[\/\\]\.xcode-derived-data[\/\\]/,
-  /[\/\\]\.maestro[\/\\]/,
-  /[\/\\]eas-keystores[\/\\]/,
-  ...(underEasLocalBuild ? [] : [/[\/\\]\.eas[\/\\]/]),
+  rootDir(".cache"),
+  rootDir(".dbg"),
+  rootDir(".tmp"),
+  rootDir(".worktrees"),
+  rootDir(".superpowers"),
+  rootDir(".xcode-derived-data"),
+  rootDir(".maestro"),
+  rootDir("eas-keystores"),
+  ...(underEasLocalBuild ? [] : [rootDir(".eas")]),
 ];
 
 const existingBlockList = config.resolver.blockList;

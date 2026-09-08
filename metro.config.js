@@ -8,19 +8,24 @@ const config = getDefaultConfig(__dirname);
 /**
  * Skip machine-local junk during Metro file-map crawl + resolve.
  * These dirs are gitignored / regenerable and were dominating cold start on
- * KooDrive (especially `.cache` multi-GB Maestro/EAS dumps).
+ * KooDrive (especially `.cache` multi-GB Maestro dumps).
  * `resolver.blockList` becomes metro-file-map `ignorePattern`.
+ *
+ * Do NOT blindly block `/.eas/` — EAS local builds unpack under
+ * `.eas/local-build/.../build`, and that absolute path must stay resolvable.
  */
+const underEasLocalBuild = /[\/\\]\.eas[\/\\]local-build[\/\\]/.test(__dirname);
+
 const crawlBlockList = [
   /[\/\\]\.cache[\/\\]/,
   /[\/\\]\.dbg[\/\\]/,
-  /[\/\\]\.eas[\/\\]/,
   /[\/\\]\.tmp[\/\\]/,
   /[\/\\]\.worktrees[\/\\]/,
   /[\/\\]\.superpowers[\/\\]/,
   /[\/\\]\.xcode-derived-data[\/\\]/,
   /[\/\\]\.maestro[\/\\]/,
   /[\/\\]eas-keystores[\/\\]/,
+  ...(underEasLocalBuild ? [] : [/[\/\\]\.eas[\/\\]/]),
 ];
 
 const existingBlockList = config.resolver.blockList;

@@ -13,7 +13,7 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
-import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
+import { getSessionScopedSupabase, waitForSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { useAuthStore } from "./authStore";
 import {
   getProjectRole,
@@ -392,7 +392,9 @@ export const useProjectStore = create<ProjectStore>()(
 
           setProjectQueryMeta(resourceKey, {
             hasHydratedData: hasCachedData,
-            hasFetchedOnce: Boolean(get().projectQueryMeta[resourceKey]?.hasFetchedOnce || hasCachedData),
+            // Always mark fetched so workspace gates cannot spin forever on
+            // empty-cache failures (RLS / network / missing session).
+            hasFetchedOnce: true,
             isInitialLoading: false,
             isBackgroundRefreshing: false,
             isManualRefreshing: false,
@@ -401,7 +403,7 @@ export const useProjectStore = create<ProjectStore>()(
             staleAt: envelope?.staleAt ?? get().projectQueryMeta[resourceKey]?.staleAt ?? null,
             expiresAt: envelope?.expiresAt ?? get().projectQueryMeta[resourceKey]?.expiresAt ?? null,
             error: errorMessage,
-            emptyStateResolved: hasCachedData || Boolean(get().projectQueryMeta[resourceKey]?.emptyStateResolved),
+            emptyStateResolved: true,
           });
 
           set({
@@ -481,9 +483,14 @@ export const useProjectStore = create<ProjectStore>()(
 
       // FETCH from Supabase
       fetchProjects: async (forceRefresh = false) => {
-        const sessionClient = await getSessionScopedSupabase();
+        const sessionClient = await waitForSessionScopedSupabase();
         if (!sessionClient) {
           console.warn('📊 [projects] Skipping fetchProjects — no Supabase session (avoids anon 42501)');
+          get().completeQueryError(
+            buildResourceKey("projects", "all"),
+            "No authenticated session",
+            false,
+          );
           return;
         }
 
@@ -851,13 +858,23 @@ export const useProjectStore = create<ProjectStore>()(
           return;
         }
 
-        const sessionClient = await getSessionScopedSupabase();
+        const resourceKey = buildResourceKey("assignments", "user", userId);
+        const sessionClient = await waitForSessionScopedSupabase();
         if (!sessionClient) {
           console.warn('📊 [assignments] Skipping fetchUserProjectAssignments — no Supabase session');
+          get().setAssignmentQueryMeta(resourceKey, {
+            hasHydratedData: false,
+            hasFetchedOnce: true,
+            isInitialLoading: false,
+            isBackgroundRefreshing: false,
+            isManualRefreshing: false,
+            error: "No authenticated session",
+            emptyStateResolved: true,
+          });
+          set({ isLoading: false });
           return;
         }
 
-        const resourceKey = buildResourceKey("assignments", "user", userId);
         const cachedIds = get().assignmentIdsByUser[userId] || [];
         const hasCachedData = cachedIds.length > 0;
 
@@ -926,13 +943,14 @@ export const useProjectStore = create<ProjectStore>()(
           console.error('Error fetching user project assignments:', error);
           get().setAssignmentQueryMeta(resourceKey, {
             hasHydratedData: hasCachedData,
-            hasFetchedOnce: hasCachedData,
+            hasFetchedOnce: true,
             isInitialLoading: false,
             isBackgroundRefreshing: false,
             isManualRefreshing: false,
             error: error.message,
-            emptyStateResolved: hasCachedData,
+            emptyStateResolved: true,
           });
+          set({ isLoading: false });
         }
       },
 

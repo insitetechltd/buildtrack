@@ -185,4 +185,25 @@ describe("RequireWorkspaceProjectGate", () => {
       expect(mockSetSelectedProject).toHaveBeenCalledWith(null, "user-1");
     });
   });
+
+  it("shows the forced picker after assignments settle empty (never spin forever)", () => {
+    mockProjectState.assignmentQueryMeta = {
+      "assignments:user:user-1": {
+        hasFetchedOnce: true,
+        emptyStateResolved: true,
+      },
+    };
+    mockProjectState.projectQueryMeta = {
+      "projects:all": { hasFetchedOnce: true },
+    };
+
+    const screen = render(
+      <RequireWorkspaceProjectGate>
+        <Text>field shell</Text>
+      </RequireWorkspaceProjectGate>,
+    );
+
+    expect(screen.getByText("forced-picker allowBack=false")).toBeTruthy();
+    expect(screen.queryByText("Loading projects...")).toBeNull();
+  });
 });

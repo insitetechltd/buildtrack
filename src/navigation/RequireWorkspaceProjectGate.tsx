@@ -60,14 +60,17 @@ export function RequireWorkspaceProjectGate({
   const assignmentsResourceKey = currentUserId
     ? buildResourceKey("assignments", "user", currentUserId)
     : null;
-  const hasFetchedAssignmentsOnce = assignmentsResourceKey
-    ? Boolean(assignmentQueryMeta?.[assignmentsResourceKey]?.hasFetchedOnce)
-    : false;
+  const assignmentMeta = assignmentsResourceKey
+    ? assignmentQueryMeta?.[assignmentsResourceKey]
+    : undefined;
+  const assignmentsSettled = Boolean(
+    assignmentMeta?.hasFetchedOnce || assignmentMeta?.emptyStateResolved,
+  );
   const projectScopeReady = isProjectScopeReady({
     projectCount: projects?.length ?? 0,
     hasFetchedProjectsOnce: Boolean(projectQueryMeta?.[buildResourceKey("projects", "all")]?.hasFetchedOnce),
   });
-  const membershipReady = hasFetchedAssignmentsOnce || viewerProjectIds.length > 0;
+  const membershipReady = assignmentsSettled || viewerProjectIds.length > 0;
 
   useEffect(() => {
     if (!currentUserId || !membershipReady) {
@@ -124,7 +127,7 @@ export function RequireWorkspaceProjectGate({
     );
   }
 
-  if (!membershipReady && !hasFetchedAssignmentsOnce) {
+  if (!membershipReady && !assignmentsSettled) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />

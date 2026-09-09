@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
+import { waitForSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { supabase } from "../api/supabase";
 
 export type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
@@ -234,14 +234,7 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
         console.log(`🔍 [getLastSelectedProject] Fetching for user: ${userId}`);
         
         // Wait briefly for JWT — anon SELECT on users is revoked (42501).
-        let sessionClient = await getSessionScopedSupabase();
-        if (!sessionClient) {
-          const started = Date.now();
-          while (!sessionClient && Date.now() - started < 8000) {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            sessionClient = await getSessionScopedSupabase();
-          }
-        }
+        const sessionClient = await waitForSessionScopedSupabase();
 
         // First try to get from database (most up-to-date, cross-device)
         if (sessionClient) {

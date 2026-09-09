@@ -22,3 +22,24 @@ export async function getSessionScopedSupabase(): Promise<SupabaseClient | null>
     return null;
   }
 }
+
+/**
+ * Brief poll for a JWT after login / cold start. Callers that would otherwise
+ * skip fetches (and leave UI gates spinning forever) should wait, then settle
+ * query meta even if still null.
+ */
+export async function waitForSessionScopedSupabase(
+  timeoutMs = 8000,
+  pollMs = 200,
+): Promise<SupabaseClient | null> {
+  let client = await getSessionScopedSupabase();
+  if (client) {
+    return client;
+  }
+  const started = Date.now();
+  while (!client && Date.now() - started < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    client = await getSessionScopedSupabase();
+  }
+  return client;
+}

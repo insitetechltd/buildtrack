@@ -16,7 +16,7 @@ echo ""
 # To change version: ./build-local.sh ios production false true
 PLATFORM="${1:-ios}"
 PROFILE="${2:-dev}"
-SKIP_INCREMENT="${3:-true}"  # Default: EAS remote build number auto-increments
+SKIP_INCREMENT="${3:-false}"  # Default: bump shared iOS+Android build number
 CHANGE_VERSION="${4:-false}"  # Set to true to prompt for version change
 
 if [ "$PROFILE" = "production-local" ]; then
@@ -36,57 +36,20 @@ elif [ "$PROFILE" = "production" ]; then
 fi
 echo ""
 
-# Step 1: Increment build number (unless skipped)
-if [ "$SKIP_INCREMENT" != "true" ]; then
-    echo "📊 Step 1/3: Checking version numbers..."
-    echo "----------------------------------------"
-    
-    # Get current version and build from app.json
-    CURRENT_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | cut -d'"' -f4)
-    CURRENT_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json | grep -o '[0-9]*' || echo "0")
-    
-    echo "Current: Version $CURRENT_VERSION (Build $CURRENT_BUILD)"
-    echo ""
-    
-    # Only prompt if CHANGE_VERSION is true
-    if [ "$CHANGE_VERSION" = "true" ]; then
-        # Ask if version should be incremented
-        echo "❓ Is this a new version with new features?"
-        echo "   - If YES: You should increment the version number (e.g., 1.1.2 → 1.1.3)"
-        echo "   - If NO (bug fix only): Keep version the same"
-        echo ""
-        read -p "Keep current version $CURRENT_VERSION? (Y/n): " KEEP_VERSION
-        
-        if [[ "$KEEP_VERSION" =~ ^[Nn]$ ]]; then
-            echo ""
-            echo "⚠️  Please manually edit app.json to update the version number"
-            echo "   Then run this script again"
-            exit 1
-        fi
-        
-        echo ""
-        echo "✅ Keeping version: $CURRENT_VERSION"
-        echo ""
-    else
-        # Default: Keep version without prompting
-        echo "✅ Keeping version: $CURRENT_VERSION (use 4th arg 'true' to change)"
-        echo ""
-    fi
-    
-    # Increment build number
-    echo "🔢 Incrementing build number..."
-    if [ -f "./increment-build-FIXED.sh" ]; then
-        ./increment-build-FIXED.sh
-    elif [ -f "./increment-build.sh" ]; then
-        echo "⚠️  Using old increment-build.sh (may not work correctly)"
-        ./increment-build.sh
-    else
-        echo "❌ Error: increment-build script not found"
-        exit 1
-    fi
-    echo ""
+# Step 1: Sync shared build number (iOS buildNumber + Android versionCode)
+echo "📊 Step 1/3: Syncing shared build number..."
+echo "----------------------------------------"
+if [ "$SKIP_INCREMENT" = "true" ]; then
+  bash ./scripts/sync-shared-build-number.sh --no-bump
 else
-    echo "⏭️  Skipping build number increment (already done)"
+  bash ./scripts/sync-shared-build-number.sh
+fi
+echo ""
+
+if [ "$CHANGE_VERSION" = "true" ]; then
+    CURRENT_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | cut -d'"' -f4)
+    echo "❓ Marketing version is $CURRENT_VERSION"
+    echo "   Edit app.json manually if you need a new marketing version, then re-run."
     echo ""
 fi
 
@@ -154,11 +117,22 @@ echo "----------------------------------------"
 echo "Starting local build..."
 echo ""
 
-# Get final version info for display
+# Get final version info for display (shared integer + platform/purpose postfix)
 FINAL_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | cut -d'"' -f4)
 FINAL_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json | grep -o '[0-9]*' || echo "unknown")
+case "$PLATFORM" in
+  android) PLATFORM_TOKEN="a" ;;
+  *) PLATFORM_TOKEN="i" ;;
+esac
+case "$PROFILE" in
+  production) BUILD_CHANNEL="rc" ;;
+  simulator) BUILD_CHANNEL="sim" ;;
+  preview|dev) BUILD_CHANNEL="tf" ;;
+  *) BUILD_CHANNEL="dev" ;;
+esac
+DISPLAY_LABEL="v${FINAL_VERSION} (${FINAL_BUILD}${PLATFORM_TOKEN}-${BUILD_CHANNEL})"
 
-echo "Building: Version $FINAL_VERSION (Build $FINAL_BUILD)"
+echo "Building: $DISPLAY_LABEL"
 echo ""
 
 PROJECT_ROOT="$(pwd)"
@@ -193,8 +167,8 @@ echo "✅ Build completed successfully!"
 echo ""
 echo "📦 Build Information:"
 echo "  ├─ Version: $FINAL_VERSION"
-echo "  ├─ Build:   $FINAL_BUILD"
-echo "  ├─ Display: $FINAL_VERSION ($FINAL_BUILD)"
+echo "  ├─ Build:   $FINAL_BUILD (shared iOS+Android integer)"
+echo "  ├─ Display: $DISPLAY_LABEL"
 echo "  ├─ Platform: $PLATFORM"
 echo "  └─ Profile: $PROFILE"
 echo ""

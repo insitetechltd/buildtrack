@@ -8,6 +8,7 @@ import {
   Pressable,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   Image,
@@ -17,6 +18,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import TextField from "@/components/primitives/input/TextField";
 import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
+import { SIGNUP_URL } from "@/legal/legalLinks";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import { useLoginViewAdapter } from "../ui/viewAdapters/useLoginViewAdapter";
@@ -27,16 +29,12 @@ import {
   getTabNavigationDirection,
 } from "../utils/formNavigation";
 
-interface LoginScreenProps {
-  onToggleCreateCompany?: () => void;
-}
-
 function isPhoneNumber(value: string) {
   const phoneRegex = /^[\d\s\-\(\)\+]+$/;
   return phoneRegex.test(value.trim());
 }
 
-export default function LoginScreen({ onToggleCreateCompany }: LoginScreenProps) {
+export default function LoginScreen() {
   const t = useTranslation();
   const { output, actions } = useLoginViewAdapter();
   const emailInputRef = useRef<TextInput>(null);
@@ -246,17 +244,17 @@ export default function LoginScreen({ onToggleCreateCompany }: LoginScreenProps)
                 </Text>
               </Pressable>
 
-              {onToggleCreateCompany ? (
-                <Pressable
-                  testID="login-create-company"
-                  onPress={onToggleCreateCompany}
-                  className="py-4 items-center mt-2"
-                >
-                  <Text className="text-blue-600 font-medium text-base">
-                    {t.login.createCompany}
-                  </Text>
-                </Pressable>
-              ) : null}
+              <Pressable
+                testID="login-signup-web"
+                onPress={() => {
+                  void Linking.openURL(SIGNUP_URL).catch(() => undefined);
+                }}
+                className="py-4 items-center mt-2"
+              >
+                <Text className="text-blue-600 font-medium text-base">
+                  {t.login.signUpOnWeb}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </ScrollView>

@@ -39,7 +39,6 @@ import { DataRefreshManager } from "../utils/DataRefreshManager";
 import { NetworkSyncManager } from "../utils/NetworkSyncManager";
 import { RealtimeSyncManager } from "../utils/RealtimeSyncManager";
 import LoginScreen from "../screens/LoginScreen";
-import CreateCompanyScreen from "../screens/CreateCompanyScreen";
 import SetPasswordScreen from "../screens/SetPasswordScreen";
 // Legacy RegisterScreen kept in tree; corp Create Company is the RC path.
 // import RegisterScreen from "../screens/RegisterScreen";
@@ -548,17 +547,7 @@ function RootTabButton({
 }
 
 function AuthScreens() {
-  const [showCreateCompany, setShowCreateCompany] = useState(false);
-
-  if (showCreateCompany) {
-    return (
-      <CreateCompanyScreen onToggleLogin={() => setShowCreateCompany(false)} />
-    );
-  }
-
-  return (
-    <LoginScreen onToggleCreateCompany={() => setShowCreateCompany(true)} />
-  );
+  return <LoginScreen />;
 }
 
 // Dashboard Stack to handle navigation to other screens

@@ -64,7 +64,7 @@ export async function ensureCameraPermissionChecked(): Promise<CameraPermissionS
   return inFlight;
 }
 
-/** System dialog — only from Allow Camera. Result is cached for the rest of the session. */
+/** System dialog — only from the Continue pre-permission CTA. Result is cached for the rest of the session. */
 export async function requestCameraPermission(): Promise<CameraPermissionSnapshot> {
   const result = await Camera.requestCameraPermissionsAsync();
   return remember(result);

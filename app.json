@@ -19,19 +19,19 @@
             "clangCxxLanguageStandard": "c++20",
             "clangCxxLibrary": "libc++"
           },
-        "android": {
-          "compileSdkVersion": 36,
-          "targetSdkVersion": 36,
-          "buildToolsVersion": "36.0.0",
-          "minSdkVersion": 24
-        }
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0",
+            "minSdkVersion": 24
+          }
         }
       ]
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.buildtrack.app.local",
-      "buildNumber": "194",
+      "buildNumber": "249",
       "icon": "./assets/icon-1024.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -51,7 +51,8 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "versionCode": 249
     },
     "extra": {
       "eas": {

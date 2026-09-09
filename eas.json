@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 16.23.1",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "_development_DISABLED": {
@@ -22,7 +22,8 @@
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
-        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
+        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
+        "EXPO_PUBLIC_BUILD_CHANNEL": "tf"
       }
     },
     "simulator": {
@@ -36,7 +37,8 @@
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
-        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
+        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
+        "EXPO_PUBLIC_BUILD_CHANNEL": "sim"
       }
     },
     "expo-go": {
@@ -49,17 +51,18 @@
       },
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "COCOAPODS_DISABLE_STATS": "true"
+        "COCOAPODS_DISABLE_STATS": "true",
+        "EXPO_PUBLIC_BUILD_CHANNEL": "dev"
       }
     },
     "dev": {
-      "autoIncrement": true,
+      "autoIncrement": false,
       "distribution": "store",
       "environment": "preview",
       "ios": {
         "credentialsSource": "remote",
         "cocoapods": "1.16.1",
-        "autoIncrement": true
+        "autoIncrement": false
       },
       "android": {
         "credentialsSource": "local",
@@ -69,11 +72,12 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
-        "EXPO_PUBLIC_LIBRARY_PICKER_PATH": "native2b"
+        "EXPO_PUBLIC_LIBRARY_PICKER_PATH": "native2b",
+        "EXPO_PUBLIC_BUILD_CHANNEL": "tf"
       }
     },
     "production": {
-      "autoIncrement": true,
+      "autoIncrement": false,
       "distribution": "store",
       "environment": "production",
       "ios": {
@@ -88,7 +92,8 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
-        "EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD": "0"
+        "EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD": "0",
+        "EXPO_PUBLIC_BUILD_CHANNEL": "rc"
       }
     }
   },

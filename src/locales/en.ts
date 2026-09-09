@@ -689,6 +689,7 @@ export const en = {
     invalidEmailOrPhone: "Please enter a valid email or phone number",
     approvalPending: "Approval Pending",
     approvalPendingMessage: "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
+    signUpOnWeb: "Sign up on the web",
     createCompany: "Create company",
   },
 

@@ -8,6 +8,10 @@ import type {
   LoginScreenValidationErrors,
   LoginScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
+import {
+  formatBuildIdentityLabel,
+  resolveNativeBuildParts,
+} from "@/utils/buildIdentity";
 import { useTranslation } from "@/utils/useTranslation";
 
 export interface LoginViewAdapterHookResult {
@@ -32,20 +36,21 @@ function isEmail(value: string): boolean {
 
 function buildIdentifierLabel(): string {
   // Prefer native Info.plist / versionCode so the login badge matches the
-  // installed binary (EAS autoIncrement), not a stale app.json embed.
-  const appVersion =
-    Application.nativeApplicationVersion ||
-    Constants.expoConfig?.version ||
-    "1.0.0";
-  const buildNumber =
-    Application.nativeBuildVersion ||
-    Constants.expoConfig?.ios?.buildNumber ||
-    (Constants.expoConfig?.android?.versionCode != null
-      ? String(Constants.expoConfig.android.versionCode)
-      : null) ||
-    "0";
+  // installed binary, not a stale app.json embed. Display adds platform +
+  // purpose: v1.1.3 (248i-tf). Store IDs stay numeric-only.
+  const { appVersion, buildNumber } = resolveNativeBuildParts({
+    nativeApplicationVersion: Application.nativeApplicationVersion,
+    nativeBuildVersion: Application.nativeBuildVersion,
+    configVersion: Constants.expoConfig?.version,
+    configIosBuildNumber: Constants.expoConfig?.ios?.buildNumber,
+    configAndroidVersionCode: Constants.expoConfig?.android?.versionCode,
+  });
 
-  return `v${appVersion} (${buildNumber})`;
+  return formatBuildIdentityLabel({
+    appVersion,
+    buildNumber,
+    channel: process.env.EXPO_PUBLIC_BUILD_CHANNEL,
+  });
 }
 
 export function useLoginViewAdapter(): LoginViewAdapterHookResult {

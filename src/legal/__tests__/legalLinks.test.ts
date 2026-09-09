@@ -1,5 +1,6 @@
 import {
   PRIVACY_POLICY_URL,
+  SIGNUP_URL,
   SUPPORT_EMAIL,
   SUPPORT_MAILTO_URL,
   SUPPORT_URL,
@@ -16,6 +17,9 @@ describe("legalLinks", () => {
     );
     expect(SUPPORT_URL).toBe(
       "https://insitetechltd.github.io/buildtrack/support.html",
+    );
+    expect(SIGNUP_URL).toBe(
+      "https://insitetechltd.github.io/buildtrack/signup.html",
     );
   });
 

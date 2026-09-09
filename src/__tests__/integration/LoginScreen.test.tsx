@@ -37,6 +37,7 @@ jest.mock("@/utils/useTranslation", () => ({
       passwordPlaceholder: "Enter your password",
       signIn: "Sign In",
       signingIn: "Signing In...",
+      signUpOnWeb: "Sign up on the web",
     },
     auth: {
       password: "Password",
@@ -61,7 +62,7 @@ describe("LoginScreen", () => {
         emailOrPhone: "demo@example.com",
         password: "secret123",
         isPasswordVisible: false,
-        buildIdentifierLabel: "v1.2.3 (456)",
+        buildIdentifierLabel: "v1.2.3 (456i-tf)",
         validationErrors: {},
         isLoading: false,
       },
@@ -78,7 +79,7 @@ describe("LoginScreen", () => {
     const screen = render(<LoginScreen />);
 
     expect(screen.getByText("Construction Task Management")).toBeTruthy();
-    expect(screen.getByText("v1.2.3 (456)")).toBeTruthy();
+    expect(screen.getByText("v1.2.3 (456i-tf)")).toBeTruthy();
 
     fireEvent.changeText(screen.getByTestId("login-emailOrPhone"), "demo@example.com");
     fireEvent.changeText(screen.getByTestId("login-password"), "secret123");
@@ -89,5 +90,18 @@ describe("LoginScreen", () => {
     expect(mockSetPassword).toHaveBeenCalledWith("secret123");
     expect(mockTogglePasswordVisibility).toHaveBeenCalledTimes(1);
     expect(mockSubmitLogin).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the GitHub Pages signup URL instead of in-app company registration", () => {
+    const { Linking } = require("react-native");
+    const openSpy = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined as never);
+
+    const screen = render(<LoginScreen />);
+    fireEvent.press(screen.getByTestId("login-signup-web"));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://insitetechltd.github.io/buildtrack/signup.html",
+    );
+    openSpy.mockRestore();
   });
 });

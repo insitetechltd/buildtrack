@@ -92,8 +92,19 @@ echo "----------------------------------------"
 
 APP_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | cut -d'"' -f4)
 APP_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json | grep -o '[0-9]*' || echo "unknown")
+case "$PLATFORM" in
+  android) PLATFORM_TOKEN="a" ;;
+  *) PLATFORM_TOKEN="i" ;;
+esac
+case "$PROFILE" in
+  production) BUILD_CHANNEL="rc" ;;
+  simulator) BUILD_CHANNEL="sim" ;;
+  preview|dev) BUILD_CHANNEL="tf" ;;
+  *) BUILD_CHANNEL="dev" ;;
+esac
+DISPLAY_LABEL="v${APP_VERSION} (${APP_BUILD}${PLATFORM_TOKEN}-${BUILD_CHANNEL})"
 
-echo "Built: Version $APP_VERSION (Build $APP_BUILD)"
+echo "Built: $DISPLAY_LABEL"
 echo ""
 
 if [ "$PROFILE" = "production" ]; then
@@ -140,8 +151,8 @@ echo "════════════════════════�
 echo ""
 echo "📦 Build Information:"
 echo "  ├─ App Version:    $APP_VERSION"
-echo "  ├─ Build Number:   $APP_BUILD"
-echo "  ├─ Display:        $APP_VERSION ($APP_BUILD)"
+echo "  ├─ Build Number:   $APP_BUILD (shared iOS+Android integer)"
+echo "  ├─ Display:        $DISPLAY_LABEL"
 echo "  ├─ Platform:       $PLATFORM"
 echo "  └─ Profile:        $PROFILE"
 echo ""
@@ -163,9 +174,10 @@ echo ""
 echo "  2. 📱 Check TestFlight tab for your app"
 echo "     - Build will appear after processing"
 echo "     - Status will change: Processing → Ready to Test"
-echo "     - Verify build number shows: $APP_BUILD"
+echo "     - Verify store build number shows: $APP_BUILD"
+echo "     - Login badge should show: $DISPLAY_LABEL"
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "Version $APP_VERSION (Build $APP_BUILD) submitted successfully!"
+echo "$DISPLAY_LABEL submitted successfully!"
 echo "═══════════════════════════════════════════════════════"
 echo ""

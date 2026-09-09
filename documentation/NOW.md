@@ -4,7 +4,13 @@
 
 ---
 
-**This session — DEV Internal TF (2026-09-08):** local `./build-and-submit.sh ios dev` → IPA **1.1.3 (248)** submitted to TestFlight Internal (script footer still prints stale app.json `194`; remote EAS buildNumber / IPA `CFBundleVersion` = **248**). Profile `dev` / EAS `preview` → **DEV**. Includes Recipe B RA stacks + Phase 1 polish + Phase 2 lab (`4aae996`) + Metro blockList fixes for EAS local (`74ffdb5`, `fcdccd3`). Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/1066c658-f01a-460c-a7d5-f3c5077c847a. Prior: **245** (2026-09-07).
+**This session — App Review reject fix (2026-09-09):** 5.1.1(iv) camera CTA → **Continue**; 3.1.1 remove in-app Create company → Login **Sign up on the web** → GitHub Pages `docs/signup.html` (PROD anon). Notes: `docs/superpowers/evidence/2026-09-09-asc-review-web-signup-camera-notes.md`. **Human:** PROD Auth URL allowlist for Pages; push `/docs` for Pages deploy; **new PROD binary** after merge (do not use 249 for “fixed review”).
+
+**This session — PROD TF (2026-09-09):** local `./build-and-submit.sh ios production true` → **v1.1.3 (249i-rc)** IPA uploaded (pre-review-fix). Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/359bd9a4-fc96-4a74-8907-079ee0319479.
+
+**This session — DEV Internal TF (2026-09-08):** local `./build-and-submit.sh ios dev` → IPA **1.1.3 (248)** submitted to TestFlight Internal. Profile `dev` / EAS `preview` → **DEV**.
+
+**Build identity (2026-09-09):** Shared integer `N` for iOS+Android; login badge `vX.Y.Z (Ni-tf|Na-rc|…)`. SoT: `documentation/BUILD_IDENTITY.md` + `scripts/sync-shared-build-number.sh`. `eas.json` `appVersionSource=local`, autoIncrement off.
 
 ## Doing
 

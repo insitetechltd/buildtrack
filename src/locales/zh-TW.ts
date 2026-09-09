@@ -688,6 +688,7 @@ export const zhTW = {
     invalidEmailOrPhone: "請輸入有效嘅電郵或電話號碼",
     approvalPending: "審批中",
     approvalPendingMessage: "你嘅帳戶正等待公司管理員審批，審批通過後會通知你。",
+    signUpOnWeb: "喺網頁註冊",
     createCompany: "建立公司",
   },
 

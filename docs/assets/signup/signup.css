@@ -1,0 +1,128 @@
+/* Company signup — GitHub Pages (uses landing tokens where possible) */
+.signup-shell {
+  min-height: 100vh;
+  background: linear-gradient(165deg, var(--teal-800) 0%, var(--teal-900) 48%, #032a36 100%);
+  color: var(--white);
+  padding: 2rem 0 4rem;
+}
+
+.signup-card {
+  width: min(100%, 28rem);
+  margin: 2rem auto 0;
+  background: var(--white);
+  color: var(--ink);
+  border-radius: 1.25rem;
+  padding: 1.75rem 1.5rem 2rem;
+  box-shadow: 0 18px 50px rgba(2, 28, 38, 0.35);
+}
+
+.signup-card h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.65rem;
+  line-height: 1.2;
+  color: var(--ink-deep);
+}
+
+.signup-card .lede {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.signup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.signup-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.signup-field input {
+  appearance: none;
+  border: 1.5px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--mist);
+}
+
+.signup-field input:focus {
+  outline: 2px solid var(--teal-600);
+  outline-offset: 1px;
+  background: var(--white);
+}
+
+.signup-field .error {
+  color: #b42318;
+  font-size: 0.8rem;
+  min-height: 1.1em;
+}
+
+.signup-submit {
+  width: 100%;
+  margin-top: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.95rem 1.25rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: 1.05rem;
+  background: var(--teal-800);
+  color: var(--white);
+  cursor: pointer;
+}
+
+.signup-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.signup-status {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.92rem;
+  display: none;
+}
+
+.signup-status.is-error {
+  display: block;
+  background: #fef3f2;
+  color: #b42318;
+  border: 1px solid #fecdca;
+}
+
+.signup-status.is-success {
+  display: block;
+  background: #ecfdf3;
+  color: #027a48;
+  border: 1px solid #abefc6;
+}
+
+.signup-foot {
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.signup-foot a {
+  color: var(--teal-600);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.signup-nav .brand {
+  color: var(--white);
+}
+
+.signup-nav .nav-links a {
+  color: rgba(255, 255, 255, 0.88);
+}

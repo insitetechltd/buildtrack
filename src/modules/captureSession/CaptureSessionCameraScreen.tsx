@@ -255,7 +255,7 @@ export function CaptureSessionCameraScreen() {
       >
         <Text style={styles.permTitle}>Camera access needed</Text>
         <Text style={styles.permBody}>
-          Allow camera to capture jobsite photos in this module.
+          Taskr uses the camera to capture jobsite photos in this module.
         </Text>
         <Pressable
           testID="capture-session__request_camera"
@@ -264,7 +264,7 @@ export function CaptureSessionCameraScreen() {
           }}
           style={styles.permButton}
         >
-          <Text style={styles.permButtonText}>Allow Camera</Text>
+          <Text style={styles.permButtonText}>Continue</Text>
         </Pressable>
         <Pressable
           testID="capture-session__open_library_fallback"

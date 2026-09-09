@@ -27,6 +27,14 @@ GitHub Pages can serve files from the `docs/` folder in your repository.
    https://insitetechltd.github.io/buildtrack/support.html
    ```
 
+**Company signup (App Review 3.1.1):** Pages also serves:
+
+```
+https://insitetechltd.github.io/buildtrack/signup.html
+```
+
+Source: `docs/signup.html` + `docs/assets/signup/` (PROD publishable anon key in `supabase-config.js`). Deploy is the same as other `/docs` pages: push to the branch configured for GitHub Pages (`/docs` folder). After deploy, add that origin to **PROD** Supabase Auth → URL configuration (redirect / site allowlist).
+
 ### Option 2: Use `gh-pages` Branch
 
 If you prefer a separate branch:
@@ -114,11 +122,13 @@ You can create additional pages in the `docs/` folder:
 
 - `docs/privacy-policy.html` - Privacy Policy
 - `docs/terms-of-service.html` - Terms of Service
-- `docs/index.html` - Landing page (optional)
+- `docs/index.html` - Landing page
+- `docs/signup.html` - Company account signup (web-only; linked from Taskr Login)
 
 These will be accessible at:
 - `https://insitetechltd.github.io/buildtrack/privacy-policy.html`
 - `https://insitetechltd.github.io/buildtrack/terms-of-service.html`
+- `https://insitetechltd.github.io/buildtrack/signup.html`
 
 ## Troubleshooting
 

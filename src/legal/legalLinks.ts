@@ -9,5 +9,8 @@ export const TERMS_OF_SERVICE_URL =
   "https://insitetechltd.github.io/buildtrack/terms-of-service.html";
 export const SUPPORT_URL =
   "https://insitetechltd.github.io/buildtrack/support.html";
+/** Company registration is web-only (App Review 3.1.1). */
+export const SIGNUP_URL =
+  "https://insitetechltd.github.io/buildtrack/signup.html";
 export const SUPPORT_EMAIL = "support@insiteworks.co";
 export const SUPPORT_MAILTO_URL = `mailto:${SUPPORT_EMAIL}`;

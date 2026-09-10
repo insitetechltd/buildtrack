@@ -4,7 +4,7 @@
 
 ---
 
-**This session — PROD TF 253 (2026-09-10):** Ship Company-management gate fix + sticky plan-gate clear + createProject assign fail-closed. Target binary **v1.1.3 (253i-rc)** (build script bumped past committed 252 during local build). Dogfood: Sara CA management; PM + Worker field shell; founder→PM logout handoff must not show Company Plan.
+**This session — PROD TF 253 (2026-09-10):** Ship Company-management gate fix + sticky plan-gate clear + createProject assign fail-closed. Local `./build-and-submit.sh ios production true` → IPA **v1.1.3 (253i-rc)** (`build-1789014314463.ipa`). Interactive submit prompt aborted script (`set -e` + `read`); manual `eas submit` → https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/02c990d5-34d5-4f85-998f-1693cbf2ddce. Dogfood on iPhone TF **253** (not 251): Sara CA management; PM + Worker field shell; founder→PM logout handoff must not show Company Plan.
 
 **This session — PM/Worker path audit (2026-09-10):** Field shell + avatar menus OK for PM/Worker once MainTabs-scoped gate ships (TF>251). Company management correctly hidden (`isAdmin`). Worker Report Issue (`status=reported`) + PM triage still blocked until PROD status migration. Fixed sticky `requiresCompanyPlanSelection` on logout/signOut/login so founder→PM/Worker device handoff does not trap non-CA in Company Plan gate. RLS still defense-in-depth only (app filters membership). Headed dogfood checklist: PM + Worker 0/1/many projects, assign→accept→progress→review, no Company mgmt row.
 

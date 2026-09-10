@@ -27,21 +27,23 @@ GitHub Pages can serve files from the `docs/` folder in your repository.
    https://insitetechltd.github.io/buildtrack/support.html
    ```
 
-**Company signup (App Review 3.1.1):** Pages also serves:
+**Company signup (checkout-first):** Pages serves:
 
 ```
 https://insitetechltd.github.io/buildtrack/signup.html
 ```
 
-**Stripe sandbox smoke (DEV + Stripe test):**
+Same flow on DEV sandbox:
 
 ```
 https://insitetechltd.github.io/buildtrack/signup.html?env=sandbox
 ```
 
-Loads `supabase-config.sandbox.js` (DEV anon) → `create_company_for_self` → Edge `create-checkout-session` → Stripe Checkout (test). After deploy, add the signup URL to **DEV** Supabase Auth → URL configuration (redirect / site allowlist), same as PROD for the default signup page.
+Flow: company + name + email + plan → Stripe Checkout → success page polls for invite link → open Taskr → set password. Only difference between sandbox and production is Supabase project + Stripe test/live price IDs in `supabase-config*.js`.
 
-Source: `docs/signup.html` + `docs/assets/signup/` (PROD publishable anon key in `supabase-config.js`; sandbox in `supabase-config.sandbox.js`). Deploy is the same as other `/docs` pages: push to the branch configured for GitHub Pages (`/docs` folder). After deploy, add that origin to **PROD** Supabase Auth → URL configuration (redirect / site allowlist).
+Deploy Edges: `bash scripts/supabase/deploy-signup-checkout.sh --project-ref <ref>`.
+
+Source: `docs/signup.html` + `docs/assets/signup/`. After `/docs` push, ensure Auth redirect allowlist includes the Pages signup URL on **both** DEV and PROD.
 
 ### Option 2: Use `gh-pages` Branch
 

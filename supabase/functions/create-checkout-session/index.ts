@@ -59,6 +59,12 @@ function isAllowedCheckoutReturnUrl(raw: string): boolean {
     ) {
       return true;
     }
+    if (
+      url.hostname === "insiteworks.co" ||
+      url.hostname === "www.insiteworks.co"
+    ) {
+      return true;
+    }
     return false;
   } catch {
     return false;

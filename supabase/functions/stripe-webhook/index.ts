@@ -157,6 +157,280 @@ async function claimWebhookEvent(
   return true;
 }
 
+/** Allow Stripe retries after mid-handler failure (claim-before-work otherwise deadlocks). */
+async function releaseWebhookEvent(
+  admin: AdminClient,
+  stripeEventId: string,
+): Promise<void> {
+  await admin
+    .from("billing_webhook_events")
+    .delete()
+    .eq("stripe_event_id", stripeEventId);
+}
+
+function generateTempPassword(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
+
+async function mintInviteOpenLink(
+  admin: AdminClient,
+  supabaseUrl: string,
+  email: string,
+  userId: string,
+): Promise<string> {
+  const { data: linkData, error: linkError } =
+    await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    });
+  const hashedToken = linkData?.properties?.hashed_token;
+  if (linkError || !hashedToken) {
+    throw new Error(linkError?.message || "invite_link_failed");
+  }
+  const origin = supabaseUrl.replace(/\/$/, "");
+  const signInLink =
+    `${origin}/functions/v1/invite-open?token_hash=${encodeURIComponent(hashedToken)}`;
+  await admin
+    .from("users")
+    .update({ invite_sign_in_link: signInLink })
+    .eq("id", userId);
+  return signInLink;
+}
+
+/**
+ * Checkout-first signup: pay → provision founding CA + company, then entitlements.
+ * Idempotent on email / stripe_subscription_id. Does not RPC create_company_for_self.
+ */
+async function provisionCheckoutFirstSignup(
+  admin: AdminClient,
+  stripe: Stripe,
+  supabaseUrl: string,
+  session: Stripe.Checkout.Session,
+): Promise<{ companyId: string }> {
+  const meta = session.metadata ?? {};
+  const email = (meta.admin_email || session.customer_email || "")
+    .trim()
+    .toLowerCase();
+  const companyName = (meta.company_name || "").trim();
+  const adminName = (meta.admin_name || "").trim() || "Company Admin";
+  const planPriceId = (meta.plan_price_id || "").trim();
+  const subscriptionId = typeof session.subscription === "string"
+    ? session.subscription
+    : session.subscription?.id;
+
+  if (!email || !companyName || !planPriceId || !subscriptionId) {
+    throw new Error("checkout_first_missing_metadata");
+  }
+
+  // Already provisioned for this subscription?
+  const { data: existingSub } = await admin
+    .from("company_subscriptions")
+    .select("company_id")
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+  if (existingSub?.company_id) {
+    const companyId = existingSub.company_id as string;
+    // Ensure invite link exists for status poll / recovery.
+    const { data: founder } = await admin
+      .from("users")
+      .select("id, email, invite_sign_in_link")
+      .eq("company_id", companyId)
+      .ilike("email", email)
+      .maybeSingle();
+    if (founder?.id && !founder.invite_sign_in_link) {
+      await mintInviteOpenLink(admin, supabaseUrl, email, founder.id as string);
+    }
+    return { companyId };
+  }
+
+  const { data: existingProfile } = await admin
+    .from("users")
+    .select("id, company_id, email")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (existingProfile?.company_id) {
+    // Email already owns a company — attach this subscription; do not create a second.
+    const companyId = existingProfile.company_id as string;
+    await admin.from("company_subscriptions").upsert({
+      company_id: companyId,
+      stripe_customer_id: typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id ?? null,
+      stripe_subscription_id: subscriptionId,
+      status: "trialing",
+      livemode: session.livemode,
+      locked_plan_price_id: planPriceId,
+    }, { onConflict: "company_id" });
+
+    await stripe.subscriptions.update(subscriptionId, {
+      metadata: {
+        ...meta,
+        company_id: companyId,
+        signup_flow: "checkout_first",
+        plan_price_id: planPriceId,
+        livemode: String(session.livemode),
+      },
+    });
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await handleSubscriptionLifecycle(
+      admin,
+      stripe,
+      {
+        id: `local_replay_${subscriptionId}`,
+        type: "customer.subscription.updated",
+      } as Stripe.Event,
+      subscription,
+    );
+
+    if (existingProfile.id) {
+      await mintInviteOpenLink(
+        admin,
+        supabaseUrl,
+        email,
+        existingProfile.id as string,
+      );
+    }
+    return { companyId };
+  }
+
+  let userId = existingProfile?.id as string | undefined;
+  if (!userId) {
+    const created = await admin.auth.admin.createUser({
+      email,
+      password: generateTempPassword(),
+      email_confirm: true,
+      user_metadata: {
+        name: adminName,
+        system_permission: "admin",
+        role: "admin",
+        is_pending: false,
+        must_set_password: true,
+      },
+    });
+    if (created.error || !created.data.user?.id) {
+      // Race: user created between lookup and create
+      const { data: raced } = await admin
+        .from("users")
+        .select("id, company_id")
+        .ilike("email", email)
+        .maybeSingle();
+      if (raced?.company_id) {
+        return provisionCheckoutFirstSignup(admin, stripe, supabaseUrl, session);
+      }
+      if (raced?.id) {
+        userId = raced.id as string;
+      } else {
+        throw new Error(created.error?.message || "create_user_failed");
+      }
+    } else {
+      userId = created.data.user.id;
+    }
+  }
+
+  // Ensure founding CA profile flags (handle_new_user defaults member/pending).
+  await admin.from("users").upsert({
+    id: userId,
+    email,
+    name: adminName,
+    system_permission: "admin",
+    is_pending: false,
+    must_set_password: true,
+  }, { onConflict: "id" });
+
+  // role column may be absent on some tenants — ignore failure.
+  {
+    const roleUpdate = await admin
+      .from("users")
+      .update({ role: "admin" } as Record<string, unknown>)
+      .eq("id", userId);
+    if (roleUpdate.error) {
+      console.warn("stripe-webhook: role column update skipped", roleUpdate.error.message);
+    }
+  }
+
+  const { data: companyRows, error: companyError } = await admin
+    .from("companies")
+    .insert({
+      name: companyName,
+      type: "general_contractor",
+      created_by: userId,
+      is_active: true,
+    })
+    .select("id")
+    .limit(1);
+
+  if (companyError || !companyRows?.[0]?.id) {
+    throw new Error(companyError?.message || "company_create_failed");
+  }
+  const companyId = companyRows[0].id as string;
+
+  const { error: attachError } = await admin.from("users").update({
+    company_id: companyId,
+    system_permission: "admin",
+    is_pending: false,
+    must_set_password: true,
+  }).eq("id", userId);
+
+  if (attachError) {
+    throw new Error(attachError.message || "company_attach_failed");
+  }
+
+  await admin.from("company_subscriptions").upsert({
+    company_id: companyId,
+    stripe_customer_id: typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id ?? null,
+    stripe_subscription_id: subscriptionId,
+    status: "trialing",
+    livemode: session.livemode,
+    locked_plan_price_id: planPriceId,
+  }, { onConflict: "company_id" });
+
+  // Patch Checkout + Subscription metadata so later lifecycle events resolve company_id.
+  try {
+    await stripe.checkout.sessions.update(session.id, {
+      metadata: {
+        ...meta,
+        company_id: companyId,
+        signup_flow: "checkout_first",
+        plan_price_id: planPriceId,
+        livemode: String(session.livemode),
+      },
+    });
+  } catch (err) {
+    console.warn("stripe-webhook: could not patch checkout session metadata", err);
+  }
+
+  await stripe.subscriptions.update(subscriptionId, {
+    metadata: {
+      ...meta,
+      company_id: companyId,
+      signup_flow: "checkout_first",
+      plan_price_id: planPriceId,
+      livemode: String(session.livemode),
+    },
+  });
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  await handleSubscriptionLifecycle(
+    admin,
+    stripe,
+    {
+      id: `local_replay_${subscriptionId}`,
+      type: "customer.subscription.updated",
+    } as Stripe.Event,
+    subscription,
+  );
+
+  await mintInviteOpenLink(admin, supabaseUrl, email, userId);
+
+  return { companyId };
+}
+
 async function appendRevision(
   admin: AdminClient,
   companyId: string,
@@ -638,9 +912,17 @@ async function handleSubscriptionLifecycle(
 
 async function handleCheckoutSessionCompleted(
   admin: AdminClient,
+  stripe: Stripe,
+  supabaseUrl: string,
   event: Stripe.Event,
   session: Stripe.Checkout.Session,
 ) {
+  const signupFlow = session.metadata?.signup_flow;
+  if (signupFlow === "checkout_first") {
+    await provisionCheckoutFirstSignup(admin, stripe, supabaseUrl, session);
+    return;
+  }
+
   const companyId = session.metadata?.company_id;
   const planPriceId = session.metadata?.plan_price_id;
   const subscriptionId = typeof session.subscription === "string"
@@ -723,45 +1005,52 @@ Deno.serve(async (req) => {
       return jsonResponse({ received: true, duplicate: true });
     }
 
-    switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutSessionCompleted(
-          admin,
-          event,
-          event.data.object as Stripe.Checkout.Session,
-        );
-        break;
+    try {
+      switch (event.type) {
+        case "checkout.session.completed":
+          await handleCheckoutSessionCompleted(
+            admin,
+            stripe,
+            supabaseUrl,
+            event,
+            event.data.object as Stripe.Checkout.Session,
+          );
+          break;
 
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-        await handleSubscriptionLifecycle(
-          admin,
-          stripe,
-          event,
-          event.data.object as Stripe.Subscription,
-        );
-        break;
+        case "customer.subscription.created":
+        case "customer.subscription.updated":
+          await handleSubscriptionLifecycle(
+            admin,
+            stripe,
+            event,
+            event.data.object as Stripe.Subscription,
+          );
+          break;
 
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const { data: row } = await admin
-          .from("company_subscriptions")
-          .select("company_id")
-          .eq("stripe_subscription_id", subscription.id)
-          .maybeSingle();
-        if (row?.company_id) {
-          await admin.from("company_subscriptions").update({
-            status: "canceled",
-          }).eq("company_id", row.company_id);
-          await admin.from("company_entitlements").update({
-            subscription_status: "canceled",
-          }).eq("company_id", row.company_id);
+        case "customer.subscription.deleted": {
+          const subscription = event.data.object as Stripe.Subscription;
+          const { data: row } = await admin
+            .from("company_subscriptions")
+            .select("company_id")
+            .eq("stripe_subscription_id", subscription.id)
+            .maybeSingle();
+          if (row?.company_id) {
+            await admin.from("company_subscriptions").update({
+              status: "canceled",
+            }).eq("company_id", row.company_id);
+            await admin.from("company_entitlements").update({
+              subscription_status: "canceled",
+            }).eq("company_id", row.company_id);
+          }
+          break;
         }
-        break;
-      }
 
-      default:
-        console.log("stripe-webhook: ignored event type", event.type);
+        default:
+          console.log("stripe-webhook: ignored event type", event.type);
+      }
+    } catch (handlerErr) {
+      await releaseWebhookEvent(admin, event.id);
+      throw handlerErr;
     }
 
     return jsonResponse({ received: true });

@@ -8,7 +8,6 @@ import {
   Pressable,
   Keyboard,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   ScrollView,
   Image,
@@ -18,7 +17,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import TextField from "@/components/primitives/input/TextField";
 import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
-import { SIGNUP_URL } from "@/legal/legalLinks";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import { useLoginViewAdapter } from "../ui/viewAdapters/useLoginViewAdapter";
@@ -123,9 +121,11 @@ export default function LoginScreen() {
         placeholder: t.login.passwordPlaceholder,
         error: output.validationErrors.password,
         required: true,
+        disabled: !output.isPasswordEnabled,
         testId: "login-password",
       }),
     [
+      output.isPasswordEnabled,
       output.password,
       output.validationErrors.password,
       t.auth.password,
@@ -207,7 +207,11 @@ export default function LoginScreen() {
                 rightSlot={
                   <Pressable
                     testID="login-togglePassword"
+                    disabled={!output.isPasswordEnabled}
                     onPress={() => {
+                      if (!output.isPasswordEnabled) {
+                        return;
+                      }
                       actions.togglePasswordVisibility();
                     }}
                   >
@@ -218,7 +222,12 @@ export default function LoginScreen() {
                     />
                   </Pressable>
                 }
-                onChangeText={actions.setPassword}
+                onChangeText={(value) => {
+                  if (!output.isPasswordEnabled) {
+                    return;
+                  }
+                  actions.setPassword(value);
+                }}
                 secureTextEntry={!output.isPasswordVisible}
                 autoComplete="password"
                 autoCorrect={false}
@@ -231,28 +240,16 @@ export default function LoginScreen() {
               <Pressable
                 testID="login-submit"
                 accessibilityRole="button"
-                accessibilityLabel={t.login.signIn}
+                accessibilityLabel={output.primaryButtonLabel}
                 onPress={handleSubmitPress}
-                disabled={output.isLoading}
+                disabled={output.isLoading || output.primaryAction === "disabled"}
                 className={cn(
                   "bg-blue-600 py-4 rounded-lg items-center mt-6",
-                  output.isLoading && "opacity-50",
+                  (output.isLoading || output.primaryAction === "disabled") && "opacity-50",
                 )}
               >
                 <Text className="text-white font-semibold text-xl">
-                  {output.isLoading ? t.login.signingIn : t.login.signIn}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                testID="login-signup-web"
-                onPress={() => {
-                  void Linking.openURL(SIGNUP_URL).catch(() => undefined);
-                }}
-                className="py-4 items-center mt-2"
-              >
-                <Text className="text-blue-600 font-medium text-base">
-                  {t.login.signUpOnWeb}
+                  {output.primaryButtonLabel}
                 </Text>
               </Pressable>
             </View>

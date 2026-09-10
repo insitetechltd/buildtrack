@@ -689,6 +689,8 @@ export const zhTW = {
     approvalPending: "審批中",
     approvalPendingMessage: "你嘅帳戶正等待公司管理員審批，審批通過後會通知你。",
     signUpOnWeb: "喺網頁註冊",
+    checkingAccount: "檢查中…",
+    signUpOnWebFailed: "無法開啟註冊頁面。請檢查網絡後再試。",
     createCompany: "建立公司",
   },
 

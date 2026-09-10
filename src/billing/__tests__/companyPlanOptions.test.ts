@@ -157,7 +157,7 @@ describe("companyPlanOptions", () => {
 
     expect(unlimited?.priceLabel).toBe("HK$400/mo");
     expect(unlimited?.planPriceId).toBe("pp-u");
-    expect(unlimited?.actionLabel).toBe("Upgrade to Pro");
+    expect(unlimited?.actionLabel).toBe("View Pro on website");
     expect(unlimited?.disabled).toBe(false);
   });
 

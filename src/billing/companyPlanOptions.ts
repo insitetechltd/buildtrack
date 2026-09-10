@@ -99,14 +99,14 @@ function optionCopy(
       const upgradeTargetName = displayName;
       return {
         summary: capsLine,
-        actionLabel: `Upgrade to ${upgradeTargetName}`,
+        actionLabel: `View ${upgradeTargetName} on website`,
         disabled: false,
       };
     }
     default:
       return {
         summary: capsLine,
-        actionLabel: `Subscribe to ${displayName}`,
+        actionLabel: `View ${displayName} on website`,
         disabled: false,
       };
   }

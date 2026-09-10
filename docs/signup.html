@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/marketing/landing.css?v=9" />
-  <link rel="stylesheet" href="assets/signup/signup.css?v=1" />
+  <link rel="stylesheet" href="assets/signup/signup.css?v=2" />
 </head>
 <body>
   <div class="signup-shell">
@@ -30,6 +30,9 @@
       </nav>
 
       <div class="signup-card">
+        <div id="signup-sandbox-banner" class="signup-sandbox-banner" hidden>
+          Sandbox — DEV Supabase + Stripe <strong>test</strong> mode. Use test cards only.
+        </div>
         <h1>Create company account</h1>
         <p class="lede">
           Start your company on the web. You will be the company admin. Then open Taskr and sign in —
@@ -63,6 +66,24 @@
             <span class="error" id="err-confirmPassword"></span>
           </div>
 
+          <fieldset id="signup-plan-fieldset" class="signup-plan-fieldset" hidden>
+            <legend>Plan</legend>
+            <label class="signup-plan-option">
+              <input type="radio" name="plan" value="growth" checked />
+              <span>
+                <strong>Starter</strong>
+                <span class="signup-plan-meta">HK$160 / month — Stripe test</span>
+              </span>
+            </label>
+            <label class="signup-plan-option">
+              <input type="radio" name="plan" value="unlimited" />
+              <span>
+                <strong>Pro</strong>
+                <span class="signup-plan-meta">HK$400 / month — Stripe test</span>
+              </span>
+            </label>
+          </fieldset>
+
           <button class="signup-submit" id="signup-submit" type="submit">Create company account</button>
         </form>
 
@@ -72,12 +93,25 @@
           Already have an account?
           <a href="https://apps.apple.com/app/id6754898737">Open Taskr and sign in</a>
         </p>
+        <p class="signup-foot signup-sandbox-link">
+          <a href="signup.html?env=sandbox">Sandbox signup (DEV + Stripe test)</a>
+        </p>
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-  <script src="assets/signup/supabase-config.js"></script>
-  <script src="assets/signup/signup.js?v=1"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var env = (params.get("env") || "").toLowerCase();
+      var src =
+        env === "sandbox"
+          ? "assets/signup/supabase-config.sandbox.js?v=1"
+          : "assets/signup/supabase-config.js?v=2";
+      document.write('<script src="' + src + '"><\\/script>');
+    })();
+  </script>
+  <script src="assets/signup/signup.js?v=3"></script>
 </body>
 </html>

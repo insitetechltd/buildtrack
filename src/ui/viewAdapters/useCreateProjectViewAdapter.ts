@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
 import { useAuthStore } from "@/state/authStore";
@@ -7,7 +7,15 @@ import {
   useProjectStore,
   useProjectStoreWithCompanyInit,
 } from "@/state/projectStore.supabase";
+import { useUserStore } from "@/state/userStore.supabase";
 import { isAdmin, type ProjectStatus } from "@/types/buildtrack";
+import {
+  buildCreateProjectRosterCandidates,
+  countCreateProjectAdmins,
+  normalizeCreateProjectTeamMembers,
+  placeCreateProjectTeamMembers,
+  type CreateProjectTeamMemberDraft,
+} from "@/ui/contracts/createProjectTeam";
 import type { CreateProjectScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 import { notifyDataMutation } from "@/utils/DataRefreshManager";
 import { useTranslation } from "@/utils/useTranslation";
@@ -28,6 +36,7 @@ export interface CreateProjectFormSubmission {
     email: string;
     phone: string;
   };
+  initialMembers?: CreateProjectTeamMemberDraft[];
 }
 
 export interface CreateProjectViewAdapterHookResult {
@@ -49,9 +58,32 @@ export function useCreateProjectViewAdapter(
   const t = useTranslation();
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { createProject, fetchProjects } = projectStore;
+  const { createProject, fetchProjects, assignUserToProject, updateUserProjectCategory } =
+    projectStore;
   const { getCompanyBanner } = useCompanyStore();
+  const users = useUserStore((state) => state.users);
+  const fetchUsersByCompany = useUserStore((state) => state.fetchUsersByCompany);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!user?.companyId || !isAdmin(user)) {
+      return;
+    }
+    void fetchUsersByCompany(user.companyId);
+  }, [fetchUsersByCompany, user]);
+
+  const rosterCandidates = useMemo(
+    () => buildCreateProjectRosterCandidates(users, user?.companyId),
+    [user?.companyId, users],
+  );
+
+  const usersById = useMemo(() => {
+    const map: Record<string, (typeof users)[number]> = {};
+    for (const row of users) {
+      map[row.id] = row;
+    }
+    return map;
+  }, [users]);
 
   const submitProject = useCallback(
     async (formData: CreateProjectFormSubmission) => {
@@ -62,6 +94,19 @@ export function useCreateProjectViewAdapter(
         );
         return;
       }
+
+      if (countCreateProjectAdmins(formData.initialMembers ?? []) > 1) {
+        Alert.alert(
+          t.errors.error,
+          "Choose only one Project Admin for this job.",
+        );
+        return;
+      }
+
+      const members = normalizeCreateProjectTeamMembers(
+        formData.initialMembers ?? [],
+        usersById,
+      );
 
       setIsSubmitting(true);
 
@@ -81,6 +126,22 @@ export function useCreateProjectViewAdapter(
           createdBy: user.id,
           companyId: user.companyId,
         });
+
+        if (members.length > 0) {
+          const { failed } = await placeCreateProjectTeamMembers({
+            writer: { assignUserToProject, updateUserProjectCategory },
+            projectId: createdProjectId,
+            assignedBy: user.id,
+            members,
+            usersById,
+          });
+          if (failed.length > 0) {
+            Alert.alert(
+              t.projects.projectCreated,
+              `Project created, but ${failed.length} placement(s) failed. Place people from User management.`,
+            );
+          }
+        }
 
         await wait(1000);
 
@@ -121,7 +182,16 @@ export function useCreateProjectViewAdapter(
         setIsSubmitting(false);
       }
     },
-    [createProject, fetchProjects, onNavigateBack, t, user],
+    [
+      assignUserToProject,
+      createProject,
+      fetchProjects,
+      onNavigateBack,
+      t,
+      updateUserProjectCategory,
+      user,
+      usersById,
+    ],
   );
 
   const output = useMemo<CreateProjectScreenViewAdapterOutput>(() => {
@@ -168,8 +238,9 @@ export function useCreateProjectViewAdapter(
       submitButtonText: t.projects.create,
       canSubmit: isAllowed && !isSubmitting,
       companyBanner,
+      rosterCandidates,
     };
-  }, [getCompanyBanner, isSubmitting, t, user]);
+  }, [getCompanyBanner, isSubmitting, rosterCandidates, t, user]);
 
   return {
     output,

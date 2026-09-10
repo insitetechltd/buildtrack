@@ -42,6 +42,29 @@ function appendCheckoutPlanToSuccessUrl(successUrl: string, plan: string, planPr
   return url;
 }
 
+/** Web signup / local smoke may pass HTTPS return URLs; deep links stay env-default. */
+function isAllowedCheckoutReturnUrl(raw: string): boolean {
+  const value = raw.trim();
+  if (!value) return false;
+  if (value.startsWith("taskr://")) return true;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      return true;
+    }
+    if (
+      url.hostname === "insitetechltd.github.io" &&
+      url.pathname.startsWith("/buildtrack/")
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 async function createStripeCheckoutSession(
   stripeSecret: string,
   params: {
@@ -262,9 +285,19 @@ Deno.serve(async (req) => {
         : "";
     const planPriceIdInput =
       typeof body.planPriceId === "string" ? body.planPriceId.trim() : "";
+    const successUrlOverride =
+      typeof body.successUrl === "string" ? body.successUrl.trim() : "";
+    const cancelUrlOverride =
+      typeof body.cancelUrl === "string" ? body.cancelUrl.trim() : "";
 
     if (!companyId || !planTierSlug || !planPriceIdInput) {
       return jsonResponse({ error: "invalid_payload" }, 400);
+    }
+    if (successUrlOverride && !isAllowedCheckoutReturnUrl(successUrlOverride)) {
+      return jsonResponse({ error: "invalid_success_url" }, 400);
+    }
+    if (cancelUrlOverride && !isAllowedCheckoutReturnUrl(cancelUrlOverride)) {
+      return jsonResponse({ error: "invalid_cancel_url" }, 400);
     }
 
     let callerProfile: {
@@ -366,11 +399,15 @@ Deno.serve(async (req) => {
 
     const defaults = defaultCheckoutUrls();
     const successUrl = appendCheckoutPlanToSuccessUrl(
-      Deno.env.get("STRIPE_CHECKOUT_SUCCESS_URL") ?? defaults.success,
+      successUrlOverride ||
+        Deno.env.get("STRIPE_CHECKOUT_SUCCESS_URL") ||
+        defaults.success,
       planTierSlug,
       planPrice.id as string,
     );
-    const cancelUrl = Deno.env.get("STRIPE_CHECKOUT_CANCEL_URL") ??
+    const cancelUrl =
+      cancelUrlOverride ||
+      Deno.env.get("STRIPE_CHECKOUT_CANCEL_URL") ||
       defaults.cancel;
 
     const { data: existingSub } = await adminClient

@@ -33,7 +33,15 @@ GitHub Pages can serve files from the `docs/` folder in your repository.
 https://insitetechltd.github.io/buildtrack/signup.html
 ```
 
-Source: `docs/signup.html` + `docs/assets/signup/` (PROD publishable anon key in `supabase-config.js`). Deploy is the same as other `/docs` pages: push to the branch configured for GitHub Pages (`/docs` folder). After deploy, add that origin to **PROD** Supabase Auth → URL configuration (redirect / site allowlist).
+**Stripe sandbox smoke (DEV + Stripe test):**
+
+```
+https://insitetechltd.github.io/buildtrack/signup.html?env=sandbox
+```
+
+Loads `supabase-config.sandbox.js` (DEV anon) → `create_company_for_self` → Edge `create-checkout-session` → Stripe Checkout (test). After deploy, add the signup URL to **DEV** Supabase Auth → URL configuration (redirect / site allowlist), same as PROD for the default signup page.
+
+Source: `docs/signup.html` + `docs/assets/signup/` (PROD publishable anon key in `supabase-config.js`; sandbox in `supabase-config.sandbox.js`). Deploy is the same as other `/docs` pages: push to the branch configured for GitHub Pages (`/docs` folder). After deploy, add that origin to **PROD** Supabase Auth → URL configuration (redirect / site allowlist).
 
 ### Option 2: Use `gh-pages` Branch
 

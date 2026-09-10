@@ -181,9 +181,11 @@ describe("CreateProjectScreen", () => {
         },
         isSubmitting: false,
         headerTitle: "Create New Project",
+        headerSubtitle: null,
         submitButtonText: "Create",
         canSubmit: true,
         companyBanner: null,
+        rosterCandidates: [],
       },
       actions: {
         submitProject: mockSubmitProject,

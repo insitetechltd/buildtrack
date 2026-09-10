@@ -1,10 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
-import { Alert } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Linking } from "react-native";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
 
+import { loginIdentifierIsRegistered } from "@/api/loginIdentifierLookup";
+import { SIGNUP_URL } from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
 import type {
+  LoginAccountLookupStatus,
+  LoginPrimaryAction,
   LoginScreenValidationErrors,
   LoginScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
@@ -34,6 +38,25 @@ function isEmail(value: string): boolean {
   return emailRegex.test(value);
 }
 
+const LOOKUP_DEBOUNCE_MS = 400;
+
+function isValidLoginIdentifier(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return isEmail(trimmed) || isPhoneNumber(trimmed);
+}
+
+function buildSignupUrl(emailOrPhone: string): string {
+  const trimmed = emailOrPhone.trim();
+  if (!trimmed || !isEmail(trimmed)) {
+    return SIGNUP_URL;
+  }
+  const separator = SIGNUP_URL.includes("?") ? "&" : "?";
+  return `${SIGNUP_URL}${separator}email=${encodeURIComponent(trimmed.toLowerCase())}`;
+}
+
 function buildIdentifierLabel(): string {
   // Prefer native Info.plist / versionCode so the login badge matches the
   // installed binary, not a stale app.json embed. Display adds platform +
@@ -56,10 +79,88 @@ function buildIdentifierLabel(): string {
 export function useLoginViewAdapter(): LoginViewAdapterHookResult {
   const t = useTranslation();
   const { login, isLoading } = useAuthStore();
-  const [emailOrPhone, setEmailOrPhone] = useState("");
+  const [emailOrPhone, setEmailOrPhoneState] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [validationErrors, setValidationErrors] = useState<LoginScreenValidationErrors>({});
+  const [accountLookupStatus, setAccountLookupStatus] =
+    useState<LoginAccountLookupStatus>("idle");
+  const lookupRequestIdRef = useRef(0);
+
+  const setEmailOrPhone = useCallback((value: string) => {
+    setEmailOrPhoneState(value);
+    setPassword("");
+    setValidationErrors((current) => ({
+      ...current,
+      emailOrPhone: undefined,
+      password: undefined,
+    }));
+  }, []);
+
+  useEffect(() => {
+    const trimmed = emailOrPhone.trim();
+    if (!trimmed) {
+      setAccountLookupStatus("idle");
+      return;
+    }
+    if (!isValidLoginIdentifier(trimmed)) {
+      setAccountLookupStatus("invalid");
+      return;
+    }
+
+    const requestId = ++lookupRequestIdRef.current;
+    setAccountLookupStatus("checking");
+
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const registered = await loginIdentifierIsRegistered(trimmed);
+          if (lookupRequestIdRef.current !== requestId) {
+            return;
+          }
+          setAccountLookupStatus(registered ? "registered" : "unregistered");
+        } catch {
+          if (lookupRequestIdRef.current !== requestId) {
+            return;
+          }
+          setAccountLookupStatus("lookup_failed");
+        }
+      })();
+    }, LOOKUP_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [emailOrPhone]);
+
+  const isPasswordEnabled = accountLookupStatus === "registered";
+  const primaryAction: LoginPrimaryAction =
+    accountLookupStatus === "registered"
+      ? "login"
+      : accountLookupStatus === "unregistered"
+        ? "signup"
+        : "disabled";
+
+  const primaryButtonLabel = useMemo(() => {
+    if (isLoading) {
+      return t.login.signingIn;
+    }
+    if (accountLookupStatus === "checking") {
+      return t.login.checkingAccount;
+    }
+    if (primaryAction === "signup") {
+      return t.login.signUp;
+    }
+    return t.login.signIn;
+  }, [
+    accountLookupStatus,
+    isLoading,
+    primaryAction,
+    t.login.checkingAccount,
+    t.login.signIn,
+    t.login.signUp,
+    t.login.signingIn,
+  ]);
 
   const validateForm = useCallback((): boolean => {
     const nextErrors: LoginScreenValidationErrors = {};
@@ -87,8 +188,26 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
     t.validation.passwordTooShort,
   ]);
 
+  const openWebSignup = useCallback(async () => {
+    const url = buildSignupUrl(emailOrPhone);
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(t.login.loginFailed, t.login.signUpOnWebFailed, [{ text: t.common.ok }]);
+    }
+  }, [emailOrPhone, t.common.ok, t.login.loginFailed, t.login.signUpOnWebFailed]);
+
   const submitLogin = useCallback(async () => {
     setValidationErrors({});
+
+    if (primaryAction === "signup") {
+      await openWebSignup();
+      return;
+    }
+
+    if (primaryAction !== "login") {
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -130,7 +249,9 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
   }, [
     emailOrPhone,
     login,
+    openWebSignup,
     password,
+    primaryAction,
     t.common.ok,
     t.login.approvalPending,
     t.login.approvalPendingMessage,
@@ -151,8 +272,22 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
       buildIdentifierLabel: buildIdentifierLabel(),
       validationErrors,
       isLoading,
+      isPasswordEnabled,
+      accountLookupStatus,
+      primaryAction,
+      primaryButtonLabel,
     }),
-    [emailOrPhone, isLoading, isPasswordVisible, password, validationErrors],
+    [
+      accountLookupStatus,
+      emailOrPhone,
+      isLoading,
+      isPasswordEnabled,
+      isPasswordVisible,
+      password,
+      primaryAction,
+      primaryButtonLabel,
+      validationErrors,
+    ],
   );
 
   return {

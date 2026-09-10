@@ -83,6 +83,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
         onCancel={actions.cancel}
         submitButtonText={output.submitButtonText}
         isSubmitting={output.isSubmitting}
+        rosterCandidates={output.rosterCandidates}
       />
     </SafeAreaView>
   );

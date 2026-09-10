@@ -690,6 +690,8 @@ export const en = {
     approvalPending: "Approval Pending",
     approvalPendingMessage: "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
     signUpOnWeb: "Sign up on the web",
+    checkingAccount: "Checking…",
+    signUpOnWebFailed: "Could not open the sign-up page. Check your connection and try again.",
     createCompany: "Create company",
   },
 

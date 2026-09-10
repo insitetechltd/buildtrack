@@ -1156,15 +1156,7 @@ export const useProjectStore = create<ProjectStore>()(
             projects: [...state.projects, newProject]
           }));
 
-          if (projectData.createdBy) {
-            void get().assignUserToProject(
-              projectData.createdBy,
-              newProject.id,
-              "lead_project_manager",
-              projectData.createdBy,
-            );
-          }
-
+          // Intentional placement only — Create Project form / User management.
           return newProject.id;
         }
 
@@ -1197,34 +1189,8 @@ export const useProjectStore = create<ProjectStore>()(
             buildResourceKey("project", transformedProject.id),
           ]);
 
-          // Creator must be a member or the new project vanishes from membership-scoped
-          // lists / workspace picker (company-admin SELECT alone is not enough there).
-          if (projectData.createdBy) {
-            try {
-              await get().assignUserToProject(
-                projectData.createdBy,
-                transformedProject.id,
-                "lead_project_manager",
-                projectData.createdBy,
-              );
-            } catch (assignError) {
-              console.error(
-                "createProject: creator auto-assign failed; rolling back project row",
-                assignError,
-              );
-              // Prefer hard failure over a project the creator cannot open.
-              try {
-                await supabase.from("projects").delete().eq("id", transformedProject.id);
-              } catch (rollbackError) {
-                console.error(
-                  "createProject: rollback after assign failure also failed",
-                  rollbackError,
-                );
-              }
-              throw assignError;
-            }
-          }
-
+          // Intentional placement only — Create Project form / User management
+          // place people with Member or Project Admin. Empty roster = company inventory.
           set({ isLoading: false });
 
           return transformedProject.id;

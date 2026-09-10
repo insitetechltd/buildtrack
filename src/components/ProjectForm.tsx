@@ -33,9 +33,16 @@ interface ProjectFormProps {
   onCancel: () => void;
   submitButtonText: string;
   isSubmitting?: boolean;
+  /** Create mode only — same-company people to place intentionally. */
+  rosterCandidates?: CreateProjectRosterCandidate[];
 }
 
-interface ProjectFormData {
+export interface ProjectFormTeamMemberDraft {
+  userId: string;
+  asProjectAdmin: boolean;
+}
+
+export interface ProjectFormData {
   name: string;
   description: string;
   status: ProjectStatus;
@@ -47,7 +54,16 @@ interface ProjectFormData {
     email: string;
     phone: string;
   };
+  /** Create mode: explicit placements (may be empty). */
+  initialMembers?: ProjectFormTeamMemberDraft[];
 }
+
+export type CreateProjectRosterCandidate = {
+  userId: string;
+  name: string;
+  subtitle: string;
+  canBeProjectAdmin: boolean;
+};
 
 type ProjectFormFieldId =
   | "clientName"
@@ -65,6 +81,7 @@ export default function ProjectForm({
   onCancel,
   submitButtonText,
   isSubmitting = false,
+  rosterCandidates = [],
 }: ProjectFormProps) {
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
@@ -87,7 +104,13 @@ export default function ProjectForm({
       email: project?.clientInfo?.email || "",
       phone: project?.clientInfo?.phone || "",
     },
+    initialMembers: [],
   });
+
+  /** userId → role when selected; absent key = not on the job. */
+  const [teamSelection, setTeamSelection] = useState<
+    Record<string, { asProjectAdmin: boolean }>
+  >({});
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -109,7 +132,9 @@ export default function ProjectForm({
         email: project?.clientInfo?.email || "",
         phone: project?.clientInfo?.phone || "",
       },
+      initialMembers: [],
     });
+    setTeamSelection({});
     setErrors({});
   }, [mode, project?.id]);
 
@@ -137,6 +162,15 @@ export default function ProjectForm({
       newErrors.endDate = "End date must be after start date";
     }
 
+    if (mode === "create") {
+      const selectedAdmins = Object.values(teamSelection).filter(
+        (row) => row.asProjectAdmin,
+      ).length;
+      if (selectedAdmins > 1) {
+        newErrors.team = "Choose only one Project Admin for this job";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -147,7 +181,14 @@ export default function ProjectForm({
     if (!validateForm()) return;
 
     try {
-      await onSubmit(formData);
+      const initialMembers =
+        mode === "create"
+          ? Object.entries(teamSelection).map(([userId, row]) => ({
+              userId,
+              asProjectAdmin: row.asProjectAdmin,
+            }))
+          : undefined;
+      await onSubmit({ ...formData, initialMembers });
     } catch (error) {
       console.error("Form submission error:", error);
       Alert.alert("Error", "Failed to save project. Please try again.");
@@ -525,6 +566,152 @@ export default function ProjectForm({
             </View>
           </View>
         </View>
+
+        {mode === "create" ? (
+          <View
+            testID="project-form-team-card"
+            className="bg-white rounded-xl border border-gray-200 p-4 mb-4"
+          >
+            <Text className="text-2xl font-bold text-gray-900 mb-1">
+              Team on this project
+            </Text>
+            <Text className="text-sm text-gray-500 mb-4">
+              Add people from your company and choose Member or Project Admin.
+              Leave empty if this project should stay in Company management only
+              for now. Project Admin can only be a company admin or PM.
+            </Text>
+
+            {rosterCandidates.length === 0 ? (
+              <Text className="text-base text-gray-500">
+                No company users loaded yet. You can create the project and place
+                people later from User management.
+              </Text>
+            ) : (
+              rosterCandidates.map((candidate) => {
+                const selected = Boolean(teamSelection[candidate.userId]);
+                const asProjectAdmin =
+                  teamSelection[candidate.userId]?.asProjectAdmin === true;
+                return (
+                  <View
+                    key={candidate.userId}
+                    testID={`project-form-team-row-${candidate.userId}`}
+                    className="border border-gray-200 rounded-lg p-3 mb-2"
+                  >
+                    <Pressable
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                      accessibilityLabel={`Include ${candidate.name} on this project`}
+                      onPress={() => {
+                        setTeamSelection((prev) => {
+                          if (prev[candidate.userId]) {
+                            const next = { ...prev };
+                            delete next[candidate.userId];
+                            return next;
+                          }
+                          return {
+                            ...prev,
+                            [candidate.userId]: { asProjectAdmin: false },
+                          };
+                        });
+                      }}
+                      className="flex-row items-center"
+                    >
+                      <Ionicons
+                        name={selected ? "checkbox" : "square-outline"}
+                        size={22}
+                        color={selected ? "#2563eb" : "#9ca3af"}
+                      />
+                      <View className="ml-3 flex-1">
+                        <Text className="text-base font-semibold text-gray-900">
+                          {candidate.name}
+                        </Text>
+                        <Text className="text-sm text-gray-500">
+                          {candidate.subtitle}
+                        </Text>
+                      </View>
+                    </Pressable>
+
+                    {selected ? (
+                      <View className="flex-row mt-3 ml-8">
+                        <Pressable
+                          testID={`project-form-team-role-member-${candidate.userId}`}
+                          onPress={() => {
+                            setTeamSelection((prev) => ({
+                              ...prev,
+                              [candidate.userId]: { asProjectAdmin: false },
+                            }));
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg mr-2 border",
+                            !asProjectAdmin
+                              ? "bg-blue-600 border-blue-600"
+                              : "bg-white border-gray-300",
+                          )}
+                        >
+                          <Text
+                            className={cn(
+                              "text-sm font-medium",
+                              !asProjectAdmin ? "text-white" : "text-gray-700",
+                            )}
+                          >
+                            Member
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          testID={`project-form-team-role-pa-${candidate.userId}`}
+                          disabled={!candidate.canBeProjectAdmin}
+                          onPress={() => {
+                            if (!candidate.canBeProjectAdmin) {
+                              return;
+                            }
+                            setTeamSelection((prev) => {
+                              const next: Record<
+                                string,
+                                { asProjectAdmin: boolean }
+                              > = {};
+                              for (const [id, row] of Object.entries(prev)) {
+                                next[id] = {
+                                  asProjectAdmin:
+                                    id === candidate.userId
+                                      ? true
+                                      : false,
+                                };
+                              }
+                              return next;
+                            });
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg border",
+                            !candidate.canBeProjectAdmin && "opacity-40",
+                            asProjectAdmin
+                              ? "bg-blue-600 border-blue-600"
+                              : "bg-white border-gray-300",
+                          )}
+                          accessibilityState={{
+                            disabled: !candidate.canBeProjectAdmin,
+                            selected: asProjectAdmin,
+                          }}
+                        >
+                          <Text
+                            className={cn(
+                              "text-sm font-medium",
+                              asProjectAdmin ? "text-white" : "text-gray-700",
+                            )}
+                          >
+                            Project Admin
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })
+            )}
+            {errors.team ? (
+              <Text className="text-red-500 text-sm mt-2">{errors.team}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Action Buttons */}
         <View className="flex-row space-x-3 mb-6">

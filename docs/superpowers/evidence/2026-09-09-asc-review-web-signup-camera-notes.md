@@ -26,7 +26,7 @@ Ship a **new production binary** that includes these changes. Do not claim this 
 
 In PROD Authentication → URL configuration, ensure the Pages origin is allowed, e.g.:
 
-- Site URL / additional redirect URLs include `https://insitetechltd.github.io/buildtrack/signup.html`
+- Site URL / additional redirect URLs include `https://insitetechltd.github.io/buildtrack/signup.html` (required for confirm-email return; signup uses `emailRedirectTo` + PKCE)
 - Prefer also `https://insitetechltd.github.io/buildtrack/**` if the Dashboard supports a wildcard
 
 If email confirmation is required on PROD, the signup page surfaces a sign-in / confirm-email message (same as mobile `createCompanyAccount`).

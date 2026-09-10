@@ -1,11 +1,10 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Alert, Linking } from "react-native";
+import { Alert } from "react-native";
 import { NavigationContext } from "@react-navigation/native";
 
-import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
 import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
 import { fetchSellablePlanCatalog } from "@/api/fetchSellablePlanCatalog";
-import { updateCompanyAddons, reconcileCompanyAddonsFromStripe } from "@/api/updateCompanyAddons";
+import { reconcileCompanyAddonsFromStripe } from "@/api/updateCompanyAddons";
 import {
   overlayCheckoutPlanOnView,
 } from "@/billing/companyEntitlementSummary";
@@ -17,7 +16,6 @@ import {
 import { companyHasPaidStripePlan } from "@/billing/companyPlanGate";
 import {
   clearRememberedCheckoutPlan,
-  rememberCheckoutPlan,
   resolveCheckoutReturnPlan,
 } from "@/billing/checkoutReturnPlan";
 import {
@@ -33,22 +31,13 @@ import {
   displayNameForPlanSlug,
   type PlanTierSlug,
 } from "@/billing/orgPlans";
-import {
-  buildAddSeatConfirm,
-  buildRemoveSeatConfirm,
-  buildStripeConfirmedAlert,
-  SEAT_ADDON_COPY,
-  type SeatAddonKind,
-} from "@/billing/seatAddonCopy";
+import { showCompanyPlanWebManagementAlert } from "@/billing/showCompanyPlanWebManagementAlert";
 import {
   clearPendingAddonHold,
-  clearPendingAddonHoldIfMatched,
   computeServerAddonBaseline,
-  expectedSeatTotalsFromAddonQty,
   getPendingAddonHold,
   overlayPendingAddonSeatsOnView,
   resolveDraftSeatQty,
-  setPendingAddonHold,
   shouldResetAddonDraftsOnTierChange,
 } from "@/billing/serverAddonBaseline";
 import { SUPPORT_EMAIL } from "@/legal/legalLinks";
@@ -292,7 +281,7 @@ export function useCompanyPlanViewAdapter(
       if (!user?.companyId) {
         Alert.alert(
           t.profile.companyPlan,
-          `Unable to start checkout. Email ${SUPPORT_EMAIL}.`,
+          `Unable to manage plan. Email ${SUPPORT_EMAIL}.`,
         );
         return;
       }
@@ -320,55 +309,18 @@ export function useCompanyPlanViewAdapter(
         return;
       }
 
-      setIsActionInFlight(true);
-      setActiveActionPlanId(planId);
-      try {
-        const result = await createCompanyCheckoutSession({
-          companyId: user.companyId,
-          planTierSlug: planId,
-          planPriceId: option.planPriceId,
-        });
-
-        if (result.success && result.upgraded) {
-          await loadEntitlement();
-          if (forceSelection) {
-            clearRequiresCompanyPlanSelection();
-            requestLandOnCompanyManagementAfterCheckout();
-          }
-          setStatusBanner({
-            id: "company-plan:upgrade-success",
-            tone: "success",
-            message: `Upgraded to ${displayNameForPlanSlug(planId, catalog)}. Promo or paid period limits stay in place until your billing phase changes.`,
-          });
-          return;
-        }
-
-        if (result.success && result.url) {
-          rememberCheckoutPlan(planId, option.planPriceId);
-          await Linking.openURL(result.url).catch(() => {
-            rememberCheckoutPlan(null);
-            setStatusBanner({
-              id: "company-plan:checkout-open-failed",
-              tone: "error",
-              message: `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
-            });
-          });
-          return;
-        }
-
-        if (result.error) {
-          setStatusBanner({
-            id: "company-plan:checkout-error",
-            tone: "error",
-            message: result.error,
-          });
-        }
-      } finally {
-        setIsActionInFlight(false);
-        setActiveActionPlanId(null);
-      }
+      // ASC 3.1.1: no in-app Stripe checkout — website only.
+      showCompanyPlanWebManagementAlert();
     },
-    [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, entitlement, forceSelection, loadEntitlement, optimisticCheckoutPlan, requestLandOnCompanyManagementAfterCheckout, t.profile.companyPlan, user?.companyId],
+    [
+      catalog,
+      checkoutPlan,
+      checkoutResult,
+      entitlement,
+      optimisticCheckoutPlan,
+      t.profile.companyPlan,
+      user?.companyId,
+    ],
   );
 
   const serverAddonBaseline = computeServerAddonBaseline(catalog, entitlement);
@@ -455,7 +407,7 @@ export function useCompanyPlanViewAdapter(
     : null;
 
   const handleUpdateAddons = useCallback(
-    async (nextWorkerSeatQty: number, nextPmSeatQty: number) => {
+    async (_nextWorkerSeatQty: number, _nextPmSeatQty: number) => {
       if (busySeatType) {
         return;
       }
@@ -466,191 +418,11 @@ export function useCompanyPlanViewAdapter(
         );
         return;
       }
-      if (!catalog || !serverAddonBaseline) {
-        Alert.alert(
-          t.profile.companyPlan,
-          "Extra seats are available after you subscribe to a company plan.",
-        );
-        return;
-      }
 
-      const pending = getPendingAddonHold(user.companyId);
-      const currentWorker =
-        draftWorkerSeatQty ??
-        pending?.workerSeatQty ??
-        serverAddonBaseline.workerSeatQty;
-      const currentPm =
-        draftPmSeatQty ?? pending?.pmSeatQty ?? serverAddonBaseline.pmSeatQty;
-      const safeWorkerQty = Math.max(0, Math.floor(nextWorkerSeatQty));
-      const safePmQty = Math.max(0, Math.floor(nextPmSeatQty));
-
-      const workerDelta = safeWorkerQty - currentWorker;
-      const pmDelta = safePmQty - currentPm;
-      if (workerDelta === 0 && pmDelta === 0) {
-        return;
-      }
-      if (workerDelta !== 0 && pmDelta !== 0) {
-        return;
-      }
-
-      const kind: SeatAddonKind = workerDelta !== 0 ? "worker" : "pm";
-      const isAdd = (kind === "worker" ? workerDelta : pmDelta) > 0;
-      const priceLabel =
-        kind === "worker"
-          ? serverAddonBaseline.workerUnitPrice
-          : serverAddonBaseline.pmUnitPrice;
-
-      const confirm = isAdd
-        ? buildAddSeatConfirm({ kind, priceLabel })
-        : buildRemoveSeatConfirm({ kind });
-
-      const runUpdate = async () => {
-        const { expectedWorkerTotal, expectedPmTotal } =
-          expectedSeatTotalsFromAddonQty({
-            baseWorkerTotal: serverAddonBaseline.baseWorkerTotal,
-            basePmTotal: serverAddonBaseline.basePmTotal,
-            workerSeatQty: safeWorkerQty,
-            pmSeatQty: safePmQty,
-          });
-
-        const previousWorker = currentWorker;
-        const previousPm = currentPm;
-
-        setBusySeatType(kind);
-        setStatusBanner({
-          id: "company-plan:addons-updating",
-          tone: "info",
-          message: SEAT_ADDON_COPY.updating,
-        });
-
-        try {
-          const result = await updateCompanyAddons({
-            companyId: user.companyId,
-            addonWorkerPacks: safeWorkerQty,
-            addonPmSeats: safePmQty,
-          });
-
-          if (!result.success) {
-            clearPendingAddonHold(user.companyId);
-            setDraftWorkerSeatQty(previousWorker);
-            setDraftPmSeatQty(previousPm);
-            const message = result.error || "Unable to update seats.";
-            setStatusBanner({
-              id: "company-plan:addons-error",
-              tone: "error",
-              message,
-            });
-            Alert.alert(t.profile.companyPlan, message);
-            return;
-          }
-
-          setPendingAddonHold({
-            companyId: user.companyId,
-            workerSeatQty: safeWorkerQty,
-            pmSeatQty: safePmQty,
-            expectedWorkerTotal,
-            expectedPmTotal,
-          });
-          setDraftWorkerSeatQty(safeWorkerQty);
-          setDraftPmSeatQty(safePmQty);
-
-          // Mid-cycle remove: seats stay until period end — do not wait for lower meters.
-          if (result.deferredDecrease) {
-            const confirmed = buildStripeConfirmedAlert({
-              kind,
-              isAdd: false,
-              priceLabel,
-              confirmation: result.stripeConfirmation,
-            });
-            setStatusBanner({
-              id: "company-plan:addons-success",
-              tone: "success",
-              message: SEAT_ADDON_COPY.successRemove(kind),
-            });
-            Alert.alert(confirmed.title, confirmed.message);
-            return;
-          }
-
-          let synced = false;
-          for (let attempt = 0; attempt < 8; attempt += 1) {
-            const latest = await fetchCompanyEntitlementView(user.companyId);
-            if (!latest) {
-              await new Promise((resolve) => setTimeout(resolve, 1200));
-              continue;
-            }
-
-            const workerNow = latest.meterLimits?.worker_seats;
-            const pmNow = latest.meterLimits?.pm_seats;
-            const workerOk =
-              typeof workerNow === "number" && workerNow === expectedWorkerTotal;
-            const pmOk =
-              typeof pmNow === "number" && pmNow === expectedPmTotal;
-            if (workerOk && pmOk) {
-              setEntitlement(latest);
-              setHasLoadedOnce(true);
-              clearPendingAddonHoldIfMatched({
-                companyId: user.companyId,
-                workerTotal: workerNow,
-                pmTotal: pmNow,
-              });
-              synced = true;
-              break;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 1200));
-          }
-
-          const confirmed = buildStripeConfirmedAlert({
-            kind,
-            isAdd,
-            priceLabel,
-            confirmation: result.stripeConfirmation,
-          });
-          setStatusBanner({
-            id: "company-plan:addons-success",
-            tone: "success",
-            message: synced
-              ? isAdd
-                ? SEAT_ADDON_COPY.successAdd(kind, priceLabel)
-                : SEAT_ADDON_COPY.successRemove(kind)
-              : SEAT_ADDON_COPY.successPendingSync,
-          });
-          Alert.alert(confirmed.title, confirmed.message);
-        } catch (error) {
-          clearPendingAddonHold(user.companyId);
-          setDraftWorkerSeatQty(previousWorker);
-          setDraftPmSeatQty(previousPm);
-          const message =
-            error instanceof Error ? error.message : "Unable to update seats.";
-          setStatusBanner({
-            id: "company-plan:addons-error",
-            tone: "error",
-            message,
-          });
-          Alert.alert(t.profile.companyPlan, message);
-        } finally {
-          setBusySeatType(null);
-        }
-      };
-
-      Alert.alert(confirm.title, confirm.message, [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: confirm.confirmLabel,
-          onPress: () => {
-            void runUpdate();
-          },
-        },
-      ]);
+      // ASC 3.1.1: no in-app seat pack billing — website only.
+      showCompanyPlanWebManagementAlert();
     },
-    [
-      busySeatType,
-      catalog,
-      draftPmSeatQty,
-      draftWorkerSeatQty,
-      serverAddonBaseline,
-      t.profile.companyPlan,
-      user?.companyId,
-    ],
+    [busySeatType, t.profile.companyPlan, user?.companyId],
   );
 
   const displayEntitlement = overlayPendingAddonSeatsOnView(

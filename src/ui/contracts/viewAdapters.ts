@@ -659,6 +659,16 @@ export interface LoginScreenValidationErrors {
   password?: string;
 }
 
+export type LoginAccountLookupStatus =
+  | "idle"
+  | "invalid"
+  | "checking"
+  | "registered"
+  | "unregistered"
+  | "lookup_failed";
+
+export type LoginPrimaryAction = "login" | "signup" | "disabled";
+
 export interface LoginScreenViewAdapterOutput {
   screenId: "LoginScreen";
   emailOrPhone: string;
@@ -667,6 +677,11 @@ export interface LoginScreenViewAdapterOutput {
   buildIdentifierLabel: string;
   validationErrors: LoginScreenValidationErrors;
   isLoading: boolean;
+  /** Password stays locked until identifier is a registered account. */
+  isPasswordEnabled: boolean;
+  accountLookupStatus: LoginAccountLookupStatus;
+  primaryAction: LoginPrimaryAction;
+  primaryButtonLabel: string;
 }
 
 export type ReportsScreenReportType = "my_tasks" | "assigned_tasks";
@@ -1366,6 +1381,13 @@ export interface CreateProjectScreenViewAdapterOutput {
   submitButtonText: string;
   canSubmit: boolean;
   companyBanner: CreateProjectBannerModel | null;
+  /** Same-company roster for intentional create-time placement. */
+  rosterCandidates: Array<{
+    userId: string;
+    name: string;
+    subtitle: string;
+    canBeProjectAdmin: boolean;
+  }>;
 }
 
 export interface AddCommentPhotoAttachment extends PrimitiveReadyItemBase {

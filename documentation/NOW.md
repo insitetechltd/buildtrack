@@ -4,6 +4,12 @@
 
 ---
 
+**This session — Create Project intentional roster (2026-09-10):** On Create Project, CA picks people from the **company roster** and sets **Member** or **Project Admin** (PA = CA/PM only; ≤1 PA). Empty roster allowed (= company inventory only). Removed silent creator auto-assign from `createProject`. Post-create still returns to Company Projects list. Placements use `upsertProjectMembership` with `candidateUser` guard.
+
+**This session — ASC-safe Company Plan web alert (2026-09-10):** Upgrade / seat-pack actions no longer open Stripe from the app. Tapping plan or seat CTAs shows Alert "Manage plan on the web" → **Open website** opens `COMPANY_PLAN_MANAGEMENT_URL` (GitHub Pages `index.html#pricing`). CTA labels are **View … on website**. After billing on the web, return to the app and refresh. ASC 3.1.1 posture matches web signup.
+
+**This session — discrete email-first Login (2026-09-10):** Single Login screen: password stays disabled until realtime `login_identifier_is_registered` RPC says the email/phone exists → button **Sign In**. Unknown email → button **Sign Up** opens existing GitHub Pages `signup.html` (email prefill). Removed separate “Sign up on the web” link. Migration `supabase/migrations/20260910000100_login_identifier_is_registered.sql` **not applied** — needs Human GO for DEV/PROD. Without RPC, lookup fails closed (password stays locked).
+
 **This session — PROD TF 253 (2026-09-10):** Ship Company-management gate fix + sticky plan-gate clear + createProject assign fail-closed. Local `./build-and-submit.sh ios production true` → IPA **v1.1.3 (253i-rc)** (`build-1789014314463.ipa`). Interactive submit prompt aborted script (`set -e` + `read`); manual `eas submit` → https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/02c990d5-34d5-4f85-998f-1693cbf2ddce. Dogfood on iPhone TF **253** (not 251): Sara CA management; PM + Worker field shell; founder→PM logout handoff must not show Company Plan.
 
 **This session — PM/Worker path audit (2026-09-10):** Field shell + avatar menus OK for PM/Worker once MainTabs-scoped gate ships (TF>251). Company management correctly hidden (`isAdmin`). Worker Report Issue (`status=reported`) + PM triage still blocked until PROD status migration. Fixed sticky `requiresCompanyPlanSelection` on logout/signOut/login so founder→PM/Worker device handoff does not trap non-CA in Company Plan gate. RLS still defense-in-depth only (app filters membership). Headed dogfood checklist: PM + Worker 0/1/many projects, assign→accept→progress→review, no Company mgmt row.

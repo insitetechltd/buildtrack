@@ -4,7 +4,7 @@
 
 ---
 
-**This session — checkout-first web signup (2026-09-10):** Same flow DEV/PROD (config swap only). Form (company, name, email, Starter/Pro) → `start-signup-checkout` → Stripe → webhook provisions CA+company+entitlements → success page polls `signup-checkout-status` → **invite-open** link → Taskr Set Password. No password on form; no email-confirm product step. Edges deployed **DEV** (`zusulknbhaumougqckec`). **Next:** push `/docs` for Pages; smoke sandbox with `4242…`; then deploy edges to PROD when ready for live charges. Auth confirm-email OFF recommended. Login link delivery = success-page button (invite-open); inbox SMTP/Resend not wired yet.
+**This session — checkout-first web signup (2026-09-10):** Same flow DEV/PROD. Form → Stripe → webhook provisions CA+company → success page invite-open link. **Sandbox happy-path PASS** (`4242…`): auto-provision after DEV `role` vs PROD `system_permission` fix (`a4cf3fe`). Edges on **DEV + PROD**. Docs pushed (`2f7b663` + fixes; `docs/` root restored `6edc5e9`). **Phone residual:** open invite-open link on iPhone Internal TF (DEV) → Set Password. Live PROD signup = real card.
 
 **This session — PROD TF 254 (2026-09-10):** commit `91b9606` (ASC web plan alert + email-first Login + Create Project intentional roster). Local `./build-and-submit.sh ios production true` → IPA **v1.1.3 (254i-rc)**; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/6c191abe-efbd-419e-b798-11cfb760a15e. Dogfood on iPhone TF **254**. Login RPC migration still needs Human GO on PROD.
 

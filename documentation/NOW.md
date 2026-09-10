@@ -4,7 +4,7 @@
 
 ---
 
-**This session — site map cutover (2026-09-10):** `www.insiteworks.co/` = Insite Works construction portfolio (Keynote HTML from iCloud INSITE Portfolio v5). Taskr product site = `www.insiteworks.co/taskr/` (landing, signup, support, legal). In-app `legalLinks.ts` + ASC paste updated. Root legacy paths redirect into `/taskr/`. **Next:** commit + push `/docs` (~103MB portfolio assets); update ASC Privacy/Support/Marketing URLs in App Store Connect; Auth allowlist `/taskr/**`.
+**This session — site map cutover (2026-09-10):** `www.insiteworks.co/` = Insite Works construction portfolio; Taskr = `/taskr/`. Pushed `cb25371`. **ASC 1.1.3 (REJECTED editable):** Privacy + Support + Marketing → `/taskr/…` via API. Live **1.0 READY_FOR_SALE** Privacy still locked (old GitHub PDF) until next editable app-info state. **Auth** DEV+PROD: `site_url` = `https://www.insiteworks.co/taskr/`; `uri_allow_list` includes `/taskr/**` + legacy domain/github.io + app scheme.
 
 **This session — site map cutover (2026-09-10):** `www.insiteworks.co/` = Insite Works construction portfolio (Keynote HTML from iCloud INSITE Portfolio v5). Taskr = `www.insiteworks.co/taskr/` (landing, signup, support, legal). `legalLinks.ts` + ASC paste updated. Root legacy paths redirect into `/taskr/`.
 

@@ -8,12 +8,16 @@ import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import { useTranslation } from "../utils/useTranslation";
 import { useProjectPickerViewAdapter } from "../ui/viewAdapters/useProjectPickerViewAdapter";
+import { useAuthStore } from "../state/authStore";
+import { isAdmin } from "../types/buildtrack";
+import { navigateToCompanyManagementFromRoot } from "../navigation/rootNavigationHelpers";
 
 interface ProjectPickerScreenProps {
   onNavigateBack: () => void;
   allowBack?: boolean; // If false, prevent going back (required selection)
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onOpenCompanyManagement?: () => void;
 }
 
 export default function ProjectPickerScreen({
@@ -21,9 +25,14 @@ export default function ProjectPickerScreen({
   allowBack = true,
   onNavigateToProfile,
   onNavigateToProjectPicker,
+  onOpenCompanyManagement,
 }: ProjectPickerScreenProps) {
   const t = useTranslation();
   const { isDarkMode } = useThemeStore();
+  const user = useAuthStore((state) => state.user);
+  const canOpenCompanyManagement = Boolean(user && isAdmin(user));
+  const handleOpenCompanyManagement =
+    onOpenCompanyManagement ?? (() => navigateToCompanyManagementFromRoot());
   const { output, actions } = useProjectPickerViewAdapter({
     allowBack,
     onNavigateBack,
@@ -67,6 +76,19 @@ export default function ProjectPickerScreen({
             )}>
               {t.projects.noProjectsMessage}
             </Text>
+            {canOpenCompanyManagement ? (
+              <Pressable
+                testID="project-picker__open-company-management"
+                onPress={handleOpenCompanyManagement}
+                className="mt-6 rounded-lg bg-[#08576E] px-5 py-3"
+                accessibilityRole="button"
+                accessibilityLabel="Open Company management"
+              >
+                <Text className="text-base font-semibold text-white">
+                  Open Company management
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : (
           output.projectItems.map((project) => (

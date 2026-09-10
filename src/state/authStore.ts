@@ -316,7 +316,9 @@ export const useAuthStore = create<AuthStore>()(
                   user: transformedUser, 
                   isAuthenticated: true, 
                   isLoading: false,
-                  isInitialized: true  // Ensure initialized after login
+                  isInitialized: true,  // Ensure initialized after login
+                  // Drop any sticky founder billing gate from a prior session.
+                  requiresCompanyPlanSelection: false,
                 });
                 
                 // Warm projects/assignments first; defer heavy task/user fetch so
@@ -411,7 +413,9 @@ export const useAuthStore = create<AuthStore>()(
         set({ 
           user: null, 
           isAuthenticated: false, 
-          isLoading: false 
+          isLoading: false,
+          // Never leave founder billing gate sticky for the next PM/worker session.
+          requiresCompanyPlanSelection: false,
         });
       },
 
@@ -1022,7 +1026,8 @@ export const useAuthStore = create<AuthStore>()(
             session: null,
             isAuthenticated: false,
             isLoading: false,
-            error: null
+            error: null,
+            requiresCompanyPlanSelection: false,
           });
         } catch (error: any) {
           console.error('Logout error:', error);
@@ -1033,7 +1038,8 @@ export const useAuthStore = create<AuthStore>()(
             session: null,
             isAuthenticated: false,
             isLoading: false,
-            error: null
+            error: null,
+            requiresCompanyPlanSelection: false,
           });
         }
       },

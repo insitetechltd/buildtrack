@@ -409,6 +409,28 @@ describe('Authentication Workflow Tests', () => {
       expect(result.current.session).toBeNull();
     });
 
+    it('clears sticky company-plan gate so PM/worker are not trapped after founder logout', async () => {
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'founder-1', email: 'founder@acme.com' },
+          session: { access_token: 'token-123' },
+          requiresCompanyPlanSelection: true,
+        });
+      });
+
+      (mockSupabase.auth.signOut as jest.Mock).mockResolvedValue({
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+
+      await act(async () => {
+        await result.current.signOut();
+      });
+
+      expect(result.current.requiresCompanyPlanSelection).toBe(false);
+    });
+
     it('should clear local storage on logout', async () => {
       (mockSupabase.auth.signOut as jest.Mock).mockResolvedValue({
         error: null,

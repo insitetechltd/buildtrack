@@ -1209,9 +1209,19 @@ export const useProjectStore = create<ProjectStore>()(
               );
             } catch (assignError) {
               console.error(
-                "createProject: creator auto-assign failed; project row exists",
+                "createProject: creator auto-assign failed; rolling back project row",
                 assignError,
               );
+              // Prefer hard failure over a project the creator cannot open.
+              try {
+                await supabase.from("projects").delete().eq("id", transformedProject.id);
+              } catch (rollbackError) {
+                console.error(
+                  "createProject: rollback after assign failure also failed",
+                  rollbackError,
+                );
+              }
+              throw assignError;
             }
           }
 

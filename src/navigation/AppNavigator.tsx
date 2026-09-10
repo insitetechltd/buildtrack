@@ -2335,10 +2335,20 @@ function CompanyPlanFromAdminScreen({
   );
 }
 
+function MainTabsWithWorkspaceGate() {
+  // Gate field shell only — Profile / Company management must stay reachable
+  // when the user has 0 projects (App Review / new CA) or must pick a project.
+  return (
+    <RequireWorkspaceProjectGate>
+      <MainTabs />
+    </RequireWorkspaceProjectGate>
+  );
+}
+
 function AppRootStack() {
   return (
     <RootStackNavigator.Navigator screenOptions={{ headerShown: false }}>
-      <RootStackNavigator.Screen name="MainTabs" component={MainTabs} />
+      <RootStackNavigator.Screen name="MainTabs" component={MainTabsWithWorkspaceGate} />
       <RootStackNavigator.Screen name="Profile" component={ProfileStack} />
     </RootStackNavigator.Navigator>
   );
@@ -2583,9 +2593,7 @@ export default function AppNavigator() {
         <NavigationContainer ref={rootNavigationRef} linking={appLinking}>
           <PostCheckoutManagementRedirect />
           <DataRefreshManager />
-          <RequireWorkspaceProjectGate>
-            <AppRootStack />
-          </RequireWorkspaceProjectGate>
+          <AppRootStack />
         </NavigationContainer>
       </WorkspaceBootstrapGate>
     </>

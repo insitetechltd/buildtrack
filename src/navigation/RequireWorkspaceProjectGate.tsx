@@ -14,12 +14,19 @@ import {
   needsForcedProjectPicker,
   resolveWorkspaceProjectId,
 } from "@/ui/contracts/workspaceProject";
+import {
+  navigateToCompanyManagementFromRoot,
+} from "@/navigation/rootNavigationHelpers";
+import { rootNavigationRef } from "@/navigation/rootNavigationRef";
 
 /**
  * Field shell requires an active workspace project.
  * - 1 membership → auto-select (and persist) that project
  * - 0 / many with no valid selection → force ProjectPicker (no back)
  * - Invalid last_selected (left the job) → clear and force pick / sole default
+ *
+ * Wrap MainTabs only — never the entire root stack — so Profile / Company
+ * management stays reachable when membership is empty (App Review / new CA).
  */
 export function RequireWorkspaceProjectGate({
   children,
@@ -153,6 +160,14 @@ export function RequireWorkspaceProjectGate({
         allowBack={false}
         onNavigateBack={() => {
           // Selection updates the filter store; this gate swaps to children.
+        }}
+        onNavigateToProfile={() => {
+          if (rootNavigationRef.isReady()) {
+            rootNavigationRef.navigate("Profile", { screen: "ProfileMain" });
+          }
+        }}
+        onOpenCompanyManagement={() => {
+          navigateToCompanyManagementFromRoot();
         }}
       />
     );

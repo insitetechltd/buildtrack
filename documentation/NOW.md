@@ -4,6 +4,12 @@
 
 ---
 
+**This session — PROD TF 252 (2026-09-10):** Ship Company-management gate fix + sticky plan-gate clear + createProject assign fail-closed. Target binary **v1.1.3 (252i-rc)**. Dogfood: Sara CA management; PM + Worker field shell; founder→PM logout handoff must not show Company Plan.
+
+**This session — PM/Worker path audit (2026-09-10):** Field shell + avatar menus OK for PM/Worker once MainTabs-scoped gate ships (TF>251). Company management correctly hidden (`isAdmin`). Worker Report Issue (`status=reported`) + PM triage still blocked until PROD status migration. Fixed sticky `requiresCompanyPlanSelection` on logout/signOut/login so founder→PM/Worker device handoff does not trap non-CA in Company Plan gate. RLS still defense-in-depth only (app filters membership). Headed dogfood checklist: PM + Worker 0/1/many projects, assign→accept→progress→review, no Company mgmt row.
+
+**This session — Company management screen missing (2026-09-10):** Avatar menu returned on TF 251, but management did not open. Root cause: `RequireWorkspaceProjectGate` wrapped entire `AppRootStack`, so with 0/unset project the gate showed ProjectPicker *instead of* the navigator — Profile/CompanyManagement never mounted. Fix: gate MainTabs only; picker empty CTA + profile wiring; AdminDashboard loading instead of null; createProject fails closed if creator auto-assign fails. **Needs TF >251.** Review-path audit: menu→mgmt→projects/users + 0-project escape + web signup + camera Continue OK in source; Stripe return polling / broad RLS residual.
+
 **This session — PROD TF 251 (2026-09-10):** commit `1f5c7b8` (Sara CA menu + create/assign fixes). Local `./build-and-submit.sh ios production true` → **v1.1.3 (251i-rc)** IPA. EAS submit hung after schedule; ASC already has build **251 VALID**. Dogfood as `sara@insitetest.com` on iPhone TF 251 (not 249/250).
 
 **This session — Sara avatar menu missing Company Admin (2026-09-10):** PROD row is `system_permission=admin` (no `role` col). Avatar **Company management** is gated by `isAdmin(user)`. Hardened: read snake_case `system_permission`, align `role` from permission, re-normalize on auth rehydrate, always offer Company management nav (root ref fallback). Needs new TF binary. Ask user: seat subtitle under name — Company Admin vs Worker/Manager?

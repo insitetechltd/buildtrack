@@ -5,6 +5,7 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -271,7 +272,22 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
   const visibleQuickActions = output.quickActions.filter((action) => action.isVisible);
 
   if (!output.readiness.hasUsableData) {
-    return null;
+    return (
+      <SafeAreaView
+        edges={["bottom", "left", "right"]}
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: SCREEN_BG }}
+      >
+        <StatusBar style="light" />
+        <ModernScreenHeader
+          title="Admin Dashboard"
+          titleNode={<BrandHeaderTitle label="Admin Dashboard" subtitle="Admin" />}
+          className="absolute left-0 right-0 top-0 border-b-0 bg-[#08576E] pb-2"
+        />
+        <ActivityIndicator size="large" color="#08576E" />
+        <Text className="mt-4 text-base text-gray-500">Loading company management...</Text>
+      </SafeAreaView>
+    );
   }
 
   if (!output.access.isAllowed) {

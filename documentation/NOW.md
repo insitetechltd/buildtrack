@@ -4,6 +4,8 @@
 
 ---
 
+**This session — PROD TF 251 (2026-09-10):** commit `1f5c7b8` (Sara CA menu + create/assign fixes). Local `./build-and-submit.sh ios production true` → **v1.1.3 (251i-rc)** IPA. EAS submit hung after schedule; ASC already has build **251 VALID**. Dogfood as `sara@insitetest.com` on iPhone TF 251 (not 249/250).
+
 **This session — Sara avatar menu missing Company Admin (2026-09-10):** PROD row is `system_permission=admin` (no `role` col). Avatar **Company management** is gated by `isAdmin(user)`. Hardened: read snake_case `system_permission`, align `role` from permission, re-normalize on auth rehydrate, always offer Company management nav (root ref fallback). Needs new TF binary. Ask user: seat subtitle under name — Company Admin vs Worker/Manager?
 
 **This session — Sara create-project (2026-09-10):** PROD RLS/entitlements OK for `sara@insitetest.com` (admin, project_limit 12). Root cause: app wrote `user_project_assignments.category` but PROD column is `project_role`, and `createProject` did not auto-assign the creator — new projects could disappear from membership-scoped UI. Fix in working tree: dual-read/write `project_role`↔`category` + auto-assign creator as `lead_project_manager`. Needs new TF binary (also includes Loading-projects settle fix). Not committed yet.

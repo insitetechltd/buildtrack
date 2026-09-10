@@ -31,7 +31,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.buildtrack.app.local",
-      "buildNumber": "249",
+      "buildNumber": "251",
       "icon": "./assets/icon-1024.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -52,7 +52,7 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
       ],
-      "versionCode": 249
+      "versionCode": 251
     },
     "extra": {
       "eas": {

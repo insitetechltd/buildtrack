@@ -35,16 +35,14 @@ function isAllowedCheckoutReturnUrl(raw: string): boolean {
     }
     if (
       url.hostname === "insitetechltd.github.io" &&
-      url.pathname.startsWith("/buildtrack/")
+      (url.pathname.startsWith("/buildtrack/") ||
+        url.pathname.startsWith("/buildtrack/taskr/"))
     ) {
       return true;
     }
     if (
-      (url.hostname === "insiteworks.co" ||
-        url.hostname === "www.insiteworks.co") &&
-      (url.pathname === "/signup.html" ||
-        url.pathname.startsWith("/signup") ||
-        url.pathname.startsWith("/buildtrack/"))
+      url.hostname === "insiteworks.co" ||
+      url.hostname === "www.insiteworks.co"
     ) {
       return true;
     }

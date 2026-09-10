@@ -174,6 +174,50 @@ function generateTempPassword(): string {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
+/** DEV may have `role`; PROD may have `system_permission` — never write missing cols. */
+async function detectUserAdminColumns(
+  admin: AdminClient,
+): Promise<{ hasRole: boolean; hasSystemPermission: boolean }> {
+  const roleProbe = await admin.from("users").select("role").limit(1);
+  const sysProbe = await admin.from("users").select("system_permission").limit(1);
+  return {
+    hasRole: !roleProbe.error,
+    hasSystemPermission: !sysProbe.error,
+  };
+}
+
+async function promoteFoundingAdminProfile(
+  admin: AdminClient,
+  params: {
+    userId: string;
+    email: string;
+    name: string;
+    companyId?: string | null;
+  },
+): Promise<void> {
+  const cols = await detectUserAdminColumns(admin);
+  const patch: Record<string, unknown> = {
+    email: params.email,
+    name: params.name,
+    is_pending: false,
+    must_set_password: true,
+  };
+  if (params.companyId) {
+    patch.company_id = params.companyId;
+  }
+  if (cols.hasSystemPermission) {
+    patch.system_permission = "admin";
+  }
+  if (cols.hasRole) {
+    patch.role = "admin";
+  }
+
+  const { error } = await admin.from("users").update(patch).eq("id", params.userId);
+  if (error) {
+    throw new Error(error.message || "founder_profile_update_failed");
+  }
+}
+
 async function mintInviteOpenLink(
   admin: AdminClient,
   supabaseUrl: string,
@@ -331,55 +375,54 @@ async function provisionCheckoutFirstSignup(
     }
   }
 
-  // Ensure founding CA profile flags (handle_new_user defaults member/pending).
-  await admin.from("users").upsert({
-    id: userId,
+  // Promote founding CA without writing columns that don't exist on this tenant.
+  await promoteFoundingAdminProfile(admin, {
+    userId,
     email,
     name: adminName,
-    system_permission: "admin",
-    is_pending: false,
-    must_set_password: true,
-  }, { onConflict: "id" });
+  });
 
-  // role column may be absent on some tenants — ignore failure.
+  // Reuse orphan company from a prior partial provision (same founder).
+  let companyId: string | null = null;
   {
-    const roleUpdate = await admin
-      .from("users")
-      .update({ role: "admin" } as Record<string, unknown>)
-      .eq("id", userId);
-    if (roleUpdate.error) {
-      console.warn("stripe-webhook: role column update skipped", roleUpdate.error.message);
+    const { data: orphan } = await admin
+      .from("companies")
+      .select("id")
+      .eq("created_by", userId)
+      .eq("name", companyName)
+      .limit(1)
+      .maybeSingle();
+    if (orphan?.id) {
+      companyId = orphan.id as string;
     }
   }
 
-  const { data: companyRows, error: companyError } = await admin
-    .from("companies")
-    .insert({
-      name: companyName,
-      type: "general_contractor",
-      created_by: userId,
-      is_active: true,
-    })
-    .select("id")
-    .limit(1);
+  if (!companyId) {
+    const { data: companyRows, error: companyError } = await admin
+      .from("companies")
+      .insert({
+        name: companyName,
+        type: "general_contractor",
+        created_by: userId,
+        is_active: true,
+      })
+      .select("id")
+      .limit(1);
 
-  if (companyError || !companyRows?.[0]?.id) {
-    throw new Error(companyError?.message || "company_create_failed");
-  }
-  const companyId = companyRows[0].id as string;
-
-  const { error: attachError } = await admin.from("users").update({
-    company_id: companyId,
-    system_permission: "admin",
-    is_pending: false,
-    must_set_password: true,
-  }).eq("id", userId);
-
-  if (attachError) {
-    throw new Error(attachError.message || "company_attach_failed");
+    if (companyError || !companyRows?.[0]?.id) {
+      throw new Error(companyError?.message || "company_create_failed");
+    }
+    companyId = companyRows[0].id as string;
   }
 
-  await admin.from("company_subscriptions").upsert({
+  await promoteFoundingAdminProfile(admin, {
+    userId,
+    email,
+    name: adminName,
+    companyId,
+  });
+
+  const { error: subUpsertError } = await admin.from("company_subscriptions").upsert({
     company_id: companyId,
     stripe_customer_id: typeof session.customer === "string"
       ? session.customer
@@ -389,6 +432,9 @@ async function provisionCheckoutFirstSignup(
     livemode: session.livemode,
     locked_plan_price_id: planPriceId,
   }, { onConflict: "company_id" });
+  if (subUpsertError) {
+    throw new Error(subUpsertError.message || "subscription_upsert_failed");
+  }
 
   // Patch Checkout + Subscription metadata so later lifecycle events resolve company_id.
   try {

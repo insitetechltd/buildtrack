@@ -13,6 +13,7 @@ import {
 import { isPlatformSuperuser } from "@/config/platformSuperusers";
 import {
   navigateToCompanyManagement,
+  navigateToCompanyManagementFromRoot,
   navigateToProjectPicker,
   navigateToRootProfile,
   navigateToTaskDashboard,
@@ -94,11 +95,13 @@ export default function AppScreenHeader({
       : undefined);
   const resolvedNavigateToCompanyManagement =
     onNavigateToCompanyManagement ??
-    (navigation
-      ? () => {
-          navigateToCompanyManagement(navigation);
-        }
-      : undefined);
+    (() => {
+      if (navigation) {
+        navigateToCompanyManagement(navigation);
+        return;
+      }
+      navigateToCompanyManagementFromRoot();
+    });
   const resolvedNavigateToTaskDashboard =
     onNavigateToTaskDashboard ??
     (navigation

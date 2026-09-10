@@ -730,10 +730,33 @@ export interface TaskReadStatus {
  * Get the system permission from a user, handling both old (role) and new (systemPermission) fields
  * Also handles backward compatibility with "worker" → "member" migration
  */
+function coerceSystemPermission(
+  value: string | null | undefined,
+): SystemPermission | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "admin" || normalized === "company_admin") {
+    return "admin";
+  }
+  if (normalized === "manager" || normalized === "supervisor") {
+    return "manager";
+  }
+  if (normalized === "member" || normalized === "worker") {
+    return "member";
+  }
+  return null;
+}
+
 export function getUserSystemPermission(user: User): SystemPermission {
-  // Prefer new field if available
-  if (user.systemPermission) {
-    return user.systemPermission;
+  // Prefer app field, then raw DB snake_case (rehydrated / partially mapped rows).
+  const fromPermission = coerceSystemPermission(
+    user.systemPermission ??
+      (user as { system_permission?: string | null }).system_permission,
+  );
+  if (fromPermission) {
+    return fromPermission;
   }
 
   // Fall back to old field and migrate "worker" to "member"

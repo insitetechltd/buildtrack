@@ -203,20 +203,108 @@ function transformProjectRow(project: any): Project {
   };
 }
 
+/** PROD greenfield uses `project_role`; older DEV tenants still use `category`. */
+function readAssignmentCategory(assignment: any): ProjectRole {
+  return (assignment.project_role || assignment.category) as ProjectRole;
+}
+
+function isMissingProjectRoleColumnError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const message = (error.message || "").toLowerCase();
+  return message.includes("project_role") && (error.code === "PGRST204" || message.includes("schema cache"));
+}
+
+function isMissingCategoryColumnError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const message = (error.message || "").toLowerCase();
+  return message.includes("category") && (error.code === "PGRST204" || message.includes("schema cache"));
+}
+
+async function insertUserProjectAssignmentRow(
+  client: NonNullable<typeof supabase>,
+  input: {
+    userId: string;
+    projectId: string;
+    category: ProjectRole;
+    assignedBy: string;
+  },
+) {
+  const base = {
+    user_id: input.userId,
+    project_id: input.projectId,
+    assigned_by: input.assignedBy,
+    is_active: true,
+  };
+
+  const roleInsert = await client.from("user_project_assignments").insert({
+    ...base,
+    project_role: input.category,
+  });
+
+  if (!roleInsert.error) {
+    return roleInsert;
+  }
+
+  if (!isMissingProjectRoleColumnError(roleInsert.error)) {
+    return roleInsert;
+  }
+
+  return client.from("user_project_assignments").insert({
+    ...base,
+    category: input.category,
+  });
+}
+
+async function updateUserProjectAssignmentCategoryRow(
+  client: NonNullable<typeof supabase>,
+  input: {
+    userId: string;
+    projectId: string;
+    category: ProjectRole;
+  },
+) {
+  const roleUpdate = await client
+    .from("user_project_assignments")
+    .update({ project_role: input.category })
+    .eq("user_id", input.userId)
+    .eq("project_id", input.projectId);
+
+  if (!roleUpdate.error) {
+    return roleUpdate;
+  }
+
+  if (!isMissingProjectRoleColumnError(roleUpdate.error) && !isMissingCategoryColumnError(roleUpdate.error)) {
+    return roleUpdate;
+  }
+
+  // Older DEV schema (category) or PROD rejecting the wrong column name.
+  if (isMissingProjectRoleColumnError(roleUpdate.error)) {
+    return client
+      .from("user_project_assignments")
+      .update({ category: input.category })
+      .eq("user_id", input.userId)
+      .eq("project_id", input.projectId);
+  }
+
+  return roleUpdate;
+}
+
 function transformAssignmentRow(assignment: any): NormalizedProjectAssignment {
+  const category = readAssignmentCategory(assignment);
+  const assignedAt = assignment.assigned_at || assignment.created_at;
   return {
     id: assignment.id || getAssignmentKey({
       userId: assignment.user_id,
       projectId: assignment.project_id,
-      category: assignment.category,
-      assignedAt: assignment.assigned_at,
+      category,
+      assignedAt,
       assignedBy: assignment.assigned_by,
       isActive: assignment.is_active,
     } as UserProjectAssignment),
     userId: assignment.user_id,
     projectId: assignment.project_id,
-    category: assignment.category,
-    assignedAt: assignment.assigned_at,
+    category,
+    assignedAt,
     assignedBy: assignment.assigned_by,
     isActive: assignment.is_active,
   };
@@ -1068,6 +1156,15 @@ export const useProjectStore = create<ProjectStore>()(
             projects: [...state.projects, newProject]
           }));
 
+          if (projectData.createdBy) {
+            void get().assignUserToProject(
+              projectData.createdBy,
+              newProject.id,
+              "lead_project_manager",
+              projectData.createdBy,
+            );
+          }
+
           return newProject.id;
         }
 
@@ -1099,6 +1196,25 @@ export const useProjectStore = create<ProjectStore>()(
             buildResourceKey("projects", "company", transformedProject.companyId),
             buildResourceKey("project", transformedProject.id),
           ]);
+
+          // Creator must be a member or the new project vanishes from membership-scoped
+          // lists / workspace picker (company-admin SELECT alone is not enough there).
+          if (projectData.createdBy) {
+            try {
+              await get().assignUserToProject(
+                projectData.createdBy,
+                transformedProject.id,
+                "lead_project_manager",
+                projectData.createdBy,
+              );
+            } catch (assignError) {
+              console.error(
+                "createProject: creator auto-assign failed; project row exists",
+                assignError,
+              );
+            }
+          }
+
           set({ isLoading: false });
 
           return transformedProject.id;
@@ -1238,15 +1354,12 @@ export const useProjectStore = create<ProjectStore>()(
             return; // Skip if already assigned
           }
 
-          const { error } = await supabase
-            .from('user_project_assignments')
-            .insert({
-              user_id: userId,
-              project_id: projectId,
-              category,
-              assigned_by: assignedBy,
-              is_active: true,
-            });
+          const { error } = await insertUserProjectAssignmentRow(supabase, {
+            userId,
+            projectId,
+            category,
+            assignedBy,
+          });
 
           if (error) {
             // Handle duplicate key constraint violation specifically
@@ -1317,11 +1430,11 @@ export const useProjectStore = create<ProjectStore>()(
         }
 
         try {
-          const { error } = await supabase
-            .from('user_project_assignments')
-            .update({ category })
-            .eq('user_id', userId)
-            .eq('project_id', projectId);
+          const { error } = await updateUserProjectAssignmentCategoryRow(supabase, {
+            userId,
+            projectId,
+            category,
+          });
 
           if (error) throw error;
 

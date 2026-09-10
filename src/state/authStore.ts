@@ -77,9 +77,23 @@ export function normalizeAuthUser<T extends Record<string, any>>(user: T) {
       : {}),
   };
 
+  const systemPermission = getUserSystemPermission(
+    normalizedUser as unknown as User,
+  );
+
+  // PROD users rows often omit `role` and only send system_permission. Keep
+  // legacy role-gated UI (avatar Company management, create project) aligned.
+  const roleFromPermission: UserRole =
+    systemPermission === "admin"
+      ? "admin"
+      : systemPermission === "manager"
+        ? "manager"
+        : "worker";
+
   return {
     ...normalizedUser,
-    systemPermission: getUserSystemPermission(normalizedUser as unknown as User),
+    systemPermission,
+    role: rawPermission ? roleFromPermission : normalizedRole,
   };
 }
 
@@ -1343,13 +1357,19 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         console.log('🔄 AuthStore rehydration callback fired');
         if (state) {
+          // Re-normalize so snake_case system_permission / omitted role from
+          // older persisted sessions still unlock Company Admin chrome.
+          if (state.user) {
+            state.user = normalizeAuthUser(state.user) as typeof state.user;
+          }
           // Do not set isInitialized here — AppNavigator would otherwise
           // mount MainTabs from a persisted user before initialize() loads
           // must_set_password from the server.
           console.log('✅ AuthStore rehydration:', { 
             isAuthenticated: state.isAuthenticated, 
             hasUser: !!state.user,
-            userName: state.user?.name 
+            userName: state.user?.name,
+            systemPermission: state.user?.systemPermission,
           });
         } else {
           console.log('⚠️ AuthStore rehydration - no state found');

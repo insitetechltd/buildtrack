@@ -56,6 +56,10 @@ export function useCreateProjectViewAdapter(
   const submitProject = useCallback(
     async (formData: CreateProjectFormSubmission) => {
       if (!user || !isAdmin(user)) {
+        Alert.alert(
+          t.errors.error,
+          t.userManagement.accessDenied || "Access denied. Admin role required.",
+        );
         return;
       }
 

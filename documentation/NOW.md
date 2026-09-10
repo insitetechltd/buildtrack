@@ -4,6 +4,10 @@
 
 ---
 
+**This session — Sara avatar menu missing Company Admin (2026-09-10):** PROD row is `system_permission=admin` (no `role` col). Avatar **Company management** is gated by `isAdmin(user)`. Hardened: read snake_case `system_permission`, align `role` from permission, re-normalize on auth rehydrate, always offer Company management nav (root ref fallback). Needs new TF binary. Ask user: seat subtitle under name — Company Admin vs Worker/Manager?
+
+**This session — Sara create-project (2026-09-10):** PROD RLS/entitlements OK for `sara@insitetest.com` (admin, project_limit 12). Root cause: app wrote `user_project_assignments.category` but PROD column is `project_role`, and `createProject` did not auto-assign the creator — new projects could disappear from membership-scoped UI. Fix in working tree: dual-read/write `project_role`↔`category` + auto-assign creator as `lead_project_manager`. Needs new TF binary (also includes Loading-projects settle fix). Not committed yet.
+
 **This session — App Review reject fix (2026-09-09):** 5.1.1(iv) camera CTA → **Continue**; 3.1.1 remove in-app Create company → Login **Sign up on the web** → GitHub Pages `docs/signup.html` (PROD anon). Notes: `docs/superpowers/evidence/2026-09-09-asc-review-web-signup-camera-notes.md`. **Human:** PROD Auth URL allowlist for Pages; push `/docs` for Pages deploy; **new PROD binary** after merge (do not use 249 for “fixed review”).
 
 **This session — PROD TF (2026-09-09):** local `./build-and-submit.sh ios production true` → **v1.1.3 (249i-rc)** IPA uploaded (pre-review-fix). Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/359bd9a4-fc96-4a74-8907-079ee0319479.

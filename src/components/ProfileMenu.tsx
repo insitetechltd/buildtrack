@@ -2,6 +2,7 @@ import React from "react";
 import { Alert, Modal, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { navigateToCompanyManagementFromRoot } from "../navigation/rootNavigationHelpers";
 import { useAuthStore } from "../state/authStore";
 import {
   getUserSystemPermission,
@@ -44,8 +45,9 @@ export default function ProfileMenu({
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const t = useTranslation();
-  // Privilege gate: Company management only for company admins; callback required for nav.
-  const showCompanyAdmin = Boolean(user && isAdmin(user) && onNavigateToCompanyManagement);
+  // Privilege gate: Company management for company admins. Nav callback preferred;
+  // fall back to root ref so the row still appears when header context is missing.
+  const showCompanyAdmin = Boolean(user && isAdmin(user));
   const seatLabel = user ? getAvatarMenuSeatLabel(user) : "";
 
   if (!user || !visible) {
@@ -73,7 +75,13 @@ export default function ProfileMenu({
   };
 
   const handleNavigateToCompanyManagement = () => {
-    runAfterMenuClose(onNavigateToCompanyManagement);
+    runAfterMenuClose(() => {
+      if (onNavigateToCompanyManagement) {
+        onNavigateToCompanyManagement();
+        return;
+      }
+      navigateToCompanyManagementFromRoot();
+    });
   };
 
   const handleNavigateToTaskDashboard = () => {

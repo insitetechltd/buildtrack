@@ -40,6 +40,10 @@ jest.mock("@expo/vector-icons", () => ({
   Ionicons: "Ionicons",
 }));
 
+jest.mock("../../navigation/rootNavigationHelpers", () => ({
+  navigateToCompanyManagementFromRoot: jest.fn(() => true),
+}));
+
 describe("ProfileMenu", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -99,6 +103,20 @@ describe("ProfileMenu", () => {
     });
 
     expect(onNavigateToCompanyManagement).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows Company management for admins even without a navigation callback", () => {
+    let screen: TestRenderer.ReactTestRenderer;
+
+    TestRenderer.act(() => {
+      screen = TestRenderer.create(
+        <ProfileMenu visible onClose={jest.fn()} />,
+      );
+    });
+
+    expect(() =>
+      screen.root.findByProps({ testID: "profile-menu-company_admin" }),
+    ).not.toThrow();
   });
 
   it("hides Company management for workers even when a navigation callback is provided", () => {

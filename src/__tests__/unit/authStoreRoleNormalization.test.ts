@@ -31,4 +31,18 @@ describe("auth store user normalization", () => {
       } as any).systemPermission,
     ).toBe("admin");
   });
+
+  it("materializes admin from PROD system_permission when role column is absent", () => {
+    const user = normalizeAuthUser({
+      id: "sara-1",
+      name: "Sara",
+      email: "sara@insitetest.com",
+      system_permission: "admin",
+      company_id: "company-1",
+      position: "Company Admin",
+    } as any);
+
+    expect(user.systemPermission).toBe("admin");
+    expect(user.role).toBe("admin");
+  });
 });

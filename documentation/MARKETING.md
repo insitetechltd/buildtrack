@@ -106,7 +106,7 @@ Pilot access is by invitation (promo code).
 
 SUPPORT
 Insite Works Limited · support@insiteworks.co
-Privacy and terms: https://insitetechltd.github.io/buildtrack/
+Privacy and terms: https://www.insiteworks.co/taskr/
 ```
 
 **What’s New** (1.1.3 — replaces live 1.0 “Insite Trackr”):

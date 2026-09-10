@@ -8,7 +8,7 @@ Paste into App Store Connect → Resolution Center / App Review Information → 
 
 2. **Guideline 3.1.1** — **Business / organization account registration was removed from the iOS app.** Login is sign-in only. New company accounts are created on our website:
 
-   `https://insitetechltd.github.io/buildtrack/signup.html`
+   `https://www.insiteworks.co/taskr/signup.html`
 
    The in-app control is **Sign up on the web**, which opens that page in Safari. The app does not present an in-app Create company form.
 
@@ -26,7 +26,7 @@ Ship a **new production binary** that includes these changes. Do not claim this 
 
 In PROD Authentication → URL configuration, ensure the Pages origin is allowed, e.g.:
 
-- Site URL / additional redirect URLs include `https://insitetechltd.github.io/buildtrack/signup.html` (required for confirm-email return; signup uses `emailRedirectTo` + PKCE)
-- Prefer also `https://insitetechltd.github.io/buildtrack/**` if the Dashboard supports a wildcard
+- Site URL / additional redirect URLs include `https://www.insiteworks.co/taskr/signup.html`
+- Prefer also `https://www.insiteworks.co/taskr/**` (and legacy GitHub Pages `/buildtrack/taskr/**` if still used)
 
 If email confirmation is required on PROD, the signup page surfaces a sign-in / confirm-email message (same as mobile `createCompanyAccount`).

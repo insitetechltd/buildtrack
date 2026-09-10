@@ -1,19 +1,19 @@
 /**
- * Public HTTPS URLs for App Store review.
- * Keep GitHub Pages paths until www.insiteworks.co returns 200 (DNS cutover).
- * GitHub then 301s these URLs to the custom domain — do not 404 App Review.
+ * Public HTTPS URLs for App Store review and in-app legal / billing links.
+ * Company (Insite Works) home: https://www.insiteworks.co/
+ * Taskr product site: https://www.insiteworks.co/taskr/
  */
+export const COMPANY_HOME_URL = "https://www.insiteworks.co/";
+export const TASKR_SITE_URL = "https://www.insiteworks.co/taskr/";
 export const PRIVACY_POLICY_URL =
-  "https://insitetechltd.github.io/buildtrack/privacy-policy.html";
+  "https://www.insiteworks.co/taskr/privacy-policy.html";
 export const TERMS_OF_SERVICE_URL =
-  "https://insitetechltd.github.io/buildtrack/terms-of-service.html";
-export const SUPPORT_URL =
-  "https://insitetechltd.github.io/buildtrack/support.html";
+  "https://www.insiteworks.co/taskr/terms-of-service.html";
+export const SUPPORT_URL = "https://www.insiteworks.co/taskr/support.html";
 /** Company registration is web-only (App Review 3.1.1). */
-export const SIGNUP_URL =
-  "https://insitetechltd.github.io/buildtrack/signup.html";
+export const SIGNUP_URL = "https://www.insiteworks.co/taskr/signup.html";
 /** Plan / seat billing is web-only (App Review 3.1.1). */
 export const COMPANY_PLAN_MANAGEMENT_URL =
-  "https://insitetechltd.github.io/buildtrack/index.html#pricing";
+  "https://www.insiteworks.co/taskr/#pricing";
 export const SUPPORT_EMAIL = "support@insiteworks.co";
 export const SUPPORT_MAILTO_URL = `mailto:${SUPPORT_EMAIL}`;

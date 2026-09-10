@@ -8,7 +8,7 @@ GitHub Pages URLs (no extra host). App Store Connect API key used for submit **c
 
 | Field | Paste |
 |-------|--------|
-| Privacy Policy URL | https://insitetechltd.github.io/buildtrack/privacy-policy.html |
+| Privacy Policy URL | https://www.insiteworks.co/taskr/privacy-policy.html |
 | (status 2026-08-17) | **Set** on App Information that is **PREPARE_FOR_SUBMISSION**. Live **1.0 READY_FOR_SALE** still shows the old GitHub `policy.pdf` until that next version ships. |
 
 App Information → **Insite Trackr** → English (U.S.) → Privacy Policy URL.
@@ -17,7 +17,7 @@ App Information → **Insite Trackr** → English (U.S.) → Privacy Policy URL.
 
 | Field | Status |
 |-------|--------|
-| Support URL | **Already set** to https://insitetechltd.github.io/buildtrack/support.html |
+| Support URL | **Already set** to https://www.insiteworks.co/taskr/support.html |
 | Description / keywords / screenshots | Present on 1.0 — review, do not blank |
 | Version string on sale | **1.0** (build 127). Next version **1.1.3** is **PREPARE_FOR_SUBMISSION**, **build 183** attached, Manual release. |
 
@@ -33,6 +33,6 @@ App Information → **Insite Trackr** → English (U.S.) → Privacy Policy URL.
 
 Confirm HTTP 200:
 
-- https://insitetechltd.github.io/buildtrack/privacy-policy.html
-- https://insitetechltd.github.io/buildtrack/terms-of-service.html
-- https://insitetechltd.github.io/buildtrack/support.html
+- https://www.insiteworks.co/taskr/privacy-policy.html
+- https://www.insiteworks.co/taskr/terms-of-service.html
+- https://www.insiteworks.co/taskr/support.html

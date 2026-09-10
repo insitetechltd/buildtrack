@@ -12,9 +12,9 @@ Account model:
 
 Demo access: already stored in App Store Connect App Review Information (do not duplicate passwords in git). If ASC prompts again, use a company-admin Taskr login.
 
-Privacy Policy: https://insitetechltd.github.io/buildtrack/privacy-policy.html
-Terms of Service: https://insitetechltd.github.io/buildtrack/terms-of-service.html
-Support: https://insitetechltd.github.io/buildtrack/support.html
+Privacy Policy: https://www.insiteworks.co/taskr/privacy-policy.html
+Terms of Service: https://www.insiteworks.co/taskr/terms-of-service.html
+Support: https://www.insiteworks.co/taskr/support.html
 Support email: insite.tech.ltd@gmail.com
 ```
 

@@ -4,7 +4,7 @@
 **App:** `6754898737` · https://appstoreconnect.apple.com/apps/6754898737  
 **Binary:** App Store **243** already uploaded (`production` → PROD). Do **not** start another production EAS build.  
 **Copy SoT:** [`documentation/MARKETING.md`](../../documentation/MARKETING.md) — living App Store / site claims. This file is the **one-time ASC paste checklist** (URLs, screenshots, do-not-submit). Do not fork listing text here.  
-**Screenshots:** `docs/assets/store/iphone-67/` (README there)
+**Screenshots:** `docs/taskr/assets/store/iphone-67/` (README there)
 
 ASC API key used for `eas submit` can **read** metadata but historically **cannot PATCH** (403). Paste in the web UI.
 
@@ -18,11 +18,14 @@ Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works 
 
 | Field | Paste |
 |-------|--------|
-| Privacy Policy URL | https://insitetechltd.github.io/buildtrack/privacy-policy.html |
-| Support URL | https://insitetechltd.github.io/buildtrack/support.html |
-| Marketing URL (optional) | https://insitetechltd.github.io/buildtrack/ |
+| Privacy Policy URL | https://www.insiteworks.co/taskr/privacy-policy.html |
+| Support URL | https://www.insiteworks.co/taskr/support.html |
+| Marketing URL (optional) | https://www.insiteworks.co/taskr/ |
 
-Keep GitHub Pages until `https://www.insiteworks.co` returns HTTP **200**. That host was **500** on 2026-09-01. Do not add `docs/CNAME` yet.
+Company construction portfolio (not Taskr): https://www.insiteworks.co/
+
+Keep GitHub Pages custom domain `insiteworks.co` pointed at `/docs`. Old root paths (`/signup.html`, …) redirect into `/taskr/…`.
+
 
 ---
 
@@ -67,7 +70,9 @@ Optional captions: see the folder README.
 
 Confirm HTTP 200 and **honest copy** (HKD, 60-day invite, no Play, Insite Works Limited):
 
-- https://insitetechltd.github.io/buildtrack/
-- https://insitetechltd.github.io/buildtrack/privacy-policy.html
-- https://insitetechltd.github.io/buildtrack/terms-of-service.html
-- https://insitetechltd.github.io/buildtrack/support.html
+- https://www.insiteworks.co/
+- https://www.insiteworks.co/taskr/
+- https://www.insiteworks.co/taskr/privacy-policy.html
+- https://www.insiteworks.co/taskr/terms-of-service.html
+- https://www.insiteworks.co/taskr/support.html
+- https://www.insiteworks.co/taskr/signup.html

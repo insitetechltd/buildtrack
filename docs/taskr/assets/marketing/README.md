@@ -6,7 +6,7 @@ Static export of Figma **Hybrid v4 · CHOSEN** (`44:2`) for hosting from this re
 
 Repo Pages (project site):
 
-`https://insitetechltd.github.io/buildtrack/`
+`https://www.insiteworks.co/taskr/`
 
 Legal pages stay at the same paths ASC / Play already use:
 

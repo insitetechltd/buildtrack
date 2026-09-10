@@ -86,7 +86,7 @@ git push origin main
 
 ### Step 4: Wait and Verify
 - Wait 1-2 minutes
-- Visit: https://insitetechltd.github.io/buildtrack/support.html
+- Visit: https://www.insiteworks.co/taskr/support.html
 - If still 404, check deployment status in Settings → Pages
 
 ## Alternative: Use index.html
@@ -103,14 +103,14 @@ git push origin main
 
 2. **Then access at:**
 ```
-https://insitetechltd.github.io/buildtrack/
+https://www.insiteworks.co/taskr/
 ```
 
 ## Verify Deployment
 
 **Check if GitHub Pages is enabled:**
 - Go to repository Settings → Pages
-- Should show: "Your site is live at https://insitetechltd.github.io/buildtrack/"
+- Should show: "Your site is live at https://www.insiteworks.co/taskr/"
 
 **Check deployment logs:**
 - In Settings → Pages, scroll down to see deployment history
@@ -118,14 +118,14 @@ https://insitetechltd.github.io/buildtrack/
 
 **Test the URL:**
 - After enabling, wait 1-2 minutes
-- Visit: https://insitetechltd.github.io/buildtrack/support.html
+- Visit: https://www.insiteworks.co/taskr/support.html
 - Should show the support page (not 404)
 
 ## Still Getting 404?
 
 1. **Double-check the URL:**
-   - Correct: `https://insitetechltd.github.io/buildtrack/support.html`
-   - Wrong: `https://insitetechltd.github.io/buildtrack/docs/support.html`
+   - Correct: `https://www.insiteworks.co/taskr/support.html`
+   - Wrong: `https://www.insiteworks.co/taskr/docs/support.html`
 
 2. **Check file permissions:**
    - Make sure files are readable
@@ -133,7 +133,7 @@ https://insitetechltd.github.io/buildtrack/
 
 3. **Clear browser cache:**
    - Try incognito/private mode
-   - Or add `?v=2` to URL: `https://insitetechltd.github.io/buildtrack/support.html?v=2`
+   - Or add `?v=2` to URL: `https://www.insiteworks.co/taskr/support.html?v=2`
 
 4. **Check repository visibility:**
    - If repository is private, you need GitHub Pro/Team/Enterprise
@@ -143,7 +143,7 @@ https://insitetechltd.github.io/buildtrack/
 
 After successful setup, visiting:
 ```
-https://insitetechltd.github.io/buildtrack/support.html
+https://www.insiteworks.co/taskr/support.html
 ```
 
 Should show:

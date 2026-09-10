@@ -4,6 +4,8 @@
 
 ---
 
+**This session — PROD TF 254 (2026-09-10):** commit `91b9606` (ASC web plan alert + email-first Login + Create Project intentional roster). Local `./build-and-submit.sh ios production true` → IPA **v1.1.3 (254i-rc)**; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/6c191abe-efbd-419e-b798-11cfb760a15e. Dogfood on iPhone TF **254**. Login RPC migration still needs Human GO on PROD.
+
 **This session — Create Project intentional roster (2026-09-10):** On Create Project, CA picks people from the **company roster** and sets **Member** or **Project Admin** (PA = CA/PM only; ≤1 PA). Empty roster allowed (= company inventory only). Removed silent creator auto-assign from `createProject`. Post-create still returns to Company Projects list. Placements use `upsertProjectMembership` with `candidateUser` guard.
 
 **This session — ASC-safe Company Plan web alert (2026-09-10):** Upgrade / seat-pack actions no longer open Stripe from the app. Tapping plan or seat CTAs shows Alert "Manage plan on the web" → **Open website** opens `COMPANY_PLAN_MANAGEMENT_URL` (GitHub Pages `index.html#pricing`). CTA labels are **View … on website**. After billing on the web, return to the app and refresh. ASC 3.1.1 posture matches web signup.

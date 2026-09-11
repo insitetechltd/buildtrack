@@ -4,6 +4,8 @@
 
 ---
 
+**This session — PROD TF 257 (2026-09-11):** UPA `assigned_at`→`created_at` dual-path fix (`03e412d`). Local `./build-local.sh ios production` → IPA **v1.1.3 (257i-rc)** `.eas/artifacts/build-1789113357905.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/401c4698-8e72-4851-bdde-7ac5d01c11c2. Dogfood as Joe on TF **257** — should see App Review Site. ASC resubmit: prefer **257** over **256** once VALID.
+
 **This session — Joe project join (2026-09-11):** PROD backend OK — `joe@insitetest.com` already has active UPA on **App Review Site** (`project_role=contractor`); `user_has_project_access` true. Bug was app: `fetchUserProjectAssignments` / `fetchProjectUserAssignments` `.order('assigned_at')` → Postgres **42703** (PROD has `created_at` only). Sara add looked broken (roster refresh fail / silent 23505). Fix: dual-path order in `userProjectAssignmentQuery.ts`. Needs PROD TF **>256**.
 
 **This session — ASC resubmit cut 256 (2026-09-11):** Web signup post-pay invite link force-opens Taskr (`open=1`) via Pages `signup.js` + `signup-checkout-status` (DEV+PROD redeployed). PROD `login_identifier_is_registered` confirmed live. App bakes `/taskr/signup.html` + PROD Supabase. Local `./build-local.sh ios production` → IPA **v1.1.3 (256i-rc)** `.eas/artifacts/build-1789109945447.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/cdb2231f-598e-4f1a-9328-680ad3048e6d. Do **not** resubmit **254** (stale github.io signup URLs). Human: wait ASC VALID → attach **256** + paste notes.

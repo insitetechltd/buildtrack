@@ -4,7 +4,9 @@
 
 ---
 
-**This session — PROD TF 257 (2026-09-11):** UPA `assigned_at`→`created_at` dual-path fix (`03e412d`). Local `./build-local.sh ios production` → IPA **v1.1.3 (257i-rc)** `.eas/artifacts/build-1789113357905.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/401c4698-8e72-4851-bdde-7ac5d01c11c2. Dogfood as Joe on TF **257** — should see App Review Site. ASC resubmit: prefer **257** over **256** once VALID.
+**This session — PROD TF 258 (2026-09-11):** Invite clipboard handoff (`taskr://auth/handoff` + Safari verifyOtp). Local `./build-local.sh ios production true` → IPA **v1.1.3 (258i-rc)** `.eas/artifacts/build-1789124501779.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/effb601a-41d4-438c-aaca-298330e2de14. Dogfood invite → Set Password on phone **after** TF **258** installs. Do not open invite on desktop Safari (burns token). ASC: prefer **258** once VALID.
+
+**This session — PROD TF 257 (2026-09-11):** UPA `assigned_at`→`created_at` dual-path fix (`03e412d`). Local `./build-local.sh ios production` → IPA **v1.1.3 (257i-rc)** `.eas/artifacts/build-1789113357905.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/401c4698-8e72-4851-bdde-7ac5d01c11c2. Superseded by **258** for invite Set Password.
 
 **This session — Joe project join (2026-09-11):** PROD backend OK — `joe@insitetest.com` already has active UPA on **App Review Site** (`project_role=contractor`); `user_has_project_access` true. Bug was app: `fetchUserProjectAssignments` / `fetchProjectUserAssignments` `.order('assigned_at')` → Postgres **42703** (PROD has `created_at` only). Sara add looked broken (roster refresh fail / silent 23505). Fix: dual-path order in `userProjectAssignmentQuery.ts`. Needs PROD TF **>256**.
 

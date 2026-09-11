@@ -7,11 +7,11 @@ import {
 
 const TITLE = "Manage plan on the web";
 const MESSAGE =
-  "Plan changes and extra seats are managed on the Insite website. Open the site to view plans and complete billing there. When you're done, return to the app and refresh.";
+  "Plan changes, seats, and cancellation are managed on the Insite website. Open the billing page to cancel during trial (or later) — that cancels on Stripe too. When you're done, return to the app and refresh.";
 
 /**
  * ASC 3.1.1: do not start Stripe checkout or paid seat mutations from the app.
- * Point company admins at the public marketing/pricing page instead.
+ * Point company admins at the web billing / cancel page instead.
  */
 export function showCompanyPlanWebManagementAlert(): void {
   Alert.alert(TITLE, MESSAGE, [

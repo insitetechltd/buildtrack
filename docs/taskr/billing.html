@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage or cancel plan — Taskr</title>
+  <meta name="description" content="Sign in as your company admin to view trial status and cancel your Taskr subscription. Cancellation also cancels on Stripe — no admin ticket needed." />
+  <meta name="theme-color" content="#043748" />
+  <link rel="icon" href="assets/marketing/icon.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/marketing/landing.css?v=9" />
+  <link rel="stylesheet" href="assets/signup/signup.css?v=4" />
+  <link rel="stylesheet" href="assets/billing/billing.css?v=1" />
+</head>
+<body>
+  <div class="signup-shell">
+    <div class="wrap">
+      <nav class="nav signup-nav" aria-label="Primary">
+        <a class="brand" href="index.html">
+          <img src="assets/marketing/icon.png" width="48" height="48" alt="" />
+          Taskr
+        </a>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="support.html">Support</a>
+          <a href="privacy-policy.html">Privacy</a>
+          <a href="terms-of-service.html">Terms</a>
+        </div>
+      </nav>
+
+      <div class="signup-card billing-card">
+        <div id="billing-sandbox-banner" class="signup-sandbox-banner" hidden>
+          Sandbox — DEV database + Stripe <strong>test</strong> mode.
+        </div>
+
+        <div id="billing-login-panel">
+          <h1>Manage or cancel plan</h1>
+          <p class="lede">
+            Company admins can cancel here during trial or after.
+            Canceling schedules the end on Stripe so you are not charged after access ends — no support ticket.
+          </p>
+
+          <form id="billing-login-form" novalidate>
+            <div class="signup-field">
+              <label for="billing-email">Work email</label>
+              <input id="billing-email" name="email" type="email" autocomplete="username" placeholder="you@company.com" required />
+              <span class="error" id="err-billing-email"></span>
+            </div>
+            <div class="signup-field">
+              <label for="billing-password">Password</label>
+              <input id="billing-password" name="password" type="password" autocomplete="current-password" placeholder="Your Taskr password" />
+              <span class="error" id="err-billing-password"></span>
+            </div>
+            <button class="signup-submit" id="billing-login-submit" type="submit">Sign in</button>
+          </form>
+
+          <div class="billing-divider" role="separator"><span>or</span></div>
+
+          <button class="billing-secondary" id="billing-magic-submit" type="button">
+            Email me a sign-in link
+          </button>
+          <p class="billing-hint">
+            Use the email link if you have not set a password yet (right after checkout).
+          </p>
+          <div id="billing-login-status" class="signup-status" style="display:none" role="status"></div>
+        </div>
+
+        <div id="billing-session-panel" hidden>
+          <h1>Your subscription</h1>
+          <p class="lede" id="billing-session-lede">Loading live status from Stripe…</p>
+
+          <dl class="billing-meta" id="billing-meta">
+            <div>
+              <dt>Company</dt>
+              <dd id="billing-company">—</dd>
+            </div>
+            <div>
+              <dt>Plan</dt>
+              <dd id="billing-plan">—</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd id="billing-status">—</dd>
+            </div>
+            <div>
+              <dt>Access until</dt>
+              <dd id="billing-access-until">—</dd>
+            </div>
+          </dl>
+
+          <div id="billing-action-status" class="signup-status" style="display:none" role="status"></div>
+
+          <div id="billing-cancel-block">
+            <button class="signup-submit billing-danger" id="billing-cancel-btn" type="button" hidden>
+              Cancel subscription
+            </button>
+            <p class="billing-hint" id="billing-cancel-hint" hidden></p>
+          </div>
+
+          <button class="billing-secondary" id="billing-refresh-btn" type="button">Refresh status</button>
+          <button class="billing-text" id="billing-signout-btn" type="button">Sign out</button>
+        </div>
+      </div>
+
+      <p class="billing-footer">
+        Need help? <a href="support.html">Support</a> ·
+        <a href="mailto:support@insiteworks.co">support@insiteworks.co</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var useSandbox = params.get("env") === "sandbox";
+      var configSrc = useSandbox
+        ? "assets/signup/supabase-config.sandbox.js"
+        : "assets/signup/supabase-config.js";
+      var s = document.createElement("script");
+      s.src = configSrc;
+      s.onload = function () {
+        var b = document.createElement("script");
+        b.src = "assets/billing/billing.js?v=1";
+        document.body.appendChild(b);
+      };
+      document.body.appendChild(s);
+    })();
+  </script>
+</body>
+</html>

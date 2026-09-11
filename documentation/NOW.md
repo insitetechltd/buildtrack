@@ -4,6 +4,8 @@
 
 ---
 
+**This session — self-serve cancel (2026-09-10):** Web `/taskr/billing.html` (password + magic link) → Edges `cancel-subscription` + `billing-subscription-status` (JWT, company admin). Trial → Stripe `cancel_at=trial_end` + void/delete open|draft invoices; active → `cancel_at_period_end`; incomplete → immediate. Local status stays until `customer.subscription.deleted`. App CTA → billing page. Edges **DEV + PROD** deployed. Gate A ([risks](ba75d734-75bb-4db3-89c2-498164dc21cd)) Criticals folded; Gate B ([validation](66030489-5d6b-4660-9f65-b66fb91c0f98)) **NO-GO** until: git push Pages HTML, DEV signup→cancel smoke, Test Clock $0. Residual: same-email re-signup stays 409 / support.
+
 **This session — site map cutover (2026-09-10):** `www.insiteworks.co/` = Insite Works construction portfolio; Taskr = `/taskr/`. Pushed `cb25371`. **ASC 1.1.3 (REJECTED editable):** Privacy + Support + Marketing → `/taskr/…` via API. Live **1.0 READY_FOR_SALE** Privacy still locked (old GitHub PDF) until next editable app-info state. **Auth** DEV+PROD: `site_url` = `https://www.insiteworks.co/taskr/`; `uri_allow_list` includes `/taskr/**` + legacy domain/github.io + app scheme.
 
 **This session — site map cutover (2026-09-10):** `www.insiteworks.co/` = Insite Works construction portfolio (Keynote HTML from iCloud INSITE Portfolio v5). Taskr = `www.insiteworks.co/taskr/` (landing, signup, support, legal). `legalLinks.ts` + ASC paste updated. Root legacy paths redirect into `/taskr/`.

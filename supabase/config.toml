@@ -427,3 +427,9 @@ verify_jwt = false
 [functions.signup-checkout-status]
 verify_jwt = false
 
+[functions.cancel-subscription]
+verify_jwt = true
+
+[functions.billing-subscription-status]
+verify_jwt = true
+

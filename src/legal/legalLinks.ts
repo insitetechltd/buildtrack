@@ -12,8 +12,8 @@ export const TERMS_OF_SERVICE_URL =
 export const SUPPORT_URL = "https://www.insiteworks.co/taskr/support.html";
 /** Company registration is web-only (App Review 3.1.1). */
 export const SIGNUP_URL = "https://www.insiteworks.co/taskr/signup.html";
-/** Plan / seat billing is web-only (App Review 3.1.1). */
+/** Plan / seat / cancel is web-only (App Review 3.1.1). */
 export const COMPANY_PLAN_MANAGEMENT_URL =
-  "https://www.insiteworks.co/taskr/#pricing";
+  "https://www.insiteworks.co/taskr/billing.html";
 export const SUPPORT_EMAIL = "support@insiteworks.co";
 export const SUPPORT_MAILTO_URL = `mailto:${SUPPORT_EMAIL}`;

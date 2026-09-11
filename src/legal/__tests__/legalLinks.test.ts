@@ -23,7 +23,7 @@ describe("legalLinks", () => {
     expect(SUPPORT_URL).toBe("https://www.insiteworks.co/taskr/support.html");
     expect(SIGNUP_URL).toBe("https://www.insiteworks.co/taskr/signup.html");
     expect(COMPANY_PLAN_MANAGEMENT_URL).toBe(
-      "https://www.insiteworks.co/taskr/#pricing",
+      "https://www.insiteworks.co/taskr/billing.html",
     );
   });
 

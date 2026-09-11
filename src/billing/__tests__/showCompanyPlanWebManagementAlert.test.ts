@@ -8,7 +8,7 @@ describe("showCompanyPlanWebManagementAlert", () => {
     jest.restoreAllMocks();
   });
 
-  it("shows a manage-on-web alert and opens the pricing page", () => {
+  it("shows a manage-on-web alert and opens the billing page", () => {
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
     const openSpy = jest
       .spyOn(Linking, "openURL")
@@ -19,7 +19,7 @@ describe("showCompanyPlanWebManagementAlert", () => {
     expect(alertSpy).toHaveBeenCalledTimes(1);
     const [title, message, buttons] = alertSpy.mock.calls[0];
     expect(title).toBe("Manage plan on the web");
-    expect(String(message)).toMatch(/website/i);
+    expect(String(message)).toMatch(/cancel/i);
     expect(Array.isArray(buttons)).toBe(true);
 
     const open = (buttons as Array<{ text?: string; onPress?: () => void }>).find(

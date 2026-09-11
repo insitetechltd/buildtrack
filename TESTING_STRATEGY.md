@@ -14,14 +14,15 @@ At the start of every non-trivial development cycle:
 
 - read `TESTING_STRATEGY.md`
 - read `maestro/README.md` when the task can affect user-visible runtime behavior
-- choose the smallest relevant Jest layer before implementation starts
-- decide up front whether Maestro proof is required for done status
+- choose the named Jest commands for the Test Designer contract before implementation starts
+- on Track M/U, Maestro or headed proof is **required** for screens / navigation / uploads / stores screens read unless the Quality Judge classifies the work as logic-only with evidence (Builder must not self-exempt)
 
 Testing is not a final-stage activity. The expected mindset is:
 
 - Jest is the default development loop for fast, repeated confidence
-- Maestro is the runtime-proof layer for real interaction behavior
-- every plan should identify both the primary loop and the final proof requirement
+- Maestro / headed is the runtime-proof layer for real interaction behavior
+- every plan should identify both the primary loop and the **Judge-scored** proof requirement
+- Done = Quality Judge SHIP, not “Jest passed”
 
 ## Goals
 

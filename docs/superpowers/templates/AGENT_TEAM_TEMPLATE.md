@@ -1,92 +1,67 @@
 # Reusable Agent Team Template
 
-Use this template to bootstrap the same SOLO team in future repositories.
+Use this template to bootstrap the ultra-quality SOLO loop in future repositories. **Do not extend `.trae/`.**
 
-## Step 1: Copy The Reusable Layer
+## Step 1: Copy The Portable Cycle
 
-Copy these files into the new project:
+Copy:
 
-- `.trae/agents/README.md`
-- `.trae/agents/solo-orchestrator.md`
-- `.trae/agents/planner.md`
-- `.trae/agents/builder.md`
-- `.trae/agents/reviewer.md`
-- `.trae/agents/test-engineer.md`
-- `.trae/agents/qa-validator.md`
-- `.trae/agents/release-manager.md`
-- optional: `.trae/agents/docs-curator.md`
+- `docs/superpowers/templates/solo-dev-harness/SOP.md` + `templates/` (scorecard, tracks, claim ledger, Judge handoff, shared brief)
+- or install `~/.cursor/skills/solo-dev-harness/`
 - `SOLO_OPERATING_PROCEDURE.md`
+- `AGENTS.md` (then overlay project milestones)
 
 ## Step 2: Create The Project Overlay
 
 Add or adapt:
 
-- `AGENTS.md`
-- `.trae/rules/project-context.md`
-- any domain-specific rules under `.trae/rules/`
+- `AGENTS.md` (stack, SoT paths, milestone status)
+- `.cursor/rules/` (project law)
+- `.cursor/skills/<project>-dev/` (overlay — device caps, schema human gates)
 
-## Step 3: Create The Agents In Trae
+## Default Team (quality loop)
 
-For each agent:
+Band 0 — control (never implements):
 
-1. Open Trae settings.
-2. Go to Agents.
-3. Create a custom agent manually.
-4. Copy the corresponding prompt file contents.
-5. Set the English identifier from the file.
-6. Enable "Can be called by other agents" for agents you want SOLO to orchestrate.
-7. Enable the recommended tools for that role.
+- `SOLO Orchestrator` (`@solo-orchestrator`) — track, claim ledger, loop budget
+- `Quality Judge` (`@quality-judge`) — **only SHIP owner**
 
-## Default Team
+Band 1 — specify:
 
-- `SOLO Orchestrator`
-- `Planner`
-- `Builder`
-- `Reviewer`
-- `Test Engineer`
-- `QA Validator`
-- `Release Manager`
+- `Scout` (`@scout`) — context pack; merge into Planner on Track S
+- `Planner` (`@planner`) — falsifiable claims + proofs
+- Plan Critics ×2 (Gate A) — identical shared brief
+- `Test Designer` (`@test-designer`) — failing proofs before Builder
 
-## Optional Team Members
+Band 2 — implement:
 
-- `Docs Curator`
+- `Builder` (`@builder`) — no self-SHIP
+- Shadow Builder / Best-of-N — Track U or after weak first impl
 
-## Minimal Version
+Band 3 — prove:
 
-For lightweight projects, use only:
+- `Reviewer` (`@reviewer`) — independent model, 0 C/H
+- `Adversary` (`@adversary`) — named gaps must be proven
+- `Test Engineer` (`@test-engineer`) — executes the Test Designer contract
+- `QA Validator` (`@qa-validator`) — Track M/U default-on
 
-- `Planner`
-- `Builder`
-- `Reviewer`
+Band 4 — after SHIP:
 
-## Project Overlay Checklist
+- `Docs Curator` (`@docs-curator`)
+- `Release Manager` (`@release-manager`)
 
-Before using the pack in a new project, update:
+## Track S (small) only
 
-- platform and framework notes
-- build and deployment workflow
-- testing expectations
-- architecture boundaries
-- environment-variable conventions
-- safety constraints
-- any domain-specific module guidance
-
-## Good Defaults
-
-- keep agents reusable
-- keep project specifics in rules
-- use a coordinator agent to choose the workflow
-- prefer narrow responsibilities
-- enforce handoff structure
-- require evidence-based validation
+Planner+Scout merged, Builder, Reviewer, Test Engineer, Judge. Illegal if screens, navigation, or a store screens read changed.
 
 ## Anti-Patterns
 
 Avoid these mistakes:
 
 - putting all project context directly into every agent prompt
-- letting `Builder` both plan and approve major architecture changes
-- using the top-level orchestrator as the main coder for non-trivial work
+- letting `Builder` both plan and SHIP
+- using the orchestrator as the main coder on Track M/U
 - using `Reviewer` only for style feedback
-- forcing broad test suites for small changes
-- skipping release checks on configuration or deployment work
+- skipping Gate A / Adversary / QA / Judge on Track M/U with “say so”
+- treating residual risks or a commit as Done
+- stopping after one pass when the scorecard is below bar

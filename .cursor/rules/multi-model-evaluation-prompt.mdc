@@ -28,7 +28,7 @@ Include these sections in every multi-model dispatch:
 | **Output format** | Fixed structure (verdict, findings table with severity, top N must-fix, etc.) |
 | **Rules** | No code unless asked; be adversarial; solo-dev / scale-aware |
 
-Prefer **different models** when the session allows (see `multi-critique-validation.mdc` Gate A/B).
+Prefer **different models** when the session allows (see `multi-critique-validation.mdc` Gate A / Adversary / Judge). Judge must not be the Builder’s model on Track M/U.
 
 ## After responses
 
@@ -38,7 +38,8 @@ Prefer **different models** when the session allows (see `multi-critique-validat
 
 ## Relation to other gates
 
-- **Gate A (plan critique):** use this brief process before parallel plan critiques.
-- **Gate B (validation critique):** same brief discipline; validation agents see change summary + acceptance + commands run, not unequal context.
+- **Gate A (Plan Critics):** use this brief process before parallel plan critiques.
+- **Adversary (Gate B):** same brief discipline; the Adversary sees only change summary + acceptance + commands run + artifact paths, not unequal context. Named gaps must be proven or scoped out.
+- **Quality Judge:** same brief discipline when scoring; fill `docs/superpowers/templates/solo-dev-harness/templates/scorecard.md`. Only Judge emits SHIP.
 
 If the user asks to **review the brief before send**, show the draft prompt and wait for GO.

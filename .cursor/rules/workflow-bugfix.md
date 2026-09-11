@@ -1,8 +1,12 @@
 # Workflow: Bugfix (SOLO-style for Cursor)
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Dual-write process changes to SOP.md + `templates/` + this file.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Dual-write process changes to SOP.md + `templates/` + this file.
 
 Use this rule file when the user request is a bug fix.
+
+Default **Track M** when the bug has user impact, touches a store screens read, nav, or uploads. Tiny isolated logic with no screen/store may be Track S (Judge confirms). Shared primitives / auth / camera-class bugs are Track U.
+
+**Loop:** Scout → Spec+delta → (Gate A on M/U) → Test contract → Build → Prove → Quality Judge. Only Judge emits SHIP.
 
 ## 1. Milestone Gate (MANDATORY first action)
 Read documentation/NOW.md, then AGENTS.md Current Delivery Status + documentation/ROADMAP.md. Cite milestone if relevant.
@@ -10,10 +14,10 @@ Read documentation/NOW.md, then AGENTS.md Current Delivery Status + documentatio
 ## 2. Autonomy Policy Assessment
 Ask ONLY if: bug repro is missing critical info, fix requires schema change, fix needs auth decisions, scope creep obvious.
 
-## 3. Workflow Order
+## 3. Workflow Order (quality loop)
 
-**Phase A — Plan + Root Cause**
-Output: failure mode description, likely root cause, affected files, reproduction steps, proposed fix scope, validation plan.
+**Phase A — Plan + Root Cause (`@planner`, Scout may merge on Track S)**
+Output: failure mode, likely root cause, affected files, reproduction steps, proposed fix scope, **falsifiable claims + named proofs**.
 
 **Delta elimination (mandatory before broad hypotheses):**
 1. Identify **last known success** (commit, Maestro log, green suite run) and **first ongoing failure**.
@@ -26,32 +30,26 @@ Output: failure mode description, likely root cause, affected files, reproductio
 - If runtime-only evidence needed: add instrumentation, reproduce, THEN fix.
 - Prefer smallest safe fix over broad cleanup. Avoid unrelated refactors unless required.
 
-**Phase B — Build Fix**
+**Phase A2 — Gate A + Test contract (Track M/U required)**
+- Track M/U: ≥2 plan critics (identical brief) before Builder. Skip = Judge FAIL.
+- Test Designer: regression proof first (failing Jest and/or named headed/Maestro repro). TDD: red before green.
+
+**Phase B — Build Fix (`@builder`)**
 - Minimal diff. No tangential improvements.
-- TDD: add regression test FIRST (red), THEN fix (green), THEN commit.
+- TDD: add regression test FIRST (red), THEN fix (green).
+- No self-SHIP.
 
-**Phase C — Review (Self-Review Checklist)**
-1. Specific failure mode tested + passes
-2. Nearby regression surface covered: run targeted Jest, not full suite
-3. No new security issues: no secrets logged, no auth bypass, no injection vectors
-4. State persistence integrity: Zustand + AsyncStorage after fix, reload
-5. Backwards compat: fix doesn't break existing behavior paths
-6. If native/permissions change: explicit check for iOS/Android both
+**Phase C — Prove (parallel)**
+1. Reviewer (independent model): failure mode covered; nearby regression; no new secrets/auth bypass; Zustand+AsyncStorage; backwards compat; iOS/Android if native. Block if C/H open.
+2. Test Engineer: run the targeted test that fails without the fix + passes with; L2 `test:regression` if touching task/upload/component/integration; execute the full Test Designer contract.
+3. QA Validator: **default-on** unless Judge classified logic-only (no screen/nav/store-read). Reproduce the bug report end-to-end; adjacent flows; screen/loading/feedback/stale data. Fail → Builder.
+4. Adversary (Track M/U): unproven user-visible gaps must be proven now. Skip = Judge FAIL.
 
-Block if C/H findings. Proceed if 0 C/H.
+**Phase D — Quality Judge**
+Scorecard. PATCH / REWORK / REDESIGN / SHIP / ESCALATE. Loop budget M=3 / U=4. Commit during loops for recovery; **Done only after SHIP**.
 
-**Phase D — Commit**
+**Phase E — Commit (after Reviewer 0 C/H; not equivalent to SHIP)**
 - `fix(<scope>): <description>` conventional commit
-
-**Phase E — Test**
-- Run the targeted test that fails without the fix + passes with
-- Then run L2 test:regression if touching task/upload/component/integration
-- Maestro only if bug affects user-visible flow AND flow exists (preflight gates mandatory)
-
-**Phase F — QA Validate (only if bug touched user-visible flows)**
-- Reproduce the bug report scenario end-to-end
-- Verify no regressions in adjacent flows
-- Checklist: screen state, loading states, action feedback, stale data on navigation
 
 ## 4. Bugfix-Specific Patterns
 
@@ -69,10 +67,12 @@ Block if C/H findings. Proceed if 0 C/H.
 === BUGFIX EXECUTION LEDGER ===
 Bug:
 Root cause:
+Track: S | M | U (Judge-confirmed)
 Files changed:
 Reproduction steps:
 Fix validation: (command + result)
-Commit: (SHA if committed)
-Risks / still-unverified:
+Judge verdict: PATCH | REWORK | REDESIGN | SHIP | ESCALATE
+Commit SHA: (if committed — not equivalent to SHIP)
+Risks / still-unverified: (empty in-scope UNPROVEN required for SHIP)
 Next:
 ```

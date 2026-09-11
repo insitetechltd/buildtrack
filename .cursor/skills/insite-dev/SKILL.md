@@ -8,11 +8,11 @@ description: >-
 
 # Insite Dev Overlay
 
-Use with personal skill `solo-dev-harness` (`SOP.md` = whole portable cycle, `capabilities.md`). Insite-only law stays here (Maestro, Supabase gates, Taskr SoT). Process improvements dual-write to SOP.md + harness `templates/` + matching Insite files — never Insite-only.
+Use with personal skill `solo-dev-harness` (`SOP.md` = whole portable **quality loop**, `capabilities.md`). Git-tracked copy: `docs/superpowers/templates/solo-dev-harness/`. Insite-only law stays here (Maestro, Supabase gates, Taskr SoT). Process improvements dual-write to SOP.md + harness `templates/` + matching Insite files — never Insite-only.
 
 ## Dual-write (process, not overlay)
 
-Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templates/` + this repo. Do not encode Maestro UDID caps or Supabase Human Gates into the portable templates.
+Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templates/` + `docs/superpowers/templates/solo-dev-harness/` + this repo. Do not encode Maestro UDID caps or Supabase Human Gates into the portable templates.
 
 ## Session kickoff
 
@@ -45,12 +45,16 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 
 Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.
 
-## Multi-critique (orchestrator)
+## Multi-critique + Judge (orchestrator)
 
 For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/multi-critique-validation.mdc` **after intake READY**:
 
-- **Plan Adversary (Gate A):** ≥2 parallel critiques (prefer different models) before Builder
-- **Proof Adversary (Gate B):** ≥1 independent critique before Judge GO; prove focus/keyboard/submit for form primitives
+- **Track:** Orchestrator proposes S/M/U; Judge confirms. Screens/nav/store-read → Track S illegal.
+- **Plan Critics (Gate A):** ≥2 parallel critiques (prefer different models) before Builder. Track M/U skip = FAIL.
+- **Test Designer:** failing proofs before Builder.
+- **Adversary (Gate B):** ≥1 independent critique before Judge; named gaps must be proven or scoped out. Track M/U skip = FAIL.
+- **QA:** default-on Track M/U. Logic-only is a Judge classification.
+- **Quality Judge:** only SHIP owner. Scorecard ≥2 on required dimensions. Loop PATCH/REWORK/REDESIGN.
 - Jest `changeText` alone ≠ tap/focus proof
 
 ## SoT paths

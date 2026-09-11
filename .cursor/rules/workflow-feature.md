@@ -1,8 +1,12 @@
 # Workflow: Feature (SOLO-style for Cursor)
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Dual-write process changes to SOP.md + `templates/` + this file.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Dual-write process changes to SOP.md + `templates/` + this file.
 
 Use this rule file when the user request is a new feature.
+
+Features are **Track M** unless they are shared primitives / auth / payments / camera / multi-user (**Track U**). Track S is illegal if screens, navigation, or a store screens read will change.
+
+**Loop:** Scout → Spec → Gate A → Test contract → Build → Prove → Quality Judge. Only Judge emits SHIP.
 
 ## 1. Milestone Gate (MANDATORY first action)
 Read:
@@ -22,47 +26,52 @@ Batch any needed questions into 1 compact message (max 4 at a time). Questions O
 
 Else: proceed autonomous.
 
-## 3. Workflow Order
+## 3. Workflow Order (quality loop — not a one-pass waterfall)
 
-**Phase A — Plan**
-Output: Scope, acceptance criteria, affected files list, validation plan, assumptions.
+**Phase 0 — Scout**
+Context pack (NOW/ROADMAP/SoT/similar code). Propose track M or U. Do not plan here.
+
+**Phase A — Spec (`@planner`)**
+Output: falsifiable claims (each with a named proof), affected files, assumptions.
 - Inspect: taskStore.supabase.ts, relevant screens in src/screens/, AppNavigator.tsx, supabase.ts, package.json scripts
-- Do NOT edit code here.
+- Do NOT edit product code here.
 - Classify tests per TESTING_STRATEGY.md: L1 unit / L2 regression / L3 journeys-simulation / L4 Maestro which flows.
-- **Multi-critique (orchestrator):** before Builder, run ≥2 parallel plan/validation critiques (prefer different models). See `.cursor/rules/multi-critique-validation.mdc`.
+- Prose goals without proofs are an invalid plan.
 
-**Phase B — Build**
-- Smallest change that meets acceptance criteria.
+**Phase A2 — Gate A (Plan Critics)**
+- Before Builder, run ≥2 parallel plan/validation critiques (prefer different models, **identical brief**). See `.cursor/rules/multi-critique-validation.mdc`.
+- Fold Critical/High into the spec. Self-review is not Gate A. Skip = Judge FAIL on Track M/U.
+
+**Phase A3 — Test contract (`@test-designer`)**
+- Write or specify failing proofs **before** Builder: Jest cases, Maestro case IDs, headed smoke steps, visual assertions.
+- This is the contract the Judge will score.
+
+**Phase B — Build (`@builder`)**
+- Smallest change that greens the proof contract.
 - Follow existing patterns. No new architecture without Planner-approved justification.
-- Add tests for new branches if they materially reduce regression risk.
 - Shared form primitives: include Gate C interaction acceptance from `multi-critique-validation.mdc`.
+- No self-SHIP. Hidden complexity → return to Planner.
 
-**Phase C — Review (Self-Review Checklist)**
-1. Navigation transitions: any new screen params safe? safe-area applied?
-2. Task UI state: optimistic updates, persisted Zustand, AsyncStorage handled?
-3. Permissions: any new camera/photo/file permission? Correctly gated?
-4. Error handling: Supabase errors, network failures, loading states
-5. Performance: FlatLists have keyExtractor, no unnecessary re-renders
-6. Stale data: after navigation back/forth, state refetch correct?
-7. Accessibility: testIDs added for new interactive elements (MAESTRO requirement)
-8. **Form/input primitives:** hit target fills chrome; keyboard + submit path; contract defaults not forcing stale/error chrome
+**Phase C — Prove (parallel)**
+1. **Reviewer** (independent model): navigation, optimistic/persisted state, permissions, errors, FlatList keys, stale data, testIDs, form hit-targets / keyboard / stale chrome. 0 C/H required. Does not rewrite.
+2. **Test Engineer:** execute the Test Designer contract (`tsc` + named Jest; L2 regression when tasks/uploads/components/integration touched). Not “smallest check that might pass.” Does not claim QA signoff.
+3. **QA Validator (default-on):** end-to-end user behavior; Form/TextField headed smoke (tap chrome, type, submit with keyboard open); visual artifacts + delta notes. Fail → Builder.
+4. **Adversary:** sees only diff summary, acceptance, commands, artifacts. “Assume the author is wrong.” Named gaps must be proven now or explicitly scoped out.
 
-Mark findings C/H/M/L. Block if C/H open. Proceed only if 0 C/H.
+**Phase D — Quality Judge**
+Scorecard (`docs/superpowers/templates/solo-dev-harness/templates/scorecard.md`). Verdict:
+- PATCH → Builder, same spec
+- REWORK → Planner delta
+- REDESIGN → Scout
+- SHIP → close (Docs if canonical docs changed)
+- ESCALATE → user + scorecard (loop budget M=3 / U=4)
 
-**Phase D — Commit**
+Two PATCHes still below bar → Shadow Builder / Best-of-N.
+
+**Phase E — Commit (recovery anytime; Done only after SHIP)**
 - Conventional commit: `feat(<scope>): <description>`
 - Atomic, single-scoped.
-
-**Phase E — Test**
-- Smallest relevant Jest first.
-- Then test:regression if touching tasks/uploads/components/integration.
-- Maestro: ONLY if user-visible flows changed AND flow exists; preflight gates ON (see maestro-preflight.md).
-- **Validation critique:** independent agent/model challenges gaps; interaction proofs for forms before “done”.
-
-**Phase F — QA Validate (user-visible flows required)**
-- End-to-end user behavior check: transitions, loading, feedback, gating, form submit, update/review, upload, stale persistence.
-- Form/TextField changes: headed smoke — tap chrome to focus, type, submit with keyboard open.
-- Output: pass / issues list (return to Builder).
+- Reviewer 0 C/H still required before commit. Commit ≠ SHIP.
 
 ## 4. Feature-Specific Patterns
 
@@ -79,9 +88,13 @@ Mark findings C/H/M/L. Block if C/H open. Proceed only if 0 C/H.
 ```
 === FEATURE EXECUTION LEDGER ===
 Goal:
+Track: M | U (Judge-confirmed)
+Claim ledger: PASS/FAIL/UNPROVEN counts
 Files changed:
 Validation run: (command + result)
-Commit: (SHA if committed)
-Risks/unverified:
-Next agent: (Builder/Reviewer/Test/QA/Done)
+Judge verdict: PATCH | REWORK | REDESIGN | SHIP | ESCALATE
+Loop: n / budget
+Commit: (SHA if committed — not equivalent to SHIP)
+Risks/unverified: (empty in-scope UNPROVEN required for SHIP)
+Next agent: (Builder/Planner/Scout/Judge/Docs/Done)
 ```

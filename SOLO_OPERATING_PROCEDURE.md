@@ -1,6 +1,6 @@
 # SOLO Operating Procedure
 
-**Portable cycle SoT:** `~/.cursor/skills/solo-dev-harness/SOP.md` (whole cycle: session, roles, autonomy, gates, dispatch, quality, commit, seed).
+**Portable cycle SoT:** `~/.cursor/skills/solo-dev-harness/SOP.md` (git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Whole cycle = **quality loop**: Scout → Spec → Gate A → Test contract → Build → Prove → Quality Judge.
 
 **Dual-write:** when the process improves, update SOP.md + harness `templates/` + this file / `.cursor/rules/workflow-*.md` as applicable. Do not refine Insite only. Insite overlays (Maestro, Supabase Human Gates, Taskr SoT) stay in `.cursor/skills/insite-dev/` and Insite-specific rule files.
 
@@ -24,16 +24,20 @@ Roles are behavioral modes (or Task subagents) inside Cursor — not Trae picker
 
 | Display name | Identifier | Callable by other agents |
 |---|---|---|
-| `SOLO Orchestrator` | `@solo-orchestrator` | No — entry point only |
+| `SOLO Orchestrator` | `@solo-orchestrator` | No — entry point only; never implements on Track M/U |
+| `Scout` | `@scout` | Yes — merge into Planner on Track S |
 | `Planner` | `@planner` | Yes |
-| `Builder` | `@builder` | Yes |
-| `Reviewer` | `@reviewer` | Yes |
-| `Test Engineer` | `@test-engineer` | Yes |
-| `QA Validator` | `@qa-validator` | Yes |
+| `Test Designer` | `@test-designer` | Yes — may be Test Engineer in TDD mode |
+| `Builder` | `@builder` | Yes — no self-SHIP |
+| `Reviewer` | `@reviewer` | Yes — independent model |
+| `Adversary` | `@adversary` | Yes — Gate B; named gaps must be proven |
+| `Test Engineer` | `@test-engineer` | Yes — executes Test Designer contract |
+| `QA Validator` | `@qa-validator` | Yes — Track M/U default-on |
+| `Quality Judge` | `@quality-judge` | Yes — **only SHIP owner**; never implements |
 | `Release Manager` | `@release-manager` | Yes |
-| `Docs Curator` (optional) | `@docs-curator` | Yes |
+| `Docs Curator` | `@docs-curator` | Yes |
 
-Canonical operational methodology: `~/.cursor/skills/solo-dev-harness/` (workflows, autonomy, handoffs). Project law: `.cursor/rules/` + `AGENTS.md`. Insite overlay: `.cursor/skills/insite-dev/`.
+Canonical operational methodology: `~/.cursor/skills/solo-dev-harness/` (SOP + `templates/`; git-tracked mirror `docs/superpowers/templates/solo-dev-harness/`). Project law: `.cursor/rules/` + `AGENTS.md`. Insite overlay: `.cursor/skills/insite-dev/`.
 
 ## Operating Principles
 
@@ -61,12 +65,16 @@ This repository uses **autonomous-by-default execution** with a narrow blocker l
 
 Each agent should stay inside its job boundary:
 
-- `@solo-orchestrator` routes work, enforces workflow quality, and invokes marketplace skills at the right step
-- `@planner` plans but does not implement
-- `@builder` implements approved plans and never self-approves design drift
-- `@reviewer` reviews findings-first and never silently rewrites implementation
-- `@test-engineer` validates behavior with focused checks; owns Jest layer; runs Maestro only for bootstrap/smoke evidence; NEVER claims QA-layer signoff
-- `@qa-validator` verifies user-visible behavior natively on iOS simulator; owns Maestro layer with "Maestro executes, Human approves" model
+- `@solo-orchestrator` routes work, owns the claim ledger, proposes track S/M/U, enforces loop budget, and never implements on Track M/U
+- `@scout` produces a context pack, not a plan
+- `@planner` plans falsifiable claims with named proofs and does not implement
+- `@test-designer` writes the failing proof contract before Builder
+- `@builder` implements the approved contract and never self-SHIP
+- `@reviewer` reviews findings-first (independent model) and never silently rewrites implementation
+- `@adversary` lists unproven user-visible failures; Orchestrator must prove named gaps
+- `@test-engineer` executes the Test Designer contract; NEVER claims QA-layer signoff
+- `@qa-validator` verifies user-visible behavior natively on iOS simulator; Track M/U default-on; fail → Builder
+- `@quality-judge` scores the scorecard; **only role that emits SHIP**; never implements
 - `@release-manager` determines build and deployment readiness; enforces bundle-ID + submission safety
 - Marketplace skills are AMPLIFIERS, not role replacements (see § Skill Synergy Hooks below)
 
@@ -113,9 +121,9 @@ Before implementation begins:
 
 - read `TESTING_STRATEGY.md`
 - read `maestro/README.md` when the work is user-visible, simulator-sensitive, navigation-heavy, or runtime-interaction-sensitive
-- decide which Jest layer is the default development loop for the task
-- decide whether Maestro proof is required before the task can be considered done
-- define the smallest validation path that can prove correctness during implementation
+- decide the Jest development loop **and** the named proofs in the Test Designer contract
+- on Track M/U, Maestro or headed proof is **required** for screens/nav/uploads/stores-that-screens-read unless the Quality Judge classifies the work as logic-only with evidence
+- define the claim ledger the Judge will score
 
 During implementation:
 
@@ -152,8 +160,9 @@ The purpose of the preflight is to ensure the implementation plan already includ
 
 - the right Jest development loop
 - the right regression gate
-- the right Maestro proof requirement, if applicable
-- the right acceptance and validation scope
+- the right Maestro/headed proof requirement on Track M/U (Judge-classified logic-only is the only skip)
+- the right acceptance and validation scope (falsifiable claims)
+- track S / M / U proposed
 
 ## Standard Workflows
 
@@ -163,7 +172,7 @@ Each workflow step lists the specialist agent + OPTIONAL marketplace skills that
 
 Each step below uses the format: `Step #. @identifier  [Skill: skill-name if applicable]  — brief responsibility`
 
-Commit Gate: between @reviewer (pass) and @test-engineer, ALWAYS run the `git-commit` skill to produce a conventional commit from the diff. If review has findings, send back to @builder; the git-commit step runs AFTER the reviewer emits "No findings" or the findings are Low/Info-only and don't require code changes.
+Commit Gate: between Prove (Reviewer 0 C/H) and Done, **Quality Judge SHIP** is required. Conventional commit may run during loops for recovery, or after SHIP when the user asks. If review has findings, send back to @builder. Never treat commit as SHIP.
 
 ### Milestone Gate (applies to ALL workflows before @planner dispatch)
 
@@ -175,48 +184,52 @@ Before running the workflow, read `documentation/NOW.md`, then `AGENTS.md § Cur
 
 ## Feature Workflow
 
-1. `@solo-orchestrator` — select workflow; apply Milestone Gate above; apply Autonomy Policy §0
-2. `@planner`  [Skill: brainstorming if request is fuzzy; Skill: writing-plans if spec/tasks.md format desired]  — scope, constraints, plan, likely files, acceptance, validation strategy, Jest classification, Maestro requirement
-3. `@builder`  [Skill: executing-plans for tasks.md checkpoint-based work; Skill: test-driven-development for TDD tasks]  — implementation, adhering to Maestro UI compatibility rules (builder.yaml § Maestro / automation compatibility)
-4. `@reviewer`  [Skill: TRAE-code-review in parallel for cross-project layer; Skill: TRAE-debugger for runtime-only bugs encountered]  — findings-first review + Maestro accessibility audit + interaction binding + legacy parity
-5. `@git-commit` (Commit Gate: run ONLY if @reviewer has no Critical/High findings)  — compose conventional commit; stage files according to diff
-6. `@test-engineer`  [Skill: test-driven-development for test additions; Skill: TRAE-debugger for runtime flakes]  — targeted Jest + typecheck + lint; OPTIONAL Maestro bootstrap/smoke for EVIDENCE only (NOT QA signoff); declare Jest vs Maestro confidence boundary
-7. `@qa-validator`  [Skill: TRAE-debugger for simulator runtime issues; Skill: figma for WS-UX/M-UX-01 pixel-diff after implementation]  — native iOS simulator run + Maestro flows (scripts/maestro/run-local.sh) with unique MAESTRO_TASK_TITLE; "Maestro executes, Human approves" signoff
-8. `@docs-curator` — only if canonical docs, runbooks, setup notes, or release steps changed
-9. `@release-manager` — only if release readiness is needed (build/deploy/versioning/submission)
+1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0; propose track M (or U); open claim ledger
+2. `@scout` — context pack (merge into Planner only if the work later collapses to Track S — features usually do not)
+3. `@planner` — falsifiable claims + named proofs, files, Jest classification, Maestro/headed requirement
+4. Gate A Plan Critics ×2 (identical brief) — fold C/H into spec. Skip = Judge FAIL
+5. `@test-designer` — failing proofs / named commands before Builder
+6. `@builder` — implementation to green the contract; no self-SHIP
+7. Prove (parallel): `@reviewer` (independent model, 0 C/H) + `@test-engineer` (execute contract) + `@qa-validator` (default-on; Maestro PNG-read)
+8. `@adversary` — unproven user-visible gaps; Orchestrator runs named proofs now. Skip = Judge FAIL
+9. `@quality-judge` — scorecard. PATCH/REWORK/REDESIGN loop, or SHIP. Loop budget M=3 / U=4
+10. `@docs-curator` — only after SHIP if canonical docs changed
+11. `@release-manager` — only if release readiness is needed
+12. Commit: allowed during loops for recovery; user-requested commit after SHIP → push by default
 
 Feature workflow planning must explicitly include:
 
-- target Jest checks for active development
-- required regression checks before handoff
-- required Maestro validation (Test Engineer layer vs QA Validator layer, clearly separated) for user-visible or simulator-sensitive behavior
+- target Jest checks for active development (Test Designer contract)
+- required regression checks before Judge
+- required Maestro/headed validation for user-visible or simulator-sensitive behavior (QA layer, not Test Engineer signoff)
 - milestone gate alignment if applicable
+- claim ledger rows the Judge will score
 
 ## Bug Fix Workflow
 
-1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0
-2. `@planner`  [Skill: brainstorming if root cause is unclear; Skill: TRAE-debugger if runtime evidence needed for scope]  — scope, root-cause hypotheses, Jest vs Maestro classification, repro steps
-3. `@builder`  [Skill: test-driven-development for fix-first-then-pass style; Skill: TRAE-debugger for runtime reproduction]  — smallest safe fix
-4. `@reviewer`  [Skill: TRAE-code-review in parallel]  — findings-first; confirm the fix targets the root cause
-5. `@git-commit` (Commit Gate: only if no Critical/High findings)
-6. `@test-engineer`  [Skill: TRAE-debugger for flaky reproduction]  — targeted Jest + failure-mode validation; declare Jest vs Maestro confidence boundary
-7. `@qa-validator` — ONLY if bug affects user-visible mobile flows, navigation, uploads, auth behavior, or task workflow behavior
+1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0; propose track
+2. `@planner` — failure mode, delta elimination, falsifiable claims + proofs (Scout may merge on Track S)
+3. Gate A + `@test-designer` on Track M/U — failing regression proof first. Skip Gate A on M/U = Judge FAIL
+4. `@builder` — smallest safe fix to green the contract; no self-SHIP
+5. Prove: `@reviewer` + `@test-engineer` + `@qa-validator` (default-on unless Judge classified logic-only)
+6. `@adversary` on Track M/U
+7. `@quality-judge` — loop or SHIP
 
 Bug-fix planning must explicitly state whether the issue is:
 
-- logic-only and Jest-sufficient, or
-- runtime-sensitive and requires Maestro proof (Test Engineer evidence) + possibly QA Validator native simulator run
+- logic-only (Judge must classify; no screen/nav/store-read), or
+- runtime-sensitive and requires Maestro/headed proof (QA Validator) in addition to the Test Designer contract
 
 ## Refactor Workflow
 
-1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0
-2. `@planner`  [Skill: writing-plans for phased refactor docs; Skill: brainstorming for approach selection]  — refactor scope, backward compat, verification harness
-3. `@reviewer`  [Skill: TRAE-code-review in parallel]  — pre-check: design risk before implementation (skip only for tiny mechanical refactors)
-4. `@builder`  [Skill: executing-plans for phase-by-phase checkpoint work]  — implementation per plan
-5. `@reviewer`  [Skill: TRAE-code-review in parallel]  — findings-first + interaction binding + legacy parity check (modernization MUST NOT drop features)
-6. `@git-commit` (Commit Gate: only if no Critical/High findings)
-7. `@test-engineer` — targeted Jest + parity tests where applicable; declare Jest vs Maestro confidence boundary
-8. `@qa-validator` — ONLY if refactor touches user-visible behavior or navigation
+1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0; propose track
+2. `@planner` — refactor scope, backward compat, proof contract
+3. `@reviewer` — pre-check: design risk before implementation (skip only for tiny mechanical refactors)
+4. `@test-designer` — parity / regression proofs before Builder
+5. `@builder` — implementation per plan; no self-SHIP
+6. Prove: `@reviewer` + `@test-engineer` + `@qa-validator` if user-visible / nav (Track M/U default-on)
+7. `@adversary` on Track M/U
+8. `@quality-judge` — loop or SHIP
 
 ## Release Workflow
 
@@ -224,9 +237,10 @@ Bug-fix planning must explicitly state whether the issue is:
 2. `@planner` — only if release scope, impact, or blockers are unclear
 3. `@reviewer` — final drift + security + bundle-id/runtimeVersion audit
 4. `@test-engineer` — targeted release smoke (Jest + Maestro bootstrap via run-local.sh for evidence)
-5. `@qa-validator` — only if the release includes user-visible mobile flows that need native simulator confidence
-6. `@docs-curator` — release notes, changelog, runbook updates
-7. `@release-manager`  [Skill: gh-cli for milestone tag/PR sync]  — blockers + deployment checklist + rollback plan + post-release checks
+5. `@qa-validator` — default-on if the release includes user-visible mobile flows
+6. `@quality-judge` — SHIP required before release-ready
+7. `@docs-curator` — release notes, changelog, runbook updates
+8. `@release-manager` — blockers + deployment checklist + rollback plan + post-release checks. READY requires Judge SHIP.
 
 Release Manager hard safety rules (see release-manager.yaml § BUILD ID + SUBMISSION SAFETY RULES):
 - Always verify iOS bundle-id match between app.json / eas.json / App Store Connect. Mismatch = Hard Blocker.
@@ -235,20 +249,21 @@ Release Manager hard safety rules (see release-manager.yaml § BUILD ID + SUBMIS
 
 ## Hotfix Workflow
 
-1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0
-2. `@planner` — fast-path scope + rollback plan included in plan
+1. `@solo-orchestrator` — select workflow; Milestone Gate; Autonomy Policy §0; propose track (often M)
+2. `@planner` — fast-path scope + rollback plan included in plan + failing proof
 3. `@builder` — smallest targeted fix
-4. `@reviewer`  [Skill: TRAE-code-review in parallel]  — findings-first; speed over depth, but NO Critical findings escape
-5. `@git-commit` (Commit Gate: always for hotfix — preserves rollback point)
-6. `@test-engineer` — Jest smoke validation
-7. `@release-manager`  [Skill: gh-cli for tagging]  — fast deploy + rollback trigger list
+4. `@reviewer` — findings-first; speed over depth, but NO Critical findings escape
+5. `@test-engineer` — Jest smoke + Test Designer contract
+6. `@quality-judge` — SHIP (or PATCH). Do not skip Judge.
+7. `@release-manager` — fast deploy + rollback trigger list
 
 ## Documentation-only Workflow
 
-1. `@solo-orchestrator` — choose this workflow ONLY when: implementation/code changes = 0, doc-only update
+1. `@solo-orchestrator` — choose this workflow ONLY when: implementation/code changes = 0, doc-only update (Track S)
 2. `@planner` — scope docs to update; which files are canonical vs which can wait
-3. `@docs-curator`  [Skill: defuddle for extracting clean markdown from external URLs]  — update canonical docs exactly as implemented
-4. `@reviewer`  [Skill: TRAE-code-review for technical accuracy]  — verify docs match code/scripts; reject docs that describe unsupported behavior
+3. `@docs-curator` — update canonical docs exactly as implemented
+4. `@reviewer` — verify docs match code/scripts; reject docs that describe unsupported behavior
+5. `@quality-judge` — light scorecard; SHIP
 
 ## Mandatory Handoff Format
 
@@ -258,11 +273,19 @@ Every agent should use the following handoff structure:
 - Assumptions
 - Files touched or reviewed
 - What was done
-- Validation plan or validation performed
-- Risks or gaps
+- Validation plan or validation performed (claim ledger)
+- Judge verdict if this is the close handoff
+- Risks or gaps (in-scope UNPROVEN blocks SHIP)
 - Recommended next agent
 
 ## Exit Criteria By Agent
+
+## Scout
+
+Must produce:
+
+- context pack (NOW / ROADMAP / SoT / similar code)
+- proposed track S/M/U (Judge confirms later)
 
 ## Planner
 
@@ -271,10 +294,16 @@ Must produce:
 - scope
 - constraints
 - likely files
-- acceptance criteria
-- validation strategy
-- required Jest layer
-- required Maestro layer, if any
+- falsifiable acceptance claims, each with a named proof
+- Test Designer contract inputs (Jest layer, Maestro/headed if Track M/U)
+- proposed track S/M/U
+
+## Test Designer
+
+Must produce:
+
+- failing proofs or exact named commands before Builder
+- headed/Maestro steps when Track M/U touches UI
 
 ## Builder
 
@@ -285,6 +314,7 @@ Must produce:
 - validation performed
 - remaining validation required
 - unresolved risks
+- no SHIP claim
 
 ## Reviewer
 
@@ -292,7 +322,14 @@ Must produce:
 
 - findings first
 - severity ordering
-- residual risks if no findings
+- residual risks if no findings (inputs to Judge — not Done)
+
+## Adversary
+
+Must produce:
+
+- unproven user-visible failure list
+- which gaps Orchestrator must prove now vs explicitly out of scope
 
 ## Test Engineer
 
@@ -326,20 +363,26 @@ Must produce:
 - rollback plan
 - post-release checks
 
+## Quality Judge
+
+Must produce:
+
+- track confirmed (S/M/U)
+- scorecard dimensions 0–3
+- verdict PATCH | REWORK | REDESIGN | SHIP | ESCALATE
+- loop index / budget
+- in-scope UNPROVEN list (must be empty for SHIP)
+
 ## Recommended SOLO Calling Rules
 
-- Invoke agents with the `@identifier` syntax, NOT display names. Exact identifiers: `@planner`, `@builder`, `@reviewer`, `@test-engineer`, `@qa-validator`, `@release-manager`, `@docs-curator`. Use `SOLO Orchestrator` as entry point by opening a turn with the kickoff prompt (§ WORKFLOW_TEMPLATES.md or § SOLO_KICKOFF_PROMPT.md).
-- Start with `@planner` for any non-trivial request after orchestrator chooses the workflow.
-- For fuzzy requests: call Skill `brainstorming` BEFORE dispatching to `@planner`. Let it explore 2-3 approaches, then hand the structured output to `@planner` for formal scope.
-- For phased plan tasks: call Skill `writing-plans` AFTER `@planner` emits scope to generate spec.md / tasks.md / check_list.md. Treat that output as input to `@builder`, not as a replacement for `@planner`.
-- For checkpoint-based implementation: call Skill `executing-plans` INSIDE `@builder` turn with tasks.md. Never replace `@builder` wholesale (it carries the Maestro UI compatibility + Supabase guardrails).
-- For TDD: call Skill `test-driven-development` as a Builder pre-step OR during `@test-engineer` for test additions. This is additive, does not conflict.
-- For risky changes: run `@reviewer` AND `TRAE-code-review` skill in parallel. Each catches different layers.
-- COMMIT GATE (non-negotiable): Run the `git-commit` skill ONLY AFTER `@reviewer` emits "no Critical/High findings". Never commit pre-review. Order: Builder → Reviewer → git-commit → Test Engineer → QA Validator.
-- Allow `@builder`, `@reviewer`, `@test-engineer`, `@qa-validator`, and `@release-manager` to be callable by other agents.
-- Keep `@solo-orchestrator` as the coordinating agent rather than the main implementer.
-- Use `@docs-curator` only when implementation meaningfully changes canonical docs or runbooks.
-- If a workflow is small and low risk, `@planner -> @builder -> @reviewer` (plus Commit Gate git-commit) is enough. Skip Test Engineer/QA Validator only if scope is zero-user-visible and zero-behavioral (e.g., doc-only, comment-only, mechanically-proven rename inside a single file with no test surface impact).
+- Invoke agents with the `@identifier` syntax, NOT display names. Exact identifiers: `@scout`, `@planner`, `@test-designer`, `@builder`, `@reviewer`, `@adversary`, `@test-engineer`, `@qa-validator`, `@quality-judge`, `@release-manager`, `@docs-curator`. Use `SOLO Orchestrator` as entry point.
+- Start with `@scout` then `@planner` for any non-trivial request after orchestrator chooses the workflow and track.
+- For fuzzy requests: explore 2–3 approaches, then hand structured output to `@planner` for a proof contract.
+- For TDD: `@test-designer` / `test-driven-development` **before** `@builder`. Additive, not a replacement for Judge.
+- COMMIT vs SHIP: Reviewer 0 C/H before commit. **Quality Judge SHIP** before Done. Order: Prove → Judge SHIP → (user-requested) conventional commit → push by default.
+- Keep `@solo-orchestrator` and `@quality-judge` from implementing on Track M/U.
+- Track M/U: do not skip Gate A, Adversary, QA, or Judge. There is no “say so” hatch. Track S is illegal if screens/nav/store-read changed.
+- If two PATCHes still score below bar, dispatch Shadow Builder / Best-of-N instead of a third cosmetic patch.
 
 ## Skill Synergy Hooks Quick Reference
 
@@ -363,21 +406,9 @@ Must produce:
 
 To reuse this operating model in another repository:
 
-1. copy `.trae/agents/`
-2. copy this file
-3. replace `AGENTS.md`
-4. replace `.trae/rules/project-context.md`
-5. adapt any repository-specific sections inside `solo-orchestrator.md` and the specialist prompts
-6. add any new domain-specific rules
-7. install the skill copy at `~/.trae/skills/solo-agents/` and update repository-specific sections in every YAML:
-   - `planner.yaml` → Current Milestone Awareness
-   - `builder.yaml` → Maestro / automation compatibility
-   - `reviewer.yaml` → Maestro accessibility audit checks
-   - `test-engineer.yaml` → Jest vs Maestro layer boundary
-   - `qa-validator.yaml` → Maestro execution model / keyboard rules / iOS checklist
-   - `release-manager.yaml` → bundle-ID safety / submission rules
-   - `docs-curator.yaml` → AGENTS.md milestone maintenance
-   - `solo-agents/SKILL.md` → Synergies table / related_skills
-   - `solo-agents/metadata.json` → version bump + related_skills + categories
+1. Copy `docs/superpowers/templates/solo-dev-harness/` (or install `~/.cursor/skills/solo-dev-harness/`)
+2. Copy this file and `AGENTS.md`
+3. Add project overlay skill + `.cursor/rules/` (do **not** extend `.trae/`)
+4. Keep portable SOP free of device UDIDs and live-schema human gates
 
-The agent prompts should remain mostly unchanged across projects. The YAML files carry the project specialization; the `.md` blueprints stay portable.
+The agent identifiers stay portable. Project specialization lives in rules and the overlay skill.

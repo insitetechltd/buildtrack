@@ -15,7 +15,7 @@
 - Extend current modules over new architecture layers
 
 ## Cycle SoT + dual-write
-- Whole cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (not NOW-only).
+- Whole cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` quality loop (git-tracked: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Only Quality Judge emits SHIP.
 - Process improvements: update SOP.md + harness `templates/` + this repo. Insite-only law stays in `.cursor/skills/insite-dev/`.
 
 ## Mandatory Pre-kickoff (every workflow)
@@ -52,58 +52,78 @@ If non-blocking uncertainty exists: choose smallest repo-aligned default, write 
 
 ## Workflow Selection (choose exactly one route per task)
 
-1. Feature work: Plan (brainstorm → writing-plans) → Gate A multi-critique → Build (executing-plans + TDD + RN best practices) → Review → [COMMIT GATE when user asks] → Test → Gate B validation critique → QA-Validate (figma for WS-UX; debugger for simulator) → optional Release/Docs
-2. Bug fix: Plan (brainstorm fuzzy; debugger if runtime evidence needed) → Build (TDD + debugger) → Review → [COMMIT GATE when user asks] → Test → QA-Validate only if user-visible flow affected
-3. Refactor: Plan (writing-plans) → Review pre-check (risky) → Build (executing-plans) → Review → [COMMIT GATE when user asks] → Test
-4. Release/Deploy: Plan if scope unclear → Review → [COMMIT GATE if changed and user asked] → Test → QA-Validate → Release check (bundle-id match; manual Public checkbox only)
-5. Docs-only: Plan → Docs → Review → [COMMIT GATE when user asks]
+Quality loop (all non-docs routes): Scout → Spec → Gate A → Test contract → Build → Prove (Reviewer + Test + QA + Adversary) → **Quality Judge**. Below bar → PATCH/REWORK/REDESIGN. Only Judge emits SHIP. Pick track S/M/U (Orchestrator proposes; Judge confirms).
+
+1. Feature work: Track M (U if shared primitive/auth/payments/camera). Gate A ≥2 critics → Test Designer → Build → Prove → Judge. QA default-on.
+2. Bug fix: Delta-elimination plan → Test contract (failing proof first) → Build → Prove → Judge. QA default-on unless Judge classified logic-only.
+3. Refactor: Plan → Review pre-check if risky → Test contract → Build → Prove → Judge
+4. Release/Deploy: Plan if scope unclear → Review → Prove → Judge SHIP → Release check (bundle-id match; manual Public checkbox only)
+5. Docs-only: Plan → Docs → Review → Judge light → SHIP
 6. Historical Ms02/Ms03b unblock path (Closed): `.cursor/rules/workflow-ms02-unblock.md` — keep for audit; do not route new work here
 
 ## COMMIT GATE (non-negotiable ordering — only when user asks to commit)
 
+Commit may happen **during loops** for recovery. **Done / SHIP** only after Quality Judge SHIP.
+
 ```
-Builder → Reviewer (0 Critical / 0 High findings)
-   → Conventional commit (single-scoped atomic)
+Prove (Reviewer 0 C/H + Test Designer contract + QA on Track M/U + Adversary gaps proven)
+   → Quality Judge SHIP
+   → Conventional commit (single-scoped atomic) if user asked
    → Push to tracked remote by default (unless user said not to / force required)
-   → Test Engineer
-   → QA Validator (if user-visible / navigation / task-flow / uploads)
 ```
 
-NEVER commit pre-Review. NEVER commit with C/H findings open.
+NEVER commit pre-Review. NEVER commit with C/H findings open. NEVER claim Done with in-scope UNPROVEN claims or without Judge SHIP.
 Conventional commit types: feat|fix|refactor|docs|test|build|chore|ci with scope.
 **Push policy (Insite SoT):** after a **user-requested** commit, push by default — including when the user only said “commit”. Skip push only if they say not to, force would be required, or auth fails.
 
 ## Role Boundaries (self-applied discipline)
 
+### Scout (no plan, no code)
+- Context pack: NOW/ROADMAP/SoT/similar code/last-known-good. Propose track S/M/U. Merge into Planner on Track S.
+
 ### Planner (docs only, no code edits)
-- Scope definition, risk framing, assumptions, acceptance criteria, phased delivery
+- Falsifiable claims, each with a named proof; risk framing; files; assumptions
 - Inspect: taskStore.supabase.ts, screens, AppNavigator, supabase.ts, package.json, app.json, eas.json, patches/, documentation/
-- Output: plan, files list, validation plan, open questions (if any)
-- NEVER modify code
+- Output: plan, files list, proof contract, open questions (if any)
+- NEVER modify code. Prose goals without proofs are invalid.
+
+### Test Designer
+- Failing proofs before Builder (Jest / Maestro IDs / headed steps). May be Test Engineer in TDD mode. This is the contract the Judge scores.
 
 ### Builder
-- Only after approved plan exists
-- Smallest complete change; match project patterns; no unrelated refactors
+- Only after approved plan + (Track M/U) Gate A + Test contract exist
+- Smallest complete change that greens the proof contract; match project patterns; no unrelated refactors
 - For task-domain: inspect taskStore.supabase.ts + screens + AppNavigator
 - For persistence: inspect supabase.ts + realtime helpers
 - NEVER casually change app.json/eas.json/deps/bundle-id/build-number/runtime-version
 - If hidden complexity appears → return to Planner, don't improvise
+- No self-SHIP
 
 ### Reviewer (findings-first, severity-ordered)
-- Findings before summary. C/H = blocker, M = noted, L = advisory
+- Independent model from Builder. Findings before summary. C/H = blocker, M = noted, L = advisory
 - Check: navigation regressions, screen params, safe-area, uploads, permissions, task UI state, persisted Zustand, AsyncStorage, optimistic updates, realtime sync, Supabase error handling
-- If no findings: explicitly state "no findings" + residual risks/test gaps
+- If no findings: explicitly state "no findings" + residual risks/test gaps (gaps are not Done — Judge still scores)
+
+### Adversary
+- Sees only: diff summary, acceptance, commands run, artifact paths
+- “Assume the author is wrong.” Named unproven failures must be proven or scoped out — not noted. Track M/U skip = Judge FAIL.
 
 ### Test Engineer
-- Smallest effective checks first
+- Execute the Test Designer contract (named commands), not “smallest check that might pass”
 - Commands from package.json scripts only (no invented commands)
 - Add tests only when they materially reduce regression risk
 - NO full iOS/Android build unless task is explicitly about build/release/native
+- Does not claim QA signoff
 
-### QA Validator (user-visible flows only)
-- End-to-end behavior from product/UX perspective
+### QA Validator (Track M/U default-on)
+- End-to-end behavior from product/UX perspective. Logic-only skip = Judge classification with evidence, not Builder self-exemption.
 - Check: transitions, loading states, action feedback, auth gating, task list/detail, form submission, update/review, upload entry, stale data post-navigation
 - "Maestro executes, Human approves" model — VISUAL PNG READ BEFORE rc=0 claim
+- Fail → Builder, not Done with caveats
+
+### Quality Judge (never implements; only SHIP owner)
+- Different model from Builder on Track M/U. Scorecard 0–3; SHIP requires all required dimensions ≥ 2, 0 C/H, zero in-scope UNPROVEN.
+- Verdicts: PATCH / REWORK / REDESIGN / SHIP / ESCALATE. Confirms track. Loop budget M=3 / U=4.
 
 ### Release Manager
 - Conservative. Release-safe status from evidence, not hope.

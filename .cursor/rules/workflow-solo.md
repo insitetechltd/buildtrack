@@ -1,8 +1,10 @@
 # Workflow: SOLO Orchestrator (Default for Non-Trivial Work)
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Process changes dual-write SOP.md + `templates/` + this file. Insite overlays (Maestro, Supabase) stay in `insite-dev`.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Dual-write SOP.md + `templates/` + this file. Insite overlays (Maestro, Supabase) stay in `insite-dev`.
 
 Use this rule file for any non-trivial task that doesn't fit feature/bugfix/release/docs-only narrow scopes, or for the default kickoff when the user request is open-ended.
+
+**Cycle shape:** Scout → Spec → Gate A → Test contract → Build → Prove → **Quality Judge**. Below bar → PATCH / REWORK / REDESIGN. Only Judge emits SHIP. Done ≠ last role ran.
 
 ## 1. Milestone Gate (MANDATORY first action — BEFORE ANYTHING ELSE)
 ```
@@ -33,32 +35,36 @@ If uncertainty non-blocking → smallest repo-aligned default, log as assumption
 Pick exactly ONE route from:
 1. Feature → follow .cursor/rules/workflow-feature.md
 2. Bug Fix → follow .cursor/rules/workflow-bugfix.md
-3. Refactor → Plan (writing-plans) → Review pre-check risk → Build → Review → COMMIT → Test
+3. Refactor → Scout+Plan → Review pre-check if risky → Test contract → Build → Prove → Judge (loop) → SHIP
 4. Release/Deploy → follow .cursor/rules/workflow-release.md
-5. Docs-only → Plan → Docs → Review → COMMIT
+5. Docs-only → Plan → Docs → Review → Judge light → SHIP
 6. Historical Supabase Ms02/Ms03b path (Closed) → `.cursor/rules/workflow-ms02-unblock.md` for audit only
 
-## 3b. Multi-critique (non-trivial / user-visible / shared primitives)
+Then pick **track S / M / U** (Orchestrator proposes; Judge confirms). See SOP §4 / `docs/superpowers/templates/solo-dev-harness/templates/tracks.md`. Diff touching `src/screens/`, navigation, or a store screens read → Track S is illegal.
+
+## 3b. Multi-critique + Judge (Track M/U — not waivable)
 Follow `.cursor/rules/multi-critique-validation.mdc` + shared brief in `multi-model-evaluation-prompt.mdc`:
-- **Gate A** before Builder: ≥2 parallel plan critiques (same brief)
-- **Gate B** before “done”: ≥1 independent validation critique
+- **Gate A (Plan Critics)** before Builder: ≥2 parallel plan critiques (same brief)
+- **Test Designer** before Builder: failing proofs / named commands
+- **Adversary (Gate B)** after Prove: independent “assume the author is wrong”; named gaps must be proven or scoped out
 - **Gate C** for form/input primitives: headed focus/keyboard/submit smoke
+- **Quality Judge** is the only SHIP owner. Track M/U skip of Gate A / Adversary / QA / Judge = FAIL (not “say so”).
 
 ## 4. Discipline Rules (every SOLO cycle)
-- Start with Planner for non-trivial tasks
-- Use Build ONLY after plan exists (and Gate A when required)
+- Intake READY, then Scout + Planner for non-trivial tasks
+- Use Build ONLY after plan + (Track M/U) Gate A + Test contract exist
 - Prefer **concurrent tracks** when ownership partitions (disjoint files / independent Maestro cases); serialize shared helpers, product SoT, schema/auth/release, same sim UDID
 - Cap Maestro ≤2 UDIDs on this host; 1 job per UDID; one-shot case runs while developing; full suite = final gate
-- **Sim coordination (SOP §10):** `npm run maestro:locks` before Maestro; claim if free; release on teardown; never two Maestro jobs on one UDID
+- **Sim coordination (SOP §10 overlay):** `npm run maestro:locks` before Maestro; claim if free; release on teardown; never two Maestro jobs on one UDID
 - Two-sim SOP: parallel Maestro only on **distinct** UDIDs (`MAESTRO_UDID` per track). Never two jobs on the same simulator.
-- Reviewer before COMMIT GATE
-- Test Engineer after commit (or after Reviewer if no commit requested)
-- QA Validator for user-visible / nav / upload / task-flow
+- Orchestrator + Judge never implement on Track M/U
+- Reviewer (independent model) 0 C/H before commit; **Judge SHIP** before Done
+- Test Engineer executes the Test Designer contract (not “smallest check that might pass”)
+- QA Validator default-on for Track M/U (screens / nav / upload / task-flow / stores screens read). Logic-only = Judge classification with evidence
 - Release Manager only for build/store/env decisions
-- Review ALWAYS before commit. 0 Critical / 0 High findings mandatory.
-- User-visible or risky diffs: after Reviewer, run Bugbot (`review-bugbot`) unless user declined. Auth/RLS/secrets/payments: Security Review (`review-security`) unless declined.
-- Commit gate ordering (when user asks): Build → Review 0 C/H → Conventional commit → **push by default** → Test → QA (if user-visible)
-- NEVER commit pre-review. NEVER commit with C/H open.
+- User-visible or risky diffs: after Reviewer, run Bugbot (`review-bugbot`) unless user declined. Auth/RLS/secrets/payments: Security Review (`review-security`) unless declined. Skip when required = Judge FAIL
+- Commit during loops is allowed for recovery (still 0 C/H). **Done is not.** User-requested commit after SHIP: conventional commit → **push by default**
+- NEVER commit pre-review. NEVER commit with C/H open. NEVER claim Done with in-scope UNPROVEN claims
 - For task-domain work: inspect taskStore.supabase.ts + screens + AppNavigator.tsx
 - Prefer taskStore.supabase.ts over legacy taskStore.ts.
 - For persistence: inspect supabase.ts + realtime helpers
@@ -68,21 +74,25 @@ Follow `.cursor/rules/multi-critique-validation.mdc` + shared brief in `multi-mo
 
 ## 5. Validation Baseline (minimum for every non-docs cycle)
 1. `npx tsc --noEmit` rc=0
-2. Smallest relevant targeted Jest command
+2. Named Jest commands from the Test Designer contract
 3. If behavioral change → `npm run test:regression`
-4. If user-visible mobile flow → Maestro with preflight gates (maestro-preflight.md)
+4. Track M/U user-visible / screen / nav / upload / store-read → Maestro or headed with preflight gates (maestro-preflight.md) + visual PNG read. QA skip only if Judge classified logic-only
 
 ## 6. Final Output Format (MANDATORY end-of-cycle)
 ```
 === SOLO EXECUTION LEDGER ===
 Task:
+Track: S | M | U (proposed / Judge-confirmed)
 Milestone Gate result: (milestone cited / none)
 Autonomy questions asked: (0 / list)
 Workflow chosen: (Feature/Bugfix/Refactor/Release/Docs/Ms02)
+Claim ledger: PASS/FAIL/UNPROVEN counts
 What changed:
 Files changed:
 Validation run: (commands + results — PASS/FAIL explicitly)
-Commit SHA: (if committed)
-Risks / unverified:
+Judge verdict: PATCH | REWORK | REDESIGN | SHIP | ESCALATE
+Loop: n / budget
+Commit SHA: (if committed — not equivalent to SHIP)
+Risks / unverified: (must be empty in-scope UNPROVEN for SHIP)
 Next recommended action:
 ```

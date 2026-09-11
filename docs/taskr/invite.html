@@ -45,17 +45,16 @@
         <h1>Open Taskr</h1>
         <div class="invite-desktop-only">
           <p class="lede">
-            Open this same link on your <strong>iPhone</strong> (Safari or Mail).
-            Signing in here on a computer uses up the one-time link and blocks the phone.
+            Open this same link on your <strong>iPhone</strong> (Safari).
+            Do not sign in on a computer — that uses up the one-time link.
           </p>
           <p class="invite-warn">
-            AirDrop the URL to your phone, or open the signup email / invite on the device where Taskr (TestFlight) is installed.
+            AirDrop the URL to your phone, or open it in Safari on the device with Taskr TestFlight <strong>258+</strong>.
           </p>
         </div>
         <div class="invite-mobile-only">
           <p class="lede" id="invite-lede">
-            Tap below to open Taskr and set your password.
-            Prefer <strong>TestFlight build 258+</strong> for the most reliable handoff.
+            Requires <strong>TestFlight 258+</strong>. Tap below — Safari signs you in, then hands the session to Taskr so you can set your password.
           </p>
           <div class="invite-actions">
             <button class="signup-submit" id="invite-open-app" type="button">
@@ -64,7 +63,7 @@
             <a class="invite-secondary" href="https://apps.apple.com/app/id6754898737">App Store (last resort)</a>
           </div>
           <p class="invite-warn">
-            Use the TestFlight app, not an old App Store install. If iOS asks to paste from Safari, tap Allow.
+            When iOS asks to paste from Safari, tap <strong>Allow</strong> — that is how login reaches Taskr.
           </p>
           <p class="signup-foot invite-status" id="invite-status" role="status"></p>
         </div>
@@ -75,9 +74,7 @@
   <script>
     (function () {
       var ua = navigator.userAgent || "";
-      var isIOS = /iPhone|iPad|iPod/i.test(ua);
-      var isAndroid = /Android/i.test(ua);
-      var isMobile = isIOS || isAndroid;
+      var isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
       if (!isMobile) {
         document.body.classList.add("is-desktop");
         return;
@@ -108,7 +105,7 @@
         if (!token) {
           if (lede) {
             lede.textContent =
-              "This invite link is missing its login token. Use the latest link from signup.";
+              "This invite link is missing its login token. Ask for a fresh link.";
           }
           if (openBtn) openBtn.disabled = true;
           return;
@@ -127,9 +124,6 @@
             detectSessionInUrl: false,
           },
         });
-
-        var appInviteLink =
-          "taskr://auth/invite/" + encodeURIComponent(token) + "?type=magiclink";
 
         async function ensureSession() {
           if (cachedSession && cachedSession.access_token && cachedSession.refresh_token) {
@@ -154,16 +148,26 @@
           if (busy) return;
           busy = true;
           if (openBtn) openBtn.disabled = true;
-          setStatus("", "Opening Taskr…");
+          setStatus("", "Signing you in…");
 
           try {
-            // Do not verifyOtp in Safari here — that burns the one-time token
-            // before the app can use it. Hand the raw invite to the app.
-            window.location.href = appInviteLink;
-            setStatus(
-              "ok",
-              "If Taskr opens on Login instead of Set Password, update TestFlight (258+) and ask for a fresh link.",
-            );
+            var session = await ensureSession();
+            var payload = JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              minted_at: Date.now(),
+            });
+
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(payload);
+              }
+            } catch (clipErr) {
+              console.warn("clipboard write failed", clipErr);
+            }
+
+            setStatus("ok", "Opening Taskr… tap Allow if asked to paste.");
+            window.location.href = "taskr://auth/handoff";
           } catch (err) {
             setStatus("error", (err && err.message) || "Could not open invite");
           } finally {
@@ -171,10 +175,6 @@
             busy = false;
           }
         }
-
-        // Keep session helpers available for a future 258+ clipboard handoff flag.
-        void ensureSession;
-        void client;
 
         if (openBtn) {
           openBtn.addEventListener("click", function () {

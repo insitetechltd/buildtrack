@@ -32,6 +32,10 @@
     .invite-status { min-height: 1.25rem; margin-top: 0.75rem; font-size: 0.9rem; }
     .invite-status.is-error { color: #b91c1c; }
     .invite-status.is-ok { color: #047857; }
+    .invite-desktop-only { display: none; }
+    .invite-mobile-only { display: block; }
+    body.is-desktop .invite-desktop-only { display: block; }
+    body.is-desktop .invite-mobile-only { display: none; }
   </style>
 </head>
 <body>
@@ -39,27 +43,46 @@
     <div class="wrap">
       <div class="signup-card invite-card">
         <h1>Open Taskr</h1>
-        <p class="lede" id="invite-lede">
-          We sign you in in the browser, then hand the session to Taskr so you can set your password.
-          Use <strong>TestFlight build 258+</strong> (not App Store, not 257).
-        </p>
-        <div class="invite-actions">
-          <button class="signup-submit" id="invite-open-app" type="button">
-            Open Taskr &amp; set password
-          </button>
-          <a class="invite-secondary" href="https://apps.apple.com/app/id6754898737">App Store (last resort)</a>
+        <div class="invite-desktop-only">
+          <p class="lede">
+            Open this same link on your <strong>iPhone</strong> (Safari or Mail).
+            Signing in here on a computer uses up the one-time link and blocks the phone.
+          </p>
+          <p class="invite-warn">
+            AirDrop the URL to your phone, or open the signup email / invite on the device where Taskr (TestFlight) is installed.
+          </p>
         </div>
-        <p class="invite-warn">
-          Install Taskr from TestFlight first. When iOS asks to paste from Safari, tap Allow —
-          that is how the login reaches the app.
-        </p>
-        <p class="signup-foot invite-status" id="invite-status" role="status"></p>
+        <div class="invite-mobile-only">
+          <p class="lede" id="invite-lede">
+            Tap below to open Taskr and set your password.
+            Prefer <strong>TestFlight build 258+</strong> for the most reliable handoff.
+          </p>
+          <div class="invite-actions">
+            <button class="signup-submit" id="invite-open-app" type="button">
+              Open Taskr &amp; set password
+            </button>
+            <a class="invite-secondary" href="https://apps.apple.com/app/id6754898737">App Store (last resort)</a>
+          </div>
+          <p class="invite-warn">
+            Use the TestFlight app, not an old App Store install. If iOS asks to paste from Safari, tap Allow.
+          </p>
+          <p class="signup-foot invite-status" id="invite-status" role="status"></p>
+        </div>
       </div>
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
   <script>
     (function () {
+      var ua = navigator.userAgent || "";
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var isAndroid = /Android/i.test(ua);
+      var isMobile = isIOS || isAndroid;
+      if (!isMobile) {
+        document.body.classList.add("is-desktop");
+        return;
+      }
+
       var params = new URLSearchParams(window.location.search);
       var env = (params.get("env") || "").toLowerCase();
       var configSrc =
@@ -105,6 +128,9 @@
           },
         });
 
+        var appInviteLink =
+          "taskr://auth/invite/" + encodeURIComponent(token) + "?type=magiclink";
+
         async function ensureSession() {
           if (cachedSession && cachedSession.access_token && cachedSession.refresh_token) {
             return cachedSession;
@@ -128,26 +154,16 @@
           if (busy) return;
           busy = true;
           if (openBtn) openBtn.disabled = true;
-          setStatus("", "Signing you in…");
+          setStatus("", "Opening Taskr…");
 
           try {
-            var session = await ensureSession();
-            var payload = JSON.stringify({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token,
-              minted_at: Date.now(),
-            });
-
-            try {
-              if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(payload);
-              }
-            } catch (clipErr) {
-              console.warn("clipboard write failed", clipErr);
-            }
-
-            setStatus("ok", "Opening Taskr… allow paste if asked.");
-            window.location.href = "taskr://auth/handoff";
+            // Do not verifyOtp in Safari here — that burns the one-time token
+            // before the app can use it. Hand the raw invite to the app.
+            window.location.href = appInviteLink;
+            setStatus(
+              "ok",
+              "If Taskr opens on Login instead of Set Password, update TestFlight (258+) and ask for a fresh link.",
+            );
           } catch (err) {
             setStatus("error", (err && err.message) || "Could not open invite");
           } finally {
@@ -156,14 +172,15 @@
           }
         }
 
+        // Keep session helpers available for a future 258+ clipboard handoff flag.
+        void ensureSession;
+        void client;
+
         if (openBtn) {
           openBtn.addEventListener("click", function () {
             handoff();
           });
         }
-
-        // Do not auto-verify: TF &lt;258 cannot accept the clipboard handoff and
-        // would burn the one-time token. User taps after installing 258+.
       }
 
       var s = document.createElement("script");

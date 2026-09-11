@@ -110,7 +110,7 @@
 
 ## Next (definitive)
 
-1. **ASC 1.1.3 resubmit (Human):** after TF **256** is VALID, attach **256** (not 244/254); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
+1. **ASC 1.1.3 resubmit (Human):** after TF **257** is VALID, attach **257** (not 244/254/256); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
 2. Extra GO: Stripe 60d promo + founding-CA Checkout on PROD (sandbox DEV start-checkout smoke PASS 2026-09-11)
 3. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
 4. Idle: PROD `reported`/`resolved` DDL Human GO before claiming that path on PROD TF (`login_identifier_is_registered` already live on PROD)

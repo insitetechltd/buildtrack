@@ -1,4 +1,4 @@
-# App Review notes — Taskr 1.1.3 resubmit (build 255+)
+# App Review notes — Taskr 1.1.3 resubmit (build 256+)
 
 **Date:** 2026-09-11  
 **Paste into:** App Store Connect → version 1.1.3 → App Review Information → Notes  
@@ -10,7 +10,7 @@ Do **not** put passwords in git. Demo account fields stay only in ASC.
 ## Paste (ASC-safe, short)
 
 ```text
-Please review build 255.
+Please review build 256.
 
 Taskr is a construction field app for one company: capture a site photo, assign work, update with photo proof, then approve or send back.
 

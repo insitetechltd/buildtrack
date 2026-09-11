@@ -1,6 +1,6 @@
 # App Store 6.7" screenshots (iPhone)
 
-Apple size: **1320 × 2868** JPEG. Upload in this order to the **1.1.3** version (prefer build **255+**; ASC already has a 4-shot set from the 243/244 pass).
+Apple size: **1320 × 2868** JPEG. Upload in this order to the **1.1.3** version (prefer build **256**; ASC already has a 4-shot set from the 243/244 pass).
 
 | File | Slot | Honest? |
 |------|------|---------|

@@ -4,7 +4,7 @@
 
 ---
 
-**This session — ASC resubmit cut 255 (2026-09-11):** Web signup post-pay invite link now force-opens Taskr (`open=1`) via Pages `signup.js` + `signup-checkout-status` (DEV+PROD redeployed). PROD `login_identifier_is_registered` confirmed live (`p_identifier`). App already points at `/taskr/signup.html` + `/taskr/billing.html`. Shared build bumped to **255**; PROD TF cut in progress. Do **not** resubmit **254** (stale github.io signup URLs).
+**This session — ASC resubmit cut 256 (2026-09-11):** Web signup post-pay invite link force-opens Taskr (`open=1`) via Pages `signup.js` + `signup-checkout-status` (DEV+PROD redeployed). PROD `login_identifier_is_registered` confirmed live. App bakes `/taskr/signup.html` + PROD Supabase. Local `./build-local.sh ios production` → IPA **v1.1.3 (256i-rc)** `.eas/artifacts/build-1789109945447.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/cdb2231f-598e-4f1a-9328-680ad3048e6d. Do **not** resubmit **254** (stale github.io signup URLs). Human: wait ASC VALID → attach **256** + paste notes.
 
 **This session — self-serve cancel (2026-09-10):** Web `/taskr/billing.html` (password + magic link) → Edges `cancel-subscription` + `billing-subscription-status` (JWT, company admin). Trial → Stripe `cancel_at=trial_end` + void/delete open|draft invoices; active → `cancel_at_period_end`; incomplete → immediate. Local status stays until `customer.subscription.deleted`. App CTA → billing page. Edges **DEV + PROD** deployed. Gate A ([risks](ba75d734-75bb-4db3-89c2-498164dc21cd)) Criticals folded; Gate B ([validation](66030489-5d6b-4660-9f65-b66fb91c0f98)) **NO-GO** until: git push Pages HTML, DEV signup→cancel smoke, Test Clock $0. Residual: same-email re-signup stays 409 / support.
 
@@ -106,7 +106,7 @@
 
 ## Next (definitive)
 
-1. **ASC 1.1.3 resubmit (Human):** after TF **255** is VALID, attach **255** (not 244/254); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
+1. **ASC 1.1.3 resubmit (Human):** after TF **256** is VALID, attach **256** (not 244/254); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
 2. Extra GO: Stripe 60d promo + founding-CA Checkout on PROD (sandbox DEV start-checkout smoke PASS 2026-09-11)
 3. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
 4. Idle: PROD `reported`/`resolved` DDL Human GO before claiming that path on PROD TF (`login_identifier_is_registered` already live on PROD)

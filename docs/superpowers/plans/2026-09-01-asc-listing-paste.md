@@ -1,6 +1,6 @@
 # ASC listing paste pack — Taskr 1.1.3 resubmit
 
-**Updated:** 2026-09-11 (post checkout-first `/taskr/` + build **255** cut)  
+**Updated:** 2026-09-11 (post checkout-first `/taskr/` + build **256** cut)  
 **App:** `6754898737` · https://appstoreconnect.apple.com/apps/6754898737  
 **Bundle:** `com.buildtrack.app.local`  
 **Copy SoT:** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md)  
@@ -20,7 +20,7 @@ Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works 
 |---|---|
 | **1.0** | `READY_FOR_SALE` — build **127** — listing name still **Insite Trackr**; Privacy URL still old GitHub `policy.pdf` (app-info locked while 1.0 is live) |
 | **1.1.3** | `REJECTED` — do **not** leave attached build **244** (or stale **254**) |
-| Builds ready | Prefer **255+** (includes `/taskr/` legalLinks + checkout-first signup). **254** lacked baked `/taskr/` URLs. |
+| Builds ready | Prefer **256** (submitted 2026-09-11; includes `/taskr/` legalLinks + checkout-first signup). **254** lacked baked `/taskr/` URLs. |
 | Screenshots already in ASC | en-US: **4×** `APP_IPHONE_67` + **4×** `APP_IPAD_PRO_3GEN_129` |
 | Rejected app-info Privacy | Already `https://www.insiteworks.co/taskr/privacy-policy.html` |
 | Rejected app-info Support / Marketing | **Empty** — paste required |
@@ -40,9 +40,9 @@ Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works 
 
 (Company portfolio, not Taskr product: https://www.insiteworks.co/)
 
-### 2) Select binary **255+** for version 1.1.3
+### 2) Select binary **256** for version 1.1.3
 
-Do **not** resubmit on **244** or **254**. Build **255+** includes checkout-first web signup URLs (`/taskr/signup.html`), ASC-safe plan CTAs, email-first Login, and Create Project roster.
+Do **not** resubmit on **244** or **254**. Build **256** includes checkout-first web signup URLs (`/taskr/signup.html`), ASC-safe plan CTAs, email-first Login, and Create Project roster.
 
 ### 3) Paste version metadata (EN + zh-HK)
 

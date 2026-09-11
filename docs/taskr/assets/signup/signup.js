@@ -42,15 +42,28 @@
     statusEl.style.display = kind ? "block" : "none";
   }
 
+  /** Prefer deep-link into Taskr when already installed (TF / App Review / return visit). */
+  function withForceOpenApp(inviteLink) {
+    try {
+      var url = new URL(inviteLink);
+      url.searchParams.set("open", "1");
+      return url.toString();
+    } catch (e) {
+      return inviteLink;
+    }
+  }
+
   function showLoginLink(inviteLink) {
+    var openNowLink = withForceOpenApp(inviteLink);
     if (openAppBtn) {
       openAppBtn.hidden = false;
-      openAppBtn.href = inviteLink;
+      openAppBtn.href = openNowLink;
       openAppBtn.textContent = "Open Taskr & set password";
     }
     if (linkBox) linkBox.hidden = false;
     if (deepLinkField) {
-      deepLinkField.value = inviteLink;
+      // Same force-open link for copy/paste so one tap opens Taskr after install.
+      deepLinkField.value = openNowLink;
     }
     setStatus(
       "success",

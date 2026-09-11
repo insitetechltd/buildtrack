@@ -1,74 +1,82 @@
-# ASC listing paste pack — Taskr 1.1.3 (build 243)
+# ASC listing paste pack — Taskr 1.1.3 resubmit
 
-**Date:** 2026-09-01  
+**Updated:** 2026-09-11 (post checkout-first `/taskr/` + build **255** cut)  
 **App:** `6754898737` · https://appstoreconnect.apple.com/apps/6754898737  
-**Binary:** App Store **243** already uploaded (`production` → PROD). Do **not** start another production EAS build.  
-**Copy SoT:** [`documentation/MARKETING.md`](../../documentation/MARKETING.md) — living App Store / site claims. This file is the **one-time ASC paste checklist** (URLs, screenshots, do-not-submit). Do not fork listing text here.  
-**Screenshots:** `docs/taskr/assets/store/iphone-67/` (README there)
+**Bundle:** `com.buildtrack.app.local`  
+**Copy SoT:** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md)  
+**Screenshots on disk:** `docs/taskr/assets/store/iphone-67/` · `docs/taskr/assets/store/ipad-13/`
 
-ASC API key used for `eas submit` can **read** metadata but historically **cannot PATCH** (403). Paste in the web UI.
+ASC API can **read**; paste / attach binary / Submit in the **web UI** (historical PATCH 403).
 
-**Do not tick Public. Do not Submit for Review until screenshots + copy are in and you intend to.**
+**Do not tick Public. Do not Submit for Review until this checklist is green and you intend to.**
 
 Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works Limited during this review (GTM Gate 2 OPEN).
 
 ---
 
-## App Information (app-level, all localizations)
+## Live ASC state (2026-09-11)
+
+| Item | State |
+|---|---|
+| **1.0** | `READY_FOR_SALE` — build **127** — listing name still **Insite Trackr**; Privacy URL still old GitHub `policy.pdf` (app-info locked while 1.0 is live) |
+| **1.1.3** | `REJECTED` — do **not** leave attached build **244** (or stale **254**) |
+| Builds ready | Prefer **255+** (includes `/taskr/` legalLinks + checkout-first signup). **254** lacked baked `/taskr/` URLs. |
+| Screenshots already in ASC | en-US: **4×** `APP_IPHONE_67` + **4×** `APP_IPAD_PRO_3GEN_129` |
+| Rejected app-info Privacy | Already `https://www.insiteworks.co/taskr/privacy-policy.html` |
+| Rejected app-info Support / Marketing | **Empty** — paste required |
+| Review notes in ASC | **Stale** — still describe in-app “Create company” + temp-password invites |
+
+---
+
+## Human checklist (order)
+
+### 1) Fix App Information on the **1.1.3 / REJECTED** editable app info
 
 | Field | Paste |
 |-------|--------|
 | Privacy Policy URL | https://www.insiteworks.co/taskr/privacy-policy.html |
 | Support URL | https://www.insiteworks.co/taskr/support.html |
-| Marketing URL (optional) | https://www.insiteworks.co/taskr/ |
+| Marketing URL | https://www.insiteworks.co/taskr/ |
 
-Company construction portfolio (not Taskr): https://www.insiteworks.co/
+(Company portfolio, not Taskr product: https://www.insiteworks.co/)
 
-Keep GitHub Pages custom domain `insiteworks.co` pointed at `/docs`. Old root paths (`/signup.html`, …) redirect into `/taskr/…`.
+### 2) Select binary **255+** for version 1.1.3
 
+Do **not** resubmit on **244** or **254**. Build **255+** includes checkout-first web signup URLs (`/taskr/signup.html`), ASC-safe plan CTAs, email-first Login, and Create Project roster.
 
----
+### 3) Paste version metadata (EN + zh-HK)
 
-## Version 1.1.3 — English (US / UK / HK English)
+From [`documentation/MARKETING.md`](../../../documentation/MARKETING.md):
 
-Paste **Name, Subtitle, Promotional text, Keywords, Description, What’s New** from [`documentation/MARKETING.md`](../../documentation/MARKETING.md) § App Store — English.
+- English: Name, Subtitle, Promotional text, **Keywords** (replace stale `Change Variations Order` junk), Description, What’s New  
+- Traditional Chinese (Hong Kong): same fields + What’s New  
 
-## Version 1.1.3 — Traditional Chinese (Hong Kong)
+### 4) Screenshots
 
-Paste **Name, Subtitle, Promotional text, Keywords, Description** from [`documentation/MARKETING.md`](../../documentation/MARKETING.md) § App Store — Traditional Chinese (Hong Kong).
+Already present in ASC (4 iPhone 6.7" + 4 iPad 13"). Re-upload from disk only if a frame looks wrong:
 
----
+- iPhone: `docs/taskr/assets/store/iphone-67/` (`01`…`04`)  
+- iPad: `docs/taskr/assets/store/ipad-13/` (`01`…`04`)  
+- `02-camera.jpg` is a **composite** (chrome + site photo)  
+- Do **not** upload Joe Company-management frames  
 
-## iPhone 6.7" screenshots
+Optional later: physical 6.1" set; Sara CA company frame.
 
-Upload in order from `docs/assets/store/iphone-67/`:
+### 5) Replace App Review notes
 
-1. `01-activity.jpg`
-2. `02-camera.jpg` — **composite** (sim chrome + pasted site photo)
-3. `03-tasks.jpg`
-4. `04-task-thread.jpg`
+Paste the block in [`2026-09-11-asc-resubmit-review-notes.md`](../evidence/2026-09-11-asc-resubmit-review-notes.md) (no passwords in git — keep demo credentials only in ASC).
 
-**Do not upload** Joe’s Company-management frame. Joe is a worker.
+### 6) Resolution Center
 
-Optional captions: see the folder README.
+Answer the prior rejection using the same notes (camera **Continue**; company signup on **web** only).
 
-**Still Human:** 6.1" physical set; iPad (`supportsTablet: true`); live camera if you reject the composite.
+### 7) Submit for Review
 
----
-
-## App Review notes (outline — do not paste passwords into git)
-
-- Demo: founding CA already in ASC. Show: create/open company → invite is admin-only → create task with photo → update → approve.
-- No public self-serve join.
-- Camera / library used only for task evidence.
-- IAP: Stripe company subscription (external purchase), not Apple IAP for seats.
-- Name change: display name Taskr; previous listing title Insite Trackr.
+Only when steps 1–6 are done and you intend to. Keep **Public** unticked until you want store visibility.
 
 ---
 
-## After GitHub Pages deploy
-
-Confirm HTTP 200 and **honest copy** (HKD, 60-day invite, no Play, Insite Works Limited):
+## Preflight URLs (agent-verified 2026-09-11 — all HTTP 200)
 
 - https://www.insiteworks.co/
 - https://www.insiteworks.co/taskr/
@@ -76,3 +84,14 @@ Confirm HTTP 200 and **honest copy** (HKD, 60-day invite, no Play, Insite Works 
 - https://www.insiteworks.co/taskr/terms-of-service.html
 - https://www.insiteworks.co/taskr/support.html
 - https://www.insiteworks.co/taskr/signup.html
+- https://www.insiteworks.co/taskr/billing.html
+
+In-app constants: `src/legal/legalLinks.ts` (same `/taskr/…` paths).
+
+---
+
+## Explicit non-goals this pass
+
+- Apple Individual → Organization rename  
+- Editing live **1.0** Privacy URL (stays locked until 1.1.3 ships / app-info becomes editable for Ready for Sale)  
+- Stripe founding-CA live Checkout smoke (extra Human GO — parallel, not blocking paste; sandbox DEV path already proven)

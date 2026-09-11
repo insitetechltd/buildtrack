@@ -4,6 +4,8 @@
 
 ---
 
+**This session — ASC resubmit cut 255 (2026-09-11):** Web signup post-pay invite link now force-opens Taskr (`open=1`) via Pages `signup.js` + `signup-checkout-status` (DEV+PROD redeployed). PROD `login_identifier_is_registered` confirmed live (`p_identifier`). App already points at `/taskr/signup.html` + `/taskr/billing.html`. Shared build bumped to **255**; PROD TF cut in progress. Do **not** resubmit **254** (stale github.io signup URLs).
+
 **This session — self-serve cancel (2026-09-10):** Web `/taskr/billing.html` (password + magic link) → Edges `cancel-subscription` + `billing-subscription-status` (JWT, company admin). Trial → Stripe `cancel_at=trial_end` + void/delete open|draft invoices; active → `cancel_at_period_end`; incomplete → immediate. Local status stays until `customer.subscription.deleted`. App CTA → billing page. Edges **DEV + PROD** deployed. Gate A ([risks](ba75d734-75bb-4db3-89c2-498164dc21cd)) Criticals folded; Gate B ([validation](66030489-5d6b-4660-9f65-b66fb91c0f98)) **NO-GO** until: git push Pages HTML, DEV signup→cancel smoke, Test Clock $0. Residual: same-email re-signup stays 409 / support.
 
 **This session — site map cutover (2026-09-10):** `www.insiteworks.co/` = Insite Works construction portfolio; Taskr = `/taskr/`. Pushed `cb25371`. **ASC 1.1.3 (REJECTED editable):** Privacy + Support + Marketing → `/taskr/…` via API. Live **1.0 READY_FOR_SALE** Privacy still locked (old GitHub PDF) until next editable app-info state. **Auth** DEV+PROD: `site_url` = `https://www.insiteworks.co/taskr/`; `uri_allow_list` includes `/taskr/**` + legacy domain/github.io + app scheme.
@@ -104,11 +106,10 @@
 
 ## Next (definitive)
 
-1. Human: ASC paste + screenshot upload (pack is ready)
-2. Human: DNS for `www.insiteworks.co`
-3. Extra GO: Stripe 60d promo + founding-CA Checkout
-4. Install HQ Internal TF **14** (`dev` / preview / DEV) when Apple finishes processing
-5. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
+1. **ASC 1.1.3 resubmit (Human):** after TF **255** is VALID, attach **255** (not 244/254); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
+2. Extra GO: Stripe 60d promo + founding-CA Checkout on PROD (sandbox DEV start-checkout smoke PASS 2026-09-11)
+3. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
+4. Idle: PROD `reported`/`resolved` DDL Human GO before claiming that path on PROD TF (`login_identifier_is_registered` already live on PROD)
 
 **Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** — future enhancement. **Voice/mic on dock** — future enhancement. **PROD DDL** for reported/resolved — shelved until this Task Detail dock slice is resolved + committed.
 

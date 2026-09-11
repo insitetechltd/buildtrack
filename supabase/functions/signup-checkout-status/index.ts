@@ -95,9 +95,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ status: "pending" });
     }
 
+    // Force deep-link into the app for founding-CA post-checkout (skip App Store hop).
+    let inviteLink = String(profile.invite_sign_in_link);
+    try {
+      const inviteUrl = new URL(inviteLink);
+      inviteUrl.searchParams.set("open", "1");
+      inviteLink = inviteUrl.toString();
+    } catch {
+      // keep stored link
+    }
+
     return jsonResponse({
       status: "ready",
-      inviteLink: profile.invite_sign_in_link,
+      inviteLink,
       email: profile.email,
       mustSetPassword: profile.must_set_password !== false,
       companyId: profile.company_id,

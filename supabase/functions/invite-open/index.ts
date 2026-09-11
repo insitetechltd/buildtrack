@@ -17,9 +17,12 @@ function redirect(location: string): Response {
   });
 }
 
-function bridgeUrl(tokenHash: string): string {
+function bridgeUrl(tokenHash: string, sandbox: boolean): string {
   const url = new URL(INVITE_BRIDGE);
   url.searchParams.set("token_hash", tokenHash);
+  if (sandbox) {
+    url.searchParams.set("env", "sandbox");
+  }
   return url.toString();
 }
 
@@ -37,12 +40,12 @@ Deno.serve((req) => {
   const tokenHash = (url.searchParams.get("token_hash") || "").trim();
   const ua = req.headers.get("user-agent") || "";
   const isAndroid = /Android/i.test(ua);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const sandbox = supabaseUrl.includes("zusulknbhaumougqckec");
 
   if (!tokenHash) {
     return redirect(isAndroid ? ANDROID_PLAY : IOS_APP_STORE);
   }
 
-  // Always use the web bridge — it opens taskr:// and keeps App Store as a
-  // last-resort install path (so TestFlight installs are not displaced).
-  return redirect(bridgeUrl(tokenHash));
+  return redirect(bridgeUrl(tokenHash, sandbox));
 });

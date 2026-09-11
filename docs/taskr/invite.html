@@ -29,6 +29,9 @@
       font-size: 0.875rem;
       color: #9a3412;
     }
+    .invite-status { min-height: 1.25rem; margin-top: 0.75rem; font-size: 0.9rem; }
+    .invite-status.is-error { color: #b91c1c; }
+    .invite-status.is-ok { color: #047857; }
   </style>
 </head>
 <body>
@@ -37,83 +40,143 @@
       <div class="signup-card invite-card">
         <h1>Open Taskr</h1>
         <p class="lede" id="invite-lede">
-          Continue in the Taskr app to set your password. If you installed from
-          <strong>TestFlight</strong>, use that install — not the App Store copy.
+          We sign you in in the browser, then hand the session to Taskr so you can set your password.
+          Use <strong>TestFlight build 258+</strong> (not App Store, not 257).
         </p>
         <div class="invite-actions">
-          <a class="signup-submit" id="invite-open-app" href="#">Open Taskr &amp; set password</a>
-          <a class="invite-secondary" id="invite-copy" href="#">Copy app link</a>
+          <button class="signup-submit" id="invite-open-app" type="button">
+            Open Taskr &amp; set password
+          </button>
           <a class="invite-secondary" href="https://apps.apple.com/app/id6754898737">App Store (last resort)</a>
         </div>
         <p class="invite-warn">
-          App Store Taskr may be an older build. For beta / App Review / TestFlight,
-          open <strong>Taskr from TestFlight</strong> once, then tap
-          <strong>Open Taskr &amp; set password</strong> again.
+          Install Taskr from TestFlight first. When iOS asks to paste from Safari, tap Allow —
+          that is how the login reaches the app.
         </p>
-        <p class="signup-foot" id="invite-status" role="status"></p>
+        <p class="signup-foot invite-status" id="invite-status" role="status"></p>
       </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
   <script>
     (function () {
       var params = new URLSearchParams(window.location.search);
-      var token = (params.get("token_hash") || "").trim();
-      var openBtn = document.getElementById("invite-open-app");
-      var copyBtn = document.getElementById("invite-copy");
-      var statusEl = document.getElementById("invite-status");
-      var lede = document.getElementById("invite-lede");
+      var env = (params.get("env") || "").toLowerCase();
+      var configSrc =
+        env === "sandbox"
+          ? "assets/signup/supabase-config.sandbox.js?v=2"
+          : "assets/signup/supabase-config.js?v=3";
 
-      if (!token) {
-        if (lede) {
-          lede.textContent =
-            "This invite link is missing its login token. Go back to the signup success page and use the latest link.";
+      function boot() {
+        var token = (params.get("token_hash") || "").trim();
+        var openBtn = document.getElementById("invite-open-app");
+        var statusEl = document.getElementById("invite-status");
+        var lede = document.getElementById("invite-lede");
+        var busy = false;
+        var cachedSession = null;
+
+        function setStatus(kind, message) {
+          if (!statusEl) return;
+          statusEl.className =
+            "signup-foot invite-status" + (kind ? " is-" + kind : "");
+          statusEl.textContent = message || "";
         }
-        if (openBtn) openBtn.hidden = true;
-        if (copyBtn) copyBtn.hidden = true;
-        return;
-      }
 
-      var appLink =
-        "taskr://auth/invite?token_hash=" +
-        encodeURIComponent(token) +
-        "&type=magiclink";
-
-      function openApp() {
-        if (statusEl) {
-          statusEl.textContent = "Opening Taskr…";
-        }
-        window.location.href = appLink;
-      }
-
-      if (openBtn) {
-        openBtn.href = appLink;
-        openBtn.addEventListener("click", function (e) {
-          e.preventDefault();
-          openApp();
-        });
-      }
-
-      if (copyBtn) {
-        copyBtn.addEventListener("click", function (e) {
-          e.preventDefault();
-          var done = function () {
-            copyBtn.textContent = "Copied";
-            setTimeout(function () {
-              copyBtn.textContent = "Copy app link";
-            }, 1600);
-          };
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(appLink).then(done).catch(function () {
-              window.prompt("Copy this link", appLink);
-            });
-          } else {
-            window.prompt("Copy this link", appLink);
+        if (!token) {
+          if (lede) {
+            lede.textContent =
+              "This invite link is missing its login token. Use the latest link from signup.";
           }
+          if (openBtn) openBtn.disabled = true;
+          return;
+        }
+
+        var cfg = window.INSITE_SIGNUP_SUPABASE;
+        if (!cfg || !cfg.url || !cfg.anonKey || !window.supabase) {
+          setStatus("error", "Could not load signup config. Refresh and try again.");
+          return;
+        }
+
+        var client = window.supabase.createClient(cfg.url, cfg.anonKey, {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false,
+          },
         });
+
+        async function ensureSession() {
+          if (cachedSession && cachedSession.access_token && cachedSession.refresh_token) {
+            return cachedSession;
+          }
+          var result = await client.auth.verifyOtp({
+            token_hash: token,
+            type: "magiclink",
+          });
+          if (result.error) {
+            throw new Error(result.error.message || "Invite link invalid or already used");
+          }
+          var session = result.data && result.data.session;
+          if (!session || !session.access_token || !session.refresh_token) {
+            throw new Error("No session returned from invite link");
+          }
+          cachedSession = session;
+          return session;
+        }
+
+        async function handoff() {
+          if (busy) return;
+          busy = true;
+          if (openBtn) openBtn.disabled = true;
+          setStatus("", "Signing you in…");
+
+          try {
+            var session = await ensureSession();
+            var payload = JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              minted_at: Date.now(),
+            });
+
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(payload);
+              }
+            } catch (clipErr) {
+              console.warn("clipboard write failed", clipErr);
+            }
+
+            setStatus("ok", "Opening Taskr… allow paste if asked.");
+            window.location.href = "taskr://auth/handoff";
+          } catch (err) {
+            setStatus("error", (err && err.message) || "Could not open invite");
+          } finally {
+            if (openBtn) openBtn.disabled = false;
+            busy = false;
+          }
+        }
+
+        if (openBtn) {
+          openBtn.addEventListener("click", function () {
+            handoff();
+          });
+        }
+
+        // Do not auto-verify: TF &lt;258 cannot accept the clipboard handoff and
+        // would burn the one-time token. User taps after installing 258+.
       }
 
-      // Auto-open once — do not send anyone to the App Store from here.
-      setTimeout(openApp, 250);
+      var s = document.createElement("script");
+      s.src = configSrc;
+      s.onload = boot;
+      s.onerror = function () {
+        var statusEl = document.getElementById("invite-status");
+        if (statusEl) {
+          statusEl.className = "signup-foot invite-status is-error";
+          statusEl.textContent = "Could not load signup config.";
+        }
+      };
+      document.body.appendChild(s);
     })();
   </script>
 </body>

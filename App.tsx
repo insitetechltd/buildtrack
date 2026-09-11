@@ -3,23 +3,26 @@ import { Alert, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as ExpoLinking from "expo-linking";
+import * as Clipboard from "expo-clipboard";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "./src/state/authStore";
 import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/sprint7RuntimeSandbox";
-import { parseInviteSignInUrl } from "./src/auth/inviteSignInLink";
+import {
+  isInviteHandoffUrl,
+  parseInviteSessionPayload,
+  parseInviteSignInUrl,
+} from "./src/auth/inviteSignInLink";
 import ThemeRoot from "./src/theme/ThemeRoot";
 
 // VERSION CONTROL - Increment this to force a fresh app state
-const APP_VERSION = "93.1";
+const APP_VERSION = "93.2";
 const VERSION_KEY = "@app_version";
 
 /** Keys that must survive a version bump (invite → Set Password depends on session). */
 function shouldPreserveStorageKey(key: string): boolean {
   if (key === VERSION_KEY) return true;
-  // supabase-js GoTrue session
   if (key.startsWith("sb-") && key.includes("auth-token")) return true;
-  // Persisted auth gate flags (must_set_password path)
   if (key === "buildtrack-auth") return true;
   return false;
 }
@@ -32,13 +35,6 @@ async function clearAppDataPreservingAuthSession(): Promise<void> {
   }
   await AsyncStorage.setItem(VERSION_KEY, APP_VERSION);
 }
-
-/*
-IMPORTANT NOTICE: DO NOT REMOVE
-There are already environment keys in the project. 
-Before telling the user to add them, check if you already have access to the required keys through bash.
-Directly access them with process.env.${key}
-*/
 
 export default function App() {
   useEffect(() => {
@@ -97,47 +93,76 @@ export default function App() {
       });
     };
 
+    const finishInvite = async (result: { success: boolean; error?: string }) => {
+      if (cancelled) return;
+      if (!result.success) {
+        console.warn("[Invite] failed:", result.error);
+        Alert.alert(
+          "Invite link failed",
+          result.error ||
+            "This login link is invalid or already used. Open the latest link from signup.",
+        );
+      }
+    };
+
     const consumeInviteUrl = (url: string | null | undefined) => {
-      const parsed = parseInviteSignInUrl(url);
-      if (!parsed || consuming) {
+      if (!url || consuming) {
         return;
       }
+
+      const handoff = isInviteHandoffUrl(url);
+      const parsed = parseInviteSignInUrl(url);
+      if (!handoff && !parsed) {
+        return;
+      }
+
       consuming = true;
       void (async () => {
         try {
           await waitForAuthInit();
-          if (cancelled) {
+          if (cancelled) return;
+
+          if (handoff) {
+            console.log("[Invite] Reading session handoff from clipboard…");
+            const raw = await Clipboard.getStringAsync();
+            const session = parseInviteSessionPayload(raw);
+            if (!session) {
+              await finishInvite({
+                success: false,
+                error:
+                  "Could not read the invite session. Return to the browser invite page, tap Open Taskr again, and allow paste if asked.",
+              });
+              return;
+            }
+            const result = await useAuthStore
+              .getState()
+              .acceptInviteSession(session);
+            try {
+              await Clipboard.setStringAsync("");
+            } catch {
+              // best-effort clear
+            }
+            await finishInvite(result);
             return;
           }
-          console.log("[Invite] Consuming magic-link token…");
-          const result = await useAuthStore
-            .getState()
-            .signInWithInviteToken(parsed.tokenHash);
-          if (cancelled) {
-            return;
+
+          if (parsed) {
+            console.log("[Invite] Consuming magic-link token…");
+            const result = await useAuthStore
+              .getState()
+              .signInWithInviteToken(parsed.tokenHash);
+            await finishInvite(result);
           }
-          if (!result.success) {
-            console.warn("[Invite] sign-in failed:", result.error);
-            Alert.alert(
-              "Invite link failed",
-              result.error ||
-                "This login link is invalid or already used. Open the latest link from signup, or ask your admin for a new invite.",
-            );
-            return;
-          }
-          console.log("[Invite] Signed in — Set Password gate should show if required");
         } finally {
           consuming = false;
         }
       })();
     };
 
-    // expo-linking is more reliable for cold-start custom schemes than RN Linking alone.
     void (async () => {
       const initial =
         (await ExpoLinking.getInitialURL()) || (await Linking.getInitialURL());
       consumeInviteUrl(initial);
-      // iOS occasionally reports null on the first tick after a Safari → app redirect.
       if (!initial) {
         await new Promise((r) => setTimeout(r, 400));
         if (cancelled) return;
@@ -165,13 +190,11 @@ export default function App() {
     const checkVersion = async () => {
       try {
         const storedVersion = await AsyncStorage.getItem(VERSION_KEY);
-
         if (storedVersion !== APP_VERSION) {
           console.log(
             `Version mismatch: ${storedVersion} -> ${APP_VERSION}. Clearing app data (preserving auth session)…`,
           );
           await clearAppDataPreservingAuthSession();
-          console.log("Non-auth data cleared. Auth session preserved for invite / Set Password.");
         } else {
           console.log(`Version ${APP_VERSION} - App state is current`);
         }
@@ -179,7 +202,6 @@ export default function App() {
         console.error("Version check failed:", error);
       }
     };
-
     checkVersion();
   }, []);
 

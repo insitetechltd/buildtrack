@@ -172,6 +172,10 @@ interface AuthStore extends AuthState {
     password: string;
   }) => Promise<{ success: boolean; error?: string; companyId?: string }>;
   signInWithInviteToken: (tokenHash: string) => Promise<{ success: boolean; error?: string }>;
+  acceptInviteSession: (session: {
+    access_token: string;
+    refresh_token: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   completeFirstLoginPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
   // Test-compatible method names
@@ -1197,6 +1201,46 @@ export const useAuthStore = create<AuthStore>()(
           return { success: true };
         } catch (error: any) {
           const message = error?.message || "Invite sign-in failed";
+          set({ isLoading: false, error: message });
+          return { success: false, error: message };
+        }
+      },
+
+      acceptInviteSession: async (sessionTokens) => {
+        if (!supabase) {
+          return { success: false, error: "Supabase not configured" };
+        }
+        set({ isLoading: true, error: null });
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: sessionTokens.access_token,
+            refresh_token: sessionTokens.refresh_token,
+          });
+          if (error) {
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+          await get().initialize();
+          if (!get().isAuthenticated) {
+            return {
+              success: false,
+              error: "Session accepted but profile could not load",
+            };
+          }
+          const signedInId = get().user?.id;
+          if (signedInId) {
+            try {
+              await supabase
+                .from("users")
+                .update({ invite_sign_in_link: null })
+                .eq("id", signedInId);
+            } catch {
+              // optional column
+            }
+          }
+          return { success: true };
+        } catch (error: any) {
+          const message = error?.message || "Invite session handoff failed";
           set({ isLoading: false, error: message });
           return { success: false, error: message };
         }

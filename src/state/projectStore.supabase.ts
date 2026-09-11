@@ -16,6 +16,10 @@ import {
 import { getSessionScopedSupabase, waitForSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { useAuthStore } from "./authStore";
 import {
+  assignmentTimestamp,
+  selectActiveUserProjectAssignments,
+} from "./userProjectAssignmentQuery";
+import {
   getProjectRole,
   isLeadProjectManager,
   Project,
@@ -208,16 +212,27 @@ function readAssignmentCategory(assignment: any): ProjectRole {
   return (assignment.project_role || assignment.category) as ProjectRole;
 }
 
-function isMissingProjectRoleColumnError(error: { code?: string; message?: string } | null): boolean {
+function isMissingSchemaColumnError(
+  error: { code?: string; message?: string } | null,
+  column: string,
+): boolean {
   if (!error) return false;
   const message = (error.message || "").toLowerCase();
-  return message.includes("project_role") && (error.code === "PGRST204" || message.includes("schema cache"));
+  if (!message.includes(column.toLowerCase())) return false;
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    message.includes("schema cache") ||
+    message.includes("does not exist")
+  );
+}
+
+function isMissingProjectRoleColumnError(error: { code?: string; message?: string } | null): boolean {
+  return isMissingSchemaColumnError(error, "project_role");
 }
 
 function isMissingCategoryColumnError(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false;
-  const message = (error.message || "").toLowerCase();
-  return message.includes("category") && (error.code === "PGRST204" || message.includes("schema cache"));
+  return isMissingSchemaColumnError(error, "category");
 }
 
 async function insertUserProjectAssignmentRow(
@@ -992,12 +1007,10 @@ export const useProjectStore = create<ProjectStore>()(
           const result = await runSingleFlightRequest(
             resourceKey,
             async () => {
-              const { data, error } = await supabaseClient
-                .from('user_project_assignments')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('is_active', true)
-                .order('assigned_at', { ascending: false });
+              const { data, error } = await selectActiveUserProjectAssignments(
+                supabaseClient,
+                { userId },
+              );
 
               if (error) {
                 throw error;
@@ -1073,12 +1086,10 @@ export const useProjectStore = create<ProjectStore>()(
           const result = await runSingleFlightRequest(
             resourceKey,
             async () => {
-              const { data, error } = await supabaseClient
-                .from('user_project_assignments')
-                .select('*')
-                .eq('project_id', projectId)
-                .eq('is_active', true)
-                .order('assigned_at', { ascending: false });
+              const { data, error } = await selectActiveUserProjectAssignments(
+                supabaseClient,
+                { projectId },
+              );
 
               if (error) {
                 throw error;
@@ -1438,19 +1449,19 @@ export const useProjectStore = create<ProjectStore>()(
 
         try {
           // Get all assignments for this project
-          const { data, error } = await supabase
-            .from('user_project_assignments')
-            .select('*')
-            .eq('project_id', projectId)
-            .eq('is_active', true)
-            .order('assigned_at', { ascending: false });
+          const { data, error } = await selectActiveUserProjectAssignments(
+            supabase,
+            { projectId },
+          );
 
           if (error) throw error;
 
           // Group by user_id and keep only the most recent assignment for each user
           const userGroups = (data || []).reduce((acc, assignment) => {
             const userId = assignment.user_id;
-            if (!acc[userId] || new Date(assignment.assigned_at) > new Date(acc[userId].assigned_at)) {
+            const nextTs = assignmentTimestamp(assignment);
+            const prevTs = acc[userId] ? assignmentTimestamp(acc[userId]) : "";
+            if (!acc[userId] || new Date(nextTs) > new Date(prevTs)) {
               acc[userId] = assignment;
             }
             return acc;

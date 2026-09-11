@@ -49,6 +49,22 @@ export async function createProject(
   return data.id as string;
 }
 
+function isMissingColumnError(
+  error: { code?: string; message?: string } | null,
+  column: string,
+): boolean {
+  if (!error) return false;
+  const message = String(error.message || '').toLowerCase();
+  if (!message.includes(column.toLowerCase())) return false;
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist')
+  );
+}
+
+/** PROD uses `project_role`; older DEV tenants still use `category`. */
 export async function assignUserToProject(
   service: SupabaseClient,
   input: {
@@ -58,15 +74,30 @@ export async function assignUserToProject(
     assignedBy: string;
   },
 ): Promise<void> {
-  const { error } = await service.from('user_project_assignments').insert({
+  const base = {
     user_id: input.userId,
     project_id: input.projectId,
-    category: input.category,
     assigned_by: input.assignedBy,
     is_active: true,
+  };
+
+  const roleInsert = await service.from('user_project_assignments').insert({
+    ...base,
+    project_role: input.category,
   });
-  if (error) {
-    throw error;
+  if (!roleInsert.error) {
+    return;
+  }
+  if (!isMissingColumnError(roleInsert.error, 'project_role')) {
+    throw roleInsert.error;
+  }
+
+  const categoryInsert = await service.from('user_project_assignments').insert({
+    ...base,
+    category: input.category,
+  });
+  if (categoryInsert.error) {
+    throw categoryInsert.error;
   }
 }
 
@@ -96,15 +127,32 @@ export async function updateAssignmentCategory(
   service: SupabaseClient,
   input: { userId: string; projectId: string; category: string },
 ): Promise<void> {
-  const { error } = await service
+  const roleUpdate = await service
+    .from('user_project_assignments')
+    .update({ project_role: input.category })
+    .eq('user_id', input.userId)
+    .eq('project_id', input.projectId)
+    .eq('is_active', true);
+
+  if (!roleUpdate.error) {
+    return;
+  }
+  if (
+    !isMissingColumnError(roleUpdate.error, 'project_role') &&
+    !isMissingColumnError(roleUpdate.error, 'category')
+  ) {
+    throw roleUpdate.error;
+  }
+
+  const categoryUpdate = await service
     .from('user_project_assignments')
     .update({ category: input.category })
     .eq('user_id', input.userId)
     .eq('project_id', input.projectId)
     .eq('is_active', true);
 
-  if (error) {
-    throw error;
+  if (categoryUpdate.error) {
+    throw categoryUpdate.error;
   }
 }
 

@@ -53,6 +53,8 @@
     "test:parity:old": "PARITY_TARGET=old USE_REAL_SUPABASE=1 jest src/__tests__/parity/scenarios --runInBand",
     "test:parity:new": "PARITY_TARGET=new USE_REAL_SUPABASE=1 jest src/__tests__/parity/scenarios --runInBand",
     "test:parity": "npm run test:parity:unit",
+    "test:dual-env:critical": "python3 scripts/supabase/probe-critical-paths-dual-env.py",
+    "test:critical": "npm run test:auth && npm run test:projects && npm run test:tasks && npm run test:integration && npm run test:e2e:journeys && npx jest src/state/__tests__/userProjectAssignmentQuery.test.ts src/legal/__tests__/legalLinks.test.ts src/ui/viewAdapters/__tests__/useLoginViewAdapter.test.ts src/ui/contracts/__tests__/projectMembership.test.ts --runInBand && npm run test:dual-env:critical",
     "greenfield:apply": "bash scripts/greenfield/apply_remote.sh",
     "greenfield:apply:parity": "GREENFIELD_RUN_PARITY=1 bash scripts/greenfield/apply_remote.sh",
     "test:all": "jest --coverage --verbose",

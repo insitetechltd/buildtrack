@@ -38,6 +38,7 @@ Shop shorthand used in this harness and commercial release week. Prefer these la
 | **Suite** | Full set of automated UI tests (e.g. all U01–U12) |
 | **One-shot** | Run **one** of those tests alone while fixing |
 | **RC** | Release candidate — the build you might ship, not a random local experiment |
+| **CBP** | **C**ommit → **B**uild → **P**ush to TestFlight (default PROD / `production` profile). Rule: `.cursor/rules/cbp-commit-build-push-tf.mdc` |
 | **Week-rank R1, R2…** | This week’s ordered ship checklist (**R2** = rebuild the native app) |
 | **Wave 2** | Next *product* release (DMS/web, Order 15.x) — **not** week-rank R2 |
 | **Native rebuild** | Recompile the real iOS/Android app (pods, Skia, etc.), not just refresh JS |

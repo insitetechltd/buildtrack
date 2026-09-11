@@ -229,7 +229,10 @@ async function mintInviteOpenLink(
       type: "magiclink",
       email,
     });
-  const hashedToken = linkData?.properties?.hashed_token;
+  const hashedToken =
+    linkData?.properties?.hashed_token ||
+    // Some Auth API shapes return hashed_token on the payload root.
+    (linkData as { hashed_token?: string } | null)?.hashed_token;
   if (linkError || !hashedToken) {
     throw new Error(linkError?.message || "invite_link_failed");
   }

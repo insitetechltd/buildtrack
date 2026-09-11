@@ -297,7 +297,9 @@ async function mintSignInLink(
       email,
     });
 
-  const hashedToken = linkData?.properties?.hashed_token;
+  const hashedToken =
+    linkData?.properties?.hashed_token ||
+    (linkData as { hashed_token?: string } | null)?.hashed_token;
   if (linkError || !hashedToken) {
     return { error: linkError?.message || "invite_link_failed" };
   }

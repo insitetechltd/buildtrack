@@ -1,39 +1,43 @@
 import React, { useEffect } from "react";
+import { Alert, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as ExpoLinking from "expo-linking";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "./src/state/authStore";
 import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/sprint7RuntimeSandbox";
 import { parseInviteSignInUrl } from "./src/auth/inviteSignInLink";
-import { Linking } from "react-native";
 import ThemeRoot from "./src/theme/ThemeRoot";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.1";
 const VERSION_KEY = "@app_version";
 
+/** Keys that must survive a version bump (invite → Set Password depends on session). */
+function shouldPreserveStorageKey(key: string): boolean {
+  if (key === VERSION_KEY) return true;
+  // supabase-js GoTrue session
+  if (key.startsWith("sb-") && key.includes("auth-token")) return true;
+  // Persisted auth gate flags (must_set_password path)
+  if (key === "buildtrack-auth") return true;
+  return false;
+}
+
+async function clearAppDataPreservingAuthSession(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys();
+  const toRemove = keys.filter((key) => !shouldPreserveStorageKey(key));
+  if (toRemove.length > 0) {
+    await AsyncStorage.multiRemove(toRemove);
+  }
+  await AsyncStorage.setItem(VERSION_KEY, APP_VERSION);
+}
+
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
 There are already environment keys in the project. 
 Before telling the user to add them, check if you already have access to the required keys through bash.
 Directly access them with process.env.${key}
-
-Correct usage:
-process.env.EXPO_PUBLIC_VIBECODE_{key}
-//directly access the key
-
-Incorrect usage:
-import { OPENAI_API_KEY } from '@env';
-//don't use @env, its depreicated
-
-Incorrect usage:
-import Constants from 'expo-constants';
-const openai_api_key = Constants.expoConfig.extra.apikey;
-//don't use expo-constants, its depreicated
-
-🔥 REAL-TIME DATA SYNC - All users receive updates immediately! ✅
-Last Updated: v13.0
 */
 
 export default function App() {
@@ -73,6 +77,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    let consuming = false;
 
     const waitForAuthInit = async () => {
       if (useAuthStore.getState().isInitialized) {
@@ -92,28 +97,67 @@ export default function App() {
       });
     };
 
-    const consumeInviteUrl = (url: string | null) => {
+    const consumeInviteUrl = (url: string | null | undefined) => {
       const parsed = parseInviteSignInUrl(url);
-      if (!parsed) {
+      if (!parsed || consuming) {
         return;
       }
+      consuming = true;
       void (async () => {
-        await waitForAuthInit();
-        if (cancelled) {
-          return;
+        try {
+          await waitForAuthInit();
+          if (cancelled) {
+            return;
+          }
+          console.log("[Invite] Consuming magic-link token…");
+          const result = await useAuthStore
+            .getState()
+            .signInWithInviteToken(parsed.tokenHash);
+          if (cancelled) {
+            return;
+          }
+          if (!result.success) {
+            console.warn("[Invite] sign-in failed:", result.error);
+            Alert.alert(
+              "Invite link failed",
+              result.error ||
+                "This login link is invalid or already used. Open the latest link from signup, or ask your admin for a new invite.",
+            );
+            return;
+          }
+          console.log("[Invite] Signed in — Set Password gate should show if required");
+        } finally {
+          consuming = false;
         }
-        await useAuthStore.getState().signInWithInviteToken(parsed.tokenHash);
       })();
     };
 
-    void Linking.getInitialURL().then((url) => consumeInviteUrl(url));
+    // expo-linking is more reliable for cold-start custom schemes than RN Linking alone.
+    void (async () => {
+      const initial =
+        (await ExpoLinking.getInitialURL()) || (await Linking.getInitialURL());
+      consumeInviteUrl(initial);
+      // iOS occasionally reports null on the first tick after a Safari → app redirect.
+      if (!initial) {
+        await new Promise((r) => setTimeout(r, 400));
+        if (cancelled) return;
+        const retry =
+          (await ExpoLinking.getInitialURL()) || (await Linking.getInitialURL());
+        consumeInviteUrl(retry);
+      }
+    })();
+
     const subscription = Linking.addEventListener("url", ({ url }) => {
+      consumeInviteUrl(url);
+    });
+    const expoSub = ExpoLinking.addEventListener("url", ({ url }) => {
       consumeInviteUrl(url);
     });
 
     return () => {
       cancelled = true;
       subscription.remove();
+      expoSub.remove();
     };
   }, []);
 
@@ -121,20 +165,13 @@ export default function App() {
     const checkVersion = async () => {
       try {
         const storedVersion = await AsyncStorage.getItem(VERSION_KEY);
-        
+
         if (storedVersion !== APP_VERSION) {
-          console.log(`Version mismatch: ${storedVersion} -> ${APP_VERSION}. Clearing all data...`);
-          
-          // Clear ALL AsyncStorage data except the version key
-          await AsyncStorage.clear();
-          await AsyncStorage.setItem(VERSION_KEY, APP_VERSION);
-          
-          console.log("Data cleared. App will now use fresh Supabase data.");
-          
-          // Force a re-render by reloading the app
-          if (typeof window !== "undefined" && window.location) {
-            window.location.reload();
-          }
+          console.log(
+            `Version mismatch: ${storedVersion} -> ${APP_VERSION}. Clearing app data (preserving auth session)…`,
+          );
+          await clearAppDataPreservingAuthSession();
+          console.log("Non-auth data cleared. Auth session preserved for invite / Set Password.");
         } else {
           console.log(`Version ${APP_VERSION} - App state is current`);
         }
@@ -142,7 +179,7 @@ export default function App() {
         console.error("Version check failed:", error);
       }
     };
-    
+
     checkVersion();
   }, []);
 
@@ -156,5 +193,3 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
-
-// FORCE RELOAD v12.0 - REAL-TIME DATA SYNC SYSTEM

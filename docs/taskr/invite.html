@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Open Taskr — set your password</title>
+  <meta name="theme-color" content="#043748" />
+  <link rel="icon" href="assets/marketing/icon.png" type="image/png" />
+  <link rel="stylesheet" href="assets/marketing/landing.css?v=9" />
+  <link rel="stylesheet" href="assets/signup/signup.css?v=4" />
+  <style>
+    .invite-card { max-width: 28rem; margin: 2rem auto; }
+    .invite-card h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .invite-card .lede { margin-bottom: 1.25rem; color: #334155; }
+    .invite-actions { display: flex; flex-direction: column; gap: 0.75rem; }
+    .invite-secondary {
+      display: block;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #0369a1;
+      text-decoration: underline;
+    }
+    .invite-warn {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1rem;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      color: #9a3412;
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-shell">
+    <div class="wrap">
+      <div class="signup-card invite-card">
+        <h1>Open Taskr</h1>
+        <p class="lede" id="invite-lede">
+          Continue in the Taskr app to set your password. If you installed from
+          <strong>TestFlight</strong>, use that install — not the App Store copy.
+        </p>
+        <div class="invite-actions">
+          <a class="signup-submit" id="invite-open-app" href="#">Open Taskr &amp; set password</a>
+          <a class="invite-secondary" id="invite-copy" href="#">Copy app link</a>
+          <a class="invite-secondary" href="https://apps.apple.com/app/id6754898737">App Store (last resort)</a>
+        </div>
+        <p class="invite-warn">
+          App Store Taskr may be an older build. For beta / App Review / TestFlight,
+          open <strong>Taskr from TestFlight</strong> once, then tap
+          <strong>Open Taskr &amp; set password</strong> again.
+        </p>
+        <p class="signup-foot" id="invite-status" role="status"></p>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var token = (params.get("token_hash") || "").trim();
+      var openBtn = document.getElementById("invite-open-app");
+      var copyBtn = document.getElementById("invite-copy");
+      var statusEl = document.getElementById("invite-status");
+      var lede = document.getElementById("invite-lede");
+
+      if (!token) {
+        if (lede) {
+          lede.textContent =
+            "This invite link is missing its login token. Go back to the signup success page and use the latest link.";
+        }
+        if (openBtn) openBtn.hidden = true;
+        if (copyBtn) copyBtn.hidden = true;
+        return;
+      }
+
+      var appLink =
+        "taskr://auth/invite?token_hash=" +
+        encodeURIComponent(token) +
+        "&type=magiclink";
+
+      function openApp() {
+        if (statusEl) {
+          statusEl.textContent = "Opening Taskr…";
+        }
+        window.location.href = appLink;
+      }
+
+      if (openBtn) {
+        openBtn.href = appLink;
+        openBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          openApp();
+        });
+      }
+
+      if (copyBtn) {
+        copyBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          var done = function () {
+            copyBtn.textContent = "Copied";
+            setTimeout(function () {
+              copyBtn.textContent = "Copy app link";
+            }, 1600);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(appLink).then(done).catch(function () {
+              window.prompt("Copy this link", appLink);
+            });
+          } else {
+            window.prompt("Copy this link", appLink);
+          }
+        });
+      }
+
+      // Auto-open once — do not send anyone to the App Store from here.
+      setTimeout(openApp, 250);
+    })();
+  </script>
+</body>
+</html>

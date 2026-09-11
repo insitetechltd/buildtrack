@@ -31,6 +31,10 @@ const crawlBlockList = [
   rootDir(".xcode-derived-data"),
   rootDir(".maestro"),
   rootDir("eas-keystores"),
+  // Marketing media is not JS — keep Metro crawl off these trees on KooDrive.
+  rootDir("docs"),
+  rootDir("documentation"),
+  rootDir("coverage"),
   ...(underEasLocalBuild ? [] : [rootDir(".eas")]),
 ];
 
@@ -40,5 +44,8 @@ config.resolver.blockList = Array.isArray(existingBlockList)
   : existingBlockList
     ? [...crawlBlockList, existingBlockList]
     : crawlBlockList;
+
+// Watchman sockets fail when HOME lives on KooDrive; force Node crawl + blockList.
+config.resolver.useWatchman = false;
 
 module.exports = withNativeWind(config, { input: "./global.css" });

@@ -1,0 +1,17 @@
+---
+description: CBP shorthand — commit, build, push to TestFlight
+alwaysApply: true
+---
+
+# CBP (Commit → Build → Push TF)
+
+When the user says **CBP** (alone or “do CBP”), run this sequence without re-asking what it means:
+
+1. **Commit** — only the relevant change set (conventional message); push git to the tracked remote after commit (Insite default unless they said not to).
+2. **Build** — local PROD iOS path: `./build-local.sh ios production` (auto-bumps shared build number). Use `./build-and-submit.sh ios production true` only when interactive confirm is handled / non-interactive submit follows.
+3. **Push to TF** — `npx eas submit --platform ios --path <latest .eas/artifacts/*.ipa> --profile production --non-interactive`. Confirm IPA identity (CFBundleVersion, PROD Supabase bake) before/after submit.
+4. **Record** — update `documentation/NOW.md` + ASC paste notes if this binary is the App Store candidate; commit/push that chore bump if `app.json` changed.
+
+Default profile = **production** (App Store / PROD TF) unless the user says DEV / Internal (`./build-local.sh ios dev` + `--profile dev`).
+
+Do not tick Public or Submit for Review unless explicitly asked.

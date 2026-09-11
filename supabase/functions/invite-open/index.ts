@@ -1,29 +1,26 @@
 // Public invite landing. *.supabase.co rewrites text/html → text/plain (anti-phishing),
-// so we cannot run JavaScript here. Use HTTP redirects instead:
-//   1st tap (mobile): App Store / Play
-//   2nd tap (same browser): taskr:// first-time sign-in
-// Desktop paste: App Store (custom schemes do nothing on a laptop).
+// so we cannot run JS here. Always 302 to the HTTPS bridge on www, which tries
+// taskr:// and never forces the App Store on first tap (TF / ASC beta-safe).
 
-const APP_SCHEME_PATH = "auth/invite";
+const INVITE_BRIDGE = "https://www.insiteworks.co/taskr/invite.html";
 const IOS_APP_STORE = "https://apps.apple.com/app/id6754898737";
 const ANDROID_PLAY =
   "https://play.google.com/store/apps/details?id=com.buildtrack.app";
-const COOKIE = "taskr_invite=1";
 
-function redirect(location: string, extra: HeadersInit = {}): Response {
+function redirect(location: string): Response {
   return new Response(null, {
     status: 302,
     headers: {
       Location: location,
       "Cache-Control": "no-store",
-      ...extra,
     },
   });
 }
 
-function hasInviteCookie(req: Request): boolean {
-  const cookie = req.headers.get("cookie") || "";
-  return cookie.split(";").some((part) => part.trim().startsWith("taskr_invite="));
+function bridgeUrl(tokenHash: string): string {
+  const url = new URL(INVITE_BRIDGE);
+  url.searchParams.set("token_hash", tokenHash);
+  return url.toString();
 }
 
 Deno.serve((req) => {
@@ -40,28 +37,12 @@ Deno.serve((req) => {
   const tokenHash = (url.searchParams.get("token_hash") || "").trim();
   const ua = req.headers.get("user-agent") || "";
   const isAndroid = /Android/i.test(ua);
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isMobile = isAndroid || isIOS;
-  const store = isAndroid ? ANDROID_PLAY : IOS_APP_STORE;
-  const forceOpen = url.searchParams.get("open") === "1";
 
   if (!tokenHash) {
-    return redirect(store);
+    return redirect(isAndroid ? ANDROID_PLAY : IOS_APP_STORE);
   }
 
-  const encoded = encodeURIComponent(tokenHash);
-  const appLink =
-    `taskr://${APP_SCHEME_PATH}?token_hash=${encoded}&type=magiclink`;
-
-  if (forceOpen || (isMobile && hasInviteCookie(req))) {
-    return redirect(appLink);
-  }
-
-  if (!isMobile) {
-    return redirect(store);
-  }
-
-  return redirect(store, {
-    "Set-Cookie": `${COOKIE}; Max-Age=604800; Path=/; SameSite=Lax`,
-  });
+  // Always use the web bridge — it opens taskr:// and keeps App Store as a
+  // last-resort install path (so TestFlight installs are not displaced).
+  return redirect(bridgeUrl(tokenHash));
 });

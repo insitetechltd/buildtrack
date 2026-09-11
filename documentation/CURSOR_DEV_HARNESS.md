@@ -21,11 +21,11 @@ AI cockpit; `.trae/` remains legacy read-only until migration is confirmed.
 
 1. Open Cursor on this repo.
 2. Kickoff: read `documentation/NOW.md`, then `AGENTS.md` status + `documentation/ROADMAP.md`; run `npm run dev:doctor`.
-3. For non-trivial work, follow `solo-dev-harness` **SOP.md** (Planner → Builder → Reviewer → Test → QA/Release as needed). Process changes: dual-write SOP.md + `templates/` + this repo.
+3. For non-trivial work, follow `solo-dev-harness` **SOP.md** quality loop (Scout → Spec → Gate A → Test contract → Build → Prove → Quality Judge). Only Judge emits SHIP. Git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`. Process changes: dual-write SOP.md + `templates/` + this repo.
 4. Confidence ladder: Jest (`TESTING_STRATEGY.md`) → Maestro via `scripts/maestro/run-local.sh` → human accept.
 5. Concurrent by default when ownership partitions (see `solo-dev-harness` workflows.md + `insite-dev` § Concurrent); Maestro ≤2 **distinct** UDIDs, 1 job per UDID; **sim-lock** before run (SOP §10).
 6. RC dual-user interaction gate: `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free).
-7. Commit only when you ask; never before Reviewer clears Critical/High.
+7. Commit during loops is allowed for recovery (Reviewer 0 C/H). **Done = Quality Judge SHIP.** User-requested commit after SHIP → push by default.
 8. Teardown: overwrite `documentation/NOW.md`; release sim locks (`bash scripts/maestro/sim-lock.sh release-all`); update ROADMAP/AGENTS only if evidence changed.
 
 ## Terminology (plain language)
@@ -91,7 +91,7 @@ Then customize:
 5. `package.json` — `"dev:doctor": "bash ./scripts/dev/doctor.sh"`
 6. Rename/customize `.cursor/skills/project-dev/` overlay
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Seed copies the full cycle (NOW, workflows, multi-critique, hooks, doctor).
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (git-tracked: `docs/superpowers/templates/solo-dev-harness/`). Seed copies the full quality loop (NOW, workflows, multi-critique, Judge scorecard, doctor).
 
 Details: `~/.cursor/skills/solo-dev-harness/bootstrap.md`.
 

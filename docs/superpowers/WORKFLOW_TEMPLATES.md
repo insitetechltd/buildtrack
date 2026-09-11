@@ -1,43 +1,42 @@
 # Solo Default Workflow Templates
 
-Stop acting as the manual router. Use these templates to give Solo the outcome, constraints, and validation requirements, and let Solo orchestrate the internal roles (@planner, @builder, @reviewer, @test-engineer, @qa-validator) plus the appropriate marketplace skills automatically.
+Stop acting as the manual router. Use these templates to give Solo the outcome, constraints, and validation requirements, and let Solo orchestrate the quality loop. **Done = Quality Judge SHIP.**
 
 ## 0. Agent Identifiers (use these, NOT display names)
 
 Always invoke specialists with `@identifier` syntax in SOLO Orchestrator dispatches:
 
-| Role | Identifier | Skill hooks for this stage |
+| Role | Identifier | Notes |
 |---|---|---|
-| Orchestrator (entry, not callable) | `SOLO Orchestrator` — start turn with kickoff prompt below | Brainstorming / Writing-Plans for the first stage |
-| Planner | `@planner` | `brainstorming` (pre), `writing-plans` (post) |
-| Builder | `@builder` | `executing-plans`, `test-driven-development`, `react-native-skills` (preferred over `react-best-practices`) |
-| Reviewer | `@reviewer` | `TRAE-code-review` (parallel), `TRAE-debugger` (if runtime issues) |
-| Commit Gate | `@git-commit` skill — ONLY after Reviewer no Critical/High findings | `git-commit` skill only |
-| Test Engineer | `@test-engineer` | `test-driven-development`, `TRAE-debugger` |
-| QA Validator | `@qa-validator` | `TRAE-debugger` (simulator runtime), `figma` (for WS-UX/M-UX-01 pixel checks) |
-| Release Manager | `@release-manager` | `gh-cli` for milestones/tags/PRs |
-| Docs Curator | `@docs-curator` | `defuddle` for markdown extraction from URLs |
+| Orchestrator (entry, not callable) | `SOLO Orchestrator` | Track, claim ledger, loop budget. Never implements on Track M/U |
+| Scout | `@scout` | Context pack; merge into Planner on Track S |
+| Planner | `@planner` | Falsifiable claims + named proofs |
+| Test Designer | `@test-designer` | Failing proofs before Builder |
+| Builder | `@builder` | No self-SHIP |
+| Reviewer | `@reviewer` | Independent model; 0 C/H |
+| Adversary | `@adversary` | Named gaps must be proven |
+| Test Engineer | `@test-engineer` | Executes Test Designer contract |
+| QA Validator | `@qa-validator` | Track M/U default-on |
+| Quality Judge | `@quality-judge` | **Only SHIP owner** |
+| Release Manager | `@release-manager` | After Judge SHIP |
+| Docs Curator | `@docs-curator` | After SHIP if canonical docs changed |
 
 ## 1. The Session Kickoff Prompt
-*Use this once at the very beginning of a new chat session to set the rules of engagement. You can also save this into your Trae custom instructions if you want it to apply universally.*
+*Use this once at the very beginning of a new chat session to set the rules of engagement.*
 
 ```text
-Act as the SOLO Orchestrator for this repository. 
-Do not require me to manually switch your personas or dictate your workflow step-by-step. 
+Act as the SOLO Orchestrator for this repository.
+Do not require me to manually switch personas or dictate workflow step-by-step.
 
-Automatically route all work through the established repository lifecycle:
-1. @planner (for non-trivial scoping; use brainstorming skill first if request is fuzzy; use writing-plans after to generate spec/tasks.md/check_list.md format if desired)
-2. @builder (for implementation; use executing-plans skill for checkpoint-based tasks, test-driven-development skill for TDD, react-native-skills over react-best-practices for all Expo/RN UI)
-3. @reviewer (for safety and regression checks; run TRAE-code-review skill in parallel)
-4. [COMMIT GATE] git-commit skill — ONLY after @reviewer reports no Critical/High findings
-5. @test-engineer (for TDD and behavior verification; use test-driven-development skill for additions, TRAE-debugger for runtime flakes)
-6. @qa-validator (for user-visible flows - must compile and launch natively on the iOS simulator; "Maestro executes, Human approves" model)
-7. @release-manager (only for build/deploy/version/submission; use gh-cli)
-8. @docs-curator (only when canonical docs, runbooks, release notes, or setup instructions must change; use defuddle)
+Automatically route all work through the quality loop (portable SOP):
+Scout → Spec → Gate A (Plan Critics ×2) → Test Designer → Builder → Prove (Reviewer + Test Engineer + QA) → Adversary → Quality Judge.
+Only @quality-judge may emit SHIP. Below bar → PATCH / REWORK / REDESIGN. Track M/U skip of Gate A / Adversary / QA / Judge = FAIL.
+Commit during loops is allowed for recovery (Reviewer 0 C/H). Done is not equivalent to committed.
 
 Milestone Gate (applies BEFORE @planner dispatch):
-- Read AGENTS.md Current Delivery Status and documentation/ROADMAP.md first
-- If task touches WS-UX/M-UX-01, WS-QA/M-QA-03, WS-QA/M-QA-01, WS-QA/M-QA-02, or WS-SUPABASE/M-SUPABASE-01: planner cites milestone, test-engineer classifies tests per TESTING_STRATEGY.md layers, qa-validator routes correct Maestro flow, release-manager cross-checks gate status.
+- Read documentation/NOW.md, AGENTS.md Current Delivery Status and documentation/ROADMAP.md first
+- Propose track S/M/U; Judge confirms. Screens/nav/store-read → Track S illegal.
+- If task touches WS-UX/M-UX-01, WS-QA, or WS-SUPABASE: planner cites milestone, test-engineer classifies tests per TESTING_STRATEGY.md, qa-validator routes correct Maestro flow, release-manager cross-checks gate status.
 
 Autonomy Policy (ratified from SOLO_OPERATING_PROCEDURE.md §0):
 - Default mode = autonomous. Ask me ONLY for: product behavior choices with multiple valid outcomes irresolvable from AGENTS.md/.trae/rules/; schema/persistence changes with user-facing consequences; auth/security with no precedent; release/deploy/version/submission decisions; scope expansion beyond one bounded extension.
@@ -47,7 +46,7 @@ Rules of Engagement:
 - Seamlessly use your internal skills and launch subagents with @identifier syntax when appropriate without asking for permission.
 - Always include native compilation (`npm run ios` / `npx expo run:ios`) in your workflow via @qa-validator after modifying user-visible code or native dependencies, to ensure the app is validated directly on the iOS simulator.
 - Only stop to ask me questions at major approval gates (e.g., approving a spec/plan, or clarifying ambiguous business logic). Batch your questions to minimize my bottleneck.
-- For every completed task, provide a short "Execution Ledger" showing: what changed, what validation was run (Jest pass/fail, typecheck, lint, Maestro evidence, iOS simulator compilation), what was committed (commit SHA), and any remaining risks.
+- For every completed task, provide a short "Execution Ledger" showing: track S/M/U, claim ledger counts, what changed, what validation was run, Judge verdict, loop index, commit SHA if any, and any remaining in-scope UNPROVEN claims (must be empty for SHIP).
 ```
 
 ## 2. The Standard Task Template

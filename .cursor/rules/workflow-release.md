@@ -1,6 +1,6 @@
 # Workflow: Release / Deploy / Build-Readiness (SOLO-style for Cursor)
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Dual-write process changes to SOP.md + `templates/` + this file.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Dual-write process changes to SOP.md + `templates/` + this file.
 
 Use this rule file when the task touches: build, deployment, environment, versioning, store submission, release readiness.
 
@@ -40,11 +40,14 @@ Only after 0 C/H findings. `chore(release):` or `build(eas):` scope.
 2. Maestro bootstrap evidence: run-local.sh for launch-smoke + open-dev-settings + initialize-sandbox (3/3 rc=0 with visual PNG read = 24s false vs 419s real ratio sanity check)
 3. TypeScript: npx tsc --noEmit rc=0
 
-**Phase E — QA Validate (if release includes user-visible flow changes)**
-Native simulator run for rubric scenarios. Figma cross-check if WS-UX/M-UX-01 release.
+**Phase E — QA Validate (default-on if the release includes user-visible flow changes)**
+Native simulator run for rubric scenarios. Figma cross-check if WS-UX/M-UX-01 release. Visual PNG read before rc=0 claims.
+
+**Phase E2 — Quality Judge**
+Release-ready is **not** Reviewer-alone. Judge SHIP required before Phase F. Track skip of required Prove steps = FAIL.
 
 **Phase F — Release Manager Close**
-Final status: READY / BLOCKED / CONDITIONALLY READY with explicit blockers list.
+Final status: READY / BLOCKED / CONDITIONALLY READY with explicit blockers list. READY requires Judge SHIP.
 
 Hard safety:
 - NEVER mark "released to public" after ASC submit-only step. Only ASC human ticks Public checkbox. Correct phrase: "Submitted to ASC, awaiting manual public release".
@@ -65,6 +68,7 @@ Config files inspected:
 Hard blockers: (count + list)
 Advisory items:
 Validation run: (Jest/Maestro/tsc results)
+Judge verdict: PATCH | REWORK | REDESIGN | SHIP | ESCALATE
 Release status: READY / BLOCKED / CONDITIONALLY READY
 Next step:
 ```

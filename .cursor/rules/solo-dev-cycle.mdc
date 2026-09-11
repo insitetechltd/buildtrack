@@ -5,17 +5,18 @@ alwaysApply: true
 
 # Solo Dev Cycle (Insite)
 
-- Follow personal skill `solo-dev-harness` **SOP.md** for the whole cycle (not NOW-only).
+- Follow personal skill `solo-dev-harness` **SOP.md** for the whole **quality loop** (not NOW-only; git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`).
+- Cycle: Scout → Spec → Gate A → Test contract → Build → Prove → **Quality Judge**. Only Judge emits SHIP. Below bar → PATCH / REWORK / REDESIGN. Residual risks ≠ Done.
 - Milestone gate: read `documentation/NOW.md`, then `AGENTS.md` § Current Delivery Status and `documentation/ROADMAP.md` before planning.
 - Session continuity: `documentation/NOW.md` is the git-tracked pick-up file — overwrite at teardown; do not rely on Cursor chat.
-- **Dual-write:** SOP improvements update (1) `~/.cursor/skills/solo-dev-harness/SOP.md`, (2) `templates/`, (3) this repo’s matching files. Insite-only law stays in `.cursor/skills/insite-dev/`.
+- **Dual-write:** SOP improvements update (1) `~/.cursor/skills/solo-dev-harness/SOP.md`, (2) `templates/` (and `docs/superpowers/templates/solo-dev-harness/`), (3) this repo’s matching files. Insite-only law stays in `.cursor/skills/insite-dev/`.
 - Cursor SoT for project law: `.cursor/rules/`. `.trae/` is legacy read-only during migration.
-- Testing mindset: read `TESTING_STRATEGY.md`; Maestro via `scripts/maestro/run-local.sh` only.
-- User-visible mobile/nav/upload/task changes require QA path; logic-only may stop at Test Engineer.
+- Testing mindset: read `TESTING_STRATEGY.md`; Maestro via `scripts/maestro/run-local.sh` only. Test Engineer executes the Test Designer contract, not “smallest check that might pass.”
+- Track M/U: QA Validator is **default-on** for screens, nav, uploads, or stores screens read. “Logic-only” is a **Judge** classification with evidence — not a Builder exemption. Track M/U skip of Gate A / Adversary / QA / Judge = FAIL.
 - UI change reports: include visual artifacts + delta explanation (see `.cursor/rules/ui-visual-report.mdc`).
 - Before Maestro or release claims, run `npm run dev:doctor`.
 - Workflow checklists: `.cursor/rules/workflow-solo.md` (default), `workflow-feature.md`, `workflow-bugfix.md`, `workflow-release.md`, `workflow-ms02-unblock.md`.
-- Multi-critique + form interaction gates: `.cursor/rules/multi-critique-validation.mdc` (Gate A ≥2 plan critiques; Gate B ≥1 validation; Gate C headed form smoke). Shared brief: `multi-model-evaluation-prompt.mdc`.
+- Multi-critique + Judge: `.cursor/rules/multi-critique-validation.mdc` (Gate A ≥2 plan critics; Adversary/Gate B must prove named gaps; Gate C headed form smoke; Judge scorecard). Shared brief: `multi-model-evaluation-prompt.mdc`.
 - Maestro Gate **0–8** preflight: `.cursor/rules/maestro-preflight.md`. Before claiming a sim: `npm run maestro:locks`.
 
 ## Concurrent development (default)

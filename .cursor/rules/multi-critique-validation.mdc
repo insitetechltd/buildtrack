@@ -1,13 +1,15 @@
 ---
-description: Multi-critique Gates A/B/C — shared brief, plan critiques, validation critique, form smoke
+description: Multi-critique Gates A/B/C + Quality Judge — shared brief, Plan Critics, Adversary, form smoke, blocking scorecard
 alwaysApply: true
 ---
 
-# Multi-critique + validation robustness (orchestrator)
+# Multi-critique + Quality Judge (orchestrator)
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §6. Dual-write process changes to SOP.md + `templates/` + this file.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §5–6 (git-tracked copy: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Dual-write process changes to SOP.md + `templates/` + this file.
 
 User mandate (2026-08-17): planning and testing must be stress-tested by **more than one model/agent** before claiming ship-ready code. Solo self-review alone is insufficient for user-visible / shared-primitive work.
+
+**2026-09-10:** Gate B is the **Adversary**. **Quality Judge** is the only SHIP owner. Track M/U skip of Gate A / Adversary / QA / Judge = **FAIL** — not a spoken waiver.
 
 ## Why (this repo’s lesson)
 
@@ -19,46 +21,69 @@ S-UX-01Q C2 TextField shipped with Jest/contract coverage but missed:
 
 Those are **runtime interaction** failures. Unit tests that only fire `changeText` on an already-focused input do not catch them.
 
-## Orchestrator gates (mandatory)
+## Orchestrator gates (mandatory on Track M/U)
 
-### Gate A — Plan critique (before Builder)
+Track S may use one Plan Critic and skip Adversary/QA. If the diff touched `src/screens/`, navigation, or a store screens read, Track S is illegal.
 
-For non-trivial features/refactors (shared UI primitives, forms, navigation, uploads, auth surfaces):
+### Gate A — Plan Critics (before Builder)
 
-1. Produce Planner plan (acceptance + validation plan).
+For Track M/U features/refactors (shared UI primitives, forms, navigation, uploads, auth surfaces — and the default feature/bug track):
+
+1. Produce Planner plan as **falsifiable claims**, each with a named proof.
 2. **Draft one shared evaluation brief first** — see `multi-model-evaluation-prompt.mdc`. Every model gets the **same** prompt (equal footing); lens differences (risks vs validation) are sections inside that brief, not ad-hoc per-model prompts.
 3. Launch **≥2 parallel critiques** via Task subagents (prefer **different models** when the user/session allows). Typical lenses inside the shared brief:
    - **Critique A (risks):** what can fail at runtime that Jest won’t see?
    - **Critique B (validation):** is the test plan sufficient? what manual/Maestro/smoke is missing?
 4. Fold Critical/High critique findings into the plan **before** Builder starts.
 5. Do not treat “I reviewed my own plan” as Gate A.
+6. **Skip on Track M/U = Quality Judge FAIL.** Do not write “if skipped, say so.”
 
-### Gate B — Validation critique (before “done”)
+### Test contract (before Builder)
+
+`@test-designer` (or Test Engineer in TDD mode) writes or specifies failing proofs **before** implementation: Jest cases, Maestro IDs, headed smoke steps, visual assertions. This is the contract the Judge scores.
+
+### Gate B — Adversary (before Judge, not a waiver)
 
 After Builder + primary Test Engineer pass:
 
-1. Launch **≥1 independent validation critique** (second model/agent when possible) that only sees: change summary, acceptance criteria, commands run, artifact paths.
+1. Launch **≥1 independent Adversary** (second model/agent when possible) that only sees: change summary, acceptance criteria, commands run, artifact paths.
 2. Brief: “Assume the author is wrong. What user-visible failure modes remain unproven?”
-3. If critique names an unproven interaction (focus, keyboard, submit, scroll, overlay) → run that proof (manual headed sim or Maestro) **before** claiming complete.
+3. If the Adversary names an unproven interaction (focus, keyboard, submit, scroll, overlay) → **run that proof** (manual headed sim or Maestro) **before** Judge. Named gaps must be proven or explicitly scoped out — not noted as residual risk.
+4. **Skip on Track M/U = Quality Judge FAIL.**
 
 ### Gate C — Shared form / input primitive adoption
 
 Any change that introduces or widens `TextField` / shared inputs across screens **must** include in acceptance + QA:
 
-1. **Focus:** tap field chrome (not only center glyph) → keyboard opens; typing updates value  
-2. **Keyboard:** with keyboard open, primary submit/next still reachable or dismisses safely (`keyboardShouldPersistTaps` policy documented)  
-3. **Secure fields:** password/secure entry still submits with valid state  
-4. **Empty → filled structural chrome:** no permanent “stale”/error chrome from contract defaults  
-5. **At least one headed smoke** on Login **or** Create Task (whichever was touched); if both touched, smoke both  
+1. **Focus:** tap field chrome (not only center glyph) → keyboard opens; typing updates value
+2. **Keyboard:** with keyboard open, primary submit/next still reachable or dismisses safely (`keyboardShouldPersistTaps` policy documented)
+3. **Secure fields:** password/secure entry still submits with valid state
+4. **Empty → filled structural chrome:** no permanent “stale”/error chrome from contract defaults
+5. **At least one headed smoke** on Login **or** Create Task (whichever was touched); if both touched, smoke both
 
-Jest-only = insufficient for Gate C.
+Jest-only = insufficient for Gate C. Track U for this class of work.
 
-## Confidence declaration
+### Quality Judge (only SHIP owner)
+
+After Prove (Reviewer 0 C/H + Test Designer contract executed + QA on Track M/U + Adversary gaps proven):
+
+1. Dispatch `@quality-judge` on a **different model** from Builder (Track M/U).
+2. Judge fills `docs/superpowers/templates/solo-dev-harness/templates/scorecard.md`.
+3. SHIP requires every required dimension **≥ 2**, **0 C/H**, **zero in-scope UNPROVEN claims**.
+4. Verdicts: `PATCH` (Builder, same spec) / `REWORK` (Planner delta) / `REDESIGN` (Scout) / `SHIP` / `ESCALATE`.
+5. Loop budget: Track M = 3, Track U = 4. Two PATCHes still below bar → Shadow Builder / Best-of-N.
+6. Builder must not self-SHIP. Orchestrator must not self-SHIP. Residual risks in a ledger ≠ SHIP.
+
+## Confidence declaration (blocking, not advisory)
 
 When reporting done, state explicitly:
 
-- Plan critique: models/agents used + Critical/High count addressed  
-- Validation critique: run or waived (waiver only for docs-only / non-UI)  
-- Interaction proof: command or headed smoke result  
+- Track: S | M | U (proposed / Judge-confirmed)
+- Plan Critics: models/agents used + Critical/High count addressed (Track M/U: required)
+- Test contract: commands specified before Build
+- Adversary: run; named gaps proven or scoped out (Track M/U: required)
+- QA / interaction proof: command or headed smoke result + artifact paths (Track M/U default-on)
+- Judge verdict + scorecard dimensions
+- Loop index / budget
 
-If Gate A/B skipped, say so — do not imply robust validation.
+**Track M/U:** do not report Done if Gate A, Adversary, QA, or Judge was skipped. There is no “say so” escape hatch.

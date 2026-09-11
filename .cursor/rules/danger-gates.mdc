@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Danger Gates (Insite)
 
-Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §4. Dual-write portable gates to SOP.md + `templates/` + this file. Insite-specific items (6-col, EAS IDs) stay here.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §9 Autonomy (git-tracked: `docs/superpowers/templates/solo-dev-harness/SOP.md`). Dual-write portable gates to SOP.md + `templates/` + this file. Insite-specific items (6-col, EAS IDs) stay here.
 
 Ask the user before:
 

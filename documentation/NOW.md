@@ -4,6 +4,8 @@
 
 ---
 
+**This session — cancel path + ASC 258 (2026-09-12):** Multi-model GO deepen-web. ASC notes + listing paste → prefer **TF 258** + billing cancel URL. Pages: Terms cancel section; billing canceled-state → email support. PROD cancel smoke PASS for Tristan (`cancel_at_period_end` → access until 2026-10-11). App: Company Plan **Manage or cancel plan** + alert/seat label fixes committed `f31966a` (push blocked — re-auth GitHub). EAS cloud build **259** started https://expo.dev/accounts/insitetech/projects/buildtrack/builds/f7b54308-3588-4639-876e-f97e37bfc434 (local IPA failed keychain cert import). **Human ASC:** attach **258**, paste notes from `docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`, Submit for Review; Public unticked.
+
 **This session — PROD TF 258 (2026-09-11):** Invite clipboard handoff (`taskr://auth/handoff` + Safari verifyOtp). Local `./build-local.sh ios production true` → IPA **v1.1.3 (258i-rc)** `.eas/artifacts/build-1789124501779.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/effb601a-41d4-438c-aaca-298330e2de14. Dogfood invite → Set Password on phone **after** TF **258** installs. Do not open invite on desktop Safari (burns token). ASC: prefer **258** once VALID.
 
 **This session — PROD TF 257 (2026-09-11):** UPA `assigned_at`→`created_at` dual-path fix (`03e412d`). Local `./build-local.sh ios production` → IPA **v1.1.3 (257i-rc)** `.eas/artifacts/build-1789113357905.ipa`; EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/401c4698-8e72-4851-bdde-7ac5d01c11c2. Superseded by **258** for invite Set Password.

@@ -5,7 +5,9 @@
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const desktop = window.matchMedia("(min-width: 861px)");
   const header = document.querySelector(".site-header");
+  const companySection = document.querySelector("#company");
   const workSection = document.querySelector("#work");
+  const chromeSection = companySection || workSection;
   const scrubSections = [...document.querySelectorAll("[data-scrub] .project-scrub")];
 
   const stickyOffset = () => {
@@ -14,8 +16,8 @@
   };
 
   const syncChrome = () => {
-    if (!workSection) return;
-    const top = workSection.getBoundingClientRect().top;
+    if (!chromeSection) return;
+    const top = chromeSection.getBoundingClientRect().top;
     document.body.classList.toggle("is-projects", top < window.innerHeight * 0.72);
   };
 
@@ -121,6 +123,8 @@
 
   const jumpTo = (el) => {
     if (!el) return;
+    const dest = window.scrollY + el.getBoundingClientRect().top;
+    if (dest > 40) document.body.classList.add("is-projects");
     const y = Math.max(0, window.scrollY + el.getBoundingClientRect().top - stickyOffset());
     window.scrollTo({ top: y, behavior: reduce ? "auto" : "smooth" });
   };
@@ -135,17 +139,33 @@
   });
 
   document.querySelector("[data-page-next]")?.addEventListener("click", () => {
-    const projects = scrubSections;
+    const waypoints = [
+      companySection,
+      ...scrubSections,
+      document.querySelector("#contact"),
+    ].filter(Boolean);
     const y = window.scrollY + stickyOffset() + 8;
-    let target = document.querySelector("#contact");
-    for (const scrub of projects) {
-      const top = window.scrollY + scrub.getBoundingClientRect().top;
+    let target = waypoints[waypoints.length - 1];
+    for (const el of waypoints) {
+      const top = window.scrollY + el.getBoundingClientRect().top;
       if (top > y + 40) {
-        target = scrub;
+        target = el;
         break;
       }
     }
     jumpTo(target);
+  });
+
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener("click", (e) => {
+      const href = a.getAttribute("href");
+      if (!href || href === "#") return;
+      const el = document.getElementById(href.slice(1));
+      if (!el) return;
+      e.preventDefault();
+      history.pushState(null, "", href);
+      jumpTo(el);
+    });
   });
 
   document.querySelector(".logo")?.addEventListener("click", (e) => {
@@ -157,4 +177,20 @@
   window.addEventListener("resize", update, { passive: true });
   if (desktop.addEventListener) desktop.addEventListener("change", update);
   update();
+
+  const hashTarget = () => {
+    const id = decodeURIComponent(location.hash.replace(/^#/, ""));
+    if (!id) return null;
+    return document.getElementById(id);
+  };
+  const goHash = () => {
+    const el = hashTarget();
+    if (!el) return;
+    syncChrome();
+    jumpTo(el);
+  };
+  window.addEventListener("hashchange", goHash);
+  if (hashTarget()) {
+    requestAnimationFrame(goHash);
+  }
 })();

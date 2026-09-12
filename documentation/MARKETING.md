@@ -190,7 +190,25 @@ Insite Works Limited · support@insiteworks.co
 
 ---
 
-## Related (not canonical copy)
+## Company site (`www.insiteworks.co/`)
+
+Construction portfolio, not Taskr. Public copy on `docs/index.html` must match **INSITE Portfolio v5** plus the project pages already on the site.
+
+**Sell this**
+
+- Hong Kong contractor: structural, façade, and fit-out for homes, hotels, shops, and offices
+- About philosophy (founder lock 2026-09-12): build for Hong Kong; lasting promise; in-house project software (Taskr)
+- Founder: Tristan Koo — nearly two decades; craftsmanship + user experience; technology background; digital precision into an age-old industry
+- Named work already on the site: 21 Amoy Street, Baguio Villa, Black’s Link (Promemoria partner), UREC, Marco Polo Prince Hotel, Peak Galleria
+- Other notable lives in the project pages, not the About block
+- Contact on the construction site: `tristan.koo@insiteworks.co` (`support@insiteworks.co` is Taskr-only)
+
+**Do not claim**
+
+- Founding year, headcount, awards, “led Peak Galleria”
+- Personal mobile (`+852 9665 3360` is on the confidential Keynote contact slide — keep it off the public page unless Tristan asks)
+
+---
 
 | File | Role |
 |---|---|
@@ -207,4 +225,7 @@ Insite Works Limited · support@insiteworks.co
 | Date | What changed |
 |---|---|
 | 2026-09-02 | Canonical created. EN description from founder draft + Gate A (GPT / Gemini / GLM). Sell-now = 1.1 photo → task → review loop. |
-| 2026-09-02 | What’s New for 1.1.3 submit: drop “faster” (picker still pipeline); add zh-HK What’s New. |
+| 2026-09-12 | Company landing: About section between title and projects, copy locked to Portfolio v5. |
+| 2026-09-12 | About: founder philosophy copy (love Hong Kong + in-house software). |
+| 2026-09-12 | About: founder bio (two-decade craft + technology). |
+| 2026-09-12 | Company landing contact: `tristan.koo@insiteworks.co` (Taskr keeps `support@`). |

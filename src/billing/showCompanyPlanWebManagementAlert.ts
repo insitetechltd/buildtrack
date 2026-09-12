@@ -5,7 +5,7 @@ import {
   SUPPORT_EMAIL,
 } from "@/legal/legalLinks";
 
-const TITLE = "Manage plan on the web";
+const TITLE = "Cancel or manage your subscription";
 const MESSAGE =
   "Plan changes, seats, and cancellation are managed on the Insite website. Open the billing page to cancel during trial (or later) — that cancels on Stripe too. When you're done, return to the app and refresh.";
 
@@ -17,7 +17,7 @@ export function showCompanyPlanWebManagementAlert(): void {
   Alert.alert(TITLE, MESSAGE, [
     { text: "Not now", style: "cancel" },
     {
-      text: "Open website",
+      text: "Open billing page",
       onPress: () => {
         void Linking.openURL(COMPANY_PLAN_MANAGEMENT_URL).catch(() => {
           Alert.alert(

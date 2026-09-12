@@ -20,6 +20,7 @@ import {
   seatAddonRowLine,
   type SeatAddonKind,
 } from "../billing/seatAddonCopy";
+import { showCompanyPlanWebManagementAlert } from "../billing/showCompanyPlanWebManagementAlert";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import type {
@@ -463,7 +464,21 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
             </View>
           ) : null}
 
-          <Text className="mt-6 mb-2 text-base leading-6 text-gray-500">
+          <Pressable
+            testID="company-plan-manage-or-cancel"
+            accessibilityRole="button"
+            accessibilityLabel="Manage or cancel plan"
+            onPress={() => {
+              showCompanyPlanWebManagementAlert();
+            }}
+            className="mt-6 min-h-[48px] items-center justify-center rounded-xl border border-[#08576E] bg-white px-4"
+          >
+            <Text className="text-center text-lg font-semibold text-[#08576E]">
+              Manage or cancel plan
+            </Text>
+          </Pressable>
+
+          <Text className="mt-4 mb-2 text-base leading-6 text-gray-500">
             Billing help:{" "}
             <Text className="font-medium text-gray-800">{output.supportEmail}</Text>
           </Text>

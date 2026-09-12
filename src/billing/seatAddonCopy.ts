@@ -32,19 +32,19 @@ export const SEAT_ADDON_COPY = {
   sectionSubtitle: "Each add is 1 person. Billed monthly — confirm before we charge.",
   worker: {
     rowLabel: "Extra worker",
-    /** Primary subscribe CTA — definitive charge path (not a vague stepper). */
-    subscribeButton: "Subscribe +1 Worker",
+    /** Primary CTA — opens web billing (ASC 3.1.1; not in-app IAP). */
+    subscribeButton: "View seats on website",
     /** @deprecated Prefer subscribeButton */
-    addButton: "Subscribe +1 Worker",
-    removeButton: "Remove Worker",
+    addButton: "View seats on website",
+    removeButton: "Manage seats on website",
     roleWord: "Worker",
   },
   pm: {
     rowLabel: "Extra PM",
-    subscribeButton: "Subscribe +1 PM",
+    subscribeButton: "View seats on website",
     /** @deprecated Prefer subscribeButton */
-    addButton: "Subscribe +1 PM",
-    removeButton: "Remove PM",
+    addButton: "View seats on website",
+    removeButton: "Manage seats on website",
     roleWord: "PM",
   },
   updating: "Updating seats…",
@@ -99,11 +99,11 @@ export function buildAddSeatConfirm(args: {
   const role = SEAT_ADDON_COPY[args.kind].roleWord;
   const unit = normalizeSeatAddonUnitPrice(args.priceLabel);
   return {
-    title: `Subscribe +1 ${role}?`,
+    title: `Manage seats on the website?`,
     message:
-      `This adds 1 ${role} to your company plan bill at ${unit} per month ` +
-      `(prorated for the rest of this billing cycle).`,
-    confirmLabel: "Subscribe",
+      `Seat changes for ${role} are managed on the Insite billing page ` +
+      `(${unit} per month when billed). Open the website to continue.`,
+    confirmLabel: "Open billing page",
   };
 }
 
@@ -112,11 +112,11 @@ export function buildRemoveSeatConfirm(args: {
 }): { title: string; message: string; confirmLabel: string } {
   const role = SEAT_ADDON_COPY[args.kind].roleWord;
   return {
-    title: `Remove 1 ${role}?`,
+    title: `Manage seats on the website?`,
     message:
-      `No pro-rata or partial refund for this cycle. ` +
-      `Your ${role} limit and monthly bill recalculate at the end of this billing cycle.`,
-    confirmLabel: "Confirm",
+      `Removing a ${role} seat is managed on the Insite billing page. ` +
+      `Open the website to continue.`,
+    confirmLabel: "Open billing page",
   };
 }
 

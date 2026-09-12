@@ -186,7 +186,7 @@
     if (data.stripeStatus === "canceled") {
       if (sessionLede) {
         sessionLede.textContent =
-          "This subscription is canceled. Sign in to Taskr if you need to start a new plan later (do not use the public signup form with the same email).";
+          "This subscription is canceled. To restart, email support@insiteworks.co — do not use the public signup form with the same email.";
       }
       if (cancelBtn) cancelBtn.hidden = true;
       if (cancelHint) cancelHint.hidden = true;

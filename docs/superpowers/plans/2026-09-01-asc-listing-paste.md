@@ -1,6 +1,6 @@
 # ASC listing paste pack — Taskr 1.1.3 resubmit
 
-**Updated:** 2026-09-11 (UPA membership fix + build **257** cut)  
+**Updated:** 2026-09-12 (prefer build **258** + billing cancel URL in review notes)  
 **App:** `6754898737` · https://appstoreconnect.apple.com/apps/6754898737  
 **Bundle:** `com.buildtrack.app.local`  
 **Copy SoT:** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md)  
@@ -14,17 +14,17 @@ Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works 
 
 ---
 
-## Live ASC state (2026-09-11)
+## Live ASC state (2026-09-12)
 
 | Item | State |
 |---|---|
 | **1.0** | `READY_FOR_SALE` — build **127** — listing name still **Insite Trackr**; Privacy URL still old GitHub `policy.pdf` (app-info locked while 1.0 is live) |
-| **1.1.3** | `REJECTED` — do **not** leave attached build **244** (or stale **254**) |
-| Builds ready | Prefer **257** (submitted 2026-09-11; `/taskr/` signup + UPA `created_at` dual-path). **256** lacked membership fetch fix. **254** lacked baked `/taskr/` URLs. |
+| **1.1.3** | `REJECTED` — do **not** leave attached build **244** (or stale **254** / **256** / **257**) |
+| Builds ready | Prefer **258** (submitted 2026-09-11; invite handoff + `/taskr/` signup + UPA dual-path). **257** lacked invite clipboard handoff. **256** lacked membership fetch fix. **254** lacked baked `/taskr/` URLs. |
 | Screenshots already in ASC | en-US: **4×** `APP_IPHONE_67` + **4×** `APP_IPAD_PRO_3GEN_129` |
 | Rejected app-info Privacy | Already `https://www.insiteworks.co/taskr/privacy-policy.html` |
-| Rejected app-info Support / Marketing | **Empty** — paste required |
-| Review notes in ASC | **Stale** — still describe in-app “Create company” + temp-password invites |
+| Rejected app-info Support / Marketing | Paste required if still empty |
+| Review notes in ASC | Paste from [`2026-09-11-asc-resubmit-review-notes.md`](../evidence/2026-09-11-asc-resubmit-review-notes.md) (build **258** + billing cancel URL) |
 
 ---
 
@@ -40,9 +40,9 @@ Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works 
 
 (Company portfolio, not Taskr product: https://www.insiteworks.co/)
 
-### 2) Select binary **257** for version 1.1.3
+### 2) Select binary **258** for version 1.1.3
 
-Do **not** resubmit on **244**, **254**, or **256**. Build **257** includes checkout-first web signup URLs (`/taskr/signup.html`), ASC-safe plan CTAs, email-first Login, Create Project roster, and PROD-safe project membership fetch.
+Do **not** resubmit on **244**, **254**, **256**, or **257**. Build **258** includes checkout-first web signup (`/taskr/signup.html`), invite Set Password handoff, ASC-safe plan CTAs, email-first Login, Create Project roster, and PROD-safe project membership fetch. Self-serve cancel is on `https://www.insiteworks.co/taskr/billing.html`.
 
 ### 3) Paste version metadata (EN + zh-HK)
 

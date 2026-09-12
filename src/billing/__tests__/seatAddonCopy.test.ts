@@ -61,46 +61,35 @@ describe("seatAddonCopy", () => {
     expect(seatAddonQtyLine(0)).toBe("0 on plan");
     expect(seatAddonQtyLine(1)).toBe("1 on plan");
     expect(seatAddonQtyLine(3)).toBe("3 on plan");
-    expect(SEAT_ADDON_COPY.worker.subscribeButton).toBe("Subscribe +1 Worker");
-    expect(SEAT_ADDON_COPY.worker.removeButton).toBe("Remove Worker");
-    expect(SEAT_ADDON_COPY.pm.subscribeButton).toBe("Subscribe +1 PM");
-    expect(SEAT_ADDON_COPY.pm.removeButton).toBe("Remove PM");
+    expect(SEAT_ADDON_COPY.worker.subscribeButton).toBe("View seats on website");
+    expect(SEAT_ADDON_COPY.worker.removeButton).toBe("Manage seats on website");
+    expect(SEAT_ADDON_COPY.pm.subscribeButton).toBe("View seats on website");
+    expect(SEAT_ADDON_COPY.pm.removeButton).toBe("Manage seats on website");
     expect(SEAT_ADDON_COPY.sectionSubtitle).not.toMatch(/pack/i);
   });
 
-  it("add confirm states monthly price for Worker and PM", () => {
+  it("add confirm routes seat changes to the website", () => {
     const worker = buildAddSeatConfirm({
       kind: "worker",
       priceLabel: "HK$20/mo",
     });
-    expect(worker.title).toBe("Subscribe +1 Worker?");
-    expect(worker.message).toContain("1 Worker");
+    expect(worker.title).toBe("Manage seats on the website?");
+    expect(worker.message).toContain("Worker");
     expect(worker.message).toContain("HK$20 per month");
     expect(worker.message).not.toMatch(/HK\$20\/mo per month/);
-    expect(worker.message).toContain("company plan bill");
-    expect(worker.confirmLabel).toBe("Subscribe");
-
-    const pm = buildAddSeatConfirm({
-      kind: "pm",
-      priceLabel: SEAT_ADDON_FALLBACK_PRICE.pm,
-    });
-    expect(pm.title).toBe("Subscribe +1 PM?");
-    expect(pm.message).toContain("1 PM");
-    expect(pm.message).toContain("HK$100 per month");
-    expect(pm.confirmLabel).toBe("Subscribe");
+    expect(worker.message).toMatch(/billing page/i);
+    expect(worker.confirmLabel).toBe("Open billing page");
   });
 
-  it("remove confirm states no pro-rata refund and cycle-end recalculation", () => {
+  it("remove confirm routes seat changes to the website", () => {
     const worker = buildRemoveSeatConfirm({ kind: "worker" });
-    expect(worker.title).toBe("Remove 1 Worker?");
-    expect(worker.message).toMatch(/no pro-rata|partial refund/i);
-    expect(worker.message).toMatch(/end of this billing cycle/i);
-    expect(worker.confirmLabel).toBe("Confirm");
+    expect(worker.title).toBe("Manage seats on the website?");
+    expect(worker.message).toMatch(/billing page/i);
+    expect(worker.confirmLabel).toBe("Open billing page");
 
     const pm = buildRemoveSeatConfirm({ kind: "pm" });
-    expect(pm.title).toBe("Remove 1 PM?");
-    expect(pm.message).toMatch(/no pro-rata|partial refund/i);
-    expect(pm.message).toMatch(/end of this billing cycle/i);
+    expect(pm.title).toBe("Manage seats on the website?");
+    expect(pm.confirmLabel).toBe("Open billing page");
   });
 
   it("success banners state Stripe confirmed with clean price lines", () => {

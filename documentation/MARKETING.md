@@ -56,7 +56,7 @@ Until the matching ROADMAP row is **Closed** and this table is edited:
 | Cost ledger / VO | `M-COST-01` |
 | On-site Q&A / AI | `M-AI-01` |
 | Android / Google Play | iOS first |
-| Public 30-day card trial | Invite promo codes only |
+| Public claim of invite-only / HQ promo length | HQ-issued promo codes stay internal (Owner app); do not publish duration on marketing pages |
 | “Stress-free construction” | Unkeepable |
 
 ---
@@ -69,7 +69,7 @@ Until the matching ROADMAP row is **Closed** and this table is edited:
 **Promotional text (≤170):**
 
 ```text
-Construction software by the industry. Snap, assign, prove, approve. Company-owned records — not a WhatsApp group. 60-day invited pilots.
+Construction software by the industry. Snap, assign, prove, approve. Company-owned records — not a WhatsApp group. 14-day company trial on the web.
 ```
 
 **Keywords (≤100, no spaces after commas):**
@@ -96,13 +96,13 @@ WHAT IT IS NOT
 Not a drawing register, cost ledger, BIM tool, or a way for the owner, architect, and consultants to join as their own companies. It is photo-backed task evidence for daily site work.
 
 HOW TO START
-No public signup. An admin creates the company, invites people with a secure link, and opens the project.
+Start a 14-day company trial on the web (card on file). An admin invites people with a secure link and opens the project.
 
 PRICING (Hong Kong, HKD)
 • Starter — HK$160 / month — 3 projects, 1 PM + 5 workers
 • Pro — HK$400 / month — 12 projects, 3 PM + 15 workers
 • Extra worker HK$20 / month · Extra PM HK$100 / month
-Pilot access is by invitation (promo code).
+Website signup: 14-day trial, then the plan you chose unless you cancel.
 
 SUPPORT
 Insite Works Limited · support@insiteworks.co
@@ -135,7 +135,7 @@ Update this locale in the **same pass** as English when the listing is revisited
 **Promotional text:**
 
 ```text
-建造業自己人做嘅軟件。影相、派工、影相回覆、批核，步步留證。紀錄屬公司，唔再散落 WhatsApp 群組。香港公司六十日先導。
+建造業自己人做嘅軟件。影相、派工、影相回覆、批核，步步留證。紀錄屬公司，唔再散落 WhatsApp 群組。網上註冊十四日試用。
 ```
 
 **Keywords:**
@@ -162,13 +162,13 @@ Taskr 係建造業自己人做嘅軟件：現場 App，影相 → 派工 → 完
 Taskr 唔係工程變更系統、成本帳、圖則庫、BIM 或者跨公司平台。我哋提供有相為證嘅任務紀錄，等交收同錢銀傾偈可以指住現場實際發生過嘅事。
 
 點樣開始
-冇公開「加入任何公司」。管理員喺 App 開公司，用安全連結邀請同事，打開項目，然後開始影相派工。
+網上註冊十四日公司試用（要預留信用卡）。管理員用安全連結邀請同事，打開項目，然後開始影相派工。
 
 香港收費（公司月費）
 • Starter — 每月 HK$160 — 3 個項目、1 個 PM + 5 個工人
 • Pro — 每月 HK$400 — 12 個項目、3 個 PM + 15 個工人
 • 額外工人每月 HK$20 · 額外 PM 每月 HK$100
-先導用創辦人提供嘅優惠碼。正式計劃係付費公司月費。
+網上註冊：十四日試用，期滿先收你揀嘅計劃（期間取消唔收費）。
 
 支援
 Insite Works Limited · support@insiteworks.co

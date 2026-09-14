@@ -4,6 +4,8 @@
 
 ---
 
+**This session — Taskr landing 14-day trial CTAs (2026-09-13):** Removed public 60-day promo copy. Hero rewrite + pricing/end **14 days Trial** / **Start a trial** → `signup.html`. Support + Terms + `MARKETING.md` aligned. `STRIPE_TRIAL_PERIOD_DAYS=14` synced DEV+PROD Edge secrets. **Needs git push** for Pages. HQ 60-day invite promo stays Owner-app only (unpublished).
+
 **This session — company landing Pages (2026-09-13):** About + founder between hero and projects; contact `tristan.koo@insiteworks.co` (`support@` stays Taskr-only). Phone off the public page. Files: `docs/index.html`, `docs/company.css?v=11`, `docs/company.js?v=4`, `documentation/MARKETING.md`. Publishing with this commit + push.
 
 **This session — cancel path + ASC 258 (2026-09-12):** Multi-model GO deepen-web. ASC notes + listing paste → prefer **TF 258** + billing cancel URL. Pages: Terms cancel section; billing canceled-state → email support. PROD cancel smoke PASS for Tristan (`cancel_at_period_end` → access until 2026-10-11). App: Company Plan **Manage or cancel plan** + alert/seat label fixes committed `f31966a` (push blocked — re-auth GitHub). EAS cloud build **259** started https://expo.dev/accounts/insitetech/projects/buildtrack/builds/f7b54308-3588-4639-876e-f97e37bfc434 (local IPA failed keychain cert import). **Human ASC:** attach **258**, paste notes from `docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`, Submit for Review; Public unticked.

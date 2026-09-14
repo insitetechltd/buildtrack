@@ -14,6 +14,7 @@
   --line-2: #c8e2ea;
   --frost: #c8e4ec;
   --white: #ffffff;
+  --accent: #5ed4b0;
   --max: 1440px;
   --pad: clamp(1.25rem, 4vw, 4.5rem);
   --font: "Inter", system-ui, -apple-system, sans-serif;
@@ -195,10 +196,72 @@ a {
 }
 
 .hero-lead {
-  margin: 0 0 1.75rem;
+  margin: 0 0 1.25rem;
   color: var(--frost);
   font-size: clamp(1.05rem, 2vw, 1.3125rem);
   line-height: 1.45;
+  max-width: 35rem;
+}
+
+.hero-pillars {
+  list-style: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+  max-width: 28rem;
+}
+
+.hero-pillars li {
+  position: relative;
+  padding-left: 1.1rem;
+  color: var(--white);
+  font-size: clamp(1rem, 1.8vw, 1.125rem);
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.hero-pillars li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent, #7dd3c0);
+}
+
+.use-pillars {
+  list-style: none;
+  margin: 0 0 2.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  max-width: 36rem;
+}
+
+.use-pillars li {
+  position: relative;
+  padding: 0.85rem 1rem 0.85rem 1.75rem;
+  color: var(--ink);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.35;
+  font-weight: 600;
+  background: var(--mist);
+  border-radius: 12px;
+  border-left: 4px solid var(--accent);
+}
+
+.use-pillars li::before {
+  content: none;
+}
+
+.hero-signoff {
+  margin: 1.5rem 0 0;
+  color: var(--frost);
+  font-size: 1.0625rem;
+  font-style: italic;
   max-width: 35rem;
 }
 
@@ -209,34 +272,28 @@ a {
   max-width: 35rem;
 }
 
+.phone,
+.phone-sm,
+.tablet {
+  position: relative;
+  margin-inline: auto;
+  overflow: hidden;
+}
+
 .phone {
   width: min(296px, 72vw);
-  margin-inline: auto;
   background: #07111e;
   border-radius: 36px;
   padding: 12px;
   box-shadow: 0 22px 40px rgba(0, 0, 0, 0.35);
 }
 
-.phone img {
-  width: 100%;
-  border-radius: 26px;
-  aspect-ratio: 296 / 616;
-  object-fit: cover;
-}
-
 .phone-sm {
   width: min(260px, 70vw);
+  background: #121a1f;
   border-radius: 36px;
   padding: 10px;
-  background: #121a1f;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-}
-
-.phone-sm img {
-  border-radius: 28px;
-  aspect-ratio: 260 / 587;
-  object-fit: cover;
 }
 
 .tablet {
@@ -247,11 +304,64 @@ a {
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
 }
 
-.tablet img {
+/* Real DOM bezel — must stay above screenshots (pseudo-elements were painting under) */
+.phone-bezel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  border-radius: inherit;
+  box-sizing: border-box;
+}
+
+.phone > .phone-bezel {
+  border: 12px solid #07111e;
+}
+
+.phone-sm > .phone-bezel {
+  border: 10px solid #121a1f;
+}
+
+.tablet > .phone-bezel {
+  border: 12px solid #1f2429;
+}
+
+.phone::after,
+.phone-sm::after,
+.tablet::after {
+  content: none;
+  display: none;
+}
+
+.phone-screen {
+  display: block;
   width: 100%;
-  border-radius: 18px;
-  aspect-ratio: 432 / 576;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #0a1622;
+  line-height: 0;
+  position: relative;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(#fff 0 0);
+  mask-image: linear-gradient(#fff 0 0);
+}
+
+.phone-sm .phone-screen {
+  border-radius: 26px;
+}
+
+.tablet .phone-screen {
+  border-radius: 16px;
+}
+
+.phone-screen img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: inherit;
+  aspect-ratio: auto;
   object-fit: cover;
+  object-position: top center;
 }
 
 /* —— Sections —— */
@@ -391,6 +501,40 @@ a {
   width: min(300px, 78vw);
 }
 
+.signup-phone .phone-screen {
+  /* Letterbox the capture so form chrome clears the bezel */
+  background: #eaf6f9;
+  box-sizing: border-box;
+  padding: 10% 9%;
+  aspect-ratio: 9 / 19.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.signup-phone .phone-screen img {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: auto;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 0;
+}
+
+.signup-tablet .phone-screen {
+  background: #e8f2f6;
+  box-sizing: border-box;
+  padding: 6% 5%;
+}
+
+.signup-tablet .phone-screen img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: top center;
+}
+
 .signup-copy {
   max-width: 36rem;
 }
@@ -417,9 +561,8 @@ a {
 .signup-tablet .tablet img {
   width: 100%;
   height: auto;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-  object-position: top center;
+  aspect-ratio: auto;
+  object-fit: contain;
 }
 
 .tablet-caption {
@@ -610,6 +753,16 @@ a {
   margin: 0;
   color: var(--muted);
   font-size: 1.0625rem;
+}
+
+.pricing-cta {
+  margin-top: 1.75rem;
+  justify-content: center;
+}
+
+.pricing .btn-ghost {
+  color: var(--teal-700);
+  border-color: var(--teal-600);
 }
 
 .download {

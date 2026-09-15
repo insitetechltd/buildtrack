@@ -1,6 +1,6 @@
 # PROD headed smoke checklist — 2026-09-15
 
-- appSha: `b7d838e7094dc96e60577ee07678bf524fe80a96`
+- appSha: `dc88f6f9fffc01fa7e9ee211317726ce2f9b41c4`
 - plane: **PROD** `jcnzjigxgkzhjsaekoqz`
 - QA user: `sara@insitetest.com`
 - automated artifact: `.cache/prod-new-sot-20260915/headed-prod-qa-smoke.json`
@@ -10,7 +10,7 @@
 | Step | Result | Detail |
 |---|---|---|
 | project | PASS | ef876f91-0ace-43f1-8b16-861c13f12fe8 |
-| create_task | PASS | app-shaped rejected (400) then strip+junction OK task=69259e7f-4d06-489a-b828-69e3f22a5660 |
+| create_task | PASS | app-shaped rejected (400) then strip+junction OK task=6167eb5b-8b12-4b50-91df-571f69e11b05 |
 | update_progress | PASS | http=200 |
 | task_files | PASS | http=201 |
 | storage_upload | PASS | skipped-optional (task_files row is SoT for this smoke) |

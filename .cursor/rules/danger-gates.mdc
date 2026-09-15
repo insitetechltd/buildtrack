@@ -21,3 +21,4 @@ Always:
 - Prefer dry-run / read-only SQL before live applies (M-SUPABASE gates)
 - Anti-secret: do not echo env values in chat or docs
 - DEV-green is not PROD-green (SOP §13). PROD contract failures (`42703`, `PGRST204`, ACL deny, wrong-ref) are **FAIL**, not documented WARN. Never claim “PROD live OK” from DEV-only Jest/Maestro.
+- **Prove before TF/ASC** (SOP §13 rule 7): never EAS submit / TestFlight / App Store while destination headed critical paths are red. Metro→PROD prove first; store binary is promotion, not a test substitute.

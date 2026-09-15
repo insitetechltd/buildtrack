@@ -10,10 +10,10 @@
 | Step | Result | Detail |
 |---|---|---|
 | project | PASS | ef876f91-0ace-43f1-8b16-861c13f12fe8 |
-| create_task | PASS | app-shaped rejected (400) then strip+junction OK task=69259e7f-4d06-489a-b828-69e3f22a5660 |
+| create_task | PASS | app-shaped rejected (400) then strip+junction OK task=a8371611-c8bd-4e23-9cea-e401412d06dc |
 | update_progress | PASS | http=200 |
 | task_files | PASS | http=201 |
-| storage_upload | PASS | skipped-optional (task_files row is SoT for this smoke) |
+| storage_upload | FAIL | HTTP Error 400: Bad Request |
 | star | PASS | http=201 |
 | detail_assignees | PASS | col=[] junction=['1dd31ee0-7f42-42b2-9a6b-76cea9f3579f'] coalesced=['1dd31ee0-7f42-42b2-9a6b-76cea9f3579f'] |
 | star_readback | PASS | http=200 |
@@ -30,4 +30,4 @@
 Gate B note: this automated smoke proves destination **data contract**
 (JWT write + junction/file/star read-back). It does **not** replace Metro UI.
 
-**Automated verdict:** PASS
+**Automated verdict:** FAIL

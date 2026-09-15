@@ -1,0 +1,195 @@
+# Metro→PROD headed smoke. Assumes:
+# - Metro already serving with .env.local PROD bake
+# - Dev client already launched (do NOT stopApp — loses packager URL)
+# - Prefer already-logged dashboard; login only if needed
+# Creds: MAESTRO_PROD_EMAIL / MAESTRO_PROD_PASSWORD
+appId: com.buildtrack.app.local
+tags:
+  - metro-prod-headed
+---
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - takeScreenshot: "metro-prod-00-login"
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - eraseText
+      - inputText: "${MAESTRO_PROD_EMAIL}"
+      - tapOn:
+          id: "^login-password$"
+      - eraseText
+      - inputText: "${MAESTRO_PROD_PASSWORD}"
+      - tapOn:
+          id: "login-submit"
+      - tapOn:
+          text: "Not Now"
+          optional: true
+      - runFlow:
+          when:
+            visible: "Save Password?"
+          commands:
+            - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible: ".*App Review Site.*"
+    commands:
+      - tapOn: ".*App Review Site.*"
+- runFlow:
+    when:
+      visible:
+        id: "project-picker__row-ef876f91-0ace-43f1-8b16-861c13f12fe8"
+    commands:
+      - tapOn:
+          id: "project-picker__row-ef876f91-0ace-43f1-8b16-861c13f12fe8"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 90000
+- takeScreenshot: "metro-prod-01-dashboard"
+- evalScript: ${output.taskTitle = "MetroPROD " + Date.now()}
+# Capture-first camera tab → Select Photos (prefer shutter; library as fallback).
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__camera_icon_surface"
+    commands:
+      - tapOn:
+          id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 20000
+- takeScreenshot: "metro-prod-01b-camera"
+- tapOn:
+    id: "capture-session__shutter"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "capture-session__done"
+# Hybrid library review (session strip) → Accept → Select Photos annotate
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_accept"
+    timeout: 20000
+- takeScreenshot: "metro-prod-01c-hybrid"
+- tapOn:
+    id: "capture-session__hybrid_accept"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 25000
+- takeScreenshot: "metro-prod-01d-select-photos"
+- tapOn:
+    id: "photo-selection__confirm"
+# Native Alert chooser (Report / Update / Assign) — no RN testID
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 25000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.taskTitle}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Metro→PROD headed create+photo"
+- runFlow: _dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      id: "create-task__assignee-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__assignee-picker-trigger"
+- extendedWaitUntil:
+    visible: "Assign To"
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: "Fetching project team members"
+    timeout: 45000
+- tapOn:
+    id: "create-task__assignee-option-sara-at-insitetest-com"
+- tapOn:
+    id: "create-task__assignee-picker-done"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit"
+    timeout: 10000
+- tapOn:
+    id: "create-task__submit"
+- tapOn:
+    id: "create-task__submit"
+    delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit-success-confirm"
+    timeout: 90000
+- takeScreenshot: "metro-prod-02-create-success"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      text: ${output.taskTitle}
+    direction: DOWN
+    timeout: 30000
+- tapOn: ${output.taskTitle}
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 30000
+- assertVisible: ".*[Ss]ara.*"
+- takeScreenshot: "metro-prod-03-detail-assignees"
+- runFlow:
+    when:
+      visible: "Update Progress"
+    commands:
+      - tapOn: "Update Progress"
+- runFlow:
+    when:
+      visible:
+        id: "update-progress__screen_title"
+    commands:
+      - tapOn:
+          id: "update-progress__description--preview"
+          optional: true
+      - inputText: "Metro→PROD progress note"
+      - tapOn:
+          id: "update-progress__submit"
+          optional: true
+      - tapOn:
+          text: "Submit"
+          optional: true
+      - tapOn:
+          text: "OK"
+          optional: true
+- takeScreenshot: "metro-prod-04-after-update"
+- runFlow: create-task-photo/_assert-no-logbox.yaml

@@ -1,0 +1,136 @@
+# Resume Metro→PROD from capture-session Select Photos (1 already selected).
+# Assumes app is foregrounded on hybrid library; Metro alive; NO launchApp/stopApp.
+appId: com.buildtrack.app.local
+tags:
+  - metro-prod-headed
+---
+- takeScreenshot: "metro-prod-resume-00-select-photos"
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__hybrid_accept"
+    commands:
+      - tapOn:
+          id: "capture-session__hybrid_accept"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__accept"
+    commands:
+      - tapOn:
+          id: "in-app-library__accept"
+# Fallback: blue checkmark top-right (accessibility)
+- runFlow:
+    when:
+      visible: "Select Photos"
+    commands:
+      - tapOn:
+          point: "92%,8%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 25000
+- takeScreenshot: "metro-prod-resume-01-create-form"
+- evalScript: ${output.taskTitle = "MetroPROD " + Date.now()}
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.taskTitle}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Metro→PROD headed create+photo"
+- runFlow: _dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      id: "create-task__assignee-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__assignee-picker-trigger"
+- extendedWaitUntil:
+    visible: "Assign To"
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: "Fetching project team members"
+    timeout: 45000
+- tapOn:
+    id: "create-task__assignee-option-sara-at-insitetest-com"
+- tapOn:
+    id: "create-task__assignee-picker-done"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit"
+    timeout: 10000
+- tapOn:
+    id: "create-task__submit"
+- tapOn:
+    id: "create-task__submit"
+    delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit-success-confirm"
+    timeout: 120000
+- takeScreenshot: "metro-prod-resume-02-create-success"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      text: ${output.taskTitle}
+    direction: DOWN
+    timeout: 30000
+- tapOn: ${output.taskTitle}
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 30000
+- assertVisible: ".*[Ss]ara.*"
+- takeScreenshot: "metro-prod-resume-03-detail-assignees"
+- runFlow:
+    when:
+      visible: "Update Progress"
+    commands:
+      - tapOn: "Update Progress"
+- runFlow:
+    when:
+      visible:
+        id: "update-progress__screen_title"
+    commands:
+      - tapOn:
+          id: "update-progress__description--preview"
+          optional: true
+      - inputText: "Metro→PROD progress note"
+      - tapOn:
+          id: "update-progress__submit"
+          optional: true
+      - tapOn:
+          text: "Submit"
+          optional: true
+      - tapOn:
+          text: "OK"
+          optional: true
+- takeScreenshot: "metro-prod-resume-04-after-update"
+- runFlow: create-task-photo/_assert-no-logbox.yaml

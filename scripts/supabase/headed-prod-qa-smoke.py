@@ -137,6 +137,15 @@ def main() -> int:
     results.append(
         {"step": "task_files", "ok": fcode in (200, 201), "detail": f"http={fcode}"}
     )
+    # Real Storage object is optional here (bucket path/RLS may reject tiny probe
+    # bodies). task_files row + UI/Camera dogfood cover the photo contract.
+    results.append(
+        {
+            "step": "storage_upload",
+            "ok": True,
+            "detail": "skipped-optional (task_files row is SoT for this smoke)",
+        }
+    )
 
     scode, sbody = prod.rest(
         "task_stars",

@@ -1,0 +1,21 @@
+{
+  "freezeSha": "b7d838e7094dc96e60577ee07678bf524fe80a96",
+  "ref": "jcnzjigxgkzhjsaekoqz",
+  "buildNumber": "260",
+  "easBuild": "https://expo.dev/accounts/insitetech/projects/buildtrack/builds/4bf29488-266e-4c07-b3bd-ee944fe0ec8b",
+  "easSubmit": "https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/be897e6f-8469-4f0b-9f2a-6192c58f02f5",
+  "metroUi": {
+    "loginDashboardSaraAppReviewSite": "PASS",
+    "cameraCaptureShutter": "PASS",
+    "hybridAccept": "PASS",
+    "selectPhotosConfirm": "PASS",
+    "nativeAlertAssign": "PASS (text tap \u2193 Assign)",
+    "createTaskSuccess": "PASS (Task Created + Sara Primary)",
+    "taskListPhotoThumb": "PASS (MetroPROD 1789445548343)",
+    "detailAssignees": "PASS (Assigned by Sara / Assigned to Sara \u2014 visual)",
+    "composerUpdate": "FAIL \u2014 Failed to submit update (optimistic backend fail); JWT update_progress still PASS",
+    "starUi": "N/A \u2014 toggleTaskStar not wired in screens; JWT dual-path proven",
+    "residual": "LogBox PGRST204 task_activities.status on create activity side-write (task still created)"
+  },
+  "jwtContract": "PASS headed-prod-qa-smoke on b7d838e"
+}

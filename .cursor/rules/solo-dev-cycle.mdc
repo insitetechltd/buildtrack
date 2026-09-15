@@ -5,12 +5,12 @@ alwaysApply: true
 
 # Solo Dev Cycle (Insite)
 
-- Follow personal skill `solo-dev-harness` **SOP.md** for the whole cycle (not NOW-only).
+- Follow personal skill `solo-dev-harness` **SOP.md** for the whole cycle (not NOW-only). Dual-plane prove = SOP §13: DEV-green is not PROD-green.
 - Milestone gate: read `documentation/NOW.md`, then `AGENTS.md` § Current Delivery Status and `documentation/ROADMAP.md` before planning.
 - Session continuity: `documentation/NOW.md` is the git-tracked pick-up file — overwrite at teardown; do not rely on Cursor chat.
 - **Dual-write:** SOP improvements update (1) `~/.cursor/skills/solo-dev-harness/SOP.md`, (2) `templates/`, (3) this repo’s matching files. Insite-only law stays in `.cursor/skills/insite-dev/`.
 - Cursor SoT for project law: `.cursor/rules/`. `.trae/` is legacy read-only during migration.
-- Testing mindset: read `TESTING_STRATEGY.md`; Maestro via `scripts/maestro/run-local.sh` only.
+- Testing mindset: read `TESTING_STRATEGY.md`; Maestro via `scripts/maestro/run-local.sh` only (DEV). Persistence/auth/billing/Edge changes also need destination-plane proof (`npm run test:dual-env:p-matrix` + headed Metro→PROD QA). App-shaped `42703`/`PGRST204` on PROD = FAIL, not WARN.
 - User-visible mobile/nav/upload/task changes require QA path; logic-only may stop at Test Engineer.
 - UI change reports: include visual artifacts + delta explanation (see `.cursor/rules/ui-visual-report.mdc`).
 - Before Maestro or release claims, run `npm run dev:doctor`.

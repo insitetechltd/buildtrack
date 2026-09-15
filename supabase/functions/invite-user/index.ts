@@ -94,10 +94,10 @@ async function loadSeatLimits(
     .maybeSingle();
 
   if (error) {
-    if (/42703|PGRST204|does not exist/i.test(error.message || "")) {
+    if (isMissingColumnError(error)) {
       return null;
     }
-    throw error;
+    throwAsError(error);
   }
 
   if (!data) return null;
@@ -130,10 +130,10 @@ async function loadSeatClassRules(
     .select("role_key, consumes_pm_seats, consumes_worker_seats, is_seat_exempt");
 
   if (error) {
-    if (/42703|PGRST204|does not exist/i.test(error.message || "")) {
+    if (isMissingColumnError(error)) {
       return null;
     }
-    throw error;
+    throwAsError(error);
   }
 
   const rules = new Map<string, SeatClassRule>();
@@ -164,8 +164,33 @@ function countSeats(
   return { pmCount, workerCount };
 }
 
-function isMissingColumnError(message: string | undefined): boolean {
-  return /42703|PGRST204|does not exist/i.test(message || "");
+function isMissingColumnError(
+  error: { code?: string; message?: string } | string | null | undefined,
+): boolean {
+  if (!error) return false;
+  const code = typeof error === "string" ? "" : String(error.code || "");
+  const message =
+    typeof error === "string" ? error : String(error.message || "");
+  // PostgREST PGRST204 often says "Could not find the 'role' column … schema cache"
+  // without embedding the code in the message — check both.
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    /42703|PGRST204|does not exist|schema cache|could not find the '.+' column/i.test(
+      message,
+    )
+  );
+}
+
+function throwAsError(error: unknown): never {
+  if (error instanceof Error) throw error;
+  if (error && typeof error === "object") {
+    const e = error as { message?: string; code?: string };
+    throw Object.assign(new Error(e.message || "unknown_error"), {
+      code: e.code,
+    });
+  }
+  throw new Error(typeof error === "string" ? error : "unknown_error");
 }
 
 async function markMustSetPassword(
@@ -177,8 +202,8 @@ async function markMustSetPassword(
     .update({ must_set_password: true })
     .eq("id", userId);
 
-  if (error && !isMissingColumnError(error.message)) {
-    throw error;
+  if (error && !isMissingColumnError(error)) {
+    throwAsError(error);
   }
 }
 
@@ -189,6 +214,8 @@ async function upsertInviteProfile(
   inviteRole: string,
   inviteSystemPermission: string,
 ): Promise<void> {
+  // Live tenants use `role`; greenfield PROD uses `system_permission` only.
+  // Never write both — PostgREST PGRST204 if the column is absent.
   const { error: roleError } = await adminClient.from("users").upsert(
     { ...patch, id: userId, role: inviteRole },
     { onConflict: "id" },
@@ -203,7 +230,7 @@ async function upsertInviteProfile(
     });
   }
 
-  if (!isMissingColumnError(roleError.message)) {
+  if (isMissingColumnError(roleError)) {
     const { error: sysError } = await adminClient.from("users").upsert(
       { ...patch, id: userId, system_permission: inviteSystemPermission },
       { onConflict: "id" },
@@ -214,12 +241,12 @@ async function upsertInviteProfile(
           code: seatLimitErrorCode(sysError.message),
         });
       }
-      throw sysError;
+      throwAsError(sysError);
     }
     return;
   }
 
-  throw roleError;
+  throwAsError(roleError);
 }
 
 function isSeatLimitDbError(message: string | undefined): boolean {
@@ -238,6 +265,38 @@ async function deleteInviteUser(
   await adminClient.auth.admin.deleteUser(userId);
 }
 
+async function loadCompanyUsersForSeats(
+  adminClient: ReturnType<typeof createClient>,
+  companyId: string,
+): Promise<CompanyUserRow[]> {
+  // Never SELECT role + system_permission together — PostgREST aborts if either
+  // column is missing (PROD greenfield has system_permission only).
+  const rolePath = await adminClient
+    .from("users")
+    .select("id, role, is_pending, is_active, deployable_seat")
+    .eq("company_id", companyId);
+  if (!rolePath.error) {
+    return rolePath.data || [];
+  }
+  if (isMissingColumnError(rolePath.error)) {
+    const roleOnly = await adminClient
+      .from("users")
+      .select("id, role, is_pending, is_active")
+      .eq("company_id", companyId);
+    if (!roleOnly.error) {
+      return roleOnly.data || [];
+    }
+  }
+  const sysPath = await adminClient
+    .from("users")
+    .select("id, system_permission, is_pending, is_active, deployable_seat")
+    .eq("company_id", companyId);
+  if (sysPath.error) {
+    throwAsError(sysPath.error);
+  }
+  return sysPath.data || [];
+}
+
 async function assertSeatAvailableAfterWrite(
   adminClient: ReturnType<typeof createClient>,
   companyId: string,
@@ -245,28 +304,7 @@ async function assertSeatAvailableAfterWrite(
   seatRules: Map<string, SeatClassRule> | null,
   limits: { pmSeatLimit: number; workerSeatLimit: number },
 ): Promise<{ ok: true } | { ok: false; error: "pm_seat_limit" | "worker_seat_limit"; pmCount: number; workerCount: number }> {
-  const { data, error } = await adminClient
-    .from("users")
-    .select("id, role, system_permission, is_pending, is_active, deployable_seat")
-    .eq("company_id", companyId);
-
-  let companyUsers: CompanyUserRow[] = [];
-  if (error) {
-    if (isMissingColumnError(error.message)) {
-      const roleOnly = await adminClient
-        .from("users")
-        .select("id, role, is_pending, is_active")
-        .eq("company_id", companyId);
-      if (roleOnly.error) {
-        throw roleOnly.error;
-      }
-      companyUsers = roleOnly.data || [];
-    } else {
-      throw error;
-    }
-  } else {
-    companyUsers = data || [];
-  }
+  const companyUsers = await loadCompanyUsersForSeats(adminClient, companyId);
 
   const { pmCount, workerCount } = countSeats(companyUsers, seatRules);
   if (seatType === "pm" && pmCount > limits.pmSeatLimit) {
@@ -443,42 +481,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    let companyUsers: CompanyUserRow[] = [];
-    {
-      const rolePath = await adminClient
-        .from("users")
-        .select("id, role, is_pending, is_active, deployable_seat")
-        .eq("company_id", companyId);
-      if (!rolePath.error) {
-        companyUsers = rolePath.data || [];
-      } else if (isMissingColumnError(rolePath.error.message)) {
-        const roleOnly = await adminClient
-          .from("users")
-          .select("id, role, is_pending, is_active")
-          .eq("company_id", companyId);
-        if (roleOnly.error) {
-          const sysPath = await adminClient
-            .from("users")
-            .select("id, system_permission, is_pending")
-            .eq("company_id", companyId);
-          if (sysPath.error) {
-            return jsonResponse({ error: sysPath.message }, 500);
-          }
-          companyUsers = sysPath.data || [];
-        } else {
-          companyUsers = roleOnly.data || [];
-        }
-      } else {
-        const sysPath = await adminClient
-          .from("users")
-          .select("id, system_permission, is_pending, is_active")
-          .eq("company_id", companyId);
-        if (sysPath.error) {
-          return jsonResponse({ error: sysPath.message }, 500);
-        }
-        companyUsers = sysPath.data || [];
-      }
-    }
+    const companyUsers = await loadCompanyUsersForSeats(adminClient, companyId);
 
     const seatLimits = await loadSeatLimits(adminClient, companyId);
     if (!seatLimits) {
@@ -706,7 +709,12 @@ Deno.serve(async (req) => {
       seatType,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown_error";
+    const message =
+      error instanceof Error
+        ? error.message
+        : error && typeof error === "object" && "message" in error
+          ? String((error as { message?: string }).message || "unknown_error")
+          : "unknown_error";
     return jsonResponse({ error: message }, 500);
   }
 });

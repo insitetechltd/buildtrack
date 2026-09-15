@@ -12,7 +12,7 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
-import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
+import { getSessionScopedSupabase, waitForSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType, TaskCategory } from "../types/buildtrack";
 import { isArchivableLifecycleStatus } from "../utils/taskLifecycleStatus";
@@ -27,8 +27,12 @@ import { assertValidTaskUpdate } from "../utils/taskUpdateValidation";
 import {
   buildSupabaseTaskInsertPayload,
   getDeferredTaskSchemaField,
+  getMissingTaskColumnFromError,
+  isOptionalEvolvedTaskColumn,
   stripDeferredTaskRuntimeFields,
   stripDeferredTaskSchemaFields,
+  stripOptionalEvolvedTaskColumns,
+  stripTaskColumn,
 } from "./taskDeferredSchemaCompat";
 import {
   buildTaskDerivedState,
@@ -222,6 +226,21 @@ async function fetchListableTasksAssignedToUser(
     client.from("tasks").select("*").contains("assigned_to", [userId]),
   );
   if (assignedRes.error) {
+    // NEW schema: no assigned_to — resolve via task_assignments junction.
+    if (isMissingTaskMetadataColumnError(assignedRes.error)) {
+      const { fetchTaskIdsAssignedViaJunction } = await import("./schemaDualPath");
+      const junction = await fetchTaskIdsAssignedViaJunction(client, userId);
+      if (junction.error) {
+        return { data: null, error: junction.error };
+      }
+      if (junction.taskIds.length === 0) {
+        return { data: [], error: null };
+      }
+      const tasksRes = await lifecycle(
+        client.from("tasks").select("*").in("id", junction.taskIds),
+      );
+      return { data: (tasksRes.data as Record<string, unknown>[] | null) ?? [], error: tasksRes.error };
+    }
     return { data: null, error: assignedRes.error };
   }
 
@@ -678,17 +697,43 @@ export const useTaskStore = create<TaskStore>()(
 
               // M-DATA-05: no full timeline on list — hydrate Recent Activity window only.
               const taskIds = (allTasksData || []).map((task) => String(task.id));
+              const { hydrateAssigneesFromJunction } = await import("./schemaDualPath");
+              const junctionAssignees = await hydrateAssigneesFromJunction(
+                supabaseClient,
+                taskIds,
+              );
+              const {
+                hydrateAttachmentsFromTaskFiles,
+                hydrateStarsFromTaskStars,
+                coalesceAssignees,
+              } = await import("./schemaDualPath");
+              const filesByTask = await hydrateAttachmentsFromTaskFiles(
+                supabaseClient,
+                taskIds,
+              );
+              const starsByTask = await hydrateStarsFromTaskStars(
+                supabaseClient,
+                taskIds,
+              );
               const activitiesByTaskId = await fetchRecentActivitiesByTaskIds(
                 supabaseClient,
                 taskIds,
               );
 
               const transformedTasks = (allTasksData || []).map(task => {
-                const normalizedAssignedTo = Array.isArray(task.assigned_to)
+                const fromCol = Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((id: any) => String(id))
                   : [];
+                const fromJunction = junctionAssignees.get(String(task.id)) || [];
+                const normalizedAssignedTo = coalesceAssignees(fromCol, fromJunction);
                 const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
                 const taskActivities = activitiesByTaskId[task.id] || [];
+                const fromAttachments = Array.isArray(task.attachments)
+                  ? task.attachments
+                  : [];
+                const fromStars = Array.isArray(task.starred_by_users)
+                  ? task.starred_by_users.map((id: unknown) => String(id))
+                  : [];
 
                 return normalizeTaskActivityCompatibility({
                   id: task.id,
@@ -719,8 +764,14 @@ export const useTaskStore = create<TaskStore>()(
                   tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
                   locationOnSite: task.location_on_site || undefined,
                   location: task.location,
-                  attachments: task.attachments || [],
-                  starredByUsers: task.starred_by_users || [],
+                  attachments:
+                    fromAttachments.length > 0
+                      ? fromAttachments
+                      : filesByTask.get(String(task.id)) || [],
+                  starredByUsers:
+                    fromStars.length > 0
+                      ? fromStars
+                      : starsByTask.get(String(task.id)) || [],
                   acceptedBy: task.accepted_by || undefined,
                   acceptedAt: task.accepted_at || undefined,
                   declinedReason: task.decline_reason || undefined,
@@ -972,6 +1023,24 @@ export const useTaskStore = create<TaskStore>()(
 
               // M-DATA-05: hydrate Recent Activity window only (not full timeline).
               const taskIds = (allTasksData || []).map((task) => String(task.id));
+              const {
+                hydrateAssigneesFromJunction,
+                hydrateAttachmentsFromTaskFiles,
+                hydrateStarsFromTaskStars,
+                coalesceAssignees,
+              } = await import("./schemaDualPath");
+              const junctionAssignees = await hydrateAssigneesFromJunction(
+                supabaseClient,
+                taskIds,
+              );
+              const filesByTask = await hydrateAttachmentsFromTaskFiles(
+                supabaseClient,
+                taskIds,
+              );
+              const starsByTask = await hydrateStarsFromTaskStars(
+                supabaseClient,
+                taskIds,
+              );
               const activitiesByTaskId = await fetchRecentActivitiesByTaskIds(
                 supabaseClient,
                 taskIds,
@@ -980,6 +1049,15 @@ export const useTaskStore = create<TaskStore>()(
               const scopedTaskIds = new Set(get().taskIdsByProject[projectId] || []);
               const transformedTasks = (allTasksData || []).map(task => {
                 const taskActivities = activitiesByTaskId[task.id] || [];
+                const fromCol = Array.isArray(task.assigned_to)
+                  ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
+                  : [];
+                const fromAttachments = Array.isArray(task.attachments)
+                  ? task.attachments
+                  : [];
+                const fromStars = Array.isArray(task.starred_by_users)
+                  ? task.starred_by_users.map((id: unknown) => String(id))
+                  : [];
                 return normalizeTaskActivityCompatibility({
                 id: task.id,
                 projectId: task.project_id,
@@ -995,9 +1073,10 @@ export const useTaskStore = create<TaskStore>()(
                 dueDate: task.due_date,
                 status: resolveClientTaskStatus(task) as TaskStatus,
                 completionPercentage: task.completion_percentage,
-                assignedTo: Array.isArray(task.assigned_to)
-                  ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
-                  : [],
+                assignedTo: coalesceAssignees(
+                  fromCol,
+                  junctionAssignees.get(String(task.id)) || [],
+                ),
                 primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
                 delegatedUserIds: Array.isArray(task.delegated_user_ids)
                   ? task.delegated_user_ids.map((userId: unknown) => String(userId))
@@ -1011,8 +1090,14 @@ export const useTaskStore = create<TaskStore>()(
                 tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
                 locationOnSite: task.location_on_site || undefined,
                 location: task.location,
-                attachments: task.attachments || [],
-                starredByUsers: task.starred_by_users || [],
+                attachments:
+                  fromAttachments.length > 0
+                    ? fromAttachments
+                    : filesByTask.get(String(task.id)) || [],
+                starredByUsers:
+                  fromStars.length > 0
+                    ? fromStars
+                    : starsByTask.get(String(task.id)) || [],
                 acceptedBy: task.accepted_by || undefined,
                 acceptedAt: task.accepted_at || undefined,
                 declinedReason: task.decline_reason || undefined,
@@ -1096,6 +1181,24 @@ export const useTaskStore = create<TaskStore>()(
 
               // M-DATA-05: hydrate Recent Activity window only (not full timeline).
               const taskIds = (data || []).map((task) => String(task.id));
+              const {
+                hydrateAssigneesFromJunction,
+                hydrateAttachmentsFromTaskFiles,
+                hydrateStarsFromTaskStars,
+                coalesceAssignees,
+              } = await import("./schemaDualPath");
+              const junctionAssignees = await hydrateAssigneesFromJunction(
+                supabaseClient,
+                taskIds,
+              );
+              const filesByTask = await hydrateAttachmentsFromTaskFiles(
+                supabaseClient,
+                taskIds,
+              );
+              const starsByTask = await hydrateStarsFromTaskStars(
+                supabaseClient,
+                taskIds,
+              );
               const activitiesByTaskId = await fetchRecentActivitiesByTaskIds(
                 supabaseClient,
                 taskIds,
@@ -1104,6 +1207,15 @@ export const useTaskStore = create<TaskStore>()(
               const scopedTaskIds = new Set(get().taskIdsByUser[userId] || []);
               const transformedTasks = (data || []).map(task => {
                 const taskActivities = activitiesByTaskId[String(task.id)] || [];
+                const fromCol = Array.isArray(task.assigned_to)
+                  ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
+                  : [];
+                const fromAttachments = Array.isArray(task.attachments)
+                  ? task.attachments
+                  : [];
+                const fromStars = Array.isArray(task.starred_by_users)
+                  ? task.starred_by_users.map((id: unknown) => String(id))
+                  : [];
                 return normalizeTaskActivityCompatibility({
                 id: task.id,
                 projectId: task.project_id,
@@ -1119,9 +1231,10 @@ export const useTaskStore = create<TaskStore>()(
                 dueDate: task.due_date,
                 status: resolveClientTaskStatus(task) as TaskStatus,
                 completionPercentage: task.completion_percentage,
-                assignedTo: Array.isArray(task.assigned_to)
-                  ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
-                  : [],
+                assignedTo: coalesceAssignees(
+                  fromCol,
+                  junctionAssignees.get(String(task.id)) || [],
+                ),
                 primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
                 delegatedUserIds: Array.isArray(task.delegated_user_ids)
                   ? task.delegated_user_ids.map((delegatedId: unknown) => String(delegatedId))
@@ -1135,8 +1248,14 @@ export const useTaskStore = create<TaskStore>()(
                 tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
                 locationOnSite: task.location_on_site || undefined,
                 location: task.location,
-                attachments: task.attachments || [],
-                starredByUsers: task.starred_by_users || [],
+                attachments:
+                  fromAttachments.length > 0
+                    ? fromAttachments
+                    : filesByTask.get(String(task.id)) || [],
+                starredByUsers:
+                  fromStars.length > 0
+                    ? fromStars
+                    : starsByTask.get(String(task.id)) || [],
                 acceptedBy: task.accepted_by || undefined,
                 acceptedAt: task.accepted_at || undefined,
                 declinedReason: task.decline_reason || undefined,
@@ -1265,10 +1384,44 @@ export const useTaskStore = create<TaskStore>()(
               timestamp: activity.timestamp,
             }));
 
-          const normalizedAssignedTo = Array.isArray(taskData.assigned_to)
+          const fromCol = Array.isArray(taskData.assigned_to)
             ? taskData.assigned_to.map((assigneeId: unknown) => String(assigneeId))
             : [];
+          const {
+            hydrateAssigneesFromJunction,
+            hydrateAttachmentsFromTaskFiles,
+            hydrateStarsFromTaskStars,
+            coalesceAssignees,
+          } = await import("./schemaDualPath");
+          const junctionMap = await hydrateAssigneesFromJunction(supabaseClient, [
+            String(taskData.id),
+          ]);
+          const normalizedAssignedTo = coalesceAssignees(
+            fromCol,
+            junctionMap.get(String(taskData.id)) || [],
+          );
           const normalizedAssignedBy = taskData.assigned_by ? String(taskData.assigned_by) : '';
+
+          const fromAttachments = Array.isArray(taskData.attachments)
+            ? taskData.attachments
+            : [];
+          const filesMap = await hydrateAttachmentsFromTaskFiles(supabaseClient, [
+            String(taskData.id),
+          ]);
+          const fromStars = Array.isArray(taskData.starred_by_users)
+            ? taskData.starred_by_users.map((id: unknown) => String(id))
+            : [];
+          const starsMap = await hydrateStarsFromTaskStars(supabaseClient, [
+            String(taskData.id),
+          ]);
+          const resolvedAttachments =
+            fromAttachments.length > 0
+              ? fromAttachments
+              : filesMap.get(String(taskData.id)) || [];
+          const resolvedStars =
+            fromStars.length > 0
+              ? fromStars
+              : starsMap.get(String(taskData.id)) || [];
 
           // Transform Supabase data to match local interface
           const transformedTask = normalizeTaskActivityCompatibility({
@@ -1300,7 +1453,7 @@ export const useTaskStore = create<TaskStore>()(
             tags: Array.isArray(taskData.tags) ? taskData.tags.map((tag: unknown) => String(tag)) : [],
             locationOnSite: taskData.location_on_site || undefined,
             location: taskData.location,
-            attachments: taskData.attachments || [],
+            attachments: resolvedAttachments,
             // Legacy fields for backward compatibility (derived from status)
             acceptedBy: taskData.accepted_by || undefined,
             acceptedAt: taskData.accepted_at || undefined,
@@ -1308,7 +1461,7 @@ export const useTaskStore = create<TaskStore>()(
             reviewedBy: taskData.reviewed_by || undefined,
             reviewedAt: taskData.reviewed_at || undefined,
             // Starring
-            starredByUsers: taskData.starred_by_users || [],
+            starredByUsers: resolvedStars,
             cancelledAt: taskData.cancelled_at || null,
             cancelledBy: taskData.cancelled_by || undefined,
             deletedAt: taskData.deleted_at || undefined,
@@ -1464,16 +1617,30 @@ export const useTaskStore = create<TaskStore>()(
             .select()
             .single();
 
+
+          let workingInsertPayload: Record<string, unknown> = {
+            ...(fullInsertPayload as Record<string, unknown>),
+          };
+          let pendingJunctionAssignees: string[] | null = Array.isArray(
+            fullInsertPayload.assigned_to,
+          )
+            ? [...(fullInsertPayload.assigned_to as string[])]
+            : null;
+          let strippedAssignedToForJunction = false;
+          let usedEvolvedBulkStrip = false;
+
           if (
             error &&
             isMissingTaskMetadataColumnError(error) &&
             /original_assigned_by/i.test(error.message ?? "")
           ) {
-            const withoutOwner = { ...fullInsertPayload } as Record<string, unknown>;
-            delete withoutOwner.original_assigned_by;
+            workingInsertPayload = stripTaskColumn(
+              workingInsertPayload,
+              "original_assigned_by",
+            );
             ({ data, error } = await supabase
-              .from('tasks')
-              .insert(withoutOwner)
+              .from("tasks")
+              .insert(workingInsertPayload)
               .select()
               .single());
           }
@@ -1490,25 +1657,104 @@ export const useTaskStore = create<TaskStore>()(
               errorCode: errorCode || null,
             });
             console.warn(
-              '⚠️ [createTask] Supabase schema is missing deferred redesign task fields. Retrying with compatibility payload until the migration lands.',
-              { deferredField }
+              "⚠️ [createTask] Supabase schema is missing deferred redesign task fields. Retrying with compatibility payload until the migration lands.",
+              { deferredField },
             );
 
-            const compatibilityPayload = stripDeferredTaskSchemaFields(
-              fullInsertPayload as Record<string, unknown>,
-            );
-            delete compatibilityPayload.original_assigned_by;
+            workingInsertPayload = stripDeferredTaskSchemaFields(workingInsertPayload);
+            delete workingInsertPayload.original_assigned_by;
             ({ data, error } = await supabase
-              .from('tasks')
-              .insert(compatibilityPayload)
+              .from("tasks")
+              .insert(workingInsertPayload)
               .select()
               .single());
+          }
+
+          // Greenfield PROD: evolved DEV columns (accepted, assigned_to, …) are absent.
+          // Bulk-strip once, then iteratively strip any remaining missing column.
+          for (let attempt = 0; error && attempt < 12; attempt += 1) {
+            const missingColumn = getMissingTaskColumnFromError(error);
+            if (!missingColumn) {
+              break;
+            }
+
+            if (
+              !usedEvolvedBulkStrip &&
+              isOptionalEvolvedTaskColumn(missingColumn)
+            ) {
+              if (Array.isArray(workingInsertPayload.assigned_to)) {
+                pendingJunctionAssignees =
+                  workingInsertPayload.assigned_to as string[];
+                strippedAssignedToForJunction = true;
+              }
+              workingInsertPayload =
+                stripOptionalEvolvedTaskColumns(workingInsertPayload);
+              usedEvolvedBulkStrip = true;
+              console.warn(
+                "⚠️ [createTask] Stripping evolved-tenant task columns for greenfield schema compatibility.",
+                { missingColumn },
+              );
+            } else {
+              if (
+                missingColumn === "assigned_to" &&
+                Array.isArray(workingInsertPayload.assigned_to)
+              ) {
+                pendingJunctionAssignees =
+                  workingInsertPayload.assigned_to as string[];
+                strippedAssignedToForJunction = true;
+              }
+              if (!(missingColumn in workingInsertPayload)) {
+                break;
+              }
+              workingInsertPayload = stripTaskColumn(
+                workingInsertPayload,
+                missingColumn,
+              );
+            }
+
+            ({ data, error } = await supabase
+              .from("tasks")
+              .insert(workingInsertPayload)
+              .select()
+              .single());
+
           }
 
           if (error) {
             console.error('❌ [createTask] Database error:', error);
             console.error('❌ [createTask] Error details:', JSON.stringify(error, null, 2));
             throw error;
+          }
+
+          // PROD greenfield: assignees live in task_assignments, not tasks.assigned_to.
+          if (
+            strippedAssignedToForJunction &&
+            pendingJunctionAssignees &&
+            pendingJunctionAssignees.length > 0 &&
+            data?.id
+          ) {
+            const primaryId =
+              taskData.primaryAssigneeId || pendingJunctionAssignees[0] || null;
+            const rows = pendingJunctionAssignees.map((userId) => ({
+              task_id: data.id,
+              user_id: userId,
+              assignment_kind:
+                primaryId && String(userId) === String(primaryId)
+                  ? "primary"
+                  : "delegated",
+              is_active: true,
+              created_by: taskData.assignedBy || null,
+            }));
+            const { error: assignError } = await supabase
+              .from("task_assignments")
+              .insert(rows);
+            if (assignError) {
+              console.error(
+                "❌ [createTask] task_assignments insert failed:",
+                assignError,
+              );
+              throw assignError;
+            }
           }
 
           // Get creator's name to include in update
@@ -1642,7 +1888,12 @@ export const useTaskStore = create<TaskStore>()(
             dueDate: data.due_date,
             status: resolveClientTaskStatus(data) as TaskStatus,
             completionPercentage: data.completion_percentage,
-            assignedTo: data.assigned_to,
+            assignedTo:
+              (Array.isArray(data.assigned_to) && data.assigned_to.length > 0
+                ? data.assigned_to.map((id: unknown) => String(id))
+                : pendingJunctionAssignees?.map(String)) ||
+              taskData.assignedTo ||
+              [],
             primaryAssigneeId: data.primary_assignee_id ? String(data.primary_assignee_id) : undefined,
             delegatedUserIds: Array.isArray(data.delegated_user_ids)
               ? data.delegated_user_ids.map((userId: unknown) => String(userId))
@@ -1709,7 +1960,15 @@ export const useTaskStore = create<TaskStore>()(
       ensureProjectLocation: async (projectId: string, label: string, createdBy?: string) => {
         const normalizedLabel = normalizeProjectLocationLabel(label);
 
-        if (!projectId || !normalizedLabel || !supabase) {
+        if (!projectId || !normalizedLabel) {
+          return;
+        }
+
+        const sessionClient = await waitForSessionScopedSupabase(3000, 150);
+        if (!sessionClient) {
+          console.warn(
+            "⚠️ [ensureProjectLocation] No JWT session — skipping shared location catalog write (avoids 42501).",
+          );
           return;
         }
 
@@ -1723,7 +1982,7 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await sessionClient
           .from('project_locations')
           .insert({
             project_id: projectId,
@@ -1733,6 +1992,7 @@ export const useTaskStore = create<TaskStore>()(
           .select()
           .single();
 
+
         if (!error) {
           return;
         }
@@ -1741,8 +2001,12 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
-        console.error('Error ensuring project location:', error);
-        throw error;
+        // Soft-fail: location_on_site still goes on the task row when the column exists.
+        // Catalog write must not block Create Task (42501 / RLS / grants drift).
+        console.warn(
+          "⚠️ [ensureProjectLocation] Shared location catalog write failed; continuing task create.",
+          error,
+        );
       },
 
       ensureProjectContainer: async (projectId, label, options) => {
@@ -1978,24 +2242,32 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.hasUnreadChanges !== undefined) updateData.has_unread_changes = cleanUpdates.hasUnreadChanges;
           if (cleanUpdates.lastEditedAt) updateData.last_edited_at = cleanUpdates.lastEditedAt;
 
-          // Send update to backend
+          // Send update to backend — strip evolved/DEV-only cols on NEW (PROD).
           let usedDeferredSchemaCompatibility = false;
           let skippedCompatibilityOnlyUpdate = false;
-          let { error } = await supabase
-            .from('tasks')
-            .update(updateData)
-            .eq('id', id);
+          const {
+            updateTaskStrippingEvolvedColumns,
+            syncTaskAssignmentsJunction,
+          } = await import("./schemaDualPath");
 
-          const deferredField = getDeferredTaskSchemaField(error);
-          if (deferredField) {
+          let stripResult = await updateTaskStrippingEvolvedColumns(
+            supabase,
+            id,
+            { ...updateData },
+          );
+          let error = stripResult.error;
+
+          // Deferred redesign fields may still surface if bulk evolved strip did not run.
+          if (error && getDeferredTaskSchemaField(error)) {
             usedDeferredSchemaCompatibility = true;
+            const deferredField = getDeferredTaskSchemaField(error);
             const errorCode =
               error && typeof error === "object" && "code" in error
                 ? String((error as { code?: unknown }).code || "")
                 : "";
             recordDeferredFallbackFire({
               op: "updateTask",
-              deferredField,
+              deferredField: deferredField || "unknown",
               errorCode: errorCode || null,
             });
             console.warn(
@@ -2003,15 +2275,19 @@ export const useTaskStore = create<TaskStore>()(
               { deferredField }
             );
 
-            const compatibilityUpdateData = stripDeferredTaskSchemaFields(updateData);
+            const compatibilityUpdateData = stripDeferredTaskSchemaFields(
+              stripResult.finalPayload,
+            );
             if (Object.keys(compatibilityUpdateData).length === 0) {
               skippedCompatibilityOnlyUpdate = true;
               error = null;
             } else {
-              ({ error } = await supabase
-                .from('tasks')
-                .update(compatibilityUpdateData)
-                .eq('id', id));
+              stripResult = await updateTaskStrippingEvolvedColumns(
+                supabase,
+                id,
+                compatibilityUpdateData,
+              );
+              error = stripResult.error;
             }
 
             if (currentTask) {
@@ -2026,6 +2302,33 @@ export const useTaskStore = create<TaskStore>()(
                     : task
                 ),
               }));
+            }
+          }
+
+          if (
+            !error &&
+            (stripResult.strippedAssignedTo ||
+              Array.isArray(cleanUpdates.assignedTo))
+          ) {
+            const assigneeIds = (
+              cleanUpdates.assignedTo ||
+              currentTask?.assignedTo ||
+              []
+            ).map(String);
+            if (assigneeIds.length > 0 || stripResult.strippedAssignedTo) {
+              const junction = await syncTaskAssignmentsJunction(supabase, {
+                taskId: id,
+                assigneeIds,
+                primaryAssigneeId:
+                  cleanUpdates.primaryAssigneeId ??
+                  currentTask?.primaryAssigneeId ??
+                  assigneeIds[0] ??
+                  null,
+                createdBy: currentTask?.assignedBy || null,
+              });
+              if (junction.error && junction.usedJunction) {
+                throw junction.error;
+              }
             }
           }
 
@@ -2408,15 +2711,14 @@ export const useTaskStore = create<TaskStore>()(
           const isAssigner = task.assignedBy === userId;
           const isAssignee = Array.isArray(task.assignedTo) && task.assignedTo.includes(userId);
 
-          let archivingUserRow: { name?: string; role?: string; system_permission?: string } | null =
-            null;
+          let archivingUserRow: {
+            name?: string;
+            role?: string;
+            systemPermission?: string;
+          } | null = null;
           try {
-            const { data } = await supabase
-              .from('users')
-              .select('name, role, system_permission')
-              .eq('id', userId)
-              .single();
-            archivingUserRow = data;
+            const { selectUserAclSequential } = await import("./schemaDualPath");
+            archivingUserRow = await selectUserAclSequential(supabase, userId);
           } catch {
             archivingUserRow = null;
           }
@@ -2425,7 +2727,7 @@ export const useTaskStore = create<TaskStore>()(
             id: userId,
             name: archivingUserRow?.name || 'Unknown User',
             role: archivingUserRow?.role,
-            systemPermission: archivingUserRow?.system_permission,
+            systemPermission: archivingUserRow?.systemPermission,
           } as User;
           const canArchiveAsManager = isManagerOrAdmin(archiverAsUser);
 
@@ -2555,24 +2857,54 @@ export const useTaskStore = create<TaskStore>()(
           if (payload.billingStatus) updatePayload.billing_status = payload.billingStatus;
           if (payload.locationOnSite) updatePayload.location_on_site = payload.locationOnSite;
 
-          let { error } = await supabase
-            .from('tasks')
-            .update(updatePayload)
-            .eq('id', taskId);
+          const {
+            updateTaskStrippingEvolvedColumns,
+            syncTaskAssignmentsJunction,
+          } = await import("./schemaDualPath");
+
+          let stripResult = await updateTaskStrippingEvolvedColumns(
+            supabase,
+            taskId,
+            updatePayload,
+          );
+          let error = stripResult.error;
 
           if (
             error &&
             isMissingTaskMetadataColumnError(error) &&
-            Object.prototype.hasOwnProperty.call(updatePayload, 'original_assigned_by')
+            Object.prototype.hasOwnProperty.call(
+              stripResult.finalPayload,
+              "original_assigned_by",
+            )
           ) {
-            delete updatePayload.original_assigned_by;
-            ({ error } = await supabase
-              .from('tasks')
-              .update(updatePayload)
-              .eq('id', taskId));
+            const withoutOriginal = { ...stripResult.finalPayload };
+            delete withoutOriginal.original_assigned_by;
+            stripResult = await updateTaskStrippingEvolvedColumns(
+              supabase,
+              taskId,
+              withoutOriginal,
+            );
+            error = stripResult.error;
           }
 
           if (error) throw error;
+
+          if (
+            stripResult.strippedAssignedTo ||
+            Array.isArray(payload.assignedTo)
+          ) {
+            const assigneeIds = (payload.assignedTo || []).map(String);
+            const junction = await syncTaskAssignmentsJunction(supabase, {
+              taskId,
+              assigneeIds,
+              primaryAssigneeId:
+                payload.primaryAssigneeId || assigneeIds[0] || null,
+              createdBy: userId,
+            });
+            if (junction.error && junction.usedJunction) {
+              throw junction.error;
+            }
+          }
 
           const activityTimestamp = new Date().toISOString();
           await supabase
@@ -2648,16 +2980,17 @@ export const useTaskStore = create<TaskStore>()(
           const resolveNote = note?.trim() || 'Resolved without reply';
           const resolvedAt = new Date().toISOString();
 
-          const { error } = await supabase
-            .from('tasks')
-            .update({
+          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
+          const stripResult = await updateTaskStrippingEvolvedColumns(
+            supabase,
+            taskId,
+            {
               status: 'resolved',
               current_status: 'resolved',
               updated_at: resolvedAt,
-            })
-            .eq('id', taskId);
-
-          if (error) throw error;
+            },
+          );
+          if (stripResult.error) throw stripResult.error;
 
           await supabase
             .from('task_activities')
@@ -2891,15 +3224,41 @@ export const useTaskStore = create<TaskStore>()(
 
         const starredByUsers = task.starredByUsers || [];
         const isCurrentlyStarred = starredByUsers.includes(userId);
-
-        // Toggle: Add or remove user from starred array
         const newStarredByUsers = isCurrentlyStarred
           ? starredByUsers.filter(id => id !== userId)
           : [...starredByUsers, userId];
 
-        await get().updateTask(taskId, {
-          starredByUsers: newStarredByUsers
+        // Optimistic local toggle
+        get().mergeTask({
+          ...task,
+          starredByUsers: newStarredByUsers,
         });
+
+        if (!supabase) return;
+
+        try {
+          const { toggleTaskStarDualPath } = await import("./schemaDualPath");
+          const dual = await toggleTaskStarDualPath(supabase, {
+            taskId,
+            userId,
+            currentlyStarred: isCurrentlyStarred,
+          });
+          if (dual.error) throw dual.error;
+
+          if (dual.mode === "array") {
+            // DEV OLD: persist starred_by_users array
+            await get().updateTask(taskId, {
+              starredByUsers: newStarredByUsers,
+            });
+          }
+        } catch (error) {
+          // Rollback optimistic star
+          get().mergeTask({
+            ...task,
+            starredByUsers,
+          });
+          throw error;
+        }
       },
 
       getStarredTasks: (userId) => {
@@ -3266,19 +3625,20 @@ export const useTaskStore = create<TaskStore>()(
 
           // Update the task's completion percentage and status in backend
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
-          const taskUpdateData: any = {
+          const taskUpdateData: Record<string, unknown> = {
             completion_percentage: update.completionPercentage,
             status: update.status,
             current_status: update.status,
             updated_at: new Date().toISOString(),
           };
-          
-          const { error: taskError } = await supabase
-            .from('tasks')
-            .update(taskUpdateData)
-            .eq('id', taskId);
 
-          if (taskError) throw taskError;
+          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
+          const stripResult = await updateTaskStrippingEvolvedColumns(
+            supabase,
+            taskId,
+            taskUpdateData,
+          );
+          if (stripResult.error) throw stripResult.error;
 
           // Success - backend confirmed
           console.log(`✅ [Optimistic Update] Backend confirmed task update for ${taskId}`);
@@ -3414,19 +3774,20 @@ export const useTaskStore = create<TaskStore>()(
 
           // Update the subtask's completion percentage and status in backend
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
-          const subTaskUpdateData: any = {
+          const subTaskUpdateData: Record<string, unknown> = {
             completion_percentage: update.completionPercentage,
             status: update.status,
             current_status: update.status,
             updated_at: new Date().toISOString(),
           };
-          
-          const { error: taskError } = await supabase
-            .from('tasks')
-            .update(subTaskUpdateData)
-            .eq('id', subTaskId);
 
-          if (taskError) throw taskError;
+          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
+          const stripResult = await updateTaskStrippingEvolvedColumns(
+            supabase,
+            subTaskId,
+            subTaskUpdateData,
+          );
+          if (stripResult.error) throw stripResult.error;
 
           // Success - backend confirmed
           console.log(`✅ [Optimistic Update] Backend confirmed subtask update for ${subTaskId}`);
@@ -3551,12 +3912,10 @@ export const useTaskStore = create<TaskStore>()(
             assigned_by: subTaskData.assignedBy,
           });
 
-          const { data, error } = await supabase
-            .from('tasks')  // ✅ Changed to unified tasks table
-            .insert({
+          let workingInsert: Record<string, unknown> = {
               parent_task_id: taskId,
-              nesting_level: nestingLevel,   // ✅ NEW
-              root_task_id: rootTaskId,      // ✅ NEW
+              nesting_level: nestingLevel,
+              root_task_id: rootTaskId,
               project_id: subTaskData.projectId,
               title: subTaskData.title,
               description: subTaskData.description,
@@ -3571,15 +3930,67 @@ export const useTaskStore = create<TaskStore>()(
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
               attachments: subTaskData.attachments,
-              // Auto-accept if creator is assigned to the subtask
               accepted: isCreatorAssigned ? true : false,
               accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
-            })
+            };
+
+          let { data, error } = await supabase
+            .from('tasks')
+            .insert(workingInsert)
             .select()
             .single();
 
+          let pendingJunctionAssignees: string[] | null = Array.isArray(subTaskData.assignedTo)
+            ? subTaskData.assignedTo.map(String)
+            : null;
+          let strippedAssignedTo = false;
+          let usedBulk = false;
+
+          for (let attempt = 0; error && attempt < 12; attempt += 1) {
+            const missingColumn = getMissingTaskColumnFromError(error);
+            if (!missingColumn) break;
+            if (!usedBulk && isOptionalEvolvedTaskColumn(missingColumn)) {
+              if (Array.isArray(workingInsert.assigned_to)) {
+                pendingJunctionAssignees = (workingInsert.assigned_to as string[]).map(String);
+                strippedAssignedTo = true;
+              }
+              workingInsert = stripOptionalEvolvedTaskColumns(workingInsert);
+              usedBulk = true;
+            } else {
+              if (missingColumn === "assigned_to" && Array.isArray(workingInsert.assigned_to)) {
+                pendingJunctionAssignees = (workingInsert.assigned_to as string[]).map(String);
+                strippedAssignedTo = true;
+              }
+              if (!(missingColumn in workingInsert)) break;
+              workingInsert = stripTaskColumn(workingInsert, missingColumn);
+            }
+            ({ data, error } = await supabase
+              .from('tasks')
+              .insert(workingInsert)
+              .select()
+              .single());
+          }
+
           if (error) throw error;
+
+          if (
+            strippedAssignedTo &&
+            pendingJunctionAssignees &&
+            pendingJunctionAssignees.length > 0 &&
+            data?.id
+          ) {
+            const { syncTaskAssignmentsJunction } = await import("./schemaDualPath");
+            const junction = await syncTaskAssignmentsJunction(supabase, {
+              taskId: data.id,
+              assigneeIds: pendingJunctionAssignees,
+              primaryAssigneeId: pendingJunctionAssignees[0] || null,
+              createdBy: subTaskData.assignedBy || null,
+            });
+            if (junction.error && junction.usedJunction) {
+              throw junction.error;
+            }
+          }
           
           console.log('✅ Sub-task created successfully:', data.id);
 
@@ -3783,12 +4194,10 @@ export const useTaskStore = create<TaskStore>()(
           const nestingLevel = (parentTask?.nestingLevel || 0) + 1;
           const rootTaskId = parentTask?.rootTaskId || parentTask?.id || taskId;
 
-          const { data, error } = await supabase
-            .from('tasks')  // ✅ Changed to unified tasks table
-            .insert({
-              parent_task_id: parentSubTaskId,  // ✅ Parent is now just another task
-              nesting_level: nestingLevel,       // ✅ NEW
-              root_task_id: rootTaskId,          // ✅ NEW
+          let workingInsert: Record<string, unknown> = {
+              parent_task_id: parentSubTaskId,
+              nesting_level: nestingLevel,
+              root_task_id: rootTaskId,
               project_id: subTaskData.projectId,
               title: subTaskData.title,
               description: subTaskData.description,
@@ -3803,15 +4212,67 @@ export const useTaskStore = create<TaskStore>()(
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
               attachments: subTaskData.attachments,
-              // Auto-accept if creator is assigned to the nested subtask
               accepted: isCreatorAssigned ? true : false,
               accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
-            })
+            };
+
+          let { data, error } = await supabase
+            .from('tasks')
+            .insert(workingInsert)
             .select()
             .single();
 
+          let pendingJunctionAssignees: string[] | null = Array.isArray(subTaskData.assignedTo)
+            ? subTaskData.assignedTo.map(String)
+            : null;
+          let strippedAssignedTo = false;
+          let usedBulk = false;
+
+          for (let attempt = 0; error && attempt < 12; attempt += 1) {
+            const missingColumn = getMissingTaskColumnFromError(error);
+            if (!missingColumn) break;
+            if (!usedBulk && isOptionalEvolvedTaskColumn(missingColumn)) {
+              if (Array.isArray(workingInsert.assigned_to)) {
+                pendingJunctionAssignees = (workingInsert.assigned_to as string[]).map(String);
+                strippedAssignedTo = true;
+              }
+              workingInsert = stripOptionalEvolvedTaskColumns(workingInsert);
+              usedBulk = true;
+            } else {
+              if (missingColumn === "assigned_to" && Array.isArray(workingInsert.assigned_to)) {
+                pendingJunctionAssignees = (workingInsert.assigned_to as string[]).map(String);
+                strippedAssignedTo = true;
+              }
+              if (!(missingColumn in workingInsert)) break;
+              workingInsert = stripTaskColumn(workingInsert, missingColumn);
+            }
+            ({ data, error } = await supabase
+              .from('tasks')
+              .insert(workingInsert)
+              .select()
+              .single());
+          }
+
           if (error) throw error;
+
+          if (
+            strippedAssignedTo &&
+            pendingJunctionAssignees &&
+            pendingJunctionAssignees.length > 0 &&
+            data?.id
+          ) {
+            const { syncTaskAssignmentsJunction } = await import("./schemaDualPath");
+            const junction = await syncTaskAssignmentsJunction(supabase, {
+              taskId: data.id,
+              assigneeIds: pendingJunctionAssignees,
+              primaryAssigneeId: pendingJunctionAssignees[0] || null,
+              createdBy: subTaskData.assignedBy || null,
+            });
+            if (junction.error && junction.usedJunction) {
+              throw junction.error;
+            }
+          }
 
           const creatorName = await (async () => {
             try {
@@ -4059,6 +4520,7 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.billingStatus !== undefined) updateData.billing_status = updates.billingStatus || "non_billable";
           // Legacy accepted field - map to status if needed
           if ('accepted' in updates && (updates as any).accepted === true && !updates.status) {
+            updateData.status = 'in_progress';
             updateData.current_status = 'in_progress';
             updateData.accepted = true;
           } else if ('accepted' in updates) {
@@ -4067,10 +4529,14 @@ export const useTaskStore = create<TaskStore>()(
           if ('declinedReason' in updates || 'declineReason' in updates) {
             updateData.decline_reason = (updates as any).declinedReason || (updates as any).declineReason || null;
           }
-          if (updates.status) updateData.current_status = updates.status;
+          if (updates.status) {
+            updateData.status = updates.status;
+            updateData.current_status = updates.status;
+          }
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
           // Review workflow fields (legacy - map to status if needed)
           if ('readyForReview' in updates && (updates as any).readyForReview === true && !updates.status) {
+            updateData.status = 'submitted_for_review';
             updateData.current_status = 'submitted_for_review';
             updateData.ready_for_review = true;
           } else if ('readyForReview' in updates) {
@@ -4079,18 +4545,39 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.reviewedBy) updateData.reviewed_by = updates.reviewedBy;
           if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
           if ('reviewAccepted' in updates && (updates as any).reviewAccepted === true && !updates.status) {
+            updateData.status = 'approved';
             updateData.current_status = 'approved';
             updateData.review_accepted = true;
           } else if ('reviewAccepted' in updates) {
             updateData.review_accepted = (updates as any).reviewAccepted;
           }
 
-          const { error } = await supabase
-            .from('tasks')  // ✅ Changed to unified tasks table
-            .update(updateData)
-            .eq('id', subTaskId);
+          const {
+            updateTaskStrippingEvolvedColumns,
+            syncTaskAssignmentsJunction,
+          } = await import("./schemaDualPath");
+          const stripResult = await updateTaskStrippingEvolvedColumns(
+            supabase,
+            subTaskId,
+            updateData,
+          );
+          if (stripResult.error) throw stripResult.error;
 
-          if (error) throw error;
+          if (
+            stripResult.strippedAssignedTo ||
+            Array.isArray(updates.assignedTo)
+          ) {
+            const assigneeIds = (updates.assignedTo || currentSubTask?.assignedTo || []).map(String);
+            const junction = await syncTaskAssignmentsJunction(supabase, {
+              taskId: subTaskId,
+              assigneeIds,
+              primaryAssigneeId: assigneeIds[0] || null,
+              createdBy: currentSubTask?.assignedBy || null,
+            });
+            if (junction.error && junction.usedJunction) {
+              throw junction.error;
+            }
+          }
 
           // Update local state
           set(state => ({

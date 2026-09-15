@@ -74,3 +74,56 @@ Local `.env` stays **DEV + sk_test/pk_test** for Metro / sim. In-flight TestFlig
 - Full PROD migrations: `scripts/supabase/apply-migrations-to-project.sh --project-ref jcnzjigxgkzhjsaekoqz --env-file .cache/env-cutover/insite-prod.env.local`
 
 Maestro / CI: **DEV only** — never clearState against PROD.
+
+---
+
+## PROD NEW SoT + dual-plane proof (wave-1 law)
+
+**Schema direction:** Finish **NEW** on PROD (July greenfield). Do **not** re-add OLD columns to “make Metro work.” Prefer app/Edge cutover; DDL only for a citation-proven NEW gap (Human Gate).
+
+**Done bar:** PROD critical paths P01–P08 PASS on a named app SHA with hard project-ref assert (`jcnzjigxgkzhjsaekoqz`). DEV is control only.
+
+### Hardened promote cycle
+
+This is the Insite instance of portable SOP **§13** (`develop → debug → stable → destination → working`).
+
+| Stage | Insite meaning | Not the same as |
+|---|---|---|
+| **develop** | Edit + Jest/Maestro on **DEV** | Ship-ready |
+| **debug** | Destination-shaped proof: dual-env probes + Metro→PROD QA tenant | Destructive Maestro on PROD |
+| **stable** | Last app SHA that passed PROD P01–P08 + P10 with ref assert | “DEV TF felt fine” |
+| **destination** | Promote that SHA (app + Edge + Human-Gated SQL) → PROD | A newer unproven SHA |
+| **→ working** | Every PROD fail becomes a DEV regression; new class amends SOP §13 | Document-and-ship WARN |
+
+```text
+baseline = last PROD-passing app SHA
+  → develop: branch / edit (verify on DEV)
+  → debug: Metro dual-target DEV control + PROD QA critical paths
+       (every run logs {plane, projectRef, appSha}; refuse mismatch)
+  → stable: freeze that SHA
+  → DEV TF (DEV DB) optional
+  → destination: promote Edge (same git SHA) + any Human-Gated SQL
+       + PROD binary / Metro→PROD re-run P01–P08
+  → only then “PROD live OK”
+  → working: add DEV coverage for any new destination fail class
+```
+
+### Metro dual-target procedure
+
+1. Confirm git SHA (`git rev-parse HEAD`).
+2. Target **DEV**: local `.env` / Metro with `EXPO_PUBLIC_SUPABASE_URL` containing `zusulknbhaumougqckec`. Assert ref before writes.
+3. Target **PROD**: temporary Metro env (or Dev Admin custom endpoint in `__DEV__` only) pointing at `jcnzjigxgkzhjsaekoqz`. Show/confirm a **PROD** banner. Assert ref before any write. Use dedicated **PROD QA company** + disposable users — never founding CA as primary victim.
+4. Never copy tenant rows DEV→PROD. Stripe stays test↔DEV, live↔PROD.
+5. Scripted matrix: `python3 scripts/supabase/probe-p01-p10-dual-target.py` (also `npm run test:dual-env:p-matrix`). App-shaped `42703`/`PGRST204` on PROD critical writes = **FAIL**.
+
+### Standing probes
+
+| Script | Role |
+|---|---|
+| `npm run test:dual-env:critical` | Schema/API drift + Edge public contract |
+| `npm run test:dual-env:p-matrix` | P01–P10 dual-target with ref assert |
+
+AsyncStorage override risk: release builds ignore custom `buildtrack-database-config` endpoints (`src/state/databaseConfigResolve.ts`).
+
+Evidence: `docs/superpowers/evidence/2026-09-14-new-schema-dependency-matrix.md`, `docs/superpowers/reports/2026-09-15-prod-stability-isolation.md`.
+

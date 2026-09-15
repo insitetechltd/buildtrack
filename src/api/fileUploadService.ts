@@ -427,9 +427,31 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
     // 7. Determine file type
     const fileType = getFileType(file.type);
 
-    // 8. Create database record (if file_attachments table exists)
-    // For now, we'll just return the file metadata
-    // The table can be created later if needed
+    // 8. Dual-path NEW metadata: insert task_files when table exists (PROD).
+    // DEV without the relation fails soft and keeps attachments[] / activity photos SoT.
+    if (
+      (entityType === "task" || entityType === "task-update") &&
+      supabase
+    ) {
+      try {
+        const { insertTaskFile } = await import("../state/schemaDualPath");
+        const fileInsert = await insertTaskFile(supabase, {
+          task_id: entityId,
+          storage_path: storagePath,
+          mime_type: file.type,
+          size_bytes: fileSize,
+          created_by: userId,
+        });
+        if (fileInsert.error) {
+          console.warn(
+            "⚠️ [File Upload] task_files insert failed (non-fatal):",
+            fileInsert.error.message,
+          );
+        }
+      } catch (metaError) {
+        console.warn("⚠️ [File Upload] task_files dual-path skipped:", metaError);
+      }
+    }
 
     const fileAttachment: FileAttachment = {
       id: `file-${timestamp}`,

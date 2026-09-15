@@ -4,6 +4,14 @@
 
 ---
 
+**This session — PROD stabilize pass / full NEW cutover (2026-09-15):** Slice 1–2 `schemaDualPath` routes remaining HIGH writers + `task_files`/`task_stars` dual-path; Slice 3 user-JWT app-shaped P-matrix + headed-adjacent smoke PASS (checklist `docs/superpowers/evidence/2026-09-15-prod-headed-smoke-checklist.md`); Slice 4 Edge redeployed **same tree** to DEV+PROD (`invite-user`, billing/cancel, checkout/webhook/addons, signup*). **No PROD TF yet** — Judge GO after freeze SHA + human Metro camera dogfood. Residuals: HQ Edge, `schema_migrations`, reported/resolved DDL, P09, DEV→NEW tenant migrate.
+
+**This session — Dual-plane SOP law (2026-09-15):** Encoded `develop → debug → stable → destination → working` as portable SOP **§13**. Root cause: 2026-08-26 split treated “don’t junk PROD” as “don’t prove PROD.” Destination `42703`/`PGRST204` = FAIL not WARN.
+
+**This session — PROD NEW SoT Harden (2026-09-15):** Superseded by stabilize pass above. Prior Phase 2 service_role matrix alone was false GO; JWT + store cutover required.
+
+**This session — DEV↔PROD comprehensive QA (2026-09-14):** Multi-agent NO-GO. Artifacts `.cache/dual-env-qa-20260914/` + report `docs/superpowers/reports/2026-09-14-dev-prod-comprehensive-qa.md`. Root themes: greenfield PROD ≠ evolved DEV; dual-path uneven; probe WARNs as GO; no PROD `schema_migrations`; Edge billing lag. Live PROD write proof: `tasks.current_status`/`assigned_to` PGRST204; `users.role` PGRST204; status-only insert needs allowed CHECK value. Invite `unknown_error` fixed+deployed both envs earlier today — does **not** fix Create Task. **Superseded by PROD NEW SoT Harden above.**
+
 **This session — Taskr landing 14-day trial CTAs (2026-09-13):** Removed public 60-day promo copy. Hero rewrite + pricing/end **14 days Trial** / **Start a trial** → `signup.html`. Support + Terms + `MARKETING.md` aligned. `STRIPE_TRIAL_PERIOD_DAYS=14` synced DEV+PROD Edge secrets. **Needs git push** for Pages. HQ 60-day invite promo stays Owner-app only (unpublished).
 
 **This session — company landing Pages (2026-09-13):** About + founder between hero and projects; contact `tristan.koo@insiteworks.co` (`support@` stays Taskr-only). Phone off the public page. Files: `docs/index.html`, `docs/company.css?v=11`, `docs/company.js?v=4`, `documentation/MARKETING.md`. Publishing with this commit + push.

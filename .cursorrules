@@ -48,6 +48,7 @@ If non-blocking uncertainty exists: choose smallest repo-aligned default, write 
 - L3 Jest journeys: `npm run test:e2e:journeys`
 - L3 Simulation / Parity: `npm run test:simulation` / `npm run test:parity`
 - L4 Maestro: `bash scripts/maestro/run-local.sh test <flow.yaml>` (see .cursor/rules/maestro-preflight.md BEFORE any run — Gate **0–8**)
+- L5 Destination (persistence/auth/billing/Edge): `npm run test:dual-env:p-matrix` + Metro→PROD QA — DEV-green is not PROD-green (SOP §13). `42703`/`PGRST204` on PROD = FAIL
 - Typecheck baseline: `npx tsc --noEmit` MUST be rc=0 before any cycle claim
 
 ## Workflow Selection (choose exactly one route per task)

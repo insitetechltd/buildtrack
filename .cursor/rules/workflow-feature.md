@@ -28,7 +28,7 @@ Else: proceed autonomous.
 Output: Scope, acceptance criteria, affected files list, validation plan, assumptions.
 - Inspect: taskStore.supabase.ts, relevant screens in src/screens/, AppNavigator.tsx, supabase.ts, package.json scripts
 - Do NOT edit code here.
-- Classify tests per TESTING_STRATEGY.md: L1 unit / L2 regression / L3 journeys-simulation / L4 Maestro which flows.
+- Classify tests per TESTING_STRATEGY.md: L1 unit / L2 regression / L3 journeys-simulation / L4 Maestro which flows. Persistence/auth/billing/Edge: also L5 destination (SOP §13 / `test:dual-env:p-matrix`).
 - **Multi-critique (orchestrator):** before Builder, run ≥2 parallel plan/validation critiques (prefer different models). See `.cursor/rules/multi-critique-validation.mdc`.
 
 **Phase B — Build**
@@ -56,7 +56,8 @@ Mark findings C/H/M/L. Block if C/H open. Proceed only if 0 C/H.
 **Phase E — Test**
 - Smallest relevant Jest first.
 - Then test:regression if touching tasks/uploads/components/integration.
-- Maestro: ONLY if user-visible flows changed AND flow exists; preflight gates ON (see maestro-preflight.md).
+- Maestro: ONLY if user-visible flows changed AND flow exists; preflight gates ON (see maestro-preflight.md). DEV-only.
+- Destination plane: if the feature writes tasks/users/billing/Edge, `npm run test:dual-env:p-matrix` on a named SHA. `42703`/`PGRST204` on PROD = FAIL (SOP §13).
 - **Validation critique:** independent agent/model challenges gaps; interaction proofs for forms before “done”.
 
 **Phase F — QA Validate (user-visible flows required)**

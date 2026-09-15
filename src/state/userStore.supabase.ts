@@ -491,33 +491,37 @@ export const useUserStore = create<UserStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
-            .from('users')
-            .insert({
+          const roleValue =
+            userData.role === "manager"
+              ? "supervisor"
+              : userData.role === "member"
+                ? "worker"
+                : userData.role;
+          const { applyUsersAclWrite } = await import("./schemaDualPath");
+          const { error, data } = await applyUsersAclWrite(supabase, {
+            mode: "insert",
+            base: {
               name: userData.name,
               email: userData.email,
-              role:
-                userData.role === "manager"
-                  ? "supervisor"
-                  : userData.role === "member"
-                    ? "worker"
-                    : userData.role,
               company_id: userData.companyId,
               position: userData.position,
               phone: userData.phone,
-            })
-            .select()
-            .single();
+            },
+            roleValue: roleValue || null,
+          });
 
           if (error) throw error;
+          if (!data || typeof data !== "object" || !("id" in data)) {
+            throw new Error("User create returned empty row");
+          }
 
           // Update local state
           set(state => ({
-            users: [...state.users, data],
+            users: [...state.users, data as any],
             isLoading: false,
           }));
 
-          return data.id;
+          return String((data as { id: string }).id);
         } catch (error: any) {
           console.error('Error creating user:', error);
           set({ 
@@ -563,7 +567,6 @@ export const useUserStore = create<UserStore>()(
           if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
           if (updates.position !== undefined) dbUpdates.position = updates.position;
           if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
-          if (dbRole !== undefined) dbUpdates.role = dbRole;
           if (typeof updates.isActive === "boolean") {
             dbUpdates.is_active = updates.isActive;
           }
@@ -571,15 +574,18 @@ export const useUserStore = create<UserStore>()(
             dbUpdates.is_pending = updates.isPending;
           }
 
-          if (Object.keys(dbUpdates).length === 0) {
+          if (Object.keys(dbUpdates).length === 0 && dbRole === undefined) {
             set({ isLoading: false });
             return true;
           }
 
-          const { error } = await supabase
-            .from('users')
-            .update(dbUpdates)
-            .eq('id', id);
+          const { applyUsersAclWrite } = await import("./schemaDualPath");
+          const { error } = await applyUsersAclWrite(supabase, {
+            id,
+            mode: "update",
+            base: dbUpdates,
+            roleValue: dbRole !== undefined ? String(dbRole) : null,
+          });
 
           if (error) {
             if (/pm_seat_limit|worker_seat_limit/i.test(error.message || "")) {

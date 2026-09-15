@@ -54,15 +54,8 @@ async function loadCallerAdminProfile(
   system_permission?: string | null;
   is_pending?: boolean | null;
 } | null> {
-  // Prefer both columns when present (PROD may be system_permission-only admin).
-  const both = await adminClient
-    .from("users")
-    .select("id, company_id, role, system_permission, is_pending")
-    .eq("id", callerId)
-    .maybeSingle();
-  if (!both.error && both.data) {
-    return both.data;
-  }
+  // Live tenants use `role`; greenfield may use `system_permission`.
+  // Never SELECT both first — PostgREST aborts if either column is missing.
   const rolePath = await adminClient
     .from("users")
     .select("id, company_id, role, is_pending")

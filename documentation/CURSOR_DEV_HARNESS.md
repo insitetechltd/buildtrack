@@ -45,6 +45,11 @@ Shop shorthand used in this harness and commercial release week. Prefer these la
 | **Metro / Expo bundle** | The JavaScript the app loads while developing — can update without rebuilding native |
 | **Maestro** | Tool that taps the simulator like a person (our UI automation) |
 | **Gate / GO** | Stop and get your OK before risky steps (schema, store submit, version bump) |
+| **Working plane** | Where we iterate daily — Insite **DEV** (Maestro / Jest / daily TF) |
+| **Destination plane** | What customers / App Store hit — Insite **PROD** |
+| **Debug stage** | Prove the destination contract without wiping it (dual-env probes + Metro→PROD QA) |
+| **Stable SHA** | Last commit that passed destination critical paths — the only SHA we promote |
+| **Dual-plane prove** | SOP §13: DEV-green is not PROD-green; `42703`/`PGRST204` on PROD = FAIL not WARN |
 
 Also: **Cloudflare R2** = object storage (infra). Do not confuse with week-rank R2 or Wave 2.
 

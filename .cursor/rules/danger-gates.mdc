@@ -20,3 +20,4 @@ Always:
 - Never commit `.env`, credentials, keystores, or service-role keys
 - Prefer dry-run / read-only SQL before live applies (M-SUPABASE gates)
 - Anti-secret: do not echo env values in chat or docs
+- DEV-green is not PROD-green (SOP §13). PROD contract failures (`42703`, `PGRST204`, ACL deny, wrong-ref) are **FAIL**, not documented WARN. Never claim “PROD live OK” from DEV-only Jest/Maestro.

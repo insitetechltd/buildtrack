@@ -42,8 +42,20 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 | L2 regression | `npm run test:regression` | cross-module |
 | L3 native | `scripts/maestro/run-local.sh test …` | taps/runtime |
 | L4 human | QA Validator + you | accept |
+| L5 destination | `test:dual-env:p-matrix` + Metro→PROD QA | PROD contract (SOP §13) |
 
 Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.
+
+## Dual-plane prove (Insite overlay of SOP §13)
+
+Working plane = **DEV** (`zusulknbhaumougqckec`). Destination = **PROD** (`jcnzjigxgkzhjsaekoqz`).
+
+- Maestro / CI / clearState stay **DEV only**. That is a destruction rule, not a prove waiver.
+- Persistence / auth / billing / Edge / secrets: Judge cannot GO on DEV-only proof. Required: `npm run test:dual-env:critical` + `npm run test:dual-env:p-matrix` on a named SHA with hard ref assert.
+- App-shaped `42703` / `PGRST204` on PROD critical writes = **FAIL**. Never WARN-as-GO.
+- Headed debug stage = Metro→PROD on the dedicated **PROD QA company** (Create Task / photos at minimum). Dogfood is a person driving the app — not a Human Gate unless the action is live charge, DDL, or store submit.
+- Promote the last destination-passing SHA only. Feed every PROD fail back into DEV tests; if the class was new, amend SOP §13 + this overlay.
+- SoT cycle write-up: `documentation/PROD_DEV_PROMOTION.md`.
 
 ## Multi-critique (orchestrator)
 

@@ -9,6 +9,29 @@ export const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
   "location_on_site",
 ] as const;
 
+/**
+ * Columns present on evolved DEV tenants but absent on greenfield PROD.
+ * Safe to omit from INSERT/UPDATE when PostgREST reports them missing.
+ * Assignees must then be written via `task_assignments` (PROD) instead of `assigned_to`.
+ */
+export const OPTIONAL_EVOLVED_TASK_COLUMNS = [
+  ...DEFERRED_TASK_CREATE_SCHEMA_FIELDS,
+  "current_status",
+  "assigned_to",
+  "attachments",
+  "accepted",
+  "accepted_by",
+  "accepted_at",
+  "starred_by_users",
+  "ready_for_review",
+  "review_accepted",
+  "has_unread_changes",
+  "last_edited_at",
+  "location",
+  "decline_reason",
+  "original_assigned_by",
+] as const;
+
 export const DEFERRED_TASK_RUNTIME_FIELDS = [
   "primaryAssigneeId",
   "delegatedUserIds",
@@ -63,6 +86,25 @@ export function stripDeferredTaskSchemaFields<T extends Record<string, unknown>>
   return compatibilityPayload;
 }
 
+export function stripOptionalEvolvedTaskColumns<T extends Record<string, unknown>>(
+  payload: T,
+) {
+  const compatibilityPayload = { ...payload };
+  OPTIONAL_EVOLVED_TASK_COLUMNS.forEach((fieldName) => {
+    delete compatibilityPayload[fieldName];
+  });
+  return compatibilityPayload;
+}
+
+export function stripTaskColumn<T extends Record<string, unknown>>(
+  payload: T,
+  column: string,
+) {
+  const compatibilityPayload = { ...payload };
+  delete compatibilityPayload[column];
+  return compatibilityPayload;
+}
+
 export function stripDeferredTaskRuntimeFields<T extends Record<string, unknown>>(
   payload: T,
 ) {
@@ -73,6 +115,41 @@ export function stripDeferredTaskRuntimeFields<T extends Record<string, unknown>
   });
 
   return compatibilityPayload;
+}
+
+export function isMissingTaskColumnError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const errorCode =
+    "code" in error ? String((error as { code?: unknown }).code || "") : "";
+  return errorCode === "PGRST204" || errorCode === "42703";
+}
+
+/** Parse PostgREST / Postgres missing-column messages into a column name. */
+export function getMissingTaskColumnFromError(error: unknown): string | null {
+  if (!isMissingTaskColumnError(error)) {
+    return null;
+  }
+  const errorMessage =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const errorDetails =
+    error && typeof error === "object" && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const errorText = `${errorMessage} ${errorDetails}`;
+
+  const quoted = errorText.match(/'([^']+)' column/i);
+  if (quoted?.[1]) {
+    return quoted[1];
+  }
+  const dotted = errorText.match(/column\s+tasks\.([a-z0-9_]+)/i);
+  if (dotted?.[1]) {
+    return dotted[1];
+  }
+  return null;
 }
 
 export function getDeferredTaskSchemaField(error: unknown) {
@@ -100,4 +177,8 @@ export function getDeferredTaskSchemaField(error: unknown) {
       errorText.includes(fieldName),
     ) || null
   );
+}
+
+export function isOptionalEvolvedTaskColumn(column: string): boolean {
+  return (OPTIONAL_EVOLVED_TASK_COLUMNS as readonly string[]).includes(column);
 }

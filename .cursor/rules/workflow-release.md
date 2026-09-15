@@ -39,6 +39,7 @@ Only after 0 C/H findings. `chore(release):` or `build(eas):` scope.
 1. Jest smoke: test:regression baseline (37/160 is Sprint7 M-QA-03 baseline)
 2. Maestro bootstrap evidence: run-local.sh for launch-smoke + open-dev-settings + initialize-sandbox (3/3 rc=0 with visual PNG read = 24s false vs 419s real ratio sanity check)
 3. TypeScript: npx tsc --noEmit rc=0
+4. If the binary or Edge/SQL being released hits **PROD**: destination-plane critical proof on that SHA (SOP §13) — `npm run test:dual-env:p-matrix` (P01–P08 + P10 PASS; `42703`/`PGRST204` = FAIL). DEV-only Maestro is not PROD proof.
 
 **Phase E — QA Validate (if release includes user-visible flow changes)**
 Native simulator run for rubric scenarios. Figma cross-check if WS-UX/M-UX-01 release.

@@ -1,6 +1,6 @@
 # SOLO Operating Procedure
 
-**Portable cycle SoT:** `~/.cursor/skills/solo-dev-harness/SOP.md` (whole cycle: session, roles, autonomy, gates, dispatch, quality, commit, seed).
+**Portable cycle SoT:** `~/.cursor/skills/solo-dev-harness/SOP.md` (whole cycle: session, roles, autonomy, gates, dispatch, quality, **dual-plane prove §13**, commit, seed).
 
 **Dual-write:** when the process improves, update SOP.md + harness `templates/` + this file / `.cursor/rules/workflow-*.md` as applicable. Do not refine Insite only. Insite overlays (Maestro, Supabase Human Gates, Taskr SoT) stay in `.cursor/skills/insite-dev/` and Insite-specific rule files.
 

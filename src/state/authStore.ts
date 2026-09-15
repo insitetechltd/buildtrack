@@ -585,23 +585,25 @@ export const useAuthStore = create<AuthStore>()(
             role: persistedRole,
           };
 
-          // Update in Supabase
-          const { error } = await supabase
-            .from('users')
-            .update({
+          const { applyUsersAclWrite } = await import("./schemaDualPath");
+          const roleValue = persistedRole ? toDbUsersRole(persistedRole) : undefined;
+          const acl = await applyUsersAclWrite(supabase, {
+            id: currentUser.id,
+            mode: "update",
+            base: {
               name: updates.name,
               email: updates.email,
               phone: updates.phone,
               company_id: updates.companyId,
               position: updates.position,
-              role: persistedRole ? toDbUsersRole(persistedRole) : undefined,
-            })
-            .eq('id', currentUser.id);
+            },
+            roleValue: roleValue ?? null,
+          });
 
-          if (error) {
-            console.error('Error updating user:', error);
+          if (acl.error) {
+            console.error('Error updating user:', acl.error);
             set({ isLoading: false });
-            throw error;
+            throw acl.error;
           }
 
           // Update local state

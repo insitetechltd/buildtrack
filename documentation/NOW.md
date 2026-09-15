@@ -4,7 +4,7 @@
 
 ---
 
-**This session — CBP TF 261 after Metro update PASS (2026-09-15):** Gate 0 green (composer update reprove4 PASS). Shipping `insertTaskActivityDualPath` + prove-before-TF rules. TF **261** = first binary with update path proven on PROD NEW. Premature 260 lacked update fix.
+**This session — CBP TF 261 after Metro update PASS (2026-09-15):** Gate 0 green (composer update reprove4 PASS). Dual-path + rules on `916e9ec`; bump `fc60455`. Cloud EAS build `77a2b12a-49b2-460d-b279-f7e37d89d20f` → submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/06d188c0-03c2-4a83-9327-37a998bf74ad (✔ Uploaded ASC; Apple processing). Local IPA failed keychain (same as 260). **TF 261** = first binary with update path proven on PROD NEW. Premature 260 lacked update fix. Wait ASC VALID → install Internal TF.
 
 **This session — Metro→PROD + CBP TF 260 (2026-09-15):** Wrong order — TF submitted before update PASS. Create+photo + Detail assignees had been green; update was red. Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/be897e6f-8469-4f0b-9f2a-6192c58f02f5.
 

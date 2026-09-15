@@ -1,0 +1,19 @@
+{
+  "ignore_dirs": [
+    ".git",
+    ".eas",
+    ".cache",
+    ".dbg",
+    ".expo",
+    ".tmp",
+    ".worktrees",
+    ".xcode-derived-data",
+    ".superpowers",
+    "ios",
+    "android",
+    "docs",
+    "documentation",
+    "coverage",
+    "eas-keystores"
+  ]
+}

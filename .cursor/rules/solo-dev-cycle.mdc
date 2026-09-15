@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Solo Dev Cycle (Insite)
 
-- Follow personal skill `solo-dev-harness` **SOP.md** for the whole cycle (not NOW-only). Dual-plane prove = SOP §13: DEV-green is not PROD-green.
+- Follow personal skill `solo-dev-harness` **SOP.md** for the whole cycle (not NOW-only). Dual-plane prove = SOP §13: DEV-green is not PROD-green. **Prove before TF/ASC** (SOP §13 rule 7 / CBP Gate 0): never submit a store binary while destination headed critical paths are red; Metro→PROD is not replaced by TestFlight.
 - Milestone gate: read `documentation/NOW.md`, then `AGENTS.md` § Current Delivery Status and `documentation/ROADMAP.md` before planning.
 - Session continuity: `documentation/NOW.md` is the git-tracked pick-up file — overwrite at teardown; do not rely on Cursor chat.
 - **Dual-write:** SOP improvements update (1) `~/.cursor/skills/solo-dev-harness/SOP.md`, (2) `templates/`, (3) this repo’s matching files. Insite-only law stays in `.cursor/skills/insite-dev/`.

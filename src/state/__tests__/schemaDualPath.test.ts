@@ -3,6 +3,7 @@ import {
   isMissingRelationError,
   toDbSystemPermission,
   updateTaskStrippingEvolvedColumns,
+  insertTaskActivityDualPath,
   insertTaskFile,
   toggleTaskStarDualPath,
   selectUserAclSequential,
@@ -49,6 +50,60 @@ describe("schemaDualPath.isMissingRelationError", () => {
       }),
     ).toBe(true);
     expect(isMissingRelationError({ code: "23505", message: "duplicate" })).toBe(false);
+  });
+});
+
+describe("schemaDualPath.insertTaskActivityDualPath", () => {
+  it("retries without top-level status when PROD schema rejects it", async () => {
+    const inserts: Record<string, unknown>[] = [];
+    const client = {
+      from() {
+        return {
+          insert(rows: Record<string, unknown>) {
+            inserts.push(rows);
+            const result =
+              inserts.length === 1
+                ? {
+                    data: null,
+                    error: {
+                      code: "PGRST204",
+                      message:
+                        "Could not find the 'status' column of 'task_activities' in the schema cache",
+                    },
+                  }
+                : { data: { id: "act-1" }, error: null };
+            return {
+              select: () => ({
+                single: async () => result,
+              }),
+              then: (resolve: any, reject: any) =>
+                Promise.resolve(result).then(resolve, reject),
+            };
+          },
+        };
+      },
+    } as any;
+
+    const out = await insertTaskActivityDualPath(
+      client,
+      {
+        task_id: "t1",
+        user_id: "u1",
+        activity_type: "progress_update",
+        data: { description: "note" },
+        description: "note",
+        completion_percentage: 10,
+        status: "in_progress",
+      },
+      { select: true },
+    );
+
+    expect(out.error).toBeNull();
+    expect(out.strippedStatus).toBe(true);
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0]).toHaveProperty("status", "in_progress");
+    expect(inserts[1]).not.toHaveProperty("status");
+    expect((inserts[1].data as any).status).toBe("in_progress");
   });
 });
 

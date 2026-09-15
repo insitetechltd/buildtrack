@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Taskr use-case screen mocks</title>
+  <style>
+    :root {
+      --teal-900: #021c26;
+      --teal-800: #043748;
+      --teal-600: #08576e;
+      --mist: #e7f4f8;
+      --ink: #0d2630;
+      --muted: #5a6e78;
+      --white: #fff;
+      --line: #c8e4ec;
+      --accent: #5ed4b0;
+      --amber: #f5a623;
+      --green: #1f9d6a;
+      --blue: #2f7fd1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #d8e8ee;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--mist);
+      border-radius: 44px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(2, 28, 38, 0.28);
+      border: 10px solid #0a1620;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .status {
+      height: 44px;
+      padding: 12px 22px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--teal-800);
+    }
+    .nav {
+      background: var(--teal-800);
+      color: var(--white);
+      padding: 8px 16px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav h1 {
+      margin: 0;
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    .back, .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      background: rgba(255,255,255,0.12);
+    }
+    .avatar { background: #3b82f6; font-weight: 700; }
+    .body { padding: 14px 14px 90px; overflow: hidden; height: calc(100% - 100px); }
+    .card {
+      background: var(--white);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(4, 55, 72, 0.08);
+      margin-bottom: 12px;
+    }
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+    .title {
+      margin: 0 0 6px;
+      font-size: 20px;
+      line-height: 1.2;
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .meta { margin: 0; color: var(--muted); font-size: 13px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .pill.amber { background: #fff1d6; color: #9a6200; }
+    .pill.blue { background: #dbeafe; color: #1d4ed8; }
+    .pill.teal { background: #d7f3ec; color: #0f766e; }
+    .pill.green { background: #dcfce7; color: #166534; }
+    .photo {
+      width: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(145deg, #9aa7b0, #5f6d76);
+      aspect-ratio: 4/3;
+      position: relative;
+      margin-top: 10px;
+    }
+    .photo.scaffold {
+      background:
+        linear-gradient(120deg, rgba(4,55,72,0.2), transparent 45%),
+        url("./crops/crop-scaffold.png") center / cover no-repeat;
+    }
+    .photo.scaffold::after { display: none; }
+    .photo.jacks {
+      background:
+        linear-gradient(180deg, transparent 55%, rgba(2,28,38,0.35)),
+        url("./crops/crop-jacks.png") center / cover no-repeat;
+    }
+    .photo.duct {
+      background:
+        linear-gradient(180deg, transparent 50%, rgba(2,28,38,0.4)),
+        url("./crops/crop-activity.png") center / cover no-repeat;
+    }
+    .photo.duct::before { display: none; }
+    .photo.finish {
+      background:
+        linear-gradient(180deg, transparent 55%, rgba(2,28,38,0.35)),
+        url("./crops/crop-finish.png") center / cover no-repeat;
+    }
+    .photo.finish::before { display: none; }
+    .photo-caption {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      background: rgba(2,28,38,0.72);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 8px;
+      border-radius: 8px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .field {
+      margin-top: 10px;
+      background: var(--mist);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .field strong {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .field span { color: var(--ink); font-weight: 600; font-size: 14px; }
+    .timeline { margin-top: 8px; }
+    .event {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .event::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 20px;
+      bottom: -10px;
+      width: 2px;
+      background: var(--line);
+    }
+    .event:last-child::before { display: none; }
+    .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--teal-600);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+    }
+    .event-body { font-size: 13px; color: var(--ink); }
+    .event-body .who { font-weight: 700; }
+    .event-body .when { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .cta {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 14px;
+      font-weight: 700;
+      font-size: 14px;
+      text-align: center;
+    }
+    .btn.primary { background: var(--teal-600); color: #fff; }
+    .btn.ghost { background: transparent; color: var(--teal-600); border: 1.5px solid var(--teal-600); }
+    .btn.approve { background: var(--green); color: #fff; }
+    .btn.sendback { background: #fff; color: #b45309; border: 1.5px solid #f59e0b; }
+    .tabbar {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 72px;
+      background: #fff;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .tabbar .cam {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #c62828;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      margin-top: -22px;
+      font-size: 22px;
+      box-shadow: 0 8px 18px rgba(198,40,40,0.35);
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #fff8e8;
+      border-left: 4px solid var(--amber);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--ink);
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <!-- 1 Instructions -->
+  <div class="phone" id="screen-instructions" data-name="instructions">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="nav">
+      <div class="back">‹</div>
+      <h1>CREATE TASK</h1>
+      <div class="avatar">T</div>
+    </div>
+    <div class="body">
+      <div class="card">
+        <p class="label">Photo instruction</p>
+        <h2 class="title">Fire-stop make-good — Level 12 riser</h2>
+        <p class="meta">Show the gap. Tell the trade what to fix.</p>
+        <div class="photo scaffold"><span class="photo-caption">Site photo · just captured</span></div>
+        <div class="field"><strong>Assigned to</strong><span>Mei Chen · Fire-stop trade</span></div>
+        <div class="field"><strong>Instruction</strong><span>Seal gap at duct penetration before Friday pour.</span></div>
+        <div class="chip-row">
+          <span class="pill amber">This week</span>
+          <span class="pill blue">New</span>
+        </div>
+      </div>
+      <div class="cta"><div class="btn primary">Send to trade</div></div>
+    </div>
+    <div class="tabbar"><span>Activity</span><div class="cam">◎</div><span>Tasks</span></div>
+  </div>
+
+  <!-- 2 Evidence -->
+  <div class="phone" id="screen-evidence" data-name="evidence">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="nav">
+      <div class="back">‹</div>
+      <h1>TASK DETAILS</h1>
+      <div class="avatar">J</div>
+    </div>
+    <div class="body">
+      <div class="card">
+        <p class="label">Photo evidence trail</p>
+        <h2 class="title">Scaffold strip — Zone B</h2>
+        <div class="chip-row">
+          <span class="pill teal">In progress</span>
+          <span class="pill">Project: Harbour Tower</span>
+        </div>
+        <div class="timeline" style="margin-top:14px">
+          <div class="event">
+            <div class="dot">J</div>
+            <div class="event-body">
+              <div><span class="who">Joe</span> · photo update</div>
+              <div class="when">Today 14:02 · company record</div>
+              <div class="photo jacks"><span class="photo-caption">Who · when · which photo</span></div>
+            </div>
+          </div>
+          <div class="event">
+            <div class="dot">T</div>
+            <div class="event-body">
+              <div><span class="who">Tristan</span> · assigned Joe</div>
+              <div class="when">Today 11:20 · right project</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tabbar"><span>Activity</span><div class="cam">◎</div><span>Tasks</span></div>
+  </div>
+
+  <!-- 3 Explanations -->
+  <div class="phone" id="screen-explanations" data-name="explanations">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="nav">
+      <div class="back">‹</div>
+      <h1>UPDATE PROGRESS</h1>
+      <div class="avatar">M</div>
+    </div>
+    <div class="body">
+      <div class="card">
+        <p class="label">Photo explanation</p>
+        <h2 class="title">HVAC duct clash — Corridor 3</h2>
+        <p class="meta">Progress update with picture — not another chat dump.</p>
+        <div class="photo duct"><span class="photo-caption">Why it can’t close yet</span></div>
+        <div class="note">
+          Duct sits 40mm low vs drawing mark. Need PM decision before boxing.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <span class="pill amber">Send back</span>
+          <span class="pill teal">Photo on thread</span>
+        </div>
+      </div>
+      <div class="cta"><div class="btn primary">Post update</div></div>
+    </div>
+    <div class="tabbar"><span>Activity</span><div class="cam">◎</div><span>Tasks</span></div>
+  </div>
+
+  <!-- 4 Proof of works -->
+  <div class="phone" id="screen-proof" data-name="proof">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="nav">
+      <div class="back">‹</div>
+      <h1>REVIEW</h1>
+      <div class="avatar">P</div>
+    </div>
+    <div class="body">
+      <div class="card">
+        <p class="label">Proof of works</p>
+        <h2 class="title">Wall board finish — Flat 18B</h2>
+        <p class="meta">Approve against what happened on site.</p>
+        <div class="photo finish"><span class="photo-caption">Completion photo</span></div>
+        <div class="chip-row">
+          <span class="pill green">Ready for review</span>
+          <span class="pill">100% complete</span>
+        </div>
+        <div class="timeline" style="margin-top:12px">
+          <div class="event">
+            <div class="dot">C</div>
+            <div class="event-body">
+              <div><span class="who">Crew</span> · marked complete</div>
+              <div class="when">Today 16:40 · visual trail attached</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cta">
+        <div class="btn approve">Approve</div>
+        <div class="btn sendback">Send back</div>
+      </div>
+    </div>
+    <div class="tabbar"><span>Activity</span><div class="cam">◎</div><span>Tasks</span></div>
+  </div>
+</body>
+</html>

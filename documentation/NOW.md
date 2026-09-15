@@ -4,7 +4,9 @@
 
 ---
 
-**This session — Metro→PROD + CBP TF 260 (2026-09-15):** Freeze **`b7d838e`**. Metro→PROD: create+photo + Detail assignees **PASS** (`MetroPROD 1789445548343`, Assigned by/to Sara); composer **Update FAIL** (`Failed to submit update`). JWT headed smoke still PASS. Residuals: `task_activities.status` PGRST204 + UI update path. Star UI N/A. Local IPA keychain fail → **cloud EAS 260** → TF https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/be897e6f-8469-4f0b-9f2a-6192c58f02f5. Evidence: `docs/superpowers/evidence/2026-09-15-metro-prod-headed*`. **Next:** fix activity/update dual-path → **261**; phone dogfood TF 260 create+photo.
+**This session — activity status dual-path + prove-before-TF (2026-09-15):** Lesson: do **not** CBP/ASC while Metro→PROD critical path is red (encoded SOP §13 rule 7 + CBP Gate 0). Fix: `insertTaskActivityDualPath` strips top-level `status` on PROD NEW (`task_activities` has no status col; DEV does). Wired create + addTaskUpdate/addSubTaskUpdate. **Doing:** Metro→PROD re-prove update on existing MetroPROD task — **no TF until PASS**.
+
+**This session — Metro→PROD + CBP TF 260 (2026-09-15):** Freeze **`b7d838e`**. Premature TF 260 submit before composer update PASS — wrong order. Create+photo + Detail assignees PASS; update FAIL was open. TF https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/be897e6f-8469-4f0b-9f2a-6192c58f02f5. Do not treat 260 as proven; next proven cut = post-fix SHA → TF **261** only after Metro green.
 
 **This session — PROD stabilize pass / full NEW cutover (2026-09-15):** Freeze SHA **`9d26c2b`**. Slice 1–2 `schemaDualPath` HIGH writers + `task_files`/`task_stars`; Slice 3 user-JWT P-matrix + headed-adjacent smoke **PASS** on that SHA; Slice 4 Edge redeployed DEV+PROD (invite/billing/cancel/checkout/webhook/addons/signup*). **No PROD TF yet** — needs human Metro camera dogfood + Judge GO. Residuals: HQ Edge, `schema_migrations`, reported/resolved DDL, P09, DEV→NEW tenant migrate.
 

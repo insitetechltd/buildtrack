@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mock — What teams use Taskr for (v2 outline)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --teal-900: #021c26;
+      --teal-700: #053847;
+      --ink: #0d2630;
+      --muted: #5a6e78;
+      --muted-2: #456770;
+      --mist: #e7f4f8;
+      --line: #c8e4ec;
+      --white: #ffffff;
+      --bezel: #07111e;
+      --pad: clamp(1.25rem, 4vw, 4.5rem);
+      --font: "Inter", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--mist);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .banner {
+      background: var(--teal-900);
+      color: #c8e4ec;
+      padding: 0.75rem var(--pad);
+      font-size: 0.875rem;
+    }
+    .banner strong { color: #fff; }
+    .wrap {
+      width: min(100%, 1100px);
+      margin-inline: auto;
+      padding: 3rem var(--pad) 4rem;
+    }
+    h1 {
+      font-size: clamp(1.75rem, 3vw, 2.25rem);
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      margin: 0 0 2.5rem;
+      max-width: 36rem;
+      color: var(--muted-2);
+      font-size: 1.125rem;
+    }
+    .chapter {
+      margin: 0 0 3.25rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--line);
+    }
+    .chapter:first-of-type { border-top: 0; padding-top: 0; }
+    .chapter-kicker {
+      margin: 0 0 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--teal-700);
+    }
+    .chapter h2 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+      letter-spacing: -0.02em;
+    }
+    .chapter-line {
+      margin: 0 0 1.75rem;
+      max-width: 34rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+    .band {
+      display: grid;
+      gap: 1.5rem;
+      align-items: center;
+      margin: 0 0 2rem;
+    }
+    @media (min-width: 720px) {
+      .band {
+        grid-template-columns: 1fr min(240px, 36vw);
+        gap: 2rem;
+      }
+      .band.reverse { grid-template-columns: min(240px, 36vw) 1fr; }
+      .band.reverse .copy { order: 2; }
+      .band.reverse .shot { order: 1; }
+    }
+    .copy h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1.25rem;
+      letter-spacing: -0.01em;
+    }
+    .copy p {
+      margin: 0;
+      color: var(--muted-2);
+      font-size: 1.05rem;
+      max-width: 28rem;
+    }
+    .points {
+      margin: 1rem 0 0;
+      padding: 0;
+      list-style: none;
+      max-width: 28rem;
+      display: grid;
+      gap: 0.65rem;
+    }
+    .points li {
+      color: var(--muted-2);
+      font-size: 1.02rem;
+      padding-left: 0.85rem;
+      border-left: 3px solid var(--line);
+      white-space: nowrap;
+    }
+    @media (max-width: 719px) {
+      .points li { white-space: normal; }
+    }
+    .points strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .shot {
+      justify-self: center;
+    }
+    .phone {
+      width: min(220px, 70vw);
+      background: var(--bezel);
+      border-radius: 32px;
+      padding: 10px;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+      position: relative;
+    }
+    .phone-screen {
+      border-radius: 22px;
+      overflow: hidden;
+      background: #d7ebf1;
+      aspect-ratio: 9 / 19.5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .placeholder {
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: var(--teal-700);
+      font-weight: 600;
+    }
+    .placeholder span {
+      display: block;
+      margin-top: 0.4rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .loop-band .strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.9rem 0 0;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--teal-700);
+    }
+    .chip-arrow {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0.35rem 0.1rem;
+      font-weight: 500;
+    }
+    .solo .phone { width: min(260px, 72vw); }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <strong>Mock only</strong> — proposed “What teams use Taskr for” rebuild. Dashed labels = capture placeholders (not live screenshots).
+  </div>
+
+  <main class="wrap">
+    <h1>What teams use Taskr for</h1>
+    <p class="lede">Morning brief, photo-backed work, approval to close — progress you can see on the phone.</p>
+
+    <!-- 1. Morning dashboard — one band, three points, one screen -->
+    <section class="chapter" aria-labelledby="ch1">
+      <p class="chapter-kicker">Chapter 1</p>
+      <h2 id="ch1">Morning dashboard</h2>
+      <p class="chapter-line">Start the day knowing what’s yours, what’s the team’s, and what’s coming.</p>
+
+      <article class="band morning-band">
+        <div class="copy">
+          <h3>Clear field vision</h3>
+          <p>Your day, your crew, and the week ahead.</p>
+          <ul class="points">
+            <li><strong>My work today</strong> — clear it before you leave site.</li>
+            <li><strong>Team work today</strong> — who’s doing what right now.</li>
+            <li><strong>This week ahead</strong> — critical work beyond today.</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 1.1<span>Activity home — My queue + Team queue + This week critical (one capture)</span></div></div></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 2. Photos -->
+    <section class="chapter" aria-labelledby="ch2">
+      <p class="chapter-kicker">Chapter 2</p>
+      <h2 id="ch2">Photos as the language on site</h2>
+      <p class="chapter-line">On site, the picture is the message — Taskr keeps it on the work.</p>
+
+      <article class="band reverse">
+        <div class="copy">
+          <h3>Photos are instructions</h3>
+          <p>Show the condition, name the trade, send the next step.</p>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 2.1<span>Create Task — photo + title / assign ready</span></div></div></div>
+        </div>
+      </article>
+
+      <article class="band">
+        <div class="copy">
+          <h3>Photos are paper trails</h3>
+          <p>Who did what, when, and with which photo — on the task.</p>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 2.2<span>Task Detail thread — photo + history</span></div></div></div>
+        </div>
+      </article>
+
+      <article class="band reverse">
+        <div class="copy">
+          <h3>Photos are proof of performance</h3>
+          <p>Progress and send-backs carry the picture, not a chat dump.</p>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 2.3<span>Update / send-back with photo on thread</span></div></div></div>
+        </div>
+      </article>
+
+      <article class="band">
+        <div class="copy">
+          <h3>Photos are your top line</h3>
+          <p>Visual proof that speeds the closeout and payment talk.</p>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 2.4<span>Approved / closed task with photo trail</span></div></div></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 3. Approval loop -->
+    <section class="chapter" aria-labelledby="ch3">
+      <p class="chapter-kicker">Chapter 3</p>
+      <h2 id="ch3">Approval loop drives work on site</h2>
+      <p class="chapter-line">One loop — not three separate stories.</p>
+
+      <article class="band loop-band reverse">
+        <div class="copy">
+          <h3>Approval loop drives work on site</h3>
+          <p>Work moves when assign, evidence, review, and close stay on one task.</p>
+          <div class="strip" aria-label="Approval steps">
+            <span class="chip">Assign</span>
+            <span class="chip-arrow" aria-hidden="true">→</span>
+            <span class="chip">Evidence</span>
+            <span class="chip-arrow" aria-hidden="true">→</span>
+            <span class="chip">Review</span>
+            <span class="chip-arrow" aria-hidden="true">→</span>
+            <span class="chip">Close</span>
+          </div>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 3.1<span>Task Detail — assign + photo + Approve / Send back</span></div></div></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 4. Fingertips -->
+    <section class="chapter solo" aria-labelledby="ch4">
+      <p class="chapter-kicker">Chapter 4</p>
+      <h2 id="ch4">Progress at your fingertips</h2>
+      <p class="chapter-line">Closing punch — one band, no children.</p>
+
+      <article class="band">
+        <div class="copy">
+          <h3>Progress at your fingertips</h3>
+          <p>Site status in your hand — not buried in a group chat.</p>
+        </div>
+        <div class="shot">
+          <div class="phone"><div class="phone-screen"><div class="placeholder">SHOT 4.1<span>Site Activity home — project pulse</span></div></div></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

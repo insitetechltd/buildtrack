@@ -319,6 +319,67 @@ export async function updateTaskStrippingEvolvedColumns(
   return { error, finalPayload: working, strippedAssignedTo };
 }
 
+function isMissingActivityStatusColumn(error: {
+  code?: string;
+  message?: string;
+} | null): boolean {
+  if (!error) return false;
+  if (error.code !== "42703" && error.code !== "PGRST204") return false;
+  return /['\"]status['\"].*task_activities|task_activities.*['\"]status['\"]/i.test(
+    error.message ?? "",
+  );
+}
+
+/**
+ * Insert task_activities with DEV/PROD dual-path.
+ * Evolved DEV may have top-level `status`; greenfield PROD keeps status only in `data`.
+ */
+export async function insertTaskActivityDualPath(
+  client: SupabaseClient,
+  row: Record<string, unknown>,
+  opts?: { select?: boolean },
+): Promise<{
+  error: { code?: string; message?: string } | null;
+  data?: unknown;
+  strippedStatus: boolean;
+}> {
+  const doInsert = async (payload: Record<string, unknown>) => {
+    const q = client.from("task_activities").insert(payload);
+    if (opts?.select) {
+      return q.select().single();
+    }
+    return q;
+  };
+
+  let first = await doInsert(row);
+  if (!first.error) {
+    return { error: null, data: first.data, strippedStatus: false };
+  }
+  if (!isMissingActivityStatusColumn(first.error) || !("status" in row)) {
+    return { error: first.error, data: first.data, strippedStatus: false };
+  }
+
+  const { status: _drop, ...withoutStatus } = row;
+  // Keep snapshot inside jsonb when present.
+  const dataObj =
+    withoutStatus.data && typeof withoutStatus.data === "object"
+      ? { ...(withoutStatus.data as Record<string, unknown>) }
+      : {};
+  if (_drop !== undefined && dataObj.status === undefined) {
+    dataObj.status = _drop;
+  }
+  const retryPayload = {
+    ...withoutStatus,
+    data: Object.keys(dataObj).length > 0 ? dataObj : withoutStatus.data ?? {},
+  };
+  const second = await doInsert(retryPayload);
+  return {
+    error: second.error,
+    data: second.data,
+    strippedStatus: true,
+  };
+}
+
 export async function insertTaskFile(
   client: SupabaseClient,
   row: {

@@ -1791,9 +1791,10 @@ export const useTaskStore = create<TaskStore>()(
           const activityStatus = isIssueReport ? "reported" : "new";
 
           // Create creation activity
-          const { data: creationActivity, error: creationError } = await supabase
-            .from('task_activities')
-            .insert({
+          const { insertTaskActivityDualPath } = await import("./schemaDualPath");
+          const creationInsert = await insertTaskActivityDualPath(
+            supabase,
+            {
               task_id: data.id,
               user_id: taskData.assignedBy,
               activity_type: (isIssueReport ? 'issue_reported' : 'creation') as ActivityType,
@@ -1802,12 +1803,12 @@ export const useTaskStore = create<TaskStore>()(
               description: activityDescription,
               completion_percentage: 0,
               status: activityStatus,
-            })
-            .select()
-            .single();
-
-          if (creationError) {
-            console.error('Error creating creation activity:', creationError);
+            },
+            { select: true },
+          );
+          const creationActivity = creationInsert.data as any;
+          if (creationInsert.error) {
+            console.error('Error creating creation activity:', creationInsert.error);
           }
 
           // If task is auto-accepted (creator is assigned), also log acceptance as status_change
@@ -1821,9 +1822,9 @@ export const useTaskStore = create<TaskStore>()(
 
             const statusChangeTimestamp = new Date().toISOString();
             
-            const { data: statusActivity, error: statusError } = await supabase
-              .from('task_activities')
-              .insert({
+            const statusInsert = await insertTaskActivityDualPath(
+              supabase,
+              {
                 task_id: data.id,
                 user_id: taskData.assignedBy,
                 activity_type: 'status_change' as ActivityType,
@@ -1832,12 +1833,12 @@ export const useTaskStore = create<TaskStore>()(
                 description: `Task accepted by ${creatorName}`,
                 completion_percentage: 0,
                 status: "in_progress",
-              })
-              .select()
-              .single();
-
-            if (statusError) {
-              console.error('Error creating status change activity:', statusError);
+              },
+              { select: true },
+            );
+            const statusActivity = statusInsert.data as any;
+            if (statusInsert.error) {
+              console.error('Error creating status change activity:', statusInsert.error);
             } else {
               statusChangeActivity = statusActivity;
             }
@@ -3608,20 +3609,19 @@ export const useTaskStore = create<TaskStore>()(
             status: update.status,
           };
 
-          const { error: updateError } = await supabase
-            .from('task_activities')
-            .insert({
-              task_id: taskId,
-              user_id: update.userId,
-              activity_type: 'progress_update' as ActivityType,
-              timestamp: new Date().toISOString(),
-              data: activityData,
-              description: update.description,
-              completion_percentage: update.completionPercentage,
-              status: update.status,
-            });
+          const { insertTaskActivityDualPath } = await import("./schemaDualPath");
+          const activityInsert = await insertTaskActivityDualPath(supabase, {
+            task_id: taskId,
+            user_id: update.userId,
+            activity_type: 'progress_update' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: activityData,
+            description: update.description,
+            completion_percentage: update.completionPercentage,
+            status: update.status,
+          });
 
-          if (updateError) throw updateError;
+          if (activityInsert.error) throw activityInsert.error;
 
           // Update the task's completion percentage and status in backend
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
@@ -3757,20 +3757,19 @@ export const useTaskStore = create<TaskStore>()(
             status: update.status,
           };
 
-          const { error: updateError } = await supabase
-            .from('task_activities')
-            .insert({
-              task_id: subTaskId,  // ✅ Subtasks are now tasks, use subTaskId directly
-              user_id: update.userId,
-              activity_type: 'progress_update' as ActivityType,
-              timestamp: new Date().toISOString(),
-              data: activityData,
-              description: update.description,
-              completion_percentage: update.completionPercentage,
-              status: update.status,
-            });
+          const { insertTaskActivityDualPath, updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
+          const activityInsert = await insertTaskActivityDualPath(supabase, {
+            task_id: subTaskId,  // ✅ Subtasks are now tasks, use subTaskId directly
+            user_id: update.userId,
+            activity_type: 'progress_update' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: activityData,
+            description: update.description,
+            completion_percentage: update.completionPercentage,
+            status: update.status,
+          });
 
-          if (updateError) throw updateError;
+          if (activityInsert.error) throw activityInsert.error;
 
           // Update the subtask's completion percentage and status in backend
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
@@ -3781,7 +3780,6 @@ export const useTaskStore = create<TaskStore>()(
             updated_at: new Date().toISOString(),
           };
 
-          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
           const stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
             subTaskId,

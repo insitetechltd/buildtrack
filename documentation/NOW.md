@@ -4,7 +4,7 @@
 
 ---
 
-**This session — PROD stabilize pass / full NEW cutover (2026-09-15):** Slice 1–2 `schemaDualPath` routes remaining HIGH writers + `task_files`/`task_stars` dual-path; Slice 3 user-JWT app-shaped P-matrix + headed-adjacent smoke PASS (checklist `docs/superpowers/evidence/2026-09-15-prod-headed-smoke-checklist.md`); Slice 4 Edge redeployed **same tree** to DEV+PROD (`invite-user`, billing/cancel, checkout/webhook/addons, signup*). **No PROD TF yet** — Judge GO after freeze SHA + human Metro camera dogfood. Residuals: HQ Edge, `schema_migrations`, reported/resolved DDL, P09, DEV→NEW tenant migrate.
+**This session — PROD stabilize pass / full NEW cutover (2026-09-15):** Freeze SHA **`9d26c2b`**. Slice 1–2 `schemaDualPath` HIGH writers + `task_files`/`task_stars`; Slice 3 user-JWT P-matrix + headed-adjacent smoke **PASS** on that SHA; Slice 4 Edge redeployed DEV+PROD (invite/billing/cancel/checkout/webhook/addons/signup*). **No PROD TF yet** — needs human Metro camera dogfood + Judge GO. Residuals: HQ Edge, `schema_migrations`, reported/resolved DDL, P09, DEV→NEW tenant migrate.
 
 **This session — Dual-plane SOP law (2026-09-15):** Encoded `develop → debug → stable → destination → working` as portable SOP **§13**. Root cause: 2026-08-26 split treated “don’t junk PROD” as “don’t prove PROD.” Destination `42703`/`PGRST204` = FAIL not WARN.
 

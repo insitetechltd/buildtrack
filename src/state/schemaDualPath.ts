@@ -26,12 +26,12 @@ export function toDbSystemPermission(
   return "member";
 }
 
-/** Prefer tasks.assigned_to when present; else junction user ids. */
+/** Prefer task_assignments junction (NEW SoT); fall back to legacy column. */
 export function coalesceAssignees(
   fromColumn: string[],
   fromJunction: string[],
 ): string[] {
-  return fromColumn.length > 0 ? fromColumn : fromJunction;
+  return fromJunction.length > 0 ? fromJunction : fromColumn;
 }
 
 export function isMissingRelationError(error: {
@@ -58,8 +58,8 @@ function isMissingUsersRoleColumn(error: {
 }
 
 /**
- * Dual-path users UPDATE/INSERT for ACL column.
- * Tries live `role` first; on missing column retries with `system_permission`.
+ * NEW-schema ACL write (`users.system_permission` only).
+ * DEV≡PROD parity (2026-09-15): do not write legacy `users.role`.
  */
 export async function applyUsersAclWrite(
   client: SupabaseClient,
@@ -67,7 +67,7 @@ export async function applyUsersAclWrite(
     id?: string;
     mode: "insert" | "update";
     base: Record<string, unknown>;
-    /** Live tenants CHECK vocab (supervisor/worker/admin/…). */
+    /** App vocab mapped onto greenfield system_permission. */
     roleValue?: string | null;
   },
 ): Promise<{ error: { code?: string; message?: string } | null; data?: unknown }> {
@@ -78,24 +78,17 @@ export async function applyUsersAclWrite(
         : null),
   );
 
+  const { role: _dropRole, ...baseWithoutRole } = args.base as Record<
+    string,
+    unknown
+  > & { role?: unknown };
+  const payload = {
+    ...baseWithoutRole,
+    ...(systemPermission ? { system_permission: systemPermission } : {}),
+  };
+
   if (args.mode === "insert") {
-    const withRole = {
-      ...args.base,
-      ...(args.roleValue ? { role: args.roleValue } : {}),
-    };
-    const roleInsert = await client.from("users").insert(withRole).select().single();
-    if (!roleInsert.error) {
-      return { error: null, data: roleInsert.data };
-    }
-    if (!isMissingUsersRoleColumn(roleInsert.error) || !systemPermission) {
-      return { error: roleInsert.error };
-    }
-    const { role: _drop, ...rest } = withRole;
-    const sysInsert = await client
-      .from("users")
-      .insert({ ...rest, system_permission: systemPermission })
-      .select()
-      .single();
+    const sysInsert = await client.from("users").insert(payload).select().single();
     return { error: sysInsert.error, data: sysInsert.data };
   }
 
@@ -104,28 +97,12 @@ export async function applyUsersAclWrite(
     return { error: { message: "missing user id for update" } };
   }
 
-  const withRole = {
-    ...args.base,
-    ...(args.roleValue ? { role: args.roleValue } : {}),
-  };
-  const roleUpdate = await client.from("users").update(withRole).eq("id", id);
-  if (!roleUpdate.error) {
-    return { error: null };
-  }
-  if (!isMissingUsersRoleColumn(roleUpdate.error) || !systemPermission) {
-    return { error: roleUpdate.error };
-  }
-  const { role: _drop, ...rest } = withRole;
-  const sysUpdate = await client
-    .from("users")
-    .update({ ...rest, system_permission: systemPermission })
-    .eq("id", id);
+  const sysUpdate = await client.from("users").update(payload).eq("id", id);
   return { error: sysUpdate.error };
 }
 
 /**
- * Sequential ACL read — never SELECT role + system_permission together
- * (PostgREST aborts if either column is missing).
+ * NEW-schema ACL read — `system_permission` only (no legacy `role` dual SELECT).
  */
 export async function selectUserAclSequential(
   client: SupabaseClient,
@@ -135,49 +112,18 @@ export async function selectUserAclSequential(
   role?: string;
   systemPermission?: string;
 } | null> {
-  const both = await client
+  const sysOnly = await client
     .from("users")
-    .select("name, role, system_permission")
+    .select("name, system_permission")
     .eq("id", userId)
     .single();
-
-  if (!both.error && both.data) {
-    const row = both.data as {
-      name?: string;
-      role?: string;
-      system_permission?: string;
-    };
+  if (!sysOnly.error && sysOnly.data) {
+    const row = sysOnly.data as { name?: string; system_permission?: string };
     return {
       name: row.name,
-      role: row.role,
+      role: undefined,
       systemPermission: row.system_permission,
     };
-  }
-
-  if (both.error && isMissingUsersRoleColumn(both.error)) {
-    const sysOnly = await client
-      .from("users")
-      .select("name, system_permission")
-      .eq("id", userId)
-      .single();
-    if (!sysOnly.error && sysOnly.data) {
-      const row = sysOnly.data as { name?: string; system_permission?: string };
-      return {
-        name: row.name,
-        role: undefined,
-        systemPermission: row.system_permission,
-      };
-    }
-  }
-
-  const roleOnly = await client
-    .from("users")
-    .select("name, role")
-    .eq("id", userId)
-    .single();
-  if (!roleOnly.error && roleOnly.data) {
-    const row = roleOnly.data as { name?: string; role?: string };
-    return { name: row.name, role: row.role, systemPermission: undefined };
   }
 
   const nameOnly = await client
@@ -210,9 +156,7 @@ export async function syncTaskAssignmentsJunction(
     .update({ is_active: false })
     .eq("task_id", input.taskId);
   if (soft.error) {
-    if (isMissingRelationError(soft.error)) {
-      return { error: null, usedJunction: false };
-    }
+    // NEW-only: task_assignments must exist (DEV≡PROD).
     return { error: soft.error, usedJunction: true };
   }
 
@@ -283,10 +227,11 @@ export async function updateTaskStrippingEvolvedColumns(
   finalPayload: Record<string, unknown>;
   strippedAssignedTo: boolean;
 }> {
-  let working = { ...updateData };
+  // NEW-first: drop evolved/OLD columns before first UPDATE (DEV≡PROD parity).
+  let strippedAssignedTo = Array.isArray(updateData.assigned_to);
+  let working = stripOptionalEvolvedTaskColumns({ ...updateData });
   let error: { code?: string; message?: string } | null = null;
-  let strippedAssignedTo = false;
-  let usedBulk = false;
+  let usedBulk = true;
 
   ({ error } = await client.from("tasks").update(working).eq("id", taskId));
 
@@ -332,8 +277,7 @@ function isMissingActivityStatusColumn(error: {
 }
 
 /**
- * Insert task_activities with DEV/PROD dual-path.
- * Evolved DEV may have top-level `status`; greenfield PROD keeps status only in `data`.
+ * Insert task_activities (NEW SoT): status lives in `data`, never top-level.
  */
 export async function insertTaskActivityDualPath(
   client: SupabaseClient,
@@ -353,31 +297,25 @@ export async function insertTaskActivityDualPath(
     return result;
   };
 
-  const first = await doInsert(row);
-  if (!first.error) {
-    return { error: null, data: first.data, strippedStatus: false };
-  }
-  if (!isMissingActivityStatusColumn(first.error) || !("status" in row)) {
-    return { error: first.error, data: first.data, strippedStatus: false };
-  }
-
   const { status: droppedStatus, ...withoutStatus } = row;
+  const hadTopLevelStatus = droppedStatus !== undefined;
   const dataObj =
     withoutStatus.data && typeof withoutStatus.data === "object"
       ? { ...(withoutStatus.data as Record<string, unknown>) }
       : {};
-  if (droppedStatus !== undefined && dataObj.status === undefined) {
+  if (hadTopLevelStatus && dataObj.status === undefined) {
     dataObj.status = droppedStatus;
   }
-  const retryPayload = {
+  const newPayload = {
     ...withoutStatus,
     data: Object.keys(dataObj).length > 0 ? dataObj : withoutStatus.data ?? {},
   };
-  const second = await doInsert(retryPayload);
+
+  const result = await doInsert(newPayload);
   return {
-    error: second.error,
-    data: second.data,
-    strippedStatus: true,
+    error: result.error,
+    data: result.data,
+    strippedStatus: hadTopLevelStatus,
   };
 }
 
@@ -403,10 +341,8 @@ export async function insertTaskFile(
     size_bytes: row.size_bytes ?? null,
     created_by: row.created_by ?? null,
   });
-  if (error && isMissingRelationError(error)) {
-    return { error: null, usedTable: false };
-  }
-  return { error, usedTable: true };
+  // NEW-only: task_files must exist (DEV≡PROD).
+  return { error, usedTable: !error };
 }
 
 export async function hydrateAttachmentsFromTaskFiles(
@@ -472,9 +408,7 @@ export async function toggleTaskStarDualPath(
       .delete()
       .eq("task_id", input.taskId)
       .eq("user_id", input.userId);
-    if (error && isMissingRelationError(error)) {
-      return { error: null, mode: "array" };
-    }
+    // NEW-only: task_stars must exist (DEV≡PROD).
     return { error, mode: "junction" };
   }
 
@@ -482,9 +416,6 @@ export async function toggleTaskStarDualPath(
     task_id: input.taskId,
     user_id: input.userId,
   });
-  if (error && isMissingRelationError(error)) {
-    return { error: null, mode: "array" };
-  }
   // Unique violation = already starred → treat as success
   if (error && (error.code === "23505" || /duplicate/i.test(error.message ?? ""))) {
     return { error: null, mode: "junction" };

@@ -63,7 +63,7 @@ async function loadCallerAdminProfile(
   system_permission?: string | null;
   is_pending?: boolean | null;
 } | null> {
-  // Live tenants use `role`; greenfield may use `system_permission`.
+  // NEW SoT (DEV≡PROD): system_permission only.
   // Never SELECT both first — PostgREST aborts if either column is missing.
   const rolePath = await adminClient
     .from("users")
@@ -87,7 +87,7 @@ function isCompanyAdmin(profile: {
   system_permission?: string | null;
 }): boolean {
   const permission = (profile.system_permission || "").toLowerCase();
-  const role = (profile.role || "").toLowerCase();
+  const role = permission; // NEW-only alias
   return (
     permission === "admin" ||
     role === "admin" ||

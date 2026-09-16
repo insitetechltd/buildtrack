@@ -2,11 +2,13 @@ import { renderHook, act } from '@testing-library/react-native';
 import { useTaskStore } from '../taskStore.supabase';
 import { supabase } from '@/api/supabase';
 import { Task, TaskStatus } from '@/types/buildtrack';
+import { installNewSchemaTableFallback } from './mockSupabaseNewSchemaTables';
 
 jest.mock('@/api/supabase');
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockFrom = mockSupabase.from as unknown as jest.Mock;
+installNewSchemaTableFallback(mockFrom);
 
 const managerId = 'manager-123';
 const workerId = 'worker-456';
@@ -294,7 +296,9 @@ describe('taskStore.supabase workflow tests', () => {
         task_id: 'task-123',
         activity_type: 'progress_update',
         completion_percentage: 50,
-        status: 'in_progress',
+        data: expect.objectContaining({
+          status: 'in_progress',
+        }),
       })
     );
     expect(result.current.tasks.find((task) => task.id === 'task-123')?.activities).toEqual(
@@ -373,7 +377,9 @@ describe('taskStore.supabase workflow tests', () => {
         task_id: 'subtask-123',
         activity_type: 'progress_update',
         completion_percentage: 100,
-        status: 'submitted_for_review',
+        data: expect.objectContaining({
+          status: 'submitted_for_review',
+        }),
       })
     );
     expect(result.current.tasks.find((task) => task.id === 'subtask-123')?.activities).toEqual(
@@ -621,10 +627,14 @@ describe('taskStore.supabase workflow tests', () => {
     expect(taskInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'in_progress',
-        current_status: 'in_progress',
-        accepted: true,
+        accepted_by: managerId,
+        accepted_at: expect.any(String),
       }),
     );
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('assigned_to');
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('current_status');
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('accepted');
+    expect(mockFrom).toHaveBeenCalledWith('task_assignments');
     expect(taskActivitiesInsert).toHaveBeenCalledTimes(2);
     expect(taskActivitiesInsert).toHaveBeenNthCalledWith(
       2,
@@ -751,10 +761,15 @@ describe('taskStore.supabase workflow tests', () => {
 
     expect(taskInsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        current_status: 'new',
-        accepted: false,
+        status: 'new',
+        accepted_by: null,
+        accepted_at: null,
       }),
     );
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('assigned_to');
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('current_status');
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('accepted');
+    expect(mockFrom).toHaveBeenCalledWith('task_assignments');
     expect(taskActivitiesInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         task_id: 'subtask-nested',
@@ -826,9 +841,12 @@ describe('taskStore.supabase workflow tests', () => {
         completion_percentage: 0,
         status: 'new',
         assigned_by: managerId,
-        original_assigned_by: workerId,
+        primary_assignee_id: workerId,
       }),
     );
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_to');
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('original_assigned_by');
+    expect(mockFrom).toHaveBeenCalledWith('task_assignments');
     expect(activityInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         activity_type: 'triaged_to_task',

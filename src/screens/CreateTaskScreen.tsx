@@ -1007,7 +1007,7 @@ function CreateTaskEditorScreen({
                               )}
                             >
                               {context.assigneesLocked
-                                ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
+                                ? "Assignees cannot be changed (task accepted)"
                                 : isLoadingUsers
                                   ? t.createTask.loadingUsers
                                   : hasSelection

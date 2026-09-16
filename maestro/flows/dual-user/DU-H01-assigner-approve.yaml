@@ -1,4 +1,5 @@
-# DU-H01 phase 4 — John approves Alice's submitted task.
+# DU-H01 phase 4 — John Accepts Alice's submitted task (PM completion accept).
+# Dock SoT: report-reply-composer__approve ("Accept"). Legacy quick-action kept as fallback.
 appId: com.buildtrack.app.local
 tags:
   - dual-user
@@ -10,6 +11,17 @@ tags:
 - runFlow:
     when:
       visible:
+        id: "report-reply-composer__approve"
+    commands:
+      - assertVisible:
+          id: "report-reply-composer__approve"
+      - tapOn:
+          id: "report-reply-composer__approve"
+      - waitForAnimationToEnd:
+          timeout: 4000
+- runFlow:
+    when:
+      visible:
         id: "task-detail__quick-action-approve_task"
     commands:
       - scrollUntilVisible:
@@ -17,18 +29,32 @@ tags:
           element:
             id: "task-detail__quick-action-approve_task"
           direction: DOWN
-      - assertVisible:
-          id: "task-detail__quick-action-approve_task"
       - tapOn:
           id: "task-detail__quick-action-approve_task"
       - waitForAnimationToEnd:
           timeout: 4000
 - assertNotVisible:
+    id: "report-reply-composer__approve"
+- assertNotVisible:
     id: "task-detail__quick-action-approve_task"
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      text: ".*Approved.*"
-    direction: UP
-- assertVisible: ".*Approved.*"
+# Post-approve SoT: Archive dock/chip appears. Avoid brittle "Approved" text scroll
+# (status chip text is often not a single accessibility node after NEW schema cutover).
+- runFlow:
+    when:
+      visible:
+        id: "report-reply-composer__archive"
+    commands:
+      - assertVisible:
+          id: "report-reply-composer__archive"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-archive_task"
+    commands:
+      - assertVisible:
+          id: "task-detail__quick-action-archive_task"
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__status_chips"
+    timeout: 8000
 - takeScreenshot: "du-h01-11-john-approved"

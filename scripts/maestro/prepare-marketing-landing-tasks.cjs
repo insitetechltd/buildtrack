@@ -94,7 +94,7 @@ async function main() {
 
   const { data: existing, error: listErr } = await supabase
     .from("tasks")
-    .select("id, title, current_status, priority")
+    .select("id, title, status, priority")
     .eq("project_id", project.id)
     .limit(200);
   if (listErr) {
@@ -106,14 +106,14 @@ async function main() {
     (t) =>
       t.title &&
       NOISE_TITLE_RE.test(t.title) &&
-      t.current_status !== "cancelled" &&
-      t.current_status !== "deleted",
+      t.status !== "cancelled" &&
+      t.status !== "deleted",
   );
   let cancelled = 0;
   for (const t of noise) {
     const { error } = await supabase
       .from("tasks")
-      .update({ current_status: "cancelled", updated_at: new Date().toISOString() })
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("id", t.id);
     if (!error) cancelled += 1;
   }
@@ -129,7 +129,7 @@ async function main() {
         .from("tasks")
         .update({
           priority: "high",
-          current_status: "new",
+          status: "new",
           due_date: due,
           updated_at: new Date().toISOString(),
         })
@@ -146,9 +146,8 @@ async function main() {
       priority: "high",
       category: "general",
       due_date: due,
-      current_status: "new",
+      status: "new",
       completion_percentage: 0,
-      assigned_to: [user.id],
       primary_assignee_id: user.id,
       delegated_user_ids: [],
       assigned_by: user.id,
@@ -156,20 +155,26 @@ async function main() {
       location_on_site: title.includes("Grid")
         ? title.split("—").pop()?.trim() || null
         : null,
-      attachments: [],
-      accepted: false,
+      accepted_by: null,
+      accepted_at: null,
     };
-    let { error } = await supabase.from("tasks").insert(payload);
-    if (error) {
-      const slim = { ...payload };
-      delete slim.primary_assignee_id;
-      delete slim.delegated_user_ids;
-      delete slim.tags;
-      delete slim.location_on_site;
-      ({ error } = await supabase.from("tasks").insert(slim));
-    }
-    if (!error) seeded += 1;
-    else console.error("SEED_FAIL", title, error.message);
+    const { data: inserted, error } = await supabase
+      .from("tasks")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (!error && inserted?.id) {
+      const { error: aerr } = await supabase.from("task_assignments").insert({
+        task_id: inserted.id,
+        user_id: user.id,
+        assignment_kind: "primary",
+        is_active: true,
+        created_by: user.id,
+      });
+      if (aerr) console.error("ASSIGN_FAIL", title, aerr.message);
+      else seeded += 1;
+    } else console.error("SEED_FAIL", title, error?.message);
+    // keep following else branch removed
   }
   console.log(
     `SEED_OK project=${project.name} seeded=${seeded} titles=${MARKETING_TITLES.length}`,

@@ -55,6 +55,8 @@
     "test:parity": "npm run test:parity:unit",
     "test:dual-env:critical": "python3 scripts/supabase/probe-critical-paths-dual-env.py",
     "test:dual-env:p-matrix": "python3 scripts/supabase/probe-p01-p10-dual-target.py",
+    "test:schema-parity": "python3 scripts/supabase/assert-schema-parity-dev-prod.py",
+    "seed:dev-qa": "node scripts/supabase/seed-dev-qa-after-parity.cjs",
     "test:critical": "npm run test:auth && npm run test:projects && npm run test:tasks && npm run test:integration && npm run test:e2e:journeys && npx jest src/state/__tests__/userProjectAssignmentQuery.test.ts src/legal/__tests__/legalLinks.test.ts src/ui/viewAdapters/__tests__/useLoginViewAdapter.test.ts src/ui/contracts/__tests__/projectMembership.test.ts --runInBand && npm run test:dual-env:critical",
     "greenfield:apply": "bash scripts/greenfield/apply_remote.sh",
     "greenfield:apply:parity": "GREENFIELD_RUN_PARITY=1 bash scripts/greenfield/apply_remote.sh",

@@ -45,6 +45,18 @@ import {
   normalizeProjectLocationLabel,
   normalizeTaskActivityCompatibility,
 } from "./taskNormalization";
+import {
+  coalesceAssignees,
+  fetchTaskIdsAssignedViaJunction,
+  hydrateAssigneesFromJunction,
+  hydrateAttachmentsFromTaskFiles,
+  hydrateStarsFromTaskStars,
+  insertTaskActivityDualPath,
+  selectUserAclSequential,
+  syncTaskAssignmentsJunction,
+  toggleTaskStarDualPath,
+  updateTaskStrippingEvolvedColumns,
+} from "./schemaDualPath";
 import { RECENT_ACTIVITY_WINDOW_MS } from "../ui/contracts/activityFeed";
 
 export type { QueryMeta } from "../api/supabase";
@@ -113,13 +125,13 @@ function mapDbActivityToTaskActivity(activity: {
     userId: activity.user_id,
     activityType: activity.activity_type as ActivityType,
     timestamp: activity.timestamp,
-    data: activity.data,
+    data: activity.data as TaskActivity["data"],
     description: activity.description || "",
     completionPercentage: activity.completion_percentage,
     status: activity.status as TaskStatus | undefined,
     notificationsSent: activity.notifications_sent || false,
     notifiedAt: activity.notified_at,
-    createdAt: activity.created_at,
+    createdAt: activity.created_at || "",
   };
 }
 
@@ -214,8 +226,8 @@ async function fetchListableTasksAssignedToUser(
   client: NonNullable<typeof supabase>,
   userId: string,
 ): Promise<{ data: Record<string, unknown>[] | null; error: { message?: string; code?: string } | null }> {
-  type TaskQuery = ReturnType<typeof client.from>;
-  const lifecycle = (query: TaskQuery) =>
+  type TaskFilter = ReturnType<ReturnType<typeof client.from>["select"]>;
+  const lifecycle = (query: TaskFilter) =>
     query
       .is("cancelled_at", null)
       .is("archived_at", null)
@@ -228,7 +240,6 @@ async function fetchListableTasksAssignedToUser(
   if (assignedRes.error) {
     // NEW schema: no assigned_to — resolve via task_assignments junction.
     if (isMissingTaskMetadataColumnError(assignedRes.error)) {
-      const { fetchTaskIdsAssignedViaJunction } = await import("./schemaDualPath");
       const junction = await fetchTaskIdsAssignedViaJunction(client, userId);
       if (junction.error) {
         return { data: null, error: junction.error };
@@ -249,7 +260,10 @@ async function fetchListableTasksAssignedToUser(
   );
   if (primaryRes.error) {
     if (isMissingTaskMetadataColumnError(primaryRes.error)) {
-      return { data: assignedRes.data ?? [], error: null };
+      return {
+        data: (assignedRes.data as Record<string, unknown>[] | null) ?? [],
+        error: null,
+      };
     }
     return { data: null, error: primaryRes.error };
   }
@@ -697,16 +711,10 @@ export const useTaskStore = create<TaskStore>()(
 
               // M-DATA-05: no full timeline on list — hydrate Recent Activity window only.
               const taskIds = (allTasksData || []).map((task) => String(task.id));
-              const { hydrateAssigneesFromJunction } = await import("./schemaDualPath");
               const junctionAssignees = await hydrateAssigneesFromJunction(
                 supabaseClient,
                 taskIds,
               );
-              const {
-                hydrateAttachmentsFromTaskFiles,
-                hydrateStarsFromTaskStars,
-                coalesceAssignees,
-              } = await import("./schemaDualPath");
               const filesByTask = await hydrateAttachmentsFromTaskFiles(
                 supabaseClient,
                 taskIds,
@@ -1023,12 +1031,6 @@ export const useTaskStore = create<TaskStore>()(
 
               // M-DATA-05: hydrate Recent Activity window only (not full timeline).
               const taskIds = (allTasksData || []).map((task) => String(task.id));
-              const {
-                hydrateAssigneesFromJunction,
-                hydrateAttachmentsFromTaskFiles,
-                hydrateStarsFromTaskStars,
-                coalesceAssignees,
-              } = await import("./schemaDualPath");
               const junctionAssignees = await hydrateAssigneesFromJunction(
                 supabaseClient,
                 taskIds,
@@ -1181,12 +1183,6 @@ export const useTaskStore = create<TaskStore>()(
 
               // M-DATA-05: hydrate Recent Activity window only (not full timeline).
               const taskIds = (data || []).map((task) => String(task.id));
-              const {
-                hydrateAssigneesFromJunction,
-                hydrateAttachmentsFromTaskFiles,
-                hydrateStarsFromTaskStars,
-                coalesceAssignees,
-              } = await import("./schemaDualPath");
               const junctionAssignees = await hydrateAssigneesFromJunction(
                 supabaseClient,
                 taskIds,
@@ -1205,7 +1201,8 @@ export const useTaskStore = create<TaskStore>()(
               );
 
               const scopedTaskIds = new Set(get().taskIdsByUser[userId] || []);
-              const transformedTasks = (data || []).map(task => {
+              const transformedTasks = (data || []).map(raw => {
+                const task = raw as any;
                 const taskActivities = activitiesByTaskId[String(task.id)] || [];
                 const fromCol = Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
@@ -1387,12 +1384,6 @@ export const useTaskStore = create<TaskStore>()(
           const fromCol = Array.isArray(taskData.assigned_to)
             ? taskData.assigned_to.map((assigneeId: unknown) => String(assigneeId))
             : [];
-          const {
-            hydrateAssigneesFromJunction,
-            hydrateAttachmentsFromTaskFiles,
-            hydrateStarsFromTaskStars,
-            coalesceAssignees,
-          } = await import("./schemaDualPath");
           const junctionMap = await hydrateAssigneesFromJunction(supabaseClient, [
             String(taskData.id),
           ]);
@@ -1621,12 +1612,13 @@ export const useTaskStore = create<TaskStore>()(
           let workingInsertPayload: Record<string, unknown> = {
             ...(fullInsertPayload as Record<string, unknown>),
           };
+          // NEW SoT: assignees always via task_assignments (never tasks.assigned_to).
           let pendingJunctionAssignees: string[] | null = Array.isArray(
-            fullInsertPayload.assigned_to,
+            taskData.assignedTo,
           )
-            ? [...(fullInsertPayload.assigned_to as string[])]
+            ? [...taskData.assignedTo]
             : null;
-          let strippedAssignedToForJunction = false;
+          let strippedAssignedToForJunction = true;
           let usedEvolvedBulkStrip = false;
 
           if (
@@ -1728,7 +1720,6 @@ export const useTaskStore = create<TaskStore>()(
 
           // PROD greenfield: assignees live in task_assignments, not tasks.assigned_to.
           if (
-            strippedAssignedToForJunction &&
             pendingJunctionAssignees &&
             pendingJunctionAssignees.length > 0 &&
             data?.id
@@ -1791,7 +1782,6 @@ export const useTaskStore = create<TaskStore>()(
           const activityStatus = isIssueReport ? "reported" : "new";
 
           // Create creation activity
-          const { insertTaskActivityDualPath } = await import("./schemaDualPath");
           const creationInsert = await insertTaskActivityDualPath(
             supabase,
             {
@@ -2198,8 +2188,7 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.priority) updateData.priority = cleanUpdates.priority;
           if (cleanUpdates.category) updateData.category = cleanUpdates.category;
           if (cleanUpdates.dueDate) updateData.due_date = cleanUpdates.dueDate;
-          if (cleanUpdates.assignedTo) updateData.assigned_to = cleanUpdates.assignedTo;
-          if ('primaryAssigneeId' in cleanUpdates) updateData.primary_assignee_id = cleanUpdates.primaryAssigneeId || null;
+          if (cleanUpdates.assignedTo)           if ('primaryAssigneeId' in cleanUpdates) updateData.primary_assignee_id = cleanUpdates.primaryAssigneeId || null;
           if ('delegatedUserIds' in cleanUpdates) updateData.delegated_user_ids = cleanUpdates.delegatedUserIds || [];
           if ('containerId' in cleanUpdates) updateData.container_id = cleanUpdates.containerId || null;
           if ('subContainerId' in cleanUpdates) updateData.sub_container_id = cleanUpdates.subContainerId || null;
@@ -2209,13 +2198,9 @@ export const useTaskStore = create<TaskStore>()(
           // Legacy accepted field - map to status if needed
           if ('accepted' in cleanUpdates && cleanUpdates.accepted === true && !cleanUpdates.status) {
             updateData.status = 'in_progress';
-            updateData.current_status = 'in_progress';
-            updateData.accepted = true;
-          } else if ('accepted' in cleanUpdates && cleanUpdates.accepted === false) {
-            updateData.accepted = false;
+                      } else if ('accepted' in cleanUpdates && cleanUpdates.accepted === false) {
           }
           if (cleanUpdates.status === "new" || cleanUpdates.status === "not_started") {
-            updateData.accepted = false;
             updateData.accepted_at = null;
             updateData.accepted_by = null;
           }
@@ -2227,8 +2212,7 @@ export const useTaskStore = create<TaskStore>()(
           // (TASK_EFFECTIVE_STATUS); historic updates only set current_status.
           if (cleanUpdates.status) {
             updateData.status = cleanUpdates.status;
-            updateData.current_status = cleanUpdates.status;
-          }
+                      }
           if (cleanUpdates.completionPercentage !== undefined) updateData.completion_percentage = cleanUpdates.completionPercentage;
           if (cleanUpdates.starredByUsers !== undefined) updateData.starred_by_users = cleanUpdates.starredByUsers;
           // Legacy status fields (for backward compatibility with database)
@@ -2246,10 +2230,6 @@ export const useTaskStore = create<TaskStore>()(
           // Send update to backend — strip evolved/DEV-only cols on NEW (PROD).
           let usedDeferredSchemaCompatibility = false;
           let skippedCompatibilityOnlyUpdate = false;
-          const {
-            updateTaskStrippingEvolvedColumns,
-            syncTaskAssignmentsJunction,
-          } = await import("./schemaDualPath");
 
           let stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
@@ -2718,7 +2698,6 @@ export const useTaskStore = create<TaskStore>()(
             systemPermission?: string;
           } | null = null;
           try {
-            const { selectUserAclSequential } = await import("./schemaDualPath");
             archivingUserRow = await selectUserAclSequential(supabase, userId);
           } catch {
             archivingUserRow = null;
@@ -2839,9 +2818,7 @@ export const useTaskStore = create<TaskStore>()(
 
           const updatePayload: Record<string, unknown> = {
             status: nextStatus,
-            current_status: nextStatus,
-            assigned_to: payload.assignedTo,
-            primary_assignee_id: payload.primaryAssigneeId || null,
+                        primary_assignee_id: payload.primaryAssigneeId || null,
             delegated_user_ids: payload.delegatedUserIds || null,
             // Formal task assigner = PM who promoted the report (not the reporter).
             assigned_by: userId,
@@ -2857,11 +2834,6 @@ export const useTaskStore = create<TaskStore>()(
           if (payload.category) updatePayload.category = payload.category;
           if (payload.billingStatus) updatePayload.billing_status = payload.billingStatus;
           if (payload.locationOnSite) updatePayload.location_on_site = payload.locationOnSite;
-
-          const {
-            updateTaskStrippingEvolvedColumns,
-            syncTaskAssignmentsJunction,
-          } = await import("./schemaDualPath");
 
           let stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
@@ -2981,14 +2953,12 @@ export const useTaskStore = create<TaskStore>()(
           const resolveNote = note?.trim() || 'Resolved without reply';
           const resolvedAt = new Date().toISOString();
 
-          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
           const stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
             taskId,
             {
               status: 'resolved',
-              current_status: 'resolved',
-              updated_at: resolvedAt,
+                            updated_at: resolvedAt,
             },
           );
           if (stripResult.error) throw stripResult.error;
@@ -3238,7 +3208,6 @@ export const useTaskStore = create<TaskStore>()(
         if (!supabase) return;
 
         try {
-          const { toggleTaskStarDualPath } = await import("./schemaDualPath");
           const dual = await toggleTaskStarDualPath(supabase, {
             taskId,
             userId,
@@ -3609,7 +3578,6 @@ export const useTaskStore = create<TaskStore>()(
             status: update.status,
           };
 
-          const { insertTaskActivityDualPath } = await import("./schemaDualPath");
           const activityInsert = await insertTaskActivityDualPath(supabase, {
             task_id: taskId,
             user_id: update.userId,
@@ -3628,11 +3596,9 @@ export const useTaskStore = create<TaskStore>()(
           const taskUpdateData: Record<string, unknown> = {
             completion_percentage: update.completionPercentage,
             status: update.status,
-            current_status: update.status,
-            updated_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
           };
 
-          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
           const stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
             taskId,
@@ -3757,7 +3723,6 @@ export const useTaskStore = create<TaskStore>()(
             status: update.status,
           };
 
-          const { insertTaskActivityDualPath } = await import("./schemaDualPath");
           const activityInsert = await insertTaskActivityDualPath(supabase, {
             task_id: subTaskId,  // ✅ Subtasks are now tasks, use subTaskId directly
             user_id: update.userId,
@@ -3776,11 +3741,9 @@ export const useTaskStore = create<TaskStore>()(
           const subTaskUpdateData: Record<string, unknown> = {
             completion_percentage: update.completionPercentage,
             status: update.status,
-            current_status: update.status,
-            updated_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
           };
 
-          const { updateTaskStrippingEvolvedColumns } = await import("./schemaDualPath");
           const stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
             subTaskId,
@@ -3907,8 +3870,7 @@ export const useTaskStore = create<TaskStore>()(
             root_task_id: rootTaskId,
             project_id: subTaskData.projectId,
             title: subTaskData.title,
-            assigned_to: subTaskData.assignedTo,
-            assigned_by: subTaskData.assignedBy,
+                        assigned_by: subTaskData.assignedBy,
           });
 
           let workingInsert: Record<string, unknown> = {
@@ -3924,12 +3886,9 @@ export const useTaskStore = create<TaskStore>()(
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
               status: initialStatus,
-              current_status: initialStatus,
-              completion_percentage: 0,
-              assigned_to: subTaskData.assignedTo,
+                            completion_percentage: 0,
               assigned_by: subTaskData.assignedBy,
-              attachments: subTaskData.attachments,
-              accepted: isCreatorAssigned ? true : false,
+              primary_assignee_id: subTaskData.primaryAssigneeId || (Array.isArray(subTaskData.assignedTo) ? subTaskData.assignedTo[0] : null) || null,
               accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             };
@@ -3974,12 +3933,10 @@ export const useTaskStore = create<TaskStore>()(
           if (error) throw error;
 
           if (
-            strippedAssignedTo &&
             pendingJunctionAssignees &&
             pendingJunctionAssignees.length > 0 &&
             data?.id
           ) {
-            const { syncTaskAssignmentsJunction } = await import("./schemaDualPath");
             const junction = await syncTaskAssignmentsJunction(supabase, {
               taskId: data.id,
               assigneeIds: pendingJunctionAssignees,
@@ -4206,12 +4163,9 @@ export const useTaskStore = create<TaskStore>()(
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
               status: initialStatus,
-              current_status: initialStatus,
-              completion_percentage: 0,
-              assigned_to: subTaskData.assignedTo,
+                            completion_percentage: 0,
               assigned_by: subTaskData.assignedBy,
-              attachments: subTaskData.attachments,
-              accepted: isCreatorAssigned ? true : false,
+              primary_assignee_id: subTaskData.primaryAssigneeId || (Array.isArray(subTaskData.assignedTo) ? subTaskData.assignedTo[0] : null) || null,
               accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             };
@@ -4256,12 +4210,10 @@ export const useTaskStore = create<TaskStore>()(
           if (error) throw error;
 
           if (
-            strippedAssignedTo &&
             pendingJunctionAssignees &&
             pendingJunctionAssignees.length > 0 &&
             data?.id
           ) {
-            const { syncTaskAssignmentsJunction } = await import("./schemaDualPath");
             const junction = await syncTaskAssignmentsJunction(supabase, {
               taskId: data.id,
               assigneeIds: pendingJunctionAssignees,
@@ -4513,16 +4465,14 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.priority) updateData.priority = updates.priority;
           if (updates.category) updateData.category = updates.category;
           if (updates.dueDate) updateData.due_date = updates.dueDate;
-          if (updates.assignedTo) updateData.assigned_to = updates.assignedTo;
+          // Assignees via syncTaskAssignmentsJunction only.
           if (updates.attachments) updateData.attachments = updates.attachments;
           if (updates.taskReference !== undefined) updateData.task_reference = updates.taskReference || null;
           if (updates.billingStatus !== undefined) updateData.billing_status = updates.billingStatus || "non_billable";
           // Legacy accepted field - map to status if needed
           if ('accepted' in updates && (updates as any).accepted === true && !updates.status) {
             updateData.status = 'in_progress';
-            updateData.current_status = 'in_progress';
-            updateData.accepted = true;
-          } else if ('accepted' in updates) {
+                      } else if ('accepted' in updates) {
             updateData.accepted = (updates as any).accepted;
           }
           if ('declinedReason' in updates || 'declineReason' in updates) {
@@ -4530,14 +4480,12 @@ export const useTaskStore = create<TaskStore>()(
           }
           if (updates.status) {
             updateData.status = updates.status;
-            updateData.current_status = updates.status;
-          }
+                      }
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
           // Review workflow fields (legacy - map to status if needed)
           if ('readyForReview' in updates && (updates as any).readyForReview === true && !updates.status) {
             updateData.status = 'submitted_for_review';
-            updateData.current_status = 'submitted_for_review';
-            updateData.ready_for_review = true;
+                        updateData.ready_for_review = true;
           } else if ('readyForReview' in updates) {
             updateData.ready_for_review = (updates as any).readyForReview;
           }
@@ -4545,16 +4493,11 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
           if ('reviewAccepted' in updates && (updates as any).reviewAccepted === true && !updates.status) {
             updateData.status = 'approved';
-            updateData.current_status = 'approved';
-            updateData.review_accepted = true;
+                        updateData.review_accepted = true;
           } else if ('reviewAccepted' in updates) {
             updateData.review_accepted = (updates as any).reviewAccepted;
           }
 
-          const {
-            updateTaskStrippingEvolvedColumns,
-            syncTaskAssignmentsJunction,
-          } = await import("./schemaDualPath");
           const stripResult = await updateTaskStrippingEvolvedColumns(
             supabase,
             subTaskId,

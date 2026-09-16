@@ -44,9 +44,7 @@ export function waitForPhotokitGateIdle(timeoutMs: number = 20000): Promise<void
     waiters.push(finish);
     if (timeoutMs > 0) {
       const timer = setTimeout(finish, timeoutMs);
-      if (typeof timer === "object" && typeof timer.unref === "function") {
-        timer.unref();
-      }
+      (timer as unknown as { unref?: () => void }).unref?.();
     }
   });
 }

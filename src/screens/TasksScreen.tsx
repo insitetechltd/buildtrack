@@ -79,7 +79,10 @@ function SwipeActionButton({
   );
 }
 
-function getActiveChipClasses(chipId: "queue" | "status" | "overdueWindow", chipLabel: string) {
+function getActiveChipClasses(
+  chipId: "queue" | "status" | "overdueWindow" | "sortOrder",
+  chipLabel: string,
+) {
   if (chipId === "queue") {
     return {
       container: "border-[#07111E] bg-[#07111E]",
@@ -437,7 +440,7 @@ export default function TasksScreen(props: TasksScreenProps) {
                           >
                             <Text className="text-sm font-semibold text-white">Overdue</Text>
                           </View>
-                        ) : isGrid && row.indentationLevel > 0 ? (
+                        ) : isGrid && (row.indentationLevel ?? 0) > 0 ? (
                           <View className="rounded-full bg-[#08576E]/90 px-2.5 py-1 shadow-sm">
                             <Text className="text-xs font-semibold text-white">
                               {row.indentationLevel === 2 ? "Subtask L2" : "Subtask"}

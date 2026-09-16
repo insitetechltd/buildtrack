@@ -1,4 +1,6 @@
-# DU-H01 phase 3 — Alice accepts, updates with photo, submits for review.
+# DU-H01 phase 3 — Alice accepts, updates with photo at 100%, submits for review.
+# Task Detail hides root tabs when the progress dock is up — do NOT tap camera FAB.
+# Sims: dock photo → capture-session library peek (never shutter).
 appId: com.buildtrack.app.local
 tags:
   - dual-user
@@ -25,92 +27,138 @@ tags:
       notVisible:
         id: "task-detail__quick-action-accept_task"
     commands:
-      # Retries can re-open an already-accepted task; in that case the accept CTA is absent.
       - takeScreenshot: "du-h01-07-alice-already-accepted"
-- tapOn:
-    id: "root-tab__camera_icon_surface"
-- extendedWaitUntil:
-    visible:
-      id: "update-progress__screen_title"
-    timeout: 12000
-- runFlow: ../update-progress-photo/_open-library.yaml
-- runFlow: ../create-task-photo/_pick-first.yaml
-- runFlow: ../update-progress-photo/_confirm-selection.yaml
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "update-progress__completion-preset-100"
-    direction: DOWN
-- tapOn:
-    id: "update-progress__completion-preset-100"
-- tapOn:
-    id: "update-progress__description"
-- inputText: "Dual-user gate assignee update with photo at 100%."
-- runFlow: ../_dismiss-keyboard.yaml
-- tapOn: "Photos & Files"
-- runFlow: ../_dismiss-keyboard.yaml
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "update-progress__submit"
-    direction: DOWN
-- tapOn:
-    id: "update-progress__submit"
-- tapOn:
-    id: "update-progress__submit"
-    delay: 1500
-- runFlow:
-    when:
-      visible: "Success"
-    commands:
-      - tapOn:
-          text: "OK"
-- runFlow:
-    when:
-      visible: ".*Progress update added successfully!.*"
-    commands:
-      - tapOn: "OK"
+# Retry / already-submitted: Cancel-review dock means update+submit already done.
 - runFlow:
     when:
       visible:
-        id: "update-progress__screen_title"
+        id: "report-reply-composer__cancel_review"
     commands:
-      - tapOn:
-          id: "app-screen-header__back"
+      - takeScreenshot: "du-h01-09-alice-already-awaiting-review"
 - runFlow:
     when:
       notVisible:
-        id: "task-detail__header_title"
+        id: "report-reply-composer__cancel_review"
     commands:
-      - runFlow: _open-task-by-title.yaml
-- extendedWaitUntil:
-    visible:
-      id: "task-detail__header_title"
-    timeout: 15000
-- takeScreenshot: "du-h01-08-alice-updated"
-- runFlow:
-    when:
-      visible:
-        id: "task-detail__quick-action-submit_review"
-    commands:
-      - scrollUntilVisible:
-          centerElement: true
-          element:
-            id: "task-detail__quick-action-submit_review"
-          direction: DOWN
+      - extendedWaitUntil:
+          visible:
+            id: "report-reply-composer__photo"
+          timeout: 12000
+      # Library-only photo attach from dock.
       - tapOn:
-          id: "task-detail__quick-action-submit_review"
+          id: "report-reply-composer__photo"
+      - runFlow:
+          when:
+            visible: "Choose from Library"
+          commands:
+            - tapOn: "Choose from Library"
+      - runFlow:
+          when:
+            visible:
+              id: "capture-session__camera"
+          commands:
+            - runFlow:
+                when:
+                  visible:
+                    id: "capture-session__library_peek"
+                commands:
+                  - tapOn:
+                      id: "capture-session__library_peek"
+            - runFlow:
+                when:
+                  visible:
+                    id: "capture-session__open_library_fallback"
+                commands:
+                  - tapOn:
+                      id: "capture-session__open_library_fallback"
+      - extendedWaitUntil:
+          visible:
+            id: "capture-session__hybrid_library"
+          timeout: 20000
+      - extendedWaitUntil:
+          visible:
+            id: "capture-session__library_grid"
+          timeout: 15000
       - waitForAnimationToEnd:
-          timeout: 2500
-      - assertNotVisible:
-          id: "task-detail__quick-action-submit_review"
+          timeout: 2000
+      - takeScreenshot: "du-h01-07b-alice-library"
+      - tapOn:
+          point: "17%, 28%"
+      - waitForAnimationToEnd:
+          timeout: 1000
+      - runFlow:
+          when:
+            notVisible: ".*[1-9] selected.*"
+          commands:
+            - tapOn:
+                point: "17%, 22%"
+      - extendedWaitUntil:
+          visible: ".*[1-9] selected.*"
+          timeout: 10000
+      - tapOn:
+          id: "capture-session__hybrid_accept"
+      - extendedWaitUntil:
+          visible:
+            id: "photo-selection__confirm"
+          timeout: 25000
+      - tapOn:
+          id: "photo-selection__confirm"
+      - extendedWaitUntil:
+          visible:
+            id: "report-reply-composer"
+          timeout: 20000
+      - takeScreenshot: "du-h01-08a-alice-dock-with-photo"
+      - tapOn:
+          id: "report-reply-composer__completion"
+      - waitForAnimationToEnd:
+          timeout: 800
+      - swipe:
+          start: "12%, 78%"
+          end: "12%, 42%"
+          duration: 600
+      - waitForAnimationToEnd:
+          timeout: 800
+      - tapOn:
+          id: "report-reply-composer__completion"
+          optional: true
+      - tapOn:
+          id: "report-reply-composer__input"
+      - inputText: "Dual-user gate assignee update with photo at 100%."
+      - runFlow: ../_dismiss-keyboard.yaml
+      - takeScreenshot: "du-h01-08-alice-updated"
+      - tapOn:
+          id: "report-reply-composer__send"
+      - waitForAnimationToEnd:
+          timeout: 4000
+      - runFlow:
+          when:
+            visible: "OK"
+          commands:
+            - tapOn: "OK"
+      - runFlow:
+          when:
+            visible: "Success"
+          commands:
+            - tapOn: "OK"
       - takeScreenshot: "du-h01-09-alice-submitted"
-- runFlow:
-    when:
-      notVisible:
-        id: "task-detail__quick-action-submit_review"
-    commands:
-      # Phase retries can land after the task is already submitted; in that case the CTA is absent.
-      - assertNotVisible:
-          id: "task-detail__quick-action-submit_review"
-      - takeScreenshot: "du-h01-09-alice-already-submitted"
+      - runFlow:
+          when:
+            visible:
+              id: "report-reply-composer__cancel_review"
+          commands:
+            - takeScreenshot: "du-h01-09-alice-awaiting-review"
+      - runFlow:
+          when:
+            visible:
+              id: "task-detail__quick-action-submit_review"
+          commands:
+            - scrollUntilVisible:
+                centerElement: true
+                element:
+                  id: "task-detail__quick-action-submit_review"
+                direction: DOWN
+            - tapOn:
+                id: "task-detail__quick-action-submit_review"
+            - waitForAnimationToEnd:
+                timeout: 2500
+            - takeScreenshot: "du-h01-09-alice-submitted-legacy"

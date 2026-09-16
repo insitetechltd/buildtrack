@@ -174,16 +174,11 @@ function generateTempPassword(): string {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-/** DEV may have `role`; PROD may have `system_permission` — never write missing cols. */
+/** NEW SoT (DEV≡PROD): `system_permission` only. */
 async function detectUserAdminColumns(
-  admin: AdminClient,
+  _admin: AdminClient,
 ): Promise<{ hasRole: boolean; hasSystemPermission: boolean }> {
-  const roleProbe = await admin.from("users").select("role").limit(1);
-  const sysProbe = await admin.from("users").select("system_permission").limit(1);
-  return {
-    hasRole: !roleProbe.error,
-    hasSystemPermission: !sysProbe.error,
-  };
+  return { hasRole: false, hasSystemPermission: true };
 }
 
 async function promoteFoundingAdminProfile(

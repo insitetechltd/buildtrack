@@ -4,6 +4,27 @@
 
 ---
 
+**This session — Phase A tsc+tasks fix delta (2026-09-16):** SHA `36387655` still **DIRTY**. Fixed tooling baseline: static `schemaDualPath` imports + 50 `tsc` type fixes + NEW-table Jest mocks (`task_assignments`/`task_files`/`task_stars`). Prove: `npx tsc --noEmit` **rc=0**; `CI=1 npm run test:tasks -- --watchman=false` **48/48 PASS**; dual-path Jest **22/22 PASS**. Phase A delta **GO** for Phase C tooling gate — H01/Phase C/CBP not re-run. Report: `docs/phase-a-tsc-tasks-fix-2026-09-16.md` (+ worker artifacts mirror).
+
+**This session — Phase A+B close-out prove (2026-09-16):** SHA `36387655` (**DIRTY**). A: doctor/schema-parity/dual-path Jest 22/22 + **DU-H01 PASS** (17 Pro Max+iPhone 16; artifacts `.cache/maestro-artifacts/dual-user-20260916_084726` + maestro-home `2026-09-16_084954`…`_085618`). A hard fails (since cleared by tsc+tasks fix delta above): `tsc` rc=2 (~50), `test:tasks` dynamic-import Jest. B: dual-env critical PASS; p-matrix **PROD** P01–P08+P10 PASS / P09 Human-GO-skip; DEV p-matrix fixture no QA user; headed-prod-qa-smoke PASS (no PROD 42703/PGRST204). Results: worker `artifacts/docs/phase-ab-results-2026-09-16.md`. Sims free after H01 release.
+
+**This session — Queue 1–3 CLOSED (2026-09-15 night):**  
+(1) **DU-H01 PASS** on rebuilt DEV — `ONLY=H01 npm run test:e2e:maestro:dual-user` green (create → assignee → approve → archive). Resolver + approve assert fixed for NEW dialect.  
+(2) **Dual-path strip → NEW-only** — insert payload drops `assigned_to`/`current_status`/attachments/`accepted`; assignees always `task_assignments`; UPA `created_at` + `project_role` only; ACL `system_permission` only; Maestro seeds NEW; Edge invite/billing/stripe prefer `system_permission`. Jest: schemaDualPath + userProjectAssignmentQuery + greenfield compat **22/22 PASS**.  
+(3) **Edge parity DEV↔PROD** — Management API matrix: **9/9 shared OK**; **5 DEV-only** owner-* (`owner-economics-snapshot`, `owner-kpi-snapshot`, `owner-ops-read`, `owner-tenant-read`, `owner-tenant-write`) = HQ Internal TF residual (not field-app blockers). Evidence: `docs/superpowers/evidence/2026-09-15-edge-function-parity-dev-prod.json`.
+
+**This session — DEV≡PROD schema parity promote-up (2026-09-15):** Nuked DEV public schema only (`auth` kept — 74 users incl. John/Alice Aug-2026); restored from PROD dump; functions+RLS pass-2. `npm run test:schema-parity` **PASS** (26 tables / 19 funcs / 74 policies / 252 cols). Seeded Maestro QA John+Alice + Project A (`seed:dev-qa`) on surviving auth IDs. Law rewritten in `documentation/PROD_DEV_PROMOTION.md`. Plan: `docs/superpowers/plans/2026-09-15-dev-prod-schema-parity-promote-up.md`.
+
+**Queue (was locked; now done):** H01 → dual-path strip → Edge parity. Next idle: HQ Edge deploy to PROD (Human Gate), Destination Contract Builder, TF dogfood.
+
+**This session — M-OPS-03 Destination Contract plan GO (2026-09-15):** Slice A+B plan written — `docs/superpowers/plans/2026-09-15-m-ops-03-destination-contract-health.md`. Edge `owner-ops-read` action `destinationContract` (PROD hard-bound) + Monitoring/Home P0. **DDL parked (Human Gate).** Next: Builder Phase A1.
+
+**This session — DU-H01 full loop PASS on sims (2026-09-15):** PM assign → Worker accept → library photo @100% → submit review → PM Accept → PM Archive. Create/assignee use **library peek only** (no shutter). Gate: `ONLY=H01 npm run test:e2e:maestro:dual-user` rc=0.
+
+**This session — DU-H01 create is library-only on sims (2026-09-15):** No shutter — `capture-session__library_peek` → hybrid library pick → Accept. Camera path is device-only.
+
+**This session — Maestro DU-H01 full field loop (2026-09-15):** Required pass is now PM assign → Worker accept → 100% + submit review → PM Accept → **PM Archive**. Flows: `DU-H01-assigner-approve.yaml` (dock Accept) + new `DU-H01-assigner-archive.yaml`; wired in `scripts/maestro/run-dual-user-gate.sh`. Plan updated. Prove: `ONLY=H01 npm run test:e2e:maestro:dual-user`.
+
 **This session — CBP TF 261 after Metro update PASS (2026-09-15):** Gate 0 green (composer update reprove4 PASS). Dual-path + rules on `916e9ec`; bump `fc60455`. Cloud EAS build `77a2b12a-49b2-460d-b279-f7e37d89d20f` → submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/06d188c0-03c2-4a83-9327-37a998bf74ad (✔ Uploaded ASC; Apple processing). Local IPA failed keychain (same as 260). **TF 261** = first binary with update path proven on PROD NEW. Premature 260 lacked update fix. Wait ASC VALID → install Internal TF.
 
 **This session — Metro→PROD + CBP TF 260 (2026-09-15):** Wrong order — TF submitted before update PASS. Create+photo + Detail assignees had been green; update was red. Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/be897e6f-8469-4f0b-9f2a-6192c58f02f5.

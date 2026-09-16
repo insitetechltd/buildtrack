@@ -7,6 +7,7 @@ import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { User, UserRole, SystemPermission, getUserSystemPermission, hasSystemPermission } from "../types/buildtrack";
 import { userAccountIsDeleted } from "../types/userAccountRetention";
 import { roleChangeExceedsSeatLimit } from "../billing/seatUsage";
+import { applyUsersAclWrite } from "./schemaDualPath";
 
 function mapSupabaseUser(user: {
   role?: string | null;
@@ -497,7 +498,6 @@ export const useUserStore = create<UserStore>()(
               : userData.role === "member"
                 ? "worker"
                 : userData.role;
-          const { applyUsersAclWrite } = await import("./schemaDualPath");
           const { error, data } = await applyUsersAclWrite(supabase, {
             mode: "insert",
             base: {
@@ -579,7 +579,6 @@ export const useUserStore = create<UserStore>()(
             return true;
           }
 
-          const { applyUsersAclWrite } = await import("./schemaDualPath");
           const { error } = await applyUsersAclWrite(supabase, {
             id,
             mode: "update",

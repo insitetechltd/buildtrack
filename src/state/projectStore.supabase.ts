@@ -207,9 +207,9 @@ function transformProjectRow(project: any): Project {
   };
 }
 
-/** PROD greenfield uses `project_role`; older DEV tenants still use `category`. */
+/** NEW SoT: `project_role` only (no category dual-path). */
 function readAssignmentCategory(assignment: any): ProjectRole {
-  return (assignment.project_role || assignment.category) as ProjectRole;
+  return assignment.project_role as ProjectRole;
 }
 
 function isMissingSchemaColumnError(
@@ -244,29 +244,12 @@ async function insertUserProjectAssignmentRow(
     assignedBy: string;
   },
 ) {
-  const base = {
+  return client.from("user_project_assignments").insert({
     user_id: input.userId,
     project_id: input.projectId,
     assigned_by: input.assignedBy,
     is_active: true,
-  };
-
-  const roleInsert = await client.from("user_project_assignments").insert({
-    ...base,
     project_role: input.category,
-  });
-
-  if (!roleInsert.error) {
-    return roleInsert;
-  }
-
-  if (!isMissingProjectRoleColumnError(roleInsert.error)) {
-    return roleInsert;
-  }
-
-  return client.from("user_project_assignments").insert({
-    ...base,
-    category: input.category,
   });
 }
 
@@ -278,35 +261,16 @@ async function updateUserProjectAssignmentCategoryRow(
     category: ProjectRole;
   },
 ) {
-  const roleUpdate = await client
+  return client
     .from("user_project_assignments")
     .update({ project_role: input.category })
     .eq("user_id", input.userId)
     .eq("project_id", input.projectId);
-
-  if (!roleUpdate.error) {
-    return roleUpdate;
-  }
-
-  if (!isMissingProjectRoleColumnError(roleUpdate.error) && !isMissingCategoryColumnError(roleUpdate.error)) {
-    return roleUpdate;
-  }
-
-  // Older DEV schema (category) or PROD rejecting the wrong column name.
-  if (isMissingProjectRoleColumnError(roleUpdate.error)) {
-    return client
-      .from("user_project_assignments")
-      .update({ category: input.category })
-      .eq("user_id", input.userId)
-      .eq("project_id", input.projectId);
-  }
-
-  return roleUpdate;
 }
 
 function transformAssignmentRow(assignment: any): NormalizedProjectAssignment {
   const category = readAssignmentCategory(assignment);
-  const assignedAt = assignment.assigned_at || assignment.created_at;
+  const assignedAt = assignment.created_at || assignment.assigned_at;
   return {
     id: assignment.id || getAssignmentKey({
       userId: assignment.user_id,

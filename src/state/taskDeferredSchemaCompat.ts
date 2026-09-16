@@ -10,18 +10,14 @@ export const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
 ] as const;
 
 /**
- * Columns present on evolved DEV tenants but absent on greenfield PROD.
- * Safe to omit from INSERT/UPDATE when PostgREST reports them missing.
- * Assignees must then be written via `task_assignments` (PROD) instead of `assigned_to`.
+ * Columns absent on NEW (DEV≡PROD) schema. Strip on write — never dual-path lifestyle.
+ * Assignees: `task_assignments` junction. Deferred 6-col + accepted_by/at exist on NEW — do not strip.
  */
 export const OPTIONAL_EVOLVED_TASK_COLUMNS = [
-  ...DEFERRED_TASK_CREATE_SCHEMA_FIELDS,
   "current_status",
   "assigned_to",
   "attachments",
   "accepted",
-  "accepted_by",
-  "accepted_at",
   "starred_by_users",
   "ready_for_review",
   "review_accepted",
@@ -41,6 +37,7 @@ export const DEFERRED_TASK_RUNTIME_FIELDS = [
   "locationOnSite",
 ] as const;
 
+/** NEW-schema insert only (DEV≡PROD). Assignees → task_assignments after insert. */
 export function buildSupabaseTaskInsertPayload(
   taskData: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">,
   initialStatus: TaskStatus,
@@ -56,19 +53,14 @@ export function buildSupabaseTaskInsertPayload(
     category: taskData.category,
     due_date: taskData.dueDate,
     status: initialStatus,
-    current_status: initialStatus,
     completion_percentage: 0,
-    assigned_to: taskData.assignedTo,
     primary_assignee_id: taskData.primaryAssigneeId || null,
     delegated_user_ids: taskData.delegatedUserIds || null,
     assigned_by: taskData.assignedBy,
-    original_assigned_by: taskData.originalAssignedBy || taskData.assignedBy || null,
     container_id: taskData.containerId || null,
     sub_container_id: taskData.subContainerId || null,
     tags: taskData.tags || [],
     location_on_site: taskData.locationOnSite || null,
-    attachments: taskData.attachments || [],
-    accepted: isCreatorAssigned ? true : false,
     accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
     accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
   };

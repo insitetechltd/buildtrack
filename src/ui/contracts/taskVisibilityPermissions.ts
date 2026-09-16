@@ -59,7 +59,10 @@ export function canViewerSelectTask(args: {
   viewerProjectIds?: ReadonlyArray<string> | null;
 }): boolean {
   const viewer = args.viewer;
-  const viewerId = viewer?.id == null ? "" : String(viewer.id).trim();
+  if (!viewer) {
+    return false;
+  }
+  const viewerId = viewer.id == null ? "" : String(viewer.id).trim();
   if (!viewerId) {
     return false;
   }

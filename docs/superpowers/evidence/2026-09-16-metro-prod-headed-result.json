@@ -1,0 +1,33 @@
+{
+  "freezeSha": "fa5cff1f52603ef8436f01023ddc44139dd4825b",
+  "freezeShaShort": "fa5cff1",
+  "push": true,
+  "branch": "cursor/freeze-dual-path-phase-c-5b19",
+  "plane": "PROD",
+  "projectRef": "jcnzjigxgkzhjsaekoqz",
+  "qaUser": "sara@insitetest.com",
+  "qaProject": "App Review Site",
+  "qaProjectId": "ef876f91-0ace-43f1-8b16-861c13f12fe8",
+  "taskId": "f3dca4f3-6ba2-4567-9057-fa947dcdb856",
+  "taskTitle": "MetroPROD 1789540005784",
+  "metroUi": {
+    "loginDashboardSaraAppReviewSite": "PASS",
+    "createTaskPhoto": "PASS (shutter; library peek thumbs empty on this run)",
+    "detailAssignees": "PASS (Assigned by Sara)",
+    "composerUpdate": "PASS (Backend confirmed; assertNotVisible Failed to submit update; activity text includes freeze fa5cff1)",
+    "starUi": "N/A \u2014 API dual-path only"
+  },
+  "maestro": {
+    "rc": 0,
+    "elapsedSec": 112,
+    "artifacts": ".cache/maestro-home/.maestro/tests/2026-09-16_142548",
+    "flow": ".cache/metro-prod-gate0-20260916/gate0-shutter.yaml"
+  },
+  "evidencePngs": "docs/superpowers/evidence/2026-09-16-metro-prod-headed/",
+  "verdict": "GO for TF dogfood / ASC attach of a bake from this freeze SHA (after CBP when Human asks). No CBP this run.",
+  "residuals": [
+    "Library peek Select Photos showed empty thumbs (native/warm) \u2014 shutter path used for Gate 0 photo",
+    "Do not CBP until Human asks",
+    "Physical device camera dogfood still Human if claiming shutter on device"
+  ]
+}

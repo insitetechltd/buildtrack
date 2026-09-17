@@ -4,7 +4,9 @@
 
 ---
 
-**This session — CBP TF 268 submitted (2026-09-17):** Recents picker default **native2b** (`76b68ec`) + PhotoKit thumb `var asset` compile fix (`4623ab0`). Local IPA **v1.1.3 (268)** `.eas/artifacts/build-1789642118043.ipa` (CFBundleVersion 268; PROD `jcnzjigxgkzhjsaekoqz`; bake includes `native2b`). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/817c7263-192a-4ff2-a433-ae3bb7bdb491 (✔ Uploaded ASC; Apple processing). Production HUD is **off**. **Next:** Human dogfood TF **268** on phone — Recents tiles must paint (gray skeletons = FAIL). Recents issue **not closed** until that visual. ASC Public / Submit for Review untouched.
+**This session — Recents sharpness + Select Photos stall (2026-09-17):** TF **268** dogfood: first paint OK, tiles soft; Accept → Select Photos **>2 min**. Cause: Select Photos `expo-image` + `ph://` (PHImageManagerMaximumSize) while Recents stayed live under the stack. **In tree (needs native TF):** PhotokitThumbView fastFormat then HQ `.exact` (cap 3, keep fast bitmap); Select Photos uses `SelectedPhotoThumb` / asset-id PhotoKit; pause Recents index thumbs while CaptureSession is unfocused. First-paint pump/preheat **skipped** per user. **Next:** CBP when asked.
+
+**This session — CBP TF 268 submitted (2026-09-17):** Recents picker default **native2b** (`76b68ec`) + PhotoKit thumb `var asset` compile fix (`4623ab0`). Local IPA **v1.1.3 (268)** `.eas/artifacts/build-1789642118043.ipa` (CFBundleVersion 268; PROD `jcnzjigxgkzhjsaekoqz`; bake includes `native2b`). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/817c7263-192a-4ff2-a433-ae3bb7bdb491 (✔ Uploaded ASC; Apple processing). Production HUD is **off**. Recents first-paint dogfood **PASS** (human); sharpness + Select Photos handoff **not in 268**.
 
 **This session — CBP law lock (2026-09-17):** User: **local build always**. Encoded in `.cursor/rules/cbp-commit-build-push-tf.mdc` — never cloud `eas build` as CBP fallback; submit only local IPA.
 

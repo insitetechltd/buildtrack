@@ -6,7 +6,9 @@
 
 **This session — CBP law lock (2026-09-17):** User: **local build always**. Encoded in `.cursor/rules/cbp-commit-build-push-tf.mdc` — never cloud `eas build` as CBP fallback; submit only local IPA.
 
-**This session — CBP TF 266 submitted (2026-09-17):** Progress dock camera → text → % (&lt;100%) / submit@100% + long-press submit re-opens scrub. Bake tip `fa693f2`. Local IPA **v1.1.3 (266)** `.eas/artifacts/build-1789636848473.ipa` (PROD `jcnzjigxgkzhjsaekoqz`). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/43241357-379f-460e-8faa-3080e31a9a33 (✔ Uploaded ASC; Apple processing). **Next:** Human dogfood TF **266**. ASC Public / Submit for Review untouched.
+**This session — CBP TF 267 submitted (2026-09-17):** Press-drag % scrub + full-height hit box (`d2c49e2`). Local IPA **v1.1.3 (267)** `.eas/artifacts/build-1789638433001.ipa` (PROD `jcnzjigxgkzhjsaekoqz`). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/724afc42-5d18-455b-ae4c-e4abcb372191 (✔ Uploaded ASC; Apple processing). **Next:** Human dogfood TF **267** — press-drag %, long-press submit to leave 100%.
+
+**This session — CBP TF 266 submitted (2026-09-17):** Progress dock camera → text → % (&lt;100%) / submit@100% + long-press submit re-opens scrub. Bake tip `fa693f2`. Local IPA **v1.1.3 (266)** `.eas/artifacts/build-1789636848473.ipa` (PROD `jcnzjigxgkzhjsaekoqz`). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/43241357-379f-460e-8faa-3080e31a9a33 (✔ Uploaded ASC). **Superseded for dogfood by TF 267** (scrub hit-box fix).
 
 **This session — CBP TF 265 submitted (2026-09-17):** User: TF **264** already out → this ship is **265**. Same tip as scrubber+Tahoe (`ec1dfb2`). Local `./build-local.sh ios production` → IPA **v1.1.3 (265)** `.eas/artifacts/build-1789630606378.ipa` (CFBundleVersion 265; PROD `jcnzjigxgkzhjsaekoqz`). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/626019b3-37a9-4449-80fc-69b9d6106ca5 (✔ Uploaded ASC; Apple processing). **Superseded for dogfood by TF 266** (dock reorder). ASC Public / Submit for Review untouched.
 

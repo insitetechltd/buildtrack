@@ -112,7 +112,7 @@ Contract:
 Create a slice worktree:
 
 ```bash
-bash scripts/slice/start-worktree.sh WS-UX-S-UX-01I origin/master
+bash scripts/slice/start-worktree.sh WS-UX-S-UX-01I origin/main
 ```
 
 Checkpoint after a phase:

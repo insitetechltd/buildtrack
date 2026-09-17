@@ -2,7 +2,7 @@
 
 **GitHub Repository**: `https://github.com/insitetechltd/buildtrack.git`  
 **Custom domain**: `insiteworks.co` / `www.insiteworks.co` (`docs/CNAME`)  
-**Source**: branch `master`, folder `/docs`
+**Source**: branch `main`, folder `/docs`
 
 ## Site map
 
@@ -21,7 +21,7 @@ Legacy paths at the domain root (`/signup.html`, `/support.html`, …) **redirec
 ## Enable / verify Pages
 
 1. Repo **Settings → Pages**
-2. Deploy from branch `master`, folder `/docs`
+2. Deploy from branch `main`, folder `/docs`
 3. Custom domain: `insiteworks.co` (HTTPS enforced)
 
 ## Signup (checkout-first)

@@ -68,7 +68,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." >/dev/null 2>&1 && pwd -P)"
 cd "$ROOT_DIR"
 
 SLICE_ID="${1:-}"
-BASE_REF="${2:-origin/master}"
+BASE_REF="${2:-origin/main}"
 
 if [ -z "$SLICE_ID" ]; then
   printf '%s\n' "usage: bash scripts/slice/start-worktree.sh <slice-id> [base-ref]" >&2

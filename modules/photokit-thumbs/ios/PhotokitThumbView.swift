@@ -45,11 +45,13 @@ public final class PhotokitThumbView: ExpoView {
     let key: String
     if libraryToken > 0, indexExplicit, assetIndex >= 0 {
       asset = PhotokitThumbEngine.asset(token: libraryToken, index: assetIndex)
+      if asset == nil, let assetId, !assetId.isEmpty {
+        asset = PhotokitThumbEngine.asset(localIdentifier: assetId)
+      }
       key = "t\(libraryToken):i\(assetIndex):\(Int(pixelSize.rounded()))"
     } else if let assetId, !assetId.isEmpty {
-      let fetched = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
-      asset = fetched.firstObject
-      key = "id:\(assetId):\(Int(pixelSize.rounded()))"
+      asset = PhotokitThumbEngine.asset(localIdentifier: assetId)
+      key = "id:\(PhotokitThumbEngine.normalizedLocalIdentifier(assetId)):\(Int(pixelSize.rounded()))"
     } else {
       return
     }
@@ -63,6 +65,7 @@ public final class PhotokitThumbView: ExpoView {
     imageView.image = nil
 
     guard let asset else {
+      requestedKey = ""
       return
     }
 

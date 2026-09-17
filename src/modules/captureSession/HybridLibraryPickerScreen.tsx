@@ -21,6 +21,7 @@ import {
   LIBRARY_GRID_COLUMNS,
   LIBRARY_GRID_GAP,
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
+import { resumePhotokitLibraryAfterAccept } from "@/modules/mediaLibrary/PhotokitThumbView";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { markLibraryPickerMetadata } from "@/utils/libraryPickerTiming";
 import {
@@ -69,6 +70,10 @@ export function HybridLibraryPickerScreen() {
     enabled: true,
     consumeWarmPage: true,
   });
+
+  useEffect(() => {
+    resumePhotokitLibraryAfterAccept();
+  }, []);
 
   useEffect(() => {
     if (albumPicker.indexSession) {

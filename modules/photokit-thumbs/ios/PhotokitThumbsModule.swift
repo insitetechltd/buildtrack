@@ -346,6 +346,21 @@ enum PhotokitThumbEngine {
     return session.backing.asset(atDisplay: index)
   }
 
+  static func normalizedLocalIdentifier(_ raw: String) -> String {
+    if raw.lowercased().hasPrefix("ph://") {
+      return String(raw.dropFirst(5))
+    }
+    return raw
+  }
+
+  static func asset(localIdentifier raw: String) -> PHAsset? {
+    let localId = normalizedLocalIdentifier(raw)
+    guard !localId.isEmpty else {
+      return nil
+    }
+    return PHAsset.fetchAssets(withLocalIdentifiers: [localId], options: nil).firstObject
+  }
+
   static func assets(for localIds: [String]) -> [PHAsset] {
     guard !localIds.isEmpty else {
       return []

@@ -23,6 +23,7 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
+        "EXPO_PUBLIC_LIBRARY_PICKER_PATH": "native2b",
         "EXPO_PUBLIC_BUILD_CHANNEL": "tf"
       }
     },
@@ -38,6 +39,7 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
+        "EXPO_PUBLIC_LIBRARY_PICKER_PATH": "native2b",
         "EXPO_PUBLIC_BUILD_CHANNEL": "sim"
       }
     },
@@ -92,6 +94,7 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
+        "EXPO_PUBLIC_LIBRARY_PICKER_PATH": "native2b",
         "EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD": "0",
         "EXPO_PUBLIC_BUILD_CHANNEL": "rc"
       }

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Pressable,
-  Image,
   FlatList,
   ActivityIndicator,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
   type NativeSyntheticEvent,
   type ViewToken,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import type * as MediaLibrary from "expo-media-library";
 
 import { libraryGridDisplayUri } from "@/utils/libraryDisplayUri";
@@ -118,12 +118,14 @@ const LibraryGridTile = memo(function LibraryGridTile({
   const indexMode = photokitToken != null && photokitIndex != null;
   const displayUri = bindImage && !useNativeThumb ? libraryGridDisplayUri(uri) : null;
   const NativeThumb = useNativeThumb ? getPhotokitThumbNativeView() : null;
+  const realAssetId =
+    !assetId.startsWith("__idx_") && !assetId.startsWith("__sk_");
 
   return (
     <Pressable
       testID={`${testIdPrefix}__tile_${assetId}`}
       onPress={() => {
-        if (assetId.startsWith("__idx_") || assetId.startsWith("__sk_")) {
+        if (!realAssetId) {
           return;
         }
         onPress(assetId);
@@ -136,7 +138,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
       }}
     >
       {bindImage && NativeThumb ? (
-        <View style={{ width: tileSize, height: tileSize }}>
+        <View collapsable={false} style={{ width: tileSize, height: tileSize }}>
           <View
             testID={`${testIdPrefix}__tile_skeleton_${assetId}`}
             style={[
@@ -149,17 +151,19 @@ const LibraryGridTile = memo(function LibraryGridTile({
             testID={`${testIdPrefix}__tile_image_${assetId}`}
             {...(indexMode
               ? { token: photokitToken, index: photokitIndex }
-              : { assetId })}
+              : {})}
+            {...(realAssetId ? { assetId } : {})}
             pixelSize={pixelSize}
-            style={StyleSheet.absoluteFillObject}
+            style={{ width: tileSize, height: tileSize }}
             onPainted={() => markLibraryPickerTilePainted(assetId)}
           />
         </View>
       ) : displayUri ? (
-        <Image
+        <ExpoImage
           testID={`${testIdPrefix}__tile_image_${assetId}`}
           source={{ uri: displayUri }}
-          resizeMode="cover"
+          cachePolicy="memory-disk"
+          contentFit="cover"
           style={{ width: tileSize, height: tileSize }}
           onLoad={() => markLibraryPickerTilePainted(assetId)}
         />

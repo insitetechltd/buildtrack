@@ -107,8 +107,8 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 
 /**
  * A/B picker fill path (M-PERF-03).
- * - `warm`: MediaLibrary warm bridge → full openLibrary
- * - `native2b`: openLibraryLimited (Recents unsorted newest-N) → first paint → expandLibraryFull (same token)
+ * - `native2b` (default, TF237): limited Recents / persisted IDs → first paint → expand on scroll
+ * - `warm`: MediaLibrary warm bridge ∥ full openLibrary — starves thumbs (HUD `1st` never)
  *
  * Override: EXPO_PUBLIC_LIBRARY_PICKER_PATH=warm|native2b
  */
@@ -147,9 +147,9 @@ function resolveLibraryPickerPath(): LibraryPickerPath {
   const raw = (
     fromTest ||
     process.env.EXPO_PUBLIC_LIBRARY_PICKER_PATH ||
-    "warm"
+    "native2b"
   ).toLowerCase();
-  return raw === "native2b" ? "native2b" : "warm";
+  return raw === "warm" ? "warm" : "native2b";
 }
 
 /** Resolved path (re-reads test override / env). */

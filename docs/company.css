@@ -315,15 +315,18 @@ body:not(.is-projects) { --header-h: 0px; }
 }
 @media (min-width: 861px) {
   html {
-    scroll-snap-type: y proximity;
+    scroll-snap-type: y mandatory;
   }
   .project-scrub {
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    scroll-margin-top: var(--header-h);
   }
   #company,
   #contact {
     scroll-snap-align: start;
+    scroll-snap-stop: always;
+    scroll-margin-top: var(--header-h);
   }
 }
 .project-stage {

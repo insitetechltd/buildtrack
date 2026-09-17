@@ -15,13 +15,14 @@ appId: com.buildtrack.app.local
 - runFlow: ../_dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
+    visibilityPercentage: 40
     element:
-      id: "create-task__submit-inline"
+      id: "create-task__submit"
     direction: DOWN
 - tapOn:
-    id: "create-task__submit-inline"
+    id: "create-task__submit"
 - tapOn:
-    id: "create-task__submit-inline"
+    id: "create-task__submit"
     delay: 1500
 - extendedWaitUntil:
     visible:

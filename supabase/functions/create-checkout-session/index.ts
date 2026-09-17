@@ -344,7 +344,7 @@ Deno.serve(async (req) => {
     }
 
     const permission = (callerProfile.system_permission || "").toLowerCase();
-    const role = (callerProfile.role || "").toLowerCase();
+    const role = permission; // NEW-only alias
     const isAdmin =
       permission === "admin" ||
       role === "admin" ||

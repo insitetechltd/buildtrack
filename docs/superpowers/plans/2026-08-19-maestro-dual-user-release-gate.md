@@ -59,7 +59,7 @@ Title example: `DU-H01 1724040000000` — known to both flows via env (no cross-
 
 ### DU-H01 — Happy path (required release demo)
 
-Field loop: **photo → task → accept → update+photo → submit review → approve**.
+Field loop: **photo → task → accept → update+photo → submit review → PM Accept → PM Archive**.
 
 | Phase | Sim | Actor | Actions | Unique landing assert | PNG |
 |---|---|---|---|---|---|
@@ -68,9 +68,10 @@ Field loop: **photo → task → accept → update+photo → submit review → a
 | 2 | A | John | Camera → 1 photo → title/desc → Assign **Alice Worker A1** → submit | `tasks-screen__task_list` + selected assignees | `du-h01-03-john-assign-alice`, `du-h01-04-john-created` |
 | 3 | B | Alice | Tasks PTR (W-T05 swipe) → search title → open row → **Accept** | `task-detail__quick-action-accept_task` gone | `du-h01-05-alice-inbox`, `du-h01-06-alice-accepted` |
 | 4 | B | Alice | Update + 1 photo + 100% + submit → **Submit for Review** | submitted-for-review copy / no submit action | `du-h01-07-alice-updated`, `du-h01-08-alice-submitted` |
-| 5 | A | John | Activity **Team Queue / review** or Tasks PTR → search title → **Approve** | `task-detail__quick-action-approve_task` → approved | `du-h01-09-john-review`, `du-h01-10-john-approved` |
+| 5 | A | John | Tasks PTR → open title → dock **Accept** (`report-reply-composer__approve`; legacy quick-action fallback) | Approve CTA gone + Approved | `du-h01-10-john-review`, `du-h01-11-john-approved` |
+| 6 | A | John | Dock **Archive** → confirm → Filters → QUEUE Archived → row visible | `tasks-screen__row_<id>` in archived | `du-h01-12`…`du-h01-16` |
 
-**Need ≥10 PNGs** after rc=0 or override rc=98 (preflight Layer 4).
+**Need ≥15 PNGs** after rc=0 or override rc=98 (preflight Layer 4). Gate incomplete without phase 6 archive.
 
 ### DU-D01 — Decline path (required second demo)
 

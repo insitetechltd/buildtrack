@@ -5,52 +5,40 @@ import {
 } from "@/state/userProjectAssignmentQuery";
 
 describe("userProjectAssignmentQuery", () => {
-  it("detects PROD missing assigned_at (42703)", () => {
+  it("NEW-only: isMissingAssignedAtColumnError is always false", () => {
     expect(
       isMissingAssignedAtColumnError({
         code: "42703",
-        message:
-          'column user_project_assignments.assigned_at does not exist',
+        message: "column user_project_assignments.assigned_at does not exist",
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("prefers assigned_at then falls back to created_at", () => {
+  it("prefers created_at (NEW SoT)", () => {
     expect(
       assignmentTimestamp({
         assigned_at: "2026-01-02T00:00:00Z",
         created_at: "2026-01-01T00:00:00Z",
       }),
-    ).toBe("2026-01-02T00:00:00Z");
+    ).toBe("2026-01-01T00:00:00Z");
     expect(
       assignmentTimestamp({ created_at: "2026-01-01T00:00:00Z" }),
     ).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("retries order by created_at when assigned_at column is missing", async () => {
-    const assignedAtOrder = jest.fn().mockResolvedValue({
-      data: null,
-      error: {
-        code: "42703",
-        message:
-          'column user_project_assignments.assigned_at does not exist',
-      },
-    });
+  it("orders by created_at only", async () => {
     const createdAtOrder = jest.fn().mockResolvedValue({
       data: [{ id: "a1", user_id: "u1", project_id: "p1", is_active: true }],
       error: null,
     });
 
     const eqIsActive = jest.fn().mockReturnValue({
-      eq: jest.fn().mockImplementation(() => ({
-        order: jest
-          .fn()
-          .mockImplementation((column: string) =>
-            column === "assigned_at"
-              ? assignedAtOrder()
-              : createdAtOrder(),
-          ),
-      })),
+      eq: jest.fn().mockReturnValue({
+        order: jest.fn().mockImplementation((column: string) => {
+          expect(column).toBe("created_at");
+          return createdAtOrder();
+        }),
+      }),
     });
 
     const client = {
@@ -65,7 +53,6 @@ describe("userProjectAssignmentQuery", () => {
       userId: "u1",
     });
 
-    expect(assignedAtOrder).toHaveBeenCalled();
     expect(createdAtOrder).toHaveBeenCalled();
     expect(result.error).toBeNull();
     expect(result.data).toHaveLength(1);

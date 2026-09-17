@@ -13,7 +13,7 @@ import { useUserStore } from '../state/userStore.supabase';
  */
 export function useAutoRefresh() {
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: ReturnType<typeof setInterval>;
     
     // Force stores to re-initialize from their initial state
     const refreshAllData = () => {

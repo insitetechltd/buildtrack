@@ -885,7 +885,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   }, [continuity.isBackgroundRefreshing, projectSummaryItems.length]);
 
   const draftItems = useMemo((): DashboardActivityItem[] => {
-    const structuralState: PrimitiveStructuralState = "ready";
+    const structuralState = "ready" as unknown as PrimitiveStructuralState;
     return localDrafts.map((draft) => ({
       id: `draft:${draft.id}`,
       localDraftId: draft.id,

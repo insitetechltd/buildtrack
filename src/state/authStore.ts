@@ -10,6 +10,7 @@ import {
 } from "../types/buildtrack";
 import { useUserStore } from "./userStore.supabase";
 import { clearWorkspaceSessionState } from "./clearWorkspaceSession";
+import { applyUsersAclWrite } from "./schemaDualPath";
 
 export function readMustSetPassword(
   user: Record<string, unknown> | null | undefined,
@@ -585,7 +586,6 @@ export const useAuthStore = create<AuthStore>()(
             role: persistedRole,
           };
 
-          const { applyUsersAclWrite } = await import("./schemaDualPath");
           const roleValue = persistedRole ? toDbUsersRole(persistedRole) : undefined;
           const acl = await applyUsersAclWrite(supabase, {
             id: currentUser.id,

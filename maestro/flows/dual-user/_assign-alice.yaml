@@ -15,8 +15,15 @@ appId: com.buildtrack.app.local
 - extendedWaitUntil:
     notVisible: "Fetching project team members"
     timeout: 30000
+# Roster copy varies; wait for Alice row (or legacy "users available" banner).
+- runFlow:
+    when:
+      visible: ".*users available.*"
+    commands:
+      - takeScreenshot: "du-assignee-picker-open"
 - extendedWaitUntil:
-    visible: ".*users available.*"
+    visible:
+      id: "create-task__assignee-option-alice-workera1-at-test-com"
     timeout: 45000
 - takeScreenshot: "du-assignee-picker-open"
 - scrollUntilVisible:

@@ -137,6 +137,7 @@ async function main() {
   }
 
   const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  // NEW schema only (DEV≡PROD): no assigned_to / current_status / attachments / accepted.
   const payload = {
     project_id: project.id,
     title,
@@ -146,16 +147,13 @@ async function main() {
     priority: "medium",
     category: "general",
     due_date: due,
-    current_status: SEED_CURRENT_STATUS,
+    status: SEED_CURRENT_STATUS,
     completion_percentage: SEED_IS_APPROVED ? 100 : 0,
-    assigned_to: [user.id],
     primary_assignee_id: user.id,
     delegated_user_ids: [],
     assigned_by: creator.id,
     tags: [],
     location_on_site: null,
-    attachments: [],
-    accepted: SEED_IS_APPROVED || SEED_IS_ACCEPTED,
     accepted_by: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? user.id : null,
     accepted_at: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? new Date().toISOString() : null,
   };
@@ -166,28 +164,20 @@ async function main() {
     .select("id, title")
     .single();
 
-  if (insertErr) {
-    // Compatibility retry without redesign columns if tenant lag
-    const slim = { ...payload };
-    for (const k of [
-      "primary_assignee_id",
-      "delegated_user_ids",
-      "container_id",
-      "sub_container_id",
-      "tags",
-      "location_on_site",
-    ]) {
-      delete slim[k];
-    }
-    ({ data: task, error: insertErr } = await supabase
-      .from("tasks")
-      .insert(slim)
-      .select("id, title")
-      .single());
-  }
-
   if (insertErr || !task?.id) {
     console.error("FAIL: insert task", insertErr?.message || insertErr);
+    process.exit(5);
+  }
+
+  const { error: assignErr } = await supabase.from("task_assignments").insert({
+    task_id: task.id,
+    user_id: user.id,
+    assignment_kind: "primary",
+    is_active: true,
+    created_by: creator.id,
+  });
+  if (assignErr) {
+    console.error("FAIL: task_assignments", assignErr.message || assignErr);
     process.exit(5);
   }
 

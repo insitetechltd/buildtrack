@@ -2,6 +2,9 @@
 /**
  * Resolve a live task id by unique title (dual-user Maestro gate).
  *
+ * NEW schema SoT (DEV≡PROD parity): no tasks.assigned_to.
+ * Prefer title match + task_assignments / primary_assignee_id for Alice.
+ *
  * Usage:
  *   node scripts/maestro/resolve-dual-user-task-id.cjs --title "DU-H01-123"
  *
@@ -54,6 +57,25 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function assigneeLinked(supabase, taskId, assigneeId) {
+  const { data: junction, error: jErr } = await supabase
+    .from("task_assignments")
+    .select("user_id")
+    .eq("task_id", taskId)
+    .eq("user_id", assigneeId)
+    .eq("is_active", true)
+    .limit(1);
+  if (!jErr && junction && junction.length > 0) return true;
+
+  const { data: task, error: tErr } = await supabase
+    .from("tasks")
+    .select("id, primary_assignee_id")
+    .eq("id", taskId)
+    .maybeSingle();
+  if (tErr || !task) return false;
+  return String(task.primary_assignee_id || "") === String(assigneeId);
+}
+
 async function main() {
   loadDotEnv();
   const title = argTitle();
@@ -88,9 +110,10 @@ async function main() {
   let hit = null;
 
   while (Date.now() - started < TIMEOUT_MS) {
+    // NEW dialect: no assigned_to column.
     const { data: rows, error } = await supabase
       .from("tasks")
-      .select("id, title, assigned_to, status, created_at")
+      .select("id, title, status, primary_assignee_id, created_at")
       .eq("title", title)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -100,19 +123,28 @@ async function main() {
       process.exit(4);
     }
 
-    hit =
-      (rows || []).find((row) => {
-        const assigned = Array.isArray(row.assigned_to) ? row.assigned_to : [];
-        return assigned.map(String).includes(String(assignee.id));
-      }) || null;
+    for (const row of rows || []) {
+      // Prefer assignee-linked row; fall back to unique title hit.
+      if (await assigneeLinked(supabase, row.id, assignee.id)) {
+        hit = row;
+        break;
+      }
+    }
+    if (!hit && (rows || []).length === 1) {
+      hit = rows[0];
+    }
 
     if (hit?.id) break;
-    process.stdout.write(`WAIT title=${title} elapsed=${Date.now() - started}ms\n`);
+    process.stdout.write(
+      `WAIT title=${title} elapsed=${Date.now() - started}ms\n`,
+    );
     await sleep(POLL_MS);
   }
 
   if (!hit?.id) {
-    console.error(`FAIL: task not found for title=${title} within ${TIMEOUT_MS}ms`);
+    console.error(
+      `FAIL: task not found for title=${title} within ${TIMEOUT_MS}ms`,
+    );
     process.exit(5);
   }
 

@@ -57,15 +57,15 @@ function panTouchEvent(pageY = 0) {
 }
 
 function grantCompletion(screen: ReturnType<typeof render>) {
-  const el = screen.getByTestId("report-reply-composer__completion");
+  const el = screen.getByTestId("report-reply-composer__completion_hit");
   act(() => {
-    el.props.onStartShouldSetResponder?.(panTouchEvent());
+    // Invoke the PanResponder grant path directly (Jest has no real touches).
     el.props.onResponderGrant?.(panTouchEvent());
   });
 }
 
 function releaseCompletion(screen: ReturnType<typeof render>) {
-  const el = screen.getByTestId("report-reply-composer__completion");
+  const el = screen.getByTestId("report-reply-composer__completion_hit");
   act(() => {
     el.props.onResponderRelease?.(panTouchEvent());
   });
@@ -190,17 +190,27 @@ describe("ReportReplyComposer", () => {
 
     expect(screen.queryByTestId("report-reply-composer__triage_action")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_hit")).toBeTruthy();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expect(screen.getByText("40%")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
 
     // Finger-down expands (press-drag is one gesture — no separate tap).
     grantCompletion(screen);
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
+    // Dock slot stays 44; overlay hit grows.
+    expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
+      expect.objectContaining({ height: 44, width: 44 }),
+    );
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 200, width: 44 }),
+    );
 
     releaseCompletion(screen);
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expect(screen.getByText("40%")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 44, width: 44 }),
+    );
   });
 
   it("progress dock at 100%: long-press submit re-opens scrub to leave 100%", () => {
@@ -224,8 +234,14 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByText("100%")).toBeTruthy();
-    // Full-height hit box so the top-of-track thumb is draggable.
+    // Dock slot stays peer-sized; scrub overlays upward (no tall layout band).
     expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
+      expect.objectContaining({ height: 44, width: 44 }),
+    );
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber").props.style).toEqual(
+      expect.objectContaining({ height: 200, width: 44 }),
+    );
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
       expect.objectContaining({ height: 200, width: 44 }),
     );
   });

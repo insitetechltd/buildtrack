@@ -117,13 +117,13 @@ type CompletionScrubButtonProps = {
 /**
  * Progress % control — interaction contract:
  *
- * - Closed (<100% dock slot): press-drag in one gesture. Finger-down expands
- *   the vertical scrubber; drag up/down changes % (5% steps); finger-up commits
- *   and collapses. Pure tap (no drag) expands then collapses with no change.
- * - At 100% the dock shows Submit instead. Long-press Submit remounts this
- *   control expanded so a second press-drag can leave 100%.
- * - Hit box while open is the full scrub track height (not the 44px dock circle),
- *   so the thumb at 100% (top of track) remains draggable.
+ * - Closed: same idle circle chrome as camera / + dock peers (44×44 slot).
+ * - Press-drag: finger-down expands an *overlay* scrub track upward (does not
+ *   grow the dock row); drag changes % (5% steps); finger-up commits & collapses.
+ * - At 100% the dock shows Submit. Long-press Submit remounts this expanded
+ *   so a second press-drag can leave 100%.
+ * - While open, the pan target is an absolute full-track layer (bottom-aligned)
+ *   so the thumb at 100% stays hittable without a tall layout band.
  */
 function CompletionScrubButton({
   value,
@@ -173,7 +173,6 @@ function CompletionScrubButton({
 
   const pan = useRef(
     PanResponder.create({
-      // Capture on finger-down so press-drag is one gesture (closed or open).
       onStartShouldSetPanResponder: () => !disabledRef.current,
       onMoveShouldSetPanResponder: () => !disabledRef.current,
       onPanResponderTerminationRequest: () => false,
@@ -221,12 +220,13 @@ function CompletionScrubButton({
     }),
   ).current;
 
-  // Thumb: 0% at bottom, 100% at top of the track.
+  // Thumb: 0% at bottom, 100% at top of the overlay track.
   const thumbBottom = isOpen
     ? (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE)
     : 0;
 
   return (
+    // Layout slot always matches peer dock circles — scrub overlays upward.
     <View
       testID="report-reply-composer__completion"
       accessibilityLabel={
@@ -239,65 +239,78 @@ function CompletionScrubButton({
       accessibilityState={{ expanded: isOpen }}
       className="relative z-50"
       collapsable={false}
-      // Full track height while open so the top-of-track thumb (100%) stays hittable.
       style={{
         width: BUTTON_SIZE,
-        height: isOpen ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
-        justifyContent: "flex-end",
+        height: BUTTON_SIZE,
+        overflow: "visible",
       }}
-      {...pan.panHandlers}
     >
-      {isOpen ? (
-        <View
-          testID="report-reply-composer__completion_scrubber"
-          pointerEvents="none"
-          className="absolute items-center"
-          style={{
-            bottom: 0,
-            left: 0,
-            width: BUTTON_SIZE,
-            height: SCRUB_TRACK_HEIGHT,
-          }}
-          collapsable={false}
-        >
-          <View
-            className="absolute rounded-full bg-slate-200"
-            style={{
-              bottom: BUTTON_SIZE / 2,
-              width: 5,
-              height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
-              left: (BUTTON_SIZE - 5) / 2,
-            }}
-          />
-          <View
-            className="absolute rounded-full bg-[#08576E]"
-            style={{
-              bottom: BUTTON_SIZE / 2,
-              width: 5,
-              height: Math.max(
-                4,
-                (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE),
-              ),
-              left: (BUTTON_SIZE - 5) / 2,
-            }}
-          />
-        </View>
-      ) : null}
       <View
-        testID="report-reply-composer__completion_thumb"
-        className="items-center justify-center rounded-full border-2 border-[#08576E] bg-white shadow-md"
+        testID="report-reply-composer__completion_hit"
+        {...pan.panHandlers}
+        collapsable={false}
         style={{
-          position: isOpen ? "absolute" : "relative",
-          bottom: thumbBottom,
+          position: "absolute",
+          bottom: 0,
           left: 0,
           width: BUTTON_SIZE,
-          height: BUTTON_SIZE,
-          borderColor: "#08576E",
-          backgroundColor: "#ffffff",
+          // Grow the *overlay* hit target only — does not stretch the dock row.
+          height: isOpen ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
+          justifyContent: "flex-end",
+          zIndex: 50,
         }}
-        pointerEvents="none"
       >
-        <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
+        {isOpen ? (
+          <View
+            testID="report-reply-composer__completion_scrubber"
+            pointerEvents="none"
+            className="absolute items-center"
+            style={{
+              bottom: 0,
+              left: 0,
+              width: BUTTON_SIZE,
+              height: SCRUB_TRACK_HEIGHT,
+            }}
+          >
+            <View
+              className="absolute rounded-full bg-slate-200"
+              style={{
+                bottom: BUTTON_SIZE / 2,
+                width: 5,
+                height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
+                left: (BUTTON_SIZE - 5) / 2,
+              }}
+            />
+            <View
+              className="absolute rounded-full bg-[#08576E]"
+              style={{
+                bottom: BUTTON_SIZE / 2,
+                width: 5,
+                height: Math.max(
+                  4,
+                  (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE),
+                ),
+                left: (BUTTON_SIZE - 5) / 2,
+              }}
+            />
+          </View>
+        ) : null}
+        <View
+          testID="report-reply-composer__completion_thumb"
+          pointerEvents="none"
+          style={{
+            ...(isOpen
+              ? {
+                  position: "absolute" as const,
+                  bottom: thumbBottom,
+                  left: 0,
+                }
+              : null),
+            ...DOCK_CIRCLE_IDLE,
+          }}
+        >
+          <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
+        </View>
       </View>
     </View>
   );

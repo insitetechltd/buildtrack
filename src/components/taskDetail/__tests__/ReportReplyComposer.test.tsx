@@ -158,6 +158,34 @@ describe("ReportReplyComposer", () => {
     );
   });
 
+  it("progress dock at 100%: long-press submit re-opens scrub to leave 100%", () => {
+    const onChange = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="done"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={100}
+        onChangeCompletionPercentage={onChange}
+      />,
+    );
+
+    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
+
+    // Retract without changing → submit returns.
+    fireEvent(screen.getByTestId("report-reply-composer__completion_scrubber"), "responderRelease");
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
+  });
+
   it("replaces text with Cancel review and locks controls while awaiting review", () => {
     const onCancelReview = jest.fn();
     const onAddPhotos = jest.fn();

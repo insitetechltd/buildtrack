@@ -108,6 +108,10 @@ type CompletionScrubButtonProps = {
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
+  /** Mount already expanded (e.g. long-press submit at 100%). */
+  startExpanded?: boolean;
+  /** Fired when the scrubber retracts to the circle. */
+  onRetract?: () => void;
 };
 
 /**
@@ -118,24 +122,32 @@ function CompletionScrubButton({
   value,
   onChange,
   disabled = false,
+  startExpanded = false,
+  onRetract,
 }: CompletionScrubButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const isOpenRef = useRef(false);
+  const [isOpen, setIsOpen] = useState(startExpanded);
+  const isOpenRef = useRef(startExpanded);
   const startPctRef = useRef(value);
   const didMoveRef = useRef(false);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const disabledRef = useRef(disabled);
+  const onRetractRef = useRef(onRetract);
   valueRef.current = value;
   onChangeRef.current = onChange;
   disabledRef.current = disabled;
+  onRetractRef.current = onRetract;
   isOpenRef.current = isOpen;
 
   const retractScrubber = useCallback(() => {
+    const wasOpen = isOpenRef.current;
     isOpenRef.current = false;
     setIsOpen(false);
     didMoveRef.current = false;
     startPctRef.current = valueRef.current;
+    if (wasOpen) {
+      onRetractRef.current?.();
+    }
   }, []);
 
   // Collapse scrubber when submit (or any lock) disables the control.
@@ -144,6 +156,14 @@ function CompletionScrubButton({
       retractScrubber();
     }
   }, [disabled, isOpen, retractScrubber]);
+
+  useEffect(() => {
+    if (startExpanded && !isOpenRef.current && !disabledRef.current) {
+      Keyboard.dismiss();
+      isOpenRef.current = true;
+      setIsOpen(true);
+    }
+  }, [startExpanded]);
 
   const openScrubber = useCallback(() => {
     if (disabledRef.current) {
@@ -282,7 +302,7 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [camera] · [text] · [% scrub if <100% | submit if 100%]
+ * Progress: [camera] · [text] · [% scrub if <100% | submit if 100%; long-press submit re-opens scrub]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]
@@ -313,6 +333,7 @@ export default function ReportReplyComposer({
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
+  const [forceProgressScrub, setForceProgressScrub] = useState(false);
   const isAwaitingReview = mode === "awaiting_review";
   const isReviewDecision = mode === "review_decision";
   const isArchiveMode = mode === "archive";
@@ -416,15 +437,36 @@ export default function ReportReplyComposer({
     (isAwaitingReview || isReviewDecision) && showCompletion;
   const leadingFabLocked = controlsLocked;
   const isProgressMode = mode === "progress";
-  // Progress dock: trailing slot is % scrub until 100%, then submit (mutually exclusive).
+
+  // Drop forced scrub once the value leaves 100% (normal % circle takes over).
+  useEffect(() => {
+    if (completionPercentage < 100 && forceProgressScrub) {
+      setForceProgressScrub(false);
+    }
+  }, [completionPercentage, forceProgressScrub]);
+
+  // Progress dock: trailing slot is % scrub until 100%, then submit.
+  // Long-press submit forces scrub back so the user can leave 100%.
   const showProgressScrubTrailing =
     isProgressMode &&
     Boolean(onChangeCompletionPercentage) &&
-    completionPercentage < 100;
+    (completionPercentage < 100 || forceProgressScrub);
   const showProgressSubmitTrailing =
-    isProgressMode && completionPercentage >= 100;
+    isProgressMode && completionPercentage >= 100 && !forceProgressScrub;
   // Report / awaiting keep leading % (locked) and trailing camera+send.
   const showLeadingCompletion = showCompletion && !isProgressMode;
+
+  const handleForceProgressScrub = useCallback(() => {
+    if (isSubmitting) {
+      return;
+    }
+    Keyboard.dismiss();
+    setForceProgressScrub(true);
+  }, [isSubmitting]);
+
+  const handleProgressScrubRetract = useCallback(() => {
+    setForceProgressScrub(false);
+  }, []);
 
   const photoButton = !isReviewDecision ? (
     <Pressable
@@ -449,8 +491,18 @@ export default function ReportReplyComposer({
       testID="report-reply-composer__send"
       accessibilityRole="button"
       accessibilityLabel={resolvedSendLabel}
+      accessibilityHint={
+        showProgressSubmitTrailing
+          ? "Long press to adjust completion percentage"
+          : undefined
+      }
       onPress={handleSubmit}
-      disabled={!canSend}
+      onLongPress={
+        showProgressSubmitTrailing ? handleForceProgressScrub : undefined
+      }
+      delayLongPress={350}
+      // Progress@100%: keep pressable for long-press even when draft empty.
+      disabled={isProgressMode ? isSubmitting : !canSend}
       hitSlop={4}
       style={
         isAwaitingReview
@@ -482,6 +534,8 @@ export default function ReportReplyComposer({
         value={completionPercentage}
         onChange={onChangeCompletionPercentage}
         disabled={isSubmitting}
+        startExpanded={forceProgressScrub}
+        onRetract={handleProgressScrubRetract}
       />
     ) : null;
 

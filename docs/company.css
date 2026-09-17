@@ -36,6 +36,8 @@
     #a9cdd9 68%,
     #7fb0c0 100%
   );
+  /* Shared mid-tone so stacked projects blend while scrolling between them. */
+  --project-bridge: #c5dde8;
   --white: #fff;
   --font-d: "Syne", system-ui, sans-serif;
   --font-b: "Manrope", system-ui, sans-serif;
@@ -308,6 +310,10 @@ body:not(.is-projects) { --header-h: 0px; }
   scroll-margin-top: var(--header-h);
 }
 /* One viewport per project — snap to base, then JS cycles photos while docked. */
+.project {
+  position: relative;
+  background: var(--project-bridge);
+}
 .project-scrub {
   position: relative;
   height: calc(100svh - var(--header-h));
@@ -337,6 +343,34 @@ body:not(.is-projects) { --header-h: 0px; }
   grid-template-columns: 1.3fr 0.7fr;
   overflow: hidden;
   background: var(--stage-grad);
+}
+.project-stage::before,
+.project-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: clamp(4.5rem, 18vh, 9rem);
+  z-index: 2;
+  pointer-events: none;
+}
+.project-stage::before {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(--project-bridge) 0%,
+    color-mix(in srgb, var(--project-bridge) 55%, transparent) 42%,
+    transparent 100%
+  );
+}
+.project-stage::after {
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    var(--project-bridge) 0%,
+    color-mix(in srgb, var(--project-bridge) 55%, transparent) 42%,
+    transparent 100%
+  );
 }
 .project-flip .project-stage {
   grid-template-columns: 0.7fr 1.3fr;

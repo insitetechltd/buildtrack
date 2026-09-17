@@ -16,7 +16,7 @@ Construct locked 2026-08-24: CA / PM / Worker seats; **PA** crownable on CA|PM o
 
 ## Shipped (app catch-up)
 
-Phases A–C + follow-ons already on master before close, including:
+Phases A–C + follow-ons already on main before close, including:
 
 - PA roster gate (CA|PM only)
 - Member / PA labels (no trade title picker on place)

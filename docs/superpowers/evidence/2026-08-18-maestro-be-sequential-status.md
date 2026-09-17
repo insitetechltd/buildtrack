@@ -5,7 +5,7 @@ Branch: `chore/maestro-be-status`
 
 ## Important reminder
 
-When this B-E work is finished, close and merge `chore/maestro-be-status` back into `master`.
+When this B-E work is finished, close and merge `chore/maestro-be-status` back into `main`.
 
 ## Goal
 
@@ -123,4 +123,4 @@ Local headed **iPhone 17 Pro** (`702680D5-…`) for solo Section E. **John + Ali
 
 1. Rerun **W-D06** when Metro healthy.
 2. Product decision on **W-D05** — **closed as Exempt** (Update Description replaces Add Comment).
-3. Merge `chore/maestro-be-status` → `master` when W-D06 closed (or accept 9/10 + documented gap).
+3. Merge `chore/maestro-be-status` → `main` when W-D06 closed (or accept 9/10 + documented gap).

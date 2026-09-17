@@ -30,7 +30,7 @@ CANONICAL INPUTS (in order of citation weight; read ALL before writing the first
        * AGENTS.md New Closed line for M-SUPABASE-00 Groom (2026-08-07, line 39) + precedence-order pipeline focus line (line 40).
   3. CURRENT SESSION IN-FLIGHT / BLOCKED STATE (must be called out verbatim in §1 Session State, §4 Milestone, §8 Immediate To-Do):
      - TRAE session 2026-08-08 attempted to kick off M-SUPABASE-02a/02b combined P0 cycle per ROADMAP Orders 13.1 + 13.2 + groom Prompt 1.
-     - RULE 1 HARD BLOCKER STATUS = ACTIVE. The cycle was RETURNED SESSION BLOCKED before any Builder code/docs commit was produced (no commit on master for 02a/02b yet). Blocker text copied VERBATIM from TRAE output = `"no ~/.pgpass present AND user declined to paste dashboard outputs"`.
+     - RULE 1 HARD BLOCKER STATUS = ACTIVE. The cycle was RETURNED SESSION BLOCKED before any Builder code/docs commit was produced (no commit on main for 02a/02b yet). Blocker text copied VERBATIM from TRAE output = `"no ~/.pgpass present AND user declined to paste dashboard outputs"`.
      - Resolution Options documented in the prior blocker output = Option A (drop ~/.pgpass pooler entry) OR Option B (paste §1..§7 redacted dashboard SQL outputs from WS_SUPABASE_01_READONLY_AUDIT.sql back into chat). Both options MUST be re-listed VERBATIM inside §1 Session State AND §8 first-step "Cursor Unblock Checklist".
      - [WS_SUPABASE_01_READONLY_AUDIT.sql](file:///Volumes/KooDrive/InsiteApp/WS_SUPABASE_01_READONLY_AUDIT.sql) — 7 sections; use as Appendix A content outline for the handoff doc listing EXACT section numbers 1..7 so Cursor can run them without guessing.
      - [SUPABASE_SQL_ACCESS.md lines 6–38](file:///Volumes/KooDrive/InsiteApp/SUPABASE_SQL_ACCESS.md#L6-L38) — verbatim pooler host/port/username_format/libpq_binary, NEVER include secrets.
@@ -58,8 +58,8 @@ CANONICAL INPUTS (in order of citation weight; read ALL before writing the first
      - origin/feature/local-file-cache legacy remote-only branch;
      - WS-FUTURE items.
   8. RECENT COMMIT BASELINE (must cite SHAs in §1 + §2):
-     - Last 4 commits on origin/master HEAD:
-       * 90a2b1b `docs(supabase-groom): promote placeholders + UX tails, add 3 kickoff prompts` = CURRENT master HEAD at session kickoff.
+     - Last 4 commits on origin/main HEAD:
+       * 90a2b1b `docs(supabase-groom): promote placeholders + UX tails, add 3 kickoff prompts` = CURRENT main HEAD at session kickoff.
        * 5f377f3 = M-SUPABASE-01 close ledger edit companion (ROADMAP + AGENTS closes).
        * 94c743d = M-SUPABASE-01 3 inspection deliverables commit.
        * 5194ae8 = Previous cycle cleanup post UI unresponsive fix.
@@ -68,7 +68,7 @@ DELIVERABLES (4 total; all docs-only / dotfile migration artefacts only):
   (A) **NEW FILE /Volumes/KooDrive/InsiteApp/cursor-handoff-2026-08-08.md** — comprehensive handoff. MUST contain THESE EXACT 16 TOP-LEVEL HEADINGS with non-empty subsections each; QA will check structural heading regex matches:
         # Cursor Handoff From TRAE (2026-08-08)
         ## 0. This Document Supercedes 2026-08-06 Version (3-sentence explanation; link to 2026-08-06 doc as historical reference)
-        ## 1. Session State At Handoff (MANDATORY READ FIRST) — 3 sub-bullets: (a) master HEAD 90a2b1b clean status, (b) M-SUPABASE-02a/02b COMBINED CYCLE STATUS = BLOCKED RULE 1, blocker text VERBATIM `"no ~/.pgpass present AND user declined to paste dashboard outputs"`, (c) Running terminals + Metro health URL 8081
+        ## 1. Session State At Handoff (MANDATORY READ FIRST) — 3 sub-bullets: (a) main HEAD 90a2b1b clean status, (b) M-SUPABASE-02a/02b COMBINED CYCLE STATUS = BLOCKED RULE 1, blocker text VERBATIM `"no ~/.pgpass present AND user declined to paste dashboard outputs"`, (c) Running terminals + Metro health URL 8081
         ## 2. Changes Between 2026-08-06 and 2026-08-08 (File Map table with Status columns: Closed 2026-08-06 → 2026-08-08; list commit SHAs 90a2b1b / 5f377f3 / 94c743d)
         ## 3. Environment & Running Processes — DO NOT KILL UNINTENTIONALLY (current 4-terminal table 2026-08-08, not the 08-06 outdated one)
         ## 4. Milestone / Roadmap Status (Current 2026-08-08 — full table with Closed/Pipeline/BLOCKED class per row: M-SUPABASE-01=Closed; 02a/02b=Pipeline *BLOCKED IN-FLIGHT ATTEMPT* with blocker callout; 03a..04d=Pipeline ordered; 01J/K/M/N=Pipeline prereq=03b; UX overall M-UX-01=Pipeline; QA milestones M-QA-01/02/03 all Closed with dates; plus Milestone Gate rule for Cursor copy-paste to Cursor Rules)
@@ -78,7 +78,7 @@ DELIVERABLES (4 total; all docs-only / dotfile migration artefacts only):
         ## 8. Immediate To-Do List (first 10 minutes in Cursor) ORDERED BY RISK — this must be written specific to current blocker as first 2 items, then 08-06 items refreshed:
            Step 1 — BACKUP TRAE USER SKILL: identical to 08-06 §8 Step 1 (cp ~/.trae/skills/solo-agents to .trae-backups/2026-08-08-handoff) except new date.
            Step 2 — CURSOR UNBLOCK CHECKLIST (2-bullet Option A pgpass / Option B dashboard paste, same exact text from blocker output)
-           Step 3 — GIT STATUS + verify commit 90a2b1b clean master HEAD status rc=0 (no uncommitted files from the blocked 02a/02b attempt; if there are any, note they are orphaned draft and should be discarded via git checkout . unless user explicitly wants them)
+           Step 3 — GIT STATUS + verify commit 90a2b1b clean main HEAD status rc=0 (no uncommitted files from the blocked 02a/02b attempt; if there are any, note they are orphaned draft and should be discarded via git checkout . unless user explicitly wants them)
            Step 4 — WRITE .cursorrules (deliverable B above if not already present by Builder in this doc generation session)
            Step 5 — CREATE 6 .cursor/rules/* files (deliverable C)
            Step 6 — Metro health + typecheck
@@ -123,7 +123,7 @@ VALIDATION AND CLOSE STEPS 1..10 before opening COMMIT GATE:
   10. Final structural grep on ROADMAP + AGENTS lines 31-40/68-84 correctly cited in doc A §4 table (no stale 2026-08-06 milestone rows copied).
 
 AGENT WORKFLOW CONTRACT (Docs-only variant):
-  @planner → 0 open questions. → @builder produce A/B/C/D 4 deliverables → @reviewer + TRAE-code-review (prose-only .md/.cursorrules so expect 0 issues) + anti-secret grep X2 rc=0 + structural validation 1..7 pass → [COMMIT GATE via git-commit skill: message = `docs(cursor): refresh handoff 2026-08-08 + .cursorrules + 6 rule files`. Scope: new handoff doc A + .cursorrules B + 6 rule dir C only. NO OTHER FILES.] → @test-engineer tsc rc=0 + test:regression PASS (Step 8) → @qa-validator 5/5 checklist Step 9 → D8 DELIVERY → push origin/master rev-list HEAD ^origin/master = 0 → End of cycle EXACT 1-line final state: "Cursor handoff refresh 2026-08-08 closed. All 18 sections + 4 appendices written, .cursorrules + 6 .cursor/rules/ files created. M-SUPABASE-02a/02b BLOCKER Rule 1 status + 03b Schema Review Human Gate + 01J/K/M/N ship order explicitly carried forward into Cursor priority queue."
+  @planner → 0 open questions. → @builder produce A/B/C/D 4 deliverables → @reviewer + TRAE-code-review (prose-only .md/.cursorrules so expect 0 issues) + anti-secret grep X2 rc=0 + structural validation 1..7 pass → [COMMIT GATE via git-commit skill: message = `docs(cursor): refresh handoff 2026-08-08 + .cursorrules + 6 rule files`. Scope: new handoff doc A + .cursorrules B + 6 rule dir C only. NO OTHER FILES.] → @test-engineer tsc rc=0 + test:regression PASS (Step 8) → @qa-validator 5/5 checklist Step 9 → D8 DELIVERY → push origin/main rev-list HEAD ^origin/main = 0 → End of cycle EXACT 1-line final state: "Cursor handoff refresh 2026-08-08 closed. All 18 sections + 4 appendices written, .cursorrules + 6 .cursor/rules/ files created. M-SUPABASE-02a/02b BLOCKER Rule 1 status + 03b Schema Review Human Gate + 01J/K/M/N ship order explicitly carried forward into Cursor priority queue."
 
 ---
 

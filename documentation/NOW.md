@@ -4,7 +4,7 @@
 
 ---
 
-**This session — default branch rename (2026-09-17):** Live line is `main` (same SHA as former `master`). Old unrelated `main` parked at `archive/pre-2026-unrelated-main` — do not merge. PRs #7/#8/#9 already base=`main`. GitHub Settings still need Human (agent token 403): default branch → `main`, Pages source → `main` `/docs` (Pages still serves `master` `/docs` until that click). Then delete leftover `master`. Local clones: `git fetch && git checkout main`.
+**This session — default branch rename (2026-09-17):** Default branch and Pages source are **`main` `/docs`**. Live `main` is the former `master` line. Old unrelated history is at `archive/pre-2026-unrelated-main` — do not merge. PRs #7/#8/#9 base=`main`. Leftover remote `master` still points at the same SHA and can be deleted after clones retarget. Local: `git fetch && git checkout main`.
 
 **This session — CBP TF 261 after Metro update PASS (2026-09-15):** Gate 0 green (composer update reprove4 PASS). Dual-path + rules on `916e9ec`; bump `fc60455`. Cloud EAS build `77a2b12a-49b2-460d-b279-f7e37d89d20f` → submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/06d188c0-03c2-4a83-9327-37a998bf74ad (✔ Uploaded ASC; Apple processing). Local IPA failed keychain (same as 260). **TF 261** = first binary with update path proven on PROD NEW. Premature 260 lacked update fix. Wait ASC VALID → install Internal TF.
 

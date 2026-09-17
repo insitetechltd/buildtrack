@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-28  
 **Audience:** Local Cursor chat continuing photo funnel performance work  
-**Status:** M-PERF-03 shipped on master. **M-PERF-04 C1+C2 implemented** (`47e2e05` + local photo WIP). Handover below is the original kickoff; C1 overlay is in `CaptureSessionModule.tsx`.
+**Status:** M-PERF-03 shipped on main. **M-PERF-04 C1+C2 implemented** (`47e2e05` + local photo WIP). Handover below is the original kickoff; C1 overlay is in `CaptureSessionModule.tsx`.
 
 ---
 
@@ -194,7 +194,7 @@ Related plans: `docs/superpowers/plans/2026-08-28-m-perf-03-*.md`, `documentatio
 ## Agent workflow
 
 1. Read `documentation/NOW.md`, `AGENTS.md` § Current Delivery Status, `documentation/ROADMAP.md`
-2. Ensure latest `master` includes M-PERF-03 (merge PR #6 if needed)
+2. Ensure latest `main` includes M-PERF-03 (merge PR #6 if needed)
 3. Plan **C1** → implement → review → tests
 4. **Autonomous** for C1/C2/L1 — ask only for capture quality vs speed tradeoffs or New Arch
 5. TF build when user asks: `./build-and-submit-FIXED.sh ios production` (`BUILD_SCRIPTS_USAGE.md`)

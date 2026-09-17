@@ -17,7 +17,7 @@ Use this default workflow:
 - final: `@release-manager`  [Skill: gh-cli for milestone/tag/issue sync]  — with hard safety rules: verify app.json/eas.json/ASC bundle-id match (MISMATCH = Hard Blocker), rerun-safe bootstrap callbacks, App Store PUBLIC release checkbox remains MANUAL human step (never report "released" after submit-only)
 
 MILESTONE GATE (ALWAYS before dispatch):
-Re-read AGENTS.md § Current Delivery Status and documentation/ROADMAP.md. Mark milestone alignment in the release status section. Do NOT close WS-QA/M-QA-02 as released unless master-side smoke/bootstrap wrap-up was re-verified per AGENTS.md (never close based solely on local build passes).
+Re-read AGENTS.md § Current Delivery Status and documentation/ROADMAP.md. Mark milestone alignment in the release status section. Do NOT close WS-QA/M-QA-02 as released unless main-side smoke/bootstrap wrap-up was re-verified per AGENTS.md (never close based solely on local build passes).
 
 Repository context:
 - This is an Expo-managed React Native mobile app.

@@ -179,15 +179,6 @@
     window.scrollTo({ top: y, behavior: reduce ? "auto" : "smooth" });
   };
 
-  document.querySelectorAll("[data-next-project]").forEach((btn, i) => {
-    btn.addEventListener("click", () => {
-      const next = scrubSections[i + 1];
-      const tail = document.querySelector("#contact");
-      if (next) jumpTo(next);
-      else jumpTo(tail);
-    });
-  });
-
   document.querySelector("[data-page-next]")?.addEventListener("click", () => {
     const waypoints = [
       companySection,

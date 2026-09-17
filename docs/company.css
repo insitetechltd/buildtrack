@@ -467,12 +467,19 @@ body:not(.is-projects) { --header-h: 0px; }
   padding: clamp(1.75rem, 4vw, 2.75rem);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  justify-content: safe center;
+  justify-content: flex-start;
   position: relative;
   overflow-y: auto;
   background: transparent;
   color: #1e3540;
+}
+/* Equal flex spacers: text block midpoint lines up with photo midpoint. */
+.panel::before,
+.panel::after {
+  content: "";
+  flex: 1 1 0;
+  min-height: 0;
+  pointer-events: none;
 }
 .project-flip .panel { order: 1; }
 .project-mist .panel { background: transparent; }

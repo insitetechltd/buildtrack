@@ -84,6 +84,27 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
   });
 
+  it("progress dock: camera + text + % when under 100%; no submit", () => {
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="halfway"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("report-reply-composer__photo")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+  });
+
   it("opens scrubber on tap and retracts on finger release", () => {
     const screen = render(
       <ReportReplyComposer
@@ -114,7 +135,7 @@ describe("ReportReplyComposer", () => {
     expect(screen.getByText("40%")).toBeTruthy();
   });
 
-  it("shows green submit affordance when progress is 100%", () => {
+  it("progress dock at 100%: submit replaces % circle", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -129,6 +150,9 @@ describe("ReportReplyComposer", () => {
       />,
     );
 
+    expect(screen.getByTestId("report-reply-composer__photo")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
       "Submit for review",
     );

@@ -282,7 +282,7 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [% press scrub → release retracts] · [text] · [camera] · [send|✓]
+ * Progress: [camera] · [text] · [% scrub if <100% | submit if 100%]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]
@@ -415,6 +415,75 @@ export default function ReportReplyComposer({
   const showLockedCompletion =
     (isAwaitingReview || isReviewDecision) && showCompletion;
   const leadingFabLocked = controlsLocked;
+  const isProgressMode = mode === "progress";
+  // Progress dock: trailing slot is % scrub until 100%, then submit (mutually exclusive).
+  const showProgressScrubTrailing =
+    isProgressMode &&
+    Boolean(onChangeCompletionPercentage) &&
+    completionPercentage < 100;
+  const showProgressSubmitTrailing =
+    isProgressMode && completionPercentage >= 100;
+  // Report / awaiting keep leading % (locked) and trailing camera+send.
+  const showLeadingCompletion = showCompletion && !isProgressMode;
+
+  const photoButton = !isReviewDecision ? (
+    <Pressable
+      testID="report-reply-composer__photo"
+      accessibilityRole="button"
+      accessibilityLabel="Add photo"
+      onPress={onAddPhotos}
+      disabled={controlsLocked}
+      hitSlop={4}
+      style={controlsLocked ? DOCK_CIRCLE_LOCKED : DOCK_CIRCLE_IDLE}
+    >
+      <Ionicons
+        name="camera-outline"
+        size={22}
+        color={controlsLocked ? "#94a3b8" : "#08576E"}
+      />
+    </Pressable>
+  ) : null;
+
+  const sendButton = !isReviewDecision && !showProgressScrubTrailing ? (
+    <Pressable
+      testID="report-reply-composer__send"
+      accessibilityRole="button"
+      accessibilityLabel={resolvedSendLabel}
+      onPress={handleSubmit}
+      disabled={!canSend}
+      hitSlop={4}
+      style={
+        isAwaitingReview
+          ? DOCK_CIRCLE_LOCKED
+          : !canSend
+            ? DOCK_CIRCLE_IDLE
+            : {
+                ...DOCK_CIRCLE,
+                borderColor: isReadyToSubmitReview ? "#059669" : "#08576E",
+                backgroundColor: isReadyToSubmitReview ? "#059669" : "#08576E",
+              }
+      }
+    >
+      {isSubmitting && !isAwaitingReview ? (
+        <ActivityIndicator color="#ffffff" size="small" />
+      ) : (
+        <Ionicons
+          name={isReadyToSubmitReview || isAwaitingReview ? "checkmark" : "send"}
+          size={22}
+          color={canSend ? "#ffffff" : "#94a3b8"}
+        />
+      )}
+    </Pressable>
+  ) : null;
+
+  const progressScrubTrailing =
+    showProgressScrubTrailing && onChangeCompletionPercentage ? (
+      <CompletionScrubButton
+        value={completionPercentage}
+        onChange={onChangeCompletionPercentage}
+        disabled={isSubmitting}
+      />
+    ) : null;
 
   if (isArchiveMode || isReassignMode) {
     const actionTestId = isArchiveMode
@@ -534,7 +603,10 @@ export default function ReportReplyComposer({
           </Pressable>
         ) : null}
 
-        {showCompletion ? (
+        {/* Progress: camera leads. Report/awaiting keep prior order. */}
+        {isProgressMode ? photoButton : null}
+
+        {showLeadingCompletion ? (
           showLockedCompletion ? (
             <View
               testID="report-reply-composer__completion"
@@ -545,12 +617,6 @@ export default function ReportReplyComposer({
                 {completionPercentage}%
               </Text>
             </View>
-          ) : onChangeCompletionPercentage ? (
-            <CompletionScrubButton
-              value={completionPercentage}
-              onChange={onChangeCompletionPercentage}
-              disabled={isSubmitting}
-            />
           ) : null
         ) : null}
 
@@ -641,59 +707,16 @@ export default function ReportReplyComposer({
           </View>
         )}
 
-        {!isReviewDecision ? (
+        {/* Progress trailing: % scrub (<100%) or submit (100%). Report/awaiting: camera + send. */}
+        {isProgressMode ? (
           <>
-            <Pressable
-              testID="report-reply-composer__photo"
-              accessibilityRole="button"
-              accessibilityLabel="Add photo"
-              onPress={onAddPhotos}
-              disabled={controlsLocked}
-              hitSlop={4}
-              style={
-                controlsLocked
-                  ? DOCK_CIRCLE_LOCKED
-                  : DOCK_CIRCLE_IDLE
-              }
-            >
-              <Ionicons
-                name="camera-outline"
-                size={22}
-                color={controlsLocked ? "#94a3b8" : "#08576E"}
-              />
-            </Pressable>
-
-            <Pressable
-              testID="report-reply-composer__send"
-              accessibilityRole="button"
-              accessibilityLabel={resolvedSendLabel}
-              onPress={handleSubmit}
-              disabled={!canSend}
-              hitSlop={4}
-              style={
-                isAwaitingReview
-                  ? DOCK_CIRCLE_LOCKED
-                  : !canSend
-                    ? DOCK_CIRCLE_IDLE
-                    : {
-                        ...DOCK_CIRCLE,
-                        borderColor: isReadyToSubmitReview ? "#059669" : "#08576E",
-                        backgroundColor: isReadyToSubmitReview
-                          ? "#059669"
-                          : "#08576E",
-                      }
-              }
-            >
-              {isSubmitting && !isAwaitingReview ? (
-                <ActivityIndicator color="#ffffff" size="small" />
-              ) : (
-                <Ionicons
-                  name={isReadyToSubmitReview || isAwaitingReview ? "checkmark" : "send"}
-                  size={22}
-                  color={canSend ? "#ffffff" : "#94a3b8"}
-                />
-              )}
-            </Pressable>
+            {progressScrubTrailing}
+            {showProgressSubmitTrailing ? sendButton : null}
+          </>
+        ) : !isReviewDecision ? (
+          <>
+            {photoButton}
+            {sendButton}
           </>
         ) : null}
       </View>

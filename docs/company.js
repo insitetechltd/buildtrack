@@ -1,6 +1,7 @@
 /**
  * Insite Works company portfolio — desktop docked slides + mobile snap gallery.
- * Desktop: snap to each project, then wheel cycles photos; page scroll only at slide ends.
+ * Desktop: while a project is docked, wheel-down cycles photos to the last slide,
+ * then page scroll continues. Wheel-up never cycles photos — leaves the section ASAP.
  */
 (() => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -47,7 +48,7 @@
     return Math.max(0, Math.min(Math.max(0, n - 1), raw));
   };
 
-  /** Project is parked under the header — photos cycle only in this state. */
+  /** Project is parked under the header — down-scroll photo cycle only in this state. */
   const isDocked = (scrub) => {
     const top = scrub.getBoundingClientRect().top;
     return Math.abs(top - stickyOffset()) <= 36;
@@ -97,14 +98,11 @@
   };
 
   let lastDocked = null;
-  let lastScrollY = window.scrollY;
   const syncDockedEntry = () => {
     const scrub = dockedScrub();
-    const dir = window.scrollY - lastScrollY;
-    lastScrollY = window.scrollY;
+    // Always enter a project on the first photo (up-scroll never reverse-cycles).
     if (scrub && scrub !== lastDocked) {
-      const n = scrub.querySelectorAll(".project-slide").length;
-      paintDesktopSlide(scrub, dir < 0 ? Math.max(0, n - 1) : 0);
+      paintDesktopSlide(scrub, 0);
     }
     lastDocked = scrub;
   };
@@ -150,31 +148,37 @@
         wheelAcc = 0;
         return;
       }
+
+      // Scroll up: never cycle photos — reset to first and let the page leave ASAP.
+      if (e.deltaY < 0) {
+        wheelAcc = 0;
+        if (desktopIndex(scrub) > 0) paintDesktopSlide(scrub, 0);
+        return;
+      }
+
+      if (e.deltaY <= 0) return;
+
       const n = scrub.querySelectorAll(".project-slide").length;
       if (n <= 1) return;
-
       const i = desktopIndex(scrub);
-      const down = e.deltaY > 0;
-      const up = e.deltaY < 0;
 
-      // Still have slides in this direction — lock page scroll and cycle photos.
-      if ((down && i < n - 1) || (up && i > 0)) {
+      // Scroll down with photos remaining — lock page and advance.
+      if (i < n - 1) {
         e.preventDefault();
         const now = Date.now();
         if (now < wheelLockUntil) return;
 
         wheelAcc += e.deltaY;
         const threshold = e.deltaMode === 1 ? 1 : 36;
-        if (Math.abs(wheelAcc) < threshold) return;
+        if (wheelAcc < threshold) return;
 
-        const step = wheelAcc > 0 ? 1 : -1;
         wheelAcc = 0;
-        paintDesktopSlide(scrub, i + step);
+        paintDesktopSlide(scrub, i + 1);
         wheelLockUntil = now + 380;
         return;
       }
 
-      // At first/last slide — release so the page can leave this project.
+      // Last photo — release so the page can move to the next project.
       wheelAcc = 0;
     },
     { passive: false, capture: true },

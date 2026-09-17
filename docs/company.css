@@ -7,29 +7,34 @@
   --blue-mid: #7fb0c0;
   --panel-dark: #529cbf;
   --panel-light: #7fb0c0;
-  --viewport-grad: linear-gradient(
-    118deg,
-    color-mix(in srgb, var(--mist) 94%, var(--blue)) 0%,
-    color-mix(in srgb, var(--mist) 72%, var(--blue-mid)) 48%,
-    color-mix(in srgb, var(--blue-mid) 42%, var(--mist)) 100%
+  /* One continuous wash across photo + copy columns (no hard vertical seam). */
+  --stage-grad: linear-gradient(
+    105deg,
+    #edf5f8 0%,
+    #d4e8ef 38%,
+    #8ebed0 68%,
+    #529cbf 100%
   );
-  --viewport-grad-flip: linear-gradient(
-    242deg,
-    color-mix(in srgb, var(--mist) 94%, var(--blue)) 0%,
-    color-mix(in srgb, var(--mist) 72%, var(--blue-mid)) 48%,
-    color-mix(in srgb, var(--blue-mid) 42%, var(--mist)) 100%
+  --stage-grad-mist: linear-gradient(
+    105deg,
+    #f2f8fa 0%,
+    #dceef3 38%,
+    #a9cdd9 68%,
+    #7fb0c0 100%
   );
-  --panel-grad-dark: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--panel-dark) 86%, var(--white)) 0%,
-    var(--panel-dark) 42%,
-    color-mix(in srgb, var(--panel-dark) 78%, var(--ink)) 100%
+  --stage-grad-flip: linear-gradient(
+    255deg,
+    #edf5f8 0%,
+    #d4e8ef 38%,
+    #8ebed0 68%,
+    #529cbf 100%
   );
-  --panel-grad-light: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--panel-light) 88%, var(--white)) 0%,
-    var(--panel-light) 46%,
-    color-mix(in srgb, var(--panel-light) 72%, var(--blue)) 100%
+  --stage-grad-mist-flip: linear-gradient(
+    255deg,
+    #f2f8fa 0%,
+    #dceef3 38%,
+    #a9cdd9 68%,
+    #7fb0c0 100%
   );
   --white: #fff;
   --font-d: "Syne", system-ui, sans-serif;
@@ -328,12 +333,18 @@ body:not(.is-projects) { --header-h: 0px; }
   display: grid;
   grid-template-columns: 1.3fr 0.7fr;
   overflow: hidden;
+  background: var(--stage-grad);
 }
-.project-flip .project-stage { grid-template-columns: 0.7fr 1.3fr; }
+.project-flip .project-stage {
+  grid-template-columns: 0.7fr 1.3fr;
+  background: var(--stage-grad-flip);
+}
+.project-mist .project-stage { background: var(--stage-grad-mist); }
+.project-mist.project-flip .project-stage { background: var(--stage-grad-mist-flip); }
 .project-viewport {
   position: relative;
   min-width: 0;
-  background: var(--viewport-grad);
+  background: transparent;
   container-type: size;
   overflow: hidden;
   order: 1;
@@ -343,7 +354,6 @@ body:not(.is-projects) { --header-h: 0px; }
 }
 .project-flip .project-viewport {
   order: 2;
-  background: var(--viewport-grad-flip);
 }
 .project-film {
   position: relative;
@@ -422,11 +432,11 @@ body:not(.is-projects) { --header-h: 0px; }
   justify-content: safe center;
   position: relative;
   overflow-y: auto;
-  background: var(--panel-grad-dark);
+  background: transparent;
   color: #1e3540;
 }
 .project-flip .panel { order: 1; }
-.project-mist .panel { background: var(--panel-grad-light); }
+.project-mist .panel { background: transparent; }
 .titleblock { margin: 1.25rem 0 0; padding: 0; max-width: 22rem; }
 .titleblock div {
   display: grid;

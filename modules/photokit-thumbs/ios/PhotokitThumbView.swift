@@ -13,8 +13,10 @@ public final class PhotokitThumbView: ExpoView {
 
   private let imageView = UIImageView()
   private var requestId: PHImageRequestID = PHInvalidImageRequestID
+  private var sharpRequestId: PHImageRequestID = PHInvalidImageRequestID
   private var requestedKey: String = ""
   private var didNotifyPainted = false
+  private var phContentMode: PHImageContentMode = .aspectFill
 
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -33,8 +35,16 @@ public final class PhotokitThumbView: ExpoView {
     requestIfNeeded()
   }
 
+  func setContentFit(_ raw: String?) {
+    let contain = (raw ?? "cover").lowercased() == "contain"
+    imageView.contentMode = contain ? .scaleAspectFit : .scaleAspectFill
+    phContentMode = contain ? .aspectFit : .aspectFill
+  }
+
   func requestIfNeeded() {
-    if PhotokitThumbEngine.pausedForAccept {
+    // Recents index thumbs pause while Select Photos is on top. Asset-id
+    // thumbs (Select Photos tiles) must still paint.
+    if PhotokitThumbEngine.pausedForAccept, indexExplicit {
       return
     }
     guard pixelSize >= 1 else {
@@ -69,10 +79,23 @@ public final class PhotokitThumbView: ExpoView {
       return
     }
 
+    startFastRequest(asset: asset, key: key)
+  }
+
+  deinit {
+    cancelPendingRequest()
+  }
+
+  func cancelPendingRequest() {
+    cancelRequest()
+    requestedKey = ""
+  }
+
+  private func startFastRequest(asset: PHAsset, key: String) {
     requestId = PhotokitThumbEngine.manager.requestImage(
       for: asset,
       targetSize: PhotokitThumbEngine.targetSize(pixelSize: pixelSize),
-      contentMode: .aspectFill,
+      contentMode: phContentMode,
       options: PhotokitThumbEngine.makeOptions()
     ) { [weak self] image, info in
       guard let self else {
@@ -94,6 +117,7 @@ public final class PhotokitThumbView: ExpoView {
           self.didNotifyPainted = true
           self.onPainted()
         }
+        self.scheduleSharpUpgrade(asset: asset, key: key)
       }
       if Thread.isMainThread {
         apply()
@@ -103,19 +127,59 @@ public final class PhotokitThumbView: ExpoView {
     }
   }
 
-  deinit {
-    cancelPendingRequest()
-  }
+  private func scheduleSharpUpgrade(asset: PHAsset, key: String, attempts: Int = 0) {
+    if requestedKey != key {
+      return
+    }
+    if indexExplicit, PhotokitThumbEngine.pausedForAccept {
+      return
+    }
+    if PhotokitThumbEngine.sharpInflight >= PhotokitThumbEngine.sharpLimit {
+      if attempts > 80 {
+        return
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+        self?.scheduleSharpUpgrade(asset: asset, key: key, attempts: attempts + 1)
+      }
+      return
+    }
 
-  func cancelPendingRequest() {
-    cancelRequest()
-    requestedKey = ""
+    PhotokitThumbEngine.sharpInflight += 1
+    sharpRequestId = PhotokitThumbEngine.manager.requestImage(
+      for: asset,
+      targetSize: PhotokitThumbEngine.targetSize(pixelSize: pixelSize),
+      contentMode: phContentMode,
+      options: PhotokitThumbEngine.makeSharpOptions()
+    ) { [weak self] image, info in
+      let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+      let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+      let apply = {
+        PhotokitThumbEngine.sharpInflight = max(0, PhotokitThumbEngine.sharpInflight - 1)
+        if cancelled || degraded {
+          return
+        }
+        guard let self, let image, self.requestedKey == key else {
+          return
+        }
+        // Keep the fast thumb until this HQ bitmap is ready — never nil.
+        self.imageView.image = image
+      }
+      if Thread.isMainThread {
+        apply()
+      } else {
+        DispatchQueue.main.async(execute: apply)
+      }
+    }
   }
 
   private func cancelRequest() {
     if requestId != PHInvalidImageRequestID {
       PhotokitThumbEngine.manager.cancelImageRequest(requestId)
       requestId = PHInvalidImageRequestID
+    }
+    if sharpRequestId != PHInvalidImageRequestID {
+      PhotokitThumbEngine.manager.cancelImageRequest(sharpRequestId)
+      sharpRequestId = PHInvalidImageRequestID
     }
   }
 }

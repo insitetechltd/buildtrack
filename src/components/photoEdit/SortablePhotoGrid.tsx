@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { SelectedPhotoThumb } from "./SelectedPhotoThumb";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -162,12 +162,12 @@ function DraggingPhotoTile({
           accessibilityLabel={`Photo ${index + 1}. Tap to edit, hold anywhere to reorder`}
           accessibilityHint="Long press anywhere on the photo then drag to reorder"
         >
-          <ExpoImage
-            source={{ uri: photo.annotatedUri || photo.uri }}
-            cachePolicy="memory-disk"
+          <SelectedPhotoThumb
+            photo={photo}
+            width={tileSize}
+            height={tileSize}
             contentFit="cover"
-            transition={120}
-            style={{ width: tileSize, height: tileSize, borderRadius: 8 }}
+            style={styles.tileImage}
           />
           {photo.isAnnotated ? (
             <View style={styles.editedBadge}>
@@ -337,6 +337,10 @@ const styles = StyleSheet.create({
   },
   tilePressable: {
     flex: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  tileImage: {
     borderRadius: 8,
     overflow: "hidden",
   },

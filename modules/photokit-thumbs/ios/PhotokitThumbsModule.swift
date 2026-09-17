@@ -73,7 +73,9 @@ enum PhotokitThumbEngine {
       sessionLock.unlock()
       manager.stopCachingImagesForAllAssets()
       for view in liveThumbViews.allObjects {
-        view.cancelPendingRequest()
+        if view.indexExplicit {
+          view.cancelPendingRequest()
+        }
       }
     }
     if Thread.isMainThread {
@@ -85,6 +87,16 @@ enum PhotokitThumbEngine {
 
   static func resumeLibraryAfterAccept() {
     pausedForAccept = false
+    let apply = {
+      for view in liveThumbViews.allObjects {
+        view.requestIfNeeded()
+      }
+    }
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.async(execute: apply)
+    }
   }
 
   static func beginOpen() -> Int {
@@ -103,6 +115,21 @@ enum PhotokitThumbEngine {
     options.version = .current
     return options
   }
+
+  /// Viewport sharpen pass. Do not use for first `onPainted` (stay on fastFormat).
+  static func makeSharpOptions() -> PHImageRequestOptions {
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .highQualityFormat
+    options.resizeMode = .exact
+    options.isNetworkAccessAllowed = false
+    options.isSynchronous = false
+    options.version = .current
+    return options
+  }
+
+  /// Cap concurrent HQ upgrades so first-screen decode cannot stall like TF 211.
+  static let sharpLimit = 3
+  static var sharpInflight = 0
 
   /// Keep in sync with JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LINEAR_SCALE` (TF237=256, 2× experiment=512).
   static let maxThumbPixel: CGFloat = 512
@@ -664,6 +691,10 @@ public final class PhotokitThumbsModule: Module {
       Prop("pixelSize") { (view: PhotokitThumbView, pixelSize: Double) in
         view.pixelSize = pixelSize
         view.requestIfNeeded()
+      }
+
+      Prop("contentFit") { (view: PhotokitThumbView, contentFit: String?) in
+        view.setContentFit(contentFit)
       }
     }
   }

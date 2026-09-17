@@ -111,8 +111,8 @@ type CompletionScrubButtonProps = {
 };
 
 /**
- * Circular % control with tap-to-toggle vertical scrubber.
- * Tap open → slide (can re-grab) → tap again to commit/hide.
+ * Circular % control with press-to-expand vertical scrubber.
+ * Tap open → slide → finger release retracts back to the circle.
  */
 function CompletionScrubButton({
   value,
@@ -131,13 +131,19 @@ function CompletionScrubButton({
   disabledRef.current = disabled;
   isOpenRef.current = isOpen;
 
+  const retractScrubber = useCallback(() => {
+    isOpenRef.current = false;
+    setIsOpen(false);
+    didMoveRef.current = false;
+    startPctRef.current = valueRef.current;
+  }, []);
+
   // Collapse scrubber when submit (or any lock) disables the control.
   useEffect(() => {
     if (disabled && isOpen) {
-      isOpenRef.current = false;
-      setIsOpen(false);
+      retractScrubber();
     }
-  }, [disabled, isOpen]);
+  }, [disabled, isOpen, retractScrubber]);
 
   const openScrubber = useCallback(() => {
     if (disabledRef.current) {
@@ -181,18 +187,14 @@ function CompletionScrubButton({
         if (!isOpenRef.current) {
           return;
         }
-        // Tap (no meaningful drag) while open → finish / hide.
-        if (!didMoveRef.current) {
-          isOpenRef.current = false;
-          setIsOpen(false);
-        }
-        // Drag release keeps scrubber open for another stroke.
-        didMoveRef.current = false;
-        startPctRef.current = valueRef.current;
+        // Any finger-up (tap or drag) retracts the scrubber to the circle.
+        retractScrubber();
       },
       onPanResponderTerminate: () => {
-        didMoveRef.current = false;
-        startPctRef.current = valueRef.current;
+        if (!isOpenRef.current) {
+          return;
+        }
+        retractScrubber();
       },
     }),
   ).current;
@@ -221,7 +223,7 @@ function CompletionScrubButton({
   return (
     <View
       testID="report-reply-composer__completion"
-      accessibilityLabel={`Completion ${value} percent. Slide vertically, then tap to finish.`}
+      accessibilityLabel={`Completion ${value} percent. Slide vertically, then release to finish.`}
       accessibilityRole="adjustable"
       accessibilityValue={{ min: 0, max: 100, now: value }}
       accessibilityState={{ expanded: true }}
@@ -280,7 +282,7 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [% tap scrub] · [text] · [camera] · [send|✓]
+ * Progress: [% press scrub → release retracts] · [text] · [camera] · [send|✓]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]

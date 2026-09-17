@@ -154,6 +154,26 @@ export EAS_LOCAL_BUILD_ARTIFACTS_DIR="$LOCAL_BUILD_ARTIFACTS_DIR"
 export EAS_LOCAL_BUILD_SKIP_CLEANUP="${EAS_LOCAL_BUILD_SKIP_CLEANUP:-1}"
 export EAS_BUILD_PROFILE="$PROFILE"
 
+# macOS Tahoe (26.x): EAS local iOS fails at Prepare credentials because
+# find-identity -v on the ephemeral build keychain returns 0 identities
+# (expo/eas-cli#3678). No Keychain Access popup appears — import is
+# programmatic into an unlocked temp keychain. Until PR #3679 lands,
+# prefer the patched plugin under .cache/ (gitignored).
+if [ -z "${EAS_LOCAL_BUILD_PLUGIN_PATH:-}" ]; then
+  TAHOE_PLUGIN_BIN="$PROJECT_ROOT/.cache/eas-tahoe-local-build-plugin/node_modules/eas-cli-local-build-plugin/bin/run"
+  if [ -x "$TAHOE_PLUGIN_BIN" ]; then
+    export EAS_LOCAL_BUILD_PLUGIN_PATH="$TAHOE_PLUGIN_BIN"
+    echo "🩹 Using Tahoe-patched local-build-plugin (dropped find-identity -v):"
+    echo "   $EAS_LOCAL_BUILD_PLUGIN_PATH"
+  elif [ "$(uname -s)" = "Darwin" ]; then
+    MACOS_MAJOR="$(sw_vers -productVersion 2>/dev/null | cut -d. -f1 || true)"
+    if [ "${MACOS_MAJOR:-0}" -ge 26 ] 2>/dev/null; then
+      echo "⚠️  macOS ${MACOS_MAJOR}: local iOS may fail Dist import validation (eas-cli#3678)."
+      echo "   Run: bash scripts/eas/ensure-tahoe-local-build-plugin.sh"
+    fi
+  fi
+fi
+
 EAS_BUILD_ARGS=(--platform "$PLATFORM" --profile "$PROFILE" --local)
 # Default: non-interactive (agent/CI). Set EAS_ALLOW_INTERACTIVE=1 when a TTY
 # can finish first-time Apple credential setup (expect wrapper or Terminal).

@@ -84,7 +84,7 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
   });
 
-  it("toggles vertical scrubber open and closed with taps", () => {
+  it("opens scrubber on tap and retracts on finger release", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -107,6 +107,11 @@ describe("ReportReplyComposer", () => {
     fireEvent.press(screen.getByTestId("report-reply-composer__completion"));
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
+
+    // Finger-up on the scrubber (tap or drag) always retracts to the circle.
+    fireEvent(screen.getByTestId("report-reply-composer__completion_scrubber"), "responderRelease");
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expect(screen.getByText("40%")).toBeTruthy();
   });
 
   it("shows green submit affordance when progress is 100%", () => {

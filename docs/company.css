@@ -669,6 +669,10 @@ body.is-projects .page-next {
     order: 0;
     padding: 1.5rem 1.25rem 1.15rem;
   }
+  .panel::before,
+  .panel::after {
+    display: none;
+  }
   .panel h2 { font-size: clamp(1.45rem, 6vw, 1.85rem); }
   .titleblock { max-width: none; }
   .titleblock div { grid-template-columns: 4.75rem 1fr; }

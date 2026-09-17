@@ -247,8 +247,6 @@
       }
 
       const list = waypoints();
-      const scrubIdx = scrubSections.indexOf(scrub);
-      // waypoints: company + scrubs + contact → scrub index in waypoints is scrubIdx + (company?1:0)
       const wpIdx = list.indexOf(scrub);
 
       // Scroll up: skip photo reverse — reset and leave to previous section ASAP.

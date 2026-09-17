@@ -7,6 +7,30 @@
   --blue-mid: #7fb0c0;
   --panel-dark: #529cbf;
   --panel-light: #7fb0c0;
+  --viewport-grad: linear-gradient(
+    118deg,
+    color-mix(in srgb, var(--mist) 94%, var(--blue)) 0%,
+    color-mix(in srgb, var(--mist) 72%, var(--blue-mid)) 48%,
+    color-mix(in srgb, var(--blue-mid) 42%, var(--mist)) 100%
+  );
+  --viewport-grad-flip: linear-gradient(
+    242deg,
+    color-mix(in srgb, var(--mist) 94%, var(--blue)) 0%,
+    color-mix(in srgb, var(--mist) 72%, var(--blue-mid)) 48%,
+    color-mix(in srgb, var(--blue-mid) 42%, var(--mist)) 100%
+  );
+  --panel-grad-dark: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--panel-dark) 86%, var(--white)) 0%,
+    var(--panel-dark) 42%,
+    color-mix(in srgb, var(--panel-dark) 78%, var(--ink)) 100%
+  );
+  --panel-grad-light: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--panel-light) 88%, var(--white)) 0%,
+    var(--panel-light) 46%,
+    color-mix(in srgb, var(--panel-light) 72%, var(--blue)) 100%
+  );
   --white: #fff;
   --font-d: "Syne", system-ui, sans-serif;
   --font-b: "Manrope", system-ui, sans-serif;
@@ -309,7 +333,7 @@ body:not(.is-projects) { --header-h: 0px; }
 .project-viewport {
   position: relative;
   min-width: 0;
-  background: color-mix(in srgb, var(--mist) 82%, var(--blue));
+  background: var(--viewport-grad);
   container-type: size;
   overflow: hidden;
   order: 1;
@@ -317,7 +341,10 @@ body:not(.is-projects) { --header-h: 0px; }
   align-items: center;
   justify-content: center;
 }
-.project-flip .project-viewport { order: 2; }
+.project-flip .project-viewport {
+  order: 2;
+  background: var(--viewport-grad-flip);
+}
 .project-film {
   position: relative;
   width: 100%;
@@ -395,11 +422,11 @@ body:not(.is-projects) { --header-h: 0px; }
   justify-content: safe center;
   position: relative;
   overflow-y: auto;
-  background: var(--panel-dark);
+  background: var(--panel-grad-dark);
   color: #1e3540;
 }
 .project-flip .panel { order: 1; }
-.project-mist .panel { background: var(--panel-light); }
+.project-mist .panel { background: var(--panel-grad-light); }
 .titleblock { margin: 1.25rem 0 0; padding: 0; max-width: 22rem; }
 .titleblock div {
   display: grid;

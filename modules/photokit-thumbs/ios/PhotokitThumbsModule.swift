@@ -521,6 +521,68 @@ enum PhotokitThumbEngine {
       return nil
     }
   }
+
+  /// Fast Select Photos tile — not the 1920 HQ evidence export.
+  /// Takes the first bitmap PhotoKit returns (degraded OK).
+  static func exportPreviewJpeg(assetId: String, maxPixel: Double) async -> String {
+    let fetched = PHAsset.fetchAssets(
+      withLocalIdentifiers: [normalizedLocalIdentifier(assetId)],
+      options: nil
+    )
+    guard let asset = fetched.firstObject else {
+      return ""
+    }
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .fastFormat
+    options.resizeMode = .fast
+    options.isNetworkAccessAllowed = false
+    options.isSynchronous = false
+    options.version = .current
+    let cap = min(max(maxPixel, 1), maxThumbPixel)
+    let target = CGSize(width: cap, height: cap)
+    return await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
+      var settled = false
+      let finish: (String) -> Void = { value in
+        guard !settled else {
+          return
+        }
+        settled = true
+        continuation.resume(returning: value)
+      }
+      PHImageManager.default().requestImage(
+        for: asset,
+        targetSize: target,
+        contentMode: .aspectFill,
+        options: options
+      ) { image, info in
+        // Recents pause can cancel in-flight work; a nil first callback is
+        // common. Wait for a bitmap or the 2s timeout — do not settle empty.
+        let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+        if cancelled {
+          return
+        }
+        guard let image, let data = image.jpegData(compressionQuality: 0.7) else {
+          return
+        }
+        guard let dir = FileManager.default.urls(
+          for: .cachesDirectory,
+          in: .userDomainMask
+        ).first else {
+          return
+        }
+        let url = dir.appendingPathComponent("insite-preview-\(UUID().uuidString).jpg")
+        do {
+          try data.write(to: url, options: .atomic)
+          finish(url.absoluteString)
+        } catch {
+          return
+        }
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        finish("")
+      }
+    }
+  }
 }
 
 public final class PhotokitThumbsModule: Module {
@@ -667,6 +729,11 @@ public final class PhotokitThumbsModule: Module {
           )
         }
       }
+    }
+
+    /// Select Photos tiles after Accept. Fast/degraded OK — never 1920 HQ.
+    AsyncFunction("exportPreviewJpeg") { (assetId: String, maxPixel: Double) async -> String in
+      await PhotokitThumbEngine.exportPreviewJpeg(assetId: assetId, maxPixel: maxPixel)
     }
 
     View(PhotokitThumbView.self) {

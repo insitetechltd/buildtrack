@@ -16,6 +16,7 @@ export function normalizeCreateTaskSelectedPhotos(
       annotatedUri: candidate.annotatedUri,
       caption: candidate.caption,
       mediaLibraryAssetId: candidate.mediaLibraryAssetId,
+      previewUri: candidate.previewUri,
     };
   });
 }

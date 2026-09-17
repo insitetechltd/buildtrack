@@ -1,4 +1,6 @@
 import {
+  selectedPhotoCanPaintWithExpoImage,
+  selectedPhotoDisplayUri,
   selectedPhotoHasLocalFile,
   selectedPhotoUsesPhotokitThumb,
 } from "../selectedPhotoDisplay";
@@ -51,6 +53,25 @@ describe("selectedPhotoDisplay", () => {
         },
         true,
       ),
+    ).toBe(false);
+  });
+
+  it("prefers Accept preview over ph:// and paints it with expo-image", () => {
+    const photo = {
+      uri: "ph://ABC/L0/001",
+      previewUri: "file:///tmp/preview.jpg",
+      mediaLibraryAssetId: "ABC/L0/001",
+    };
+    expect(selectedPhotoDisplayUri(photo)).toBe("file:///tmp/preview.jpg");
+    expect(selectedPhotoCanPaintWithExpoImage(photo)).toBe(true);
+    expect(selectedPhotoUsesPhotokitThumb(photo, true)).toBe(false);
+  });
+
+  it("does not bind expo-image to bare ph://", () => {
+    expect(
+      selectedPhotoCanPaintWithExpoImage({
+        uri: "ph://ABC/L0/001",
+      }),
     ).toBe(false);
   });
 });

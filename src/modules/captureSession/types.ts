@@ -7,6 +7,7 @@ export type CaptureSessionPhoto = {
   fileName: string;
   source: "camera" | "library";
   mediaLibraryAssetId?: string;
+  previewUri?: string;
   /** Highlighted for Accept in hybrid picker. */
   selected: boolean;
 };

@@ -691,6 +691,8 @@ export function usePhotoSelectionViewAdapter({
       fileName: photo.fileName,
       isAnnotated: photo.isAnnotated || false,
       caption: photo.caption,
+      mediaLibraryAssetId: photo.mediaLibraryAssetId,
+      previewUri: photo.previewUri,
     })),
     enlargedPhotoIndex,
     isUploading,

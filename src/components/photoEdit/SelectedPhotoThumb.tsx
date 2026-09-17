@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
-import { PixelRatio, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import React from "react";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
-import { getPhotokitThumbNativeView } from "@/modules/mediaLibrary/PhotokitThumbView";
-import { libraryPhotokitThumbPixelSize } from "@/utils/libraryPickerPerf";
-import { selectedPhotoUsesPhotokitThumb } from "@/utils/selectedPhotoDisplay";
+import {
+  selectedPhotoCanPaintWithExpoImage,
+  selectedPhotoDisplayUri,
+} from "@/utils/selectedPhotoDisplay";
 import type { SelectedPhoto } from "@/utils/usePhotoSelection";
 
 type SelectedPhotoThumbProps = {
@@ -18,8 +19,9 @@ type SelectedPhotoThumbProps = {
 
 /**
  * Tile / preview bitmap for Select Photos.
- * Library `ph://` rows use PhotoKit targetSize thumbs — never expo-image,
- * which requests PHImageManagerMaximumSize and can stall for minutes.
+ * Library rows must already carry a file:// `previewUri` from Accept.
+ * Never bind `ph://` to expo-image (PHImageManagerMaximumSize stall) and
+ * never mount PhotokitThumbView inside the Reanimated sortable grid.
  */
 export function SelectedPhotoThumb({
   photo,
@@ -29,36 +31,24 @@ export function SelectedPhotoThumb({
   style,
   testID,
 }: SelectedPhotoThumbProps) {
-  const useNative = selectedPhotoUsesPhotokitThumb(photo);
-  const NativeThumb = useNative ? getPhotokitThumbNativeView() : null;
-  const pixelSize = useMemo(
-    () => libraryPhotokitThumbPixelSize(Math.max(width, height), PixelRatio.get()),
-    [height, width],
-  );
-  const displayUri = photo.annotatedUri || photo.uri;
+  const displayUri = selectedPhotoDisplayUri(photo);
+  const paintUri = selectedPhotoCanPaintWithExpoImage(photo) ? displayUri : null;
 
-  if (useNative && NativeThumb && photo.mediaLibraryAssetId) {
-    return (
-      <View collapsable={false} style={[{ width, height }, style]} testID={testID}>
-        <View style={[StyleSheet.absoluteFill, styles.skeleton]} />
-        <NativeThumb
-          assetId={photo.mediaLibraryAssetId}
-          pixelSize={pixelSize}
+  return (
+    <View
+      collapsable={false}
+      style={[{ width, height }, styles.skeleton, style]}
+      testID={testID}
+    >
+      {paintUri ? (
+        <ExpoImage
+          testID={testID ? `${testID}__image` : undefined}
+          source={{ uri: paintUri }}
+          cachePolicy="memory-disk"
           contentFit={contentFit}
           style={{ width, height }}
         />
-      </View>
-    );
-  }
-
-  return (
-    <View style={[{ width, height }, style]} testID={testID}>
-      <ExpoImage
-        source={{ uri: displayUri }}
-        cachePolicy="memory-disk"
-        contentFit={contentFit}
-        style={{ width, height }}
-      />
+      ) : null}
     </View>
   );
 }

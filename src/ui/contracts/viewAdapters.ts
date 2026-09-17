@@ -612,6 +612,9 @@ export interface SelectablePhotoModel extends PrimitiveReadyItemBase {
   fileName: string;
   isAnnotated: boolean;
   caption?: string;
+  mediaLibraryAssetId?: string;
+  /** Fast Accept JPEG so Select Photos tiles paint without ph://. */
+  previewUri?: string;
 }
 
 export type PhotoSelectionSaveIntent = "attach_task" | "project_unattached";

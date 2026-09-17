@@ -21,6 +21,8 @@ public final class PhotokitThumbView: ExpoView {
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
+    backgroundColor = .clear
+    imageView.backgroundColor = .clear
     imageView.contentMode = .scaleAspectFill
     imageView.clipsToBounds = true
     imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]

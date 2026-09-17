@@ -339,6 +339,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     overflow: "hidden",
+    backgroundColor: "#e5e7eb",
   },
   tileImage: {
     borderRadius: 8,

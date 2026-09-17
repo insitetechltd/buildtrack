@@ -24,6 +24,7 @@ import {
   assetToSelectionDraft,
   materializeLibrarySelections,
 } from "@/modules/mediaLibrary/materializeLibrarySave";
+import { pinLibraryPreviews } from "@/utils/libraryPreviewPin";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import type { SelectedPhoto } from "../navigation/navigationTypes";
 
@@ -170,7 +171,7 @@ export default function InAppLibraryPickerScreen({
         drafts,
         initiallySelectedPhotos,
       );
-      onSave(photos);
+      onSave(await pinLibraryPreviews(photos));
     } catch (error) {
       console.error("❌ [InAppLibraryPicker] pin failed:", error);
       Alert.alert("Error", "Could not prepare selected photos. Please try again.");

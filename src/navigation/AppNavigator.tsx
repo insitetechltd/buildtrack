@@ -1161,6 +1161,7 @@ function PhotoSelectionScreenWrapper({
         annotatedUri: candidate?.annotatedUri,
         caption: candidate?.caption,
         mediaLibraryAssetId: candidate?.mediaLibraryAssetId,
+        previewUri: candidate?.previewUri,
       };
     });
 
@@ -1331,6 +1332,7 @@ function PhotoSelectionScreenWrapper({
               annotatedUri: photo.annotatedUri,
               caption: photo.caption,
               mediaLibraryAssetId: photo.mediaLibraryAssetId,
+              previewUri: photo.previewUri,
             }),
           ),
         });

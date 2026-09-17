@@ -113,6 +113,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
   const previewUri =
     enlargedPhoto?.annotatedUri ||
     editSourceUri ||
+    enlargedPhoto?.previewUri ||
     enlargedPhoto?.uri ||
     undefined;
 

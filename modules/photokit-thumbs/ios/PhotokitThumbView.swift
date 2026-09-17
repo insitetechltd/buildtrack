@@ -41,7 +41,7 @@ public final class PhotokitThumbView: ExpoView {
       return
     }
 
-    let asset: PHAsset?
+    var asset: PHAsset?
     let key: String
     if libraryToken > 0, indexExplicit, assetIndex >= 0 {
       asset = PhotokitThumbEngine.asset(token: libraryToken, index: assetIndex)

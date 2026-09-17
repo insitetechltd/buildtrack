@@ -1,5 +1,6 @@
 /**
- * Insite Works company portfolio — desktop scrub + mobile snap gallery.
+ * Insite Works company portfolio — desktop in-stage slides + mobile snap gallery.
+ * Desktop: one viewport per project (no tall scrub runway). Wheel / click advances slides.
  */
 (() => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -21,36 +22,35 @@
     document.body.classList.toggle("is-projects", top < window.innerHeight * 0.72);
   };
 
-  const engagementY = (scrub) =>
-    Math.max(0, window.scrollY + scrub.getBoundingClientRect().top - stickyOffset());
-
-  const travelFor = (scrub) => {
-    const stage = scrub.querySelector(".project-stage");
-    return Math.max(1, scrub.offsetHeight - (stage ? stage.offsetHeight : window.innerHeight));
+  const paintDesktopSlide = (scrub, index) => {
+    const slides = [...scrub.querySelectorAll(".project-slide")];
+    const n = slides.length;
+    if (!n) return 0;
+    const i = Math.max(0, Math.min(n - 1, index));
+    scrub.dataset.slide = String(i);
+    slides.forEach((s, idx) => s.classList.toggle("is-active", idx === i));
+    const c = scrub.querySelector("[data-counter]");
+    if (c) {
+      c.textContent = `${String(i + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
+    }
+    const bar = scrub.querySelector("[data-progress]");
+    if (bar) {
+      bar.style.transform = `scaleX(${n <= 1 ? 1 : i / (n - 1)})`;
+    }
+    return i;
   };
 
-  const updateDesktopScrub = () => {
-    const top = stickyOffset();
-    scrubSections.forEach((scrub) => {
-      const slides = [...scrub.querySelectorAll(".project-slide")];
-      if (!slides.length) return;
-      const rect = scrub.getBoundingClientRect();
-      const travel = travelFor(scrub);
-      const scrolled = top - rect.top;
-      const t = Math.min(1, Math.max(0, scrolled / travel));
-      const n = slides.length;
-      const index = t >= 1 ? n - 1 : Math.min(n - 1, Math.floor(t * n));
-      slides.forEach((s, i) => s.classList.toggle("is-active", i === index));
-      const c = scrub.querySelector("[data-counter]");
-      if (c) {
-        c.textContent = `${String(index + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
-      }
-      const bar = scrub.querySelector("[data-progress]");
-      if (bar) {
-        const p = n <= 1 ? 1 : index / (n - 1);
-        bar.style.transform = `scaleX(${p})`;
-      }
-    });
+  const desktopIndex = (scrub) => {
+    const n = scrub.querySelectorAll(".project-slide").length;
+    const raw = Number(scrub.dataset.slide || 0);
+    if (!Number.isFinite(raw)) return 0;
+    return Math.max(0, Math.min(Math.max(0, n - 1), raw));
+  };
+
+  const scrubInView = (scrub) => {
+    const rect = scrub.getBoundingClientRect();
+    const mid = window.innerHeight * 0.45;
+    return rect.top <= mid && rect.bottom >= mid;
   };
 
   const setMobileIndex = (gallery, index) => {
@@ -99,25 +99,75 @@
       updateMobileGalleries();
       return;
     }
-    updateDesktopScrub();
+    scrubSections.forEach((scrub) => paintDesktopSlide(scrub, desktopIndex(scrub)));
   };
 
-  document.querySelectorAll(".mobile-gallery").forEach((gallery) => {
-    gallery.addEventListener("scroll", () => setMobileIndex(gallery, (() => {
-      const imgs = [...gallery.querySelectorAll("img")];
-      const mid = gallery.scrollLeft + gallery.clientWidth / 2;
-      let best = 0;
-      let bestDist = Infinity;
-      imgs.forEach((img, i) => {
-        const center = img.offsetLeft + img.offsetWidth / 2;
-        const dist = Math.abs(center - mid);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = i;
+  scrubSections.forEach((scrub) => {
+    paintDesktopSlide(scrub, 0);
+    const viewport = scrub.querySelector(".project-viewport");
+    if (!viewport) return;
+
+    let wheelLock = 0;
+    viewport.addEventListener(
+      "wheel",
+      (e) => {
+        if (!desktop.matches || reduce) return;
+        if (!scrubInView(scrub)) return;
+        const n = scrub.querySelectorAll(".project-slide").length;
+        if (n <= 1) return;
+        const now = Date.now();
+        if (now < wheelLock) {
+          e.preventDefault();
+          return;
         }
-      });
-      return best;
-    })()), { passive: true });
+        const i = desktopIndex(scrub);
+        if (e.deltaY > 8 && i < n - 1) {
+          e.preventDefault();
+          paintDesktopSlide(scrub, i + 1);
+          wheelLock = now + 420;
+        } else if (e.deltaY < -8 && i > 0) {
+          e.preventDefault();
+          paintDesktopSlide(scrub, i - 1);
+          wheelLock = now + 420;
+        }
+      },
+      { passive: false },
+    );
+
+    viewport.addEventListener("click", (e) => {
+      if (!desktop.matches || reduce) return;
+      if (e.target.closest("a, button")) return;
+      const n = scrub.querySelectorAll(".project-slide").length;
+      if (n <= 1) return;
+      const i = desktopIndex(scrub);
+      paintDesktopSlide(scrub, i >= n - 1 ? 0 : i + 1);
+    });
+  });
+
+  document.querySelectorAll(".mobile-gallery").forEach((gallery) => {
+    gallery.addEventListener(
+      "scroll",
+      () =>
+        setMobileIndex(
+          gallery,
+          (() => {
+            const imgs = [...gallery.querySelectorAll("img")];
+            const mid = gallery.scrollLeft + gallery.clientWidth / 2;
+            let best = 0;
+            let bestDist = Infinity;
+            imgs.forEach((img, i) => {
+              const center = img.offsetLeft + img.offsetWidth / 2;
+              const dist = Math.abs(center - mid);
+              if (dist < bestDist) {
+                bestDist = dist;
+                best = i;
+              }
+            });
+            return best;
+          })(),
+        ),
+      { passive: true },
+    );
     setMobileIndex(gallery, 0);
   });
 

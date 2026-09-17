@@ -963,19 +963,6 @@ function CreateTaskEditorScreen({
               )}
 
               {!isReportIntent && (
-                isMyTaskIntent ? (
-                  <CreateTaskInputField label={t.tasks.assignTo} required={false}>
-                    <View
-                      testID="create-task__self_assign_badge"
-                      className="flex-row items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3"
-                    >
-                      <Ionicons name="person-circle-outline" size={20} color="#1d4ed8" />
-                      <Text className="text-base font-semibold text-blue-900">
-                        {t.createTask.assignedToSelf || "Assigned to You (Self)"}
-                      </Text>
-                    </View>
-                  </CreateTaskInputField>
-                ) : (
                   <>
                     <CreateTaskInputField label={t.tasks.assignTo} required error={errors.assignedTo}>
                       {(() => {
@@ -1082,7 +1069,6 @@ function CreateTaskEditorScreen({
                       </View>
                     )}
                   </>
-                )
               )}
 
               {!isReportIntent && (

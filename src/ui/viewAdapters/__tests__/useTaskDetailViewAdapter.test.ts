@@ -72,6 +72,7 @@ describe("useTaskDetailViewAdapter", () => {
         { id: "project-2", companyId: "company-1" },
         { id: "project-a", companyId: "company-1" },
       ],
+      getProjectUserAssignments: jest.fn().mockReturnValue([]),
     });
 
     useDateFormatter.mockReturnValue({
@@ -144,6 +145,7 @@ describe("useTaskDetailViewAdapter", () => {
         id,
         name: `User ${id}`,
       })),
+      getAllUsers: jest.fn(() => []),
     });
 
     useTaskStore.mockReturnValue({

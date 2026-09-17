@@ -31,6 +31,7 @@ import {
   canEditTaskDelegation,
   canSelectUserAsAssignee,
   filterSelectableAssigneeUsers,
+  resolveAssigneeCandidateRoleFromUser,
   resolveAssigneeRoleFromUser,
 } from '../contracts/taskDelegationPermissions';
 import {
@@ -423,10 +424,9 @@ export function useCreateTaskViewAdapter({
     if (!activeProjectId) newErrors.projectId = 'Project is required';
 
     const isReportIntent = formData.intentMode === 'report_issue';
-    const isMyTaskIntent = formData.intentMode === 'my_task';
 
     if (!editTaskId) {
-      if (!isReportIntent && !isMyTaskIntent) {
+      if (!isReportIntent) {
         const { assignedTo } = buildRedesignMetadataPayload(formData);
         if (assignedTo.length === 0) {
           newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
@@ -455,22 +455,24 @@ export function useCreateTaskViewAdapter({
     () => resolveAssigneeRoleFromUser(user),
     [user],
   );
+  const rosterUsers = getAllUsers();
+  const rosterAssignments = getProjectUserAssignments(activeProjectId);
   const allAssignableUsers = useMemo(() => {
     const projectMembers = getAssignableProjectUsers({
       projectId: activeProjectId,
-      assignments: getProjectUserAssignments(activeProjectId),
-      users: getAllUsers(),
+      assignments: rosterAssignments,
+      users: rosterUsers,
     });
     return filterSelectableAssigneeUsers(projectMembers, {
       actorRole: actorAssigneeRole,
       actorUserId: user?.id,
-      resolveRole: resolveAssigneeRoleFromUser,
+      resolveRole: resolveAssigneeCandidateRoleFromUser,
     });
   }, [
     activeProjectId,
     actorAssigneeRole,
-    getAllUsers,
-    getProjectUserAssignments,
+    rosterAssignments,
+    rosterUsers,
     user?.id,
   ]);
   const filteredAssignableUsers = useMemo(() => {
@@ -580,7 +582,7 @@ export function useCreateTaskViewAdapter({
           assignableUserIds: assignableIds,
           actorRole: actorAssigneeRole,
           actorUserId: user?.id,
-          candidateRole: resolveAssigneeRoleFromUser(candidate),
+          candidateRole: resolveAssigneeCandidateRoleFromUser(candidate),
         })
       ) {
         return;
@@ -1163,16 +1165,14 @@ export function useCreateTaskViewAdapter({
         const isReportIntent =
           formData.intentMode === 'report_issue' && redesignMetadata.assignedTo.length === 0;
         const isMyTaskIntent = formData.intentMode === 'my_task';
-        const submitAssignedTo = isReportIntent
-          ? []
-          : isMyTaskIntent
-            ? [user?.id || '']
-            : redesignMetadata.assignedTo;
+        const submitAssignedTo = isReportIntent ? [] : redesignMetadata.assignedTo;
         const submitStatus: TaskStatus = isReportIntent
           ? 'reported'
-          : isMyTaskIntent
-            ? 'in_progress'
-            : resolveInitialTaskCreateStatus(user?.id || '', submitAssignedTo);
+          : resolveInitialTaskCreateStatus(
+              user?.id || '',
+              submitAssignedTo,
+              isMyTaskIntent ? 'my_task' : formData.intentMode,
+            );
 
         const createdTaskId = await createTask({
           title: formData.title,

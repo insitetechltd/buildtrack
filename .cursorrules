@@ -8,6 +8,14 @@
 - NativeWind for styling when surrounding code uses it
 - Maestro v2.8.0 for E2E (run-local.sh wrapper; applesimutils workaround via MAESTRO_0CLICK_DISABLE=1)
 
+## RN coding conventions
+- Use Expo Router for file-based navigation. **Current navigation SoT remains React Navigation** (`src/navigation/AppNavigator.tsx`); do not migrate existing screens to Expo Router unless a dedicated task says so.
+- Always use TypeScript with strict typing.
+- Prefer functional components and hooks over class components.
+- Style using StyleSheet.create or NativeWind (Tailwind).
+- Use platform-specific file extensions (.ios.tsx, .android.tsx) only when necessary.
+- Do not import standard web DOM elements (use View, Text, Image from react-native or expo).
+
 ## Architecture
 - Screen-driven structure: src/screens/, src/state/, src/api/, src/navigation/
 - Task source of truth: src/state/taskStore.supabase.ts (not legacy taskStore.ts)

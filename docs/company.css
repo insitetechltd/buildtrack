@@ -435,11 +435,13 @@ body:not(.is-projects) { --header-h: 0px; }
   max-height: calc((min(75cqh, 100cqh - 4.5rem) - 0.55rem) / 2);
 }
 .counter {
-  position: static;
-  margin: 1.35rem 0 0;
-  margin-right: 3.5rem; /* clear floating page-next ↓ */
-  max-width: 16rem;
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  right: auto;
+  width: min(11rem, calc(100% - 2rem));
   z-index: 3;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -447,6 +449,7 @@ body:not(.is-projects) { --header-h: 0px; }
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
+  pointer-events: none;
 }
 .counter i[data-progress] {
   flex: 1;
@@ -470,10 +473,6 @@ body:not(.is-projects) { --header-h: 0px; }
   overflow-y: auto;
   background: transparent;
   color: #1e3540;
-}
-.panel .counter {
-  margin-top: auto;
-  padding-top: 1.25rem;
 }
 .project-flip .panel { order: 1; }
 .project-mist .panel { background: transparent; }

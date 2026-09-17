@@ -646,6 +646,10 @@ body.is-projects .page-next {
     display: flex;
     flex-direction: column;
   }
+  .project-stage::before,
+  .project-stage::after {
+    display: none;
+  }
   .project-viewport,
   .project-film,
   .counter {

@@ -110,13 +110,20 @@ type CompletionScrubButtonProps = {
   disabled?: boolean;
   /** Mount already expanded (e.g. long-press submit at 100%). */
   startExpanded?: boolean;
-  /** Fired when the scrubber retracts to the circle. */
+  /** Fired when the scrubber retracts after a press-drag (or cancel tap). */
   onRetract?: () => void;
 };
 
 /**
- * Circular % control with press-to-expand vertical scrubber.
- * Tap open → slide → finger release retracts back to the circle.
+ * Progress % control — interaction contract:
+ *
+ * - Closed (<100% dock slot): press-drag in one gesture. Finger-down expands
+ *   the vertical scrubber; drag up/down changes % (5% steps); finger-up commits
+ *   and collapses. Pure tap (no drag) expands then collapses with no change.
+ * - At 100% the dock shows Submit instead. Long-press Submit remounts this
+ *   control expanded so a second press-drag can leave 100%.
+ * - Hit box while open is the full scrub track height (not the 44px dock circle),
+ *   so the thumb at 100% (top of track) remains draggable.
  */
 function CompletionScrubButton({
   value,
@@ -150,7 +157,6 @@ function CompletionScrubButton({
     }
   }, []);
 
-  // Collapse scrubber when submit (or any lock) disables the control.
   useEffect(() => {
     if (disabled && isOpen) {
       retractScrubber();
@@ -165,29 +171,26 @@ function CompletionScrubButton({
     }
   }, [startExpanded]);
 
-  const openScrubber = useCallback(() => {
-    if (disabledRef.current) {
-      return;
-    }
-    Keyboard.dismiss();
-    isOpenRef.current = true;
-    setIsOpen(true);
-  }, []);
-
   const pan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => isOpenRef.current && !disabledRef.current,
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        isOpenRef.current &&
-        !disabledRef.current &&
-        (Math.abs(gesture.dy) > TAP_MOVE_SLOP || Math.abs(gesture.dx) > TAP_MOVE_SLOP),
+      // Capture on finger-down so press-drag is one gesture (closed or open).
+      onStartShouldSetPanResponder: () => !disabledRef.current,
+      onMoveShouldSetPanResponder: () => !disabledRef.current,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
+        if (disabledRef.current) {
+          return;
+        }
+        Keyboard.dismiss();
         didMoveRef.current = false;
         startPctRef.current = valueRef.current;
+        if (!isOpenRef.current) {
+          isOpenRef.current = true;
+          setIsOpen(true);
+        }
       },
       onPanResponderMove: (_evt, gesture: PanResponderGestureState) => {
-        if (!isOpenRef.current || disabledRef.current) {
+        if (disabledRef.current) {
           return;
         }
         if (
@@ -207,7 +210,6 @@ function CompletionScrubButton({
         if (!isOpenRef.current) {
           return;
         }
-        // Any finger-up (tap or drag) retracts the scrubber to the circle.
         retractScrubber();
       },
       onPanResponderTerminate: () => {
@@ -219,81 +221,83 @@ function CompletionScrubButton({
     }),
   ).current;
 
-  // Thumb sits on the track: 0% at bottom, 100% at top.
-  const thumbBottom = (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE);
-
-  if (!isOpen) {
-    return (
-      <Pressable
-        testID="report-reply-composer__completion"
-        accessibilityRole="button"
-        accessibilityLabel={`Completion ${value} percent. Tap to adjust.`}
-        accessibilityValue={{ min: 0, max: 100, now: value }}
-        disabled={disabled}
-        onPress={openScrubber}
-        hitSlop={4}
-        style={DOCK_CIRCLE_IDLE}
-        className={cn(BUTTON, "relative z-50")}
-      >
-        <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
-      </Pressable>
-    );
-  }
+  // Thumb: 0% at bottom, 100% at top of the track.
+  const thumbBottom = isOpen
+    ? (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE)
+    : 0;
 
   return (
     <View
       testID="report-reply-composer__completion"
-      accessibilityLabel={`Completion ${value} percent. Slide vertically, then release to finish.`}
+      accessibilityLabel={
+        isOpen
+          ? `Completion ${value} percent. Slide vertically, then release to finish.`
+          : `Completion ${value} percent. Press and drag to adjust.`
+      }
       accessibilityRole="adjustable"
       accessibilityValue={{ min: 0, max: 100, now: value }}
-      accessibilityState={{ expanded: true }}
+      accessibilityState={{ expanded: isOpen }}
       className="relative z-50"
-      style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
       collapsable={false}
+      // Full track height while open so the top-of-track thumb (100%) stays hittable.
+      style={{
+        width: BUTTON_SIZE,
+        height: isOpen ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
+        justifyContent: "flex-end",
+      }}
+      {...pan.panHandlers}
     >
-      {/* Full-height hit target so track + thumb are all draggable / tappable. */}
+      {isOpen ? (
+        <View
+          testID="report-reply-composer__completion_scrubber"
+          pointerEvents="none"
+          className="absolute items-center"
+          style={{
+            bottom: 0,
+            left: 0,
+            width: BUTTON_SIZE,
+            height: SCRUB_TRACK_HEIGHT,
+          }}
+          collapsable={false}
+        >
+          <View
+            className="absolute rounded-full bg-slate-200"
+            style={{
+              bottom: BUTTON_SIZE / 2,
+              width: 5,
+              height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
+              left: (BUTTON_SIZE - 5) / 2,
+            }}
+          />
+          <View
+            className="absolute rounded-full bg-[#08576E]"
+            style={{
+              bottom: BUTTON_SIZE / 2,
+              width: 5,
+              height: Math.max(
+                4,
+                (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE),
+              ),
+              left: (BUTTON_SIZE - 5) / 2,
+            }}
+          />
+        </View>
+      ) : null}
       <View
-        testID="report-reply-composer__completion_scrubber"
-        {...pan.panHandlers}
-        className="absolute items-center"
+        testID="report-reply-composer__completion_thumb"
+        className="items-center justify-center rounded-full border-2 border-[#08576E] bg-white shadow-md"
         style={{
-          bottom: 0,
+          position: isOpen ? "absolute" : "relative",
+          bottom: thumbBottom,
           left: 0,
           width: BUTTON_SIZE,
-          height: SCRUB_TRACK_HEIGHT,
+          height: BUTTON_SIZE,
+          borderColor: "#08576E",
+          backgroundColor: "#ffffff",
         }}
-        collapsable={false}
+        pointerEvents="none"
       >
-        <View
-          className="absolute rounded-full bg-slate-200"
-          style={{
-            bottom: BUTTON_SIZE / 2,
-            width: 5,
-            height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
-            left: (BUTTON_SIZE - 5) / 2,
-          }}
-        />
-        <View
-          className="absolute rounded-full bg-[#08576E]"
-          style={{
-            bottom: BUTTON_SIZE / 2,
-            width: 5,
-            height: Math.max(4, (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE)),
-            left: (BUTTON_SIZE - 5) / 2,
-          }}
-        />
-        <View
-          testID="report-reply-composer__completion_thumb"
-          className="absolute items-center justify-center rounded-full border-2 border-[#08576E] bg-white shadow-md"
-          style={{
-            bottom: thumbBottom,
-            width: BUTTON_SIZE,
-            height: BUTTON_SIZE,
-            left: 0,
-          }}
-        >
-          <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
-        </View>
+        <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
       </View>
     </View>
   );
@@ -302,7 +306,7 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [camera] · [text] · [% scrub if <100% | submit if 100%; long-press submit re-opens scrub]
+ * Progress: [camera] · [text] · [% press-drag if <100% | submit@100%; long-press submit → scrub]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]

@@ -1,7 +1,75 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 
 import ReportReplyComposer from "../ReportReplyComposer";
+
+/** Minimal RN touch payload so PanResponder grant/release handlers run in Jest. */
+function panTouchEvent(pageY = 0) {
+  return {
+    nativeEvent: {
+      changedTouches: [
+        {
+          identifier: 1,
+          pageX: 0,
+          pageY,
+          locationX: 0,
+          locationY: pageY,
+          timestamp: 1,
+        },
+      ],
+      identifier: 1,
+      pageX: 0,
+      pageY,
+      locationX: 0,
+      locationY: pageY,
+      timestamp: 1,
+      touches: [
+        {
+          identifier: 1,
+          pageX: 0,
+          pageY,
+          locationX: 0,
+          locationY: pageY,
+          timestamp: 1,
+        },
+      ],
+    },
+    touchHistory: {
+      indexOfSingleActiveTouch: 0,
+      mostRecentTimeStamp: 1,
+      numberActiveTouches: 1,
+      touchBank: [
+        {
+          touchActive: true,
+          startPageX: 0,
+          startPageY: 0,
+          startTimeStamp: 1,
+          currentPageX: 0,
+          currentPageY: pageY,
+          currentTimeStamp: 1,
+          previousPageX: 0,
+          previousPageY: 0,
+          previousTimeStamp: 1,
+        },
+      ],
+    },
+  };
+}
+
+function grantCompletion(screen: ReturnType<typeof render>) {
+  const el = screen.getByTestId("report-reply-composer__completion");
+  act(() => {
+    el.props.onStartShouldSetResponder?.(panTouchEvent());
+    el.props.onResponderGrant?.(panTouchEvent());
+  });
+}
+
+function releaseCompletion(screen: ReturnType<typeof render>) {
+  const el = screen.getByTestId("report-reply-composer__completion");
+  act(() => {
+    el.props.onResponderRelease?.(panTouchEvent());
+  });
+}
 
 describe("ReportReplyComposer", () => {
   it("disables send until draft has text", () => {
@@ -105,7 +173,7 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
   });
 
-  it("opens scrubber on tap and retracts on finger release", () => {
+  it("press-drag on % expands scrubber; release retracts", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -125,14 +193,41 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByText("40%")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("report-reply-composer__completion"));
+    // Finger-down expands (press-drag is one gesture — no separate tap).
+    grantCompletion(screen);
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
 
-    // Finger-up on the scrubber (tap or drag) always retracts to the circle.
-    fireEvent(screen.getByTestId("report-reply-composer__completion_scrubber"), "responderRelease");
+    releaseCompletion(screen);
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByText("40%")).toBeTruthy();
+  });
+
+  it("progress dock at 100%: long-press submit re-opens scrub to leave 100%", () => {
+    const onChange = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="done"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={100}
+        onChangeCompletionPercentage={onChange}
+      />,
+    );
+
+    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
+    // Full-height hit box so the top-of-track thumb is draggable.
+    expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
+      expect.objectContaining({ height: 200, width: 44 }),
+    );
   });
 
   it("progress dock at 100%: submit replaces % circle", () => {
@@ -158,32 +253,41 @@ describe("ReportReplyComposer", () => {
     );
   });
 
-  it("progress dock at 100%: long-press submit re-opens scrub to leave 100%", () => {
-    const onChange = jest.fn();
+  it("collapses open scrubber when submit disables the control", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
-        draft="done"
+        draft="halfway"
         photos={[]}
         onChangeDraft={jest.fn()}
         onAddPhotos={jest.fn()}
         onRemovePhoto={jest.fn()}
         onSubmit={jest.fn()}
+        isSubmitting={false}
         completionPercentage={100}
-        onChangeCompletionPercentage={onChange}
+        onChangeCompletionPercentage={jest.fn()}
       />,
     );
 
-    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
     fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.getByText("100%")).toBeTruthy();
 
-    // Retract without changing → submit returns.
-    fireEvent(screen.getByTestId("report-reply-composer__completion_scrubber"), "responderRelease");
+    screen.rerender(
+      <ReportReplyComposer
+        mode="progress"
+        draft="halfway"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        isSubmitting
+        completionPercentage={100}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
   });
 
   it("replaces text with Cancel review and locks controls while awaiting review", () => {
@@ -213,44 +317,6 @@ describe("ReportReplyComposer", () => {
 
     fireEvent.press(screen.getByTestId("report-reply-composer__cancel_review"));
     expect(onCancelReview).toHaveBeenCalledTimes(1);
-  });
-
-  it("collapses open scrubber when submit disables the control", () => {
-    const screen = render(
-      <ReportReplyComposer
-        mode="progress"
-        draft="halfway"
-        photos={[]}
-        onChangeDraft={jest.fn()}
-        onAddPhotos={jest.fn()}
-        onRemovePhoto={jest.fn()}
-        onSubmit={jest.fn()}
-        isSubmitting={false}
-        completionPercentage={40}
-        onChangeCompletionPercentage={jest.fn()}
-      />,
-    );
-
-    fireEvent.press(screen.getByTestId("report-reply-composer__completion"));
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-
-    screen.rerender(
-      <ReportReplyComposer
-        mode="progress"
-        draft="halfway"
-        photos={[]}
-        onChangeDraft={jest.fn()}
-        onAddPhotos={jest.fn()}
-        onRemovePhoto={jest.fn()}
-        onSubmit={jest.fn()}
-        isSubmitting
-        completionPercentage={40}
-        onChangeCompletionPercentage={jest.fn()}
-      />,
-    );
-
-    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expect(screen.getByText("40%")).toBeTruthy();
   });
 
   it("shows Accept and Reject in the dock for review_decision mode", () => {

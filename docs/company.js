@@ -1,6 +1,6 @@
 /**
- * Insite Works company portfolio — desktop in-stage slides + mobile snap gallery.
- * Desktop: one viewport per project (no tall scrub runway). Wheel / click advances slides.
+ * Insite Works company portfolio — desktop docked slides + mobile snap gallery.
+ * Desktop: snap to each project, then wheel cycles photos; page scroll only at slide ends.
  */
 (() => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -47,10 +47,18 @@
     return Math.max(0, Math.min(Math.max(0, n - 1), raw));
   };
 
-  const scrubInView = (scrub) => {
-    const rect = scrub.getBoundingClientRect();
-    const mid = window.innerHeight * 0.45;
-    return rect.top <= mid && rect.bottom >= mid;
+  /** Project is parked under the header — photos cycle only in this state. */
+  const isDocked = (scrub) => {
+    const top = scrub.getBoundingClientRect().top;
+    return Math.abs(top - stickyOffset()) <= 36;
+  };
+
+  const dockedScrub = () => {
+    if (!desktop.matches || reduce) return null;
+    for (const scrub of scrubSections) {
+      if (isDocked(scrub)) return scrub;
+    }
+    return null;
   };
 
   const setMobileIndex = (gallery, index) => {
@@ -88,9 +96,23 @@
     });
   };
 
+  let lastDocked = null;
+  let lastScrollY = window.scrollY;
+  const syncDockedEntry = () => {
+    const scrub = dockedScrub();
+    const dir = window.scrollY - lastScrollY;
+    lastScrollY = window.scrollY;
+    if (scrub && scrub !== lastDocked) {
+      const n = scrub.querySelectorAll(".project-slide").length;
+      paintDesktopSlide(scrub, dir < 0 ? Math.max(0, n - 1) : 0);
+    }
+    lastDocked = scrub;
+  };
+
   const update = () => {
     syncChrome();
     if (reduce || !desktop.matches) {
+      lastDocked = null;
       scrubSections.forEach((scrub) => {
         scrub.querySelectorAll(".project-slide").forEach((s, i) => {
           s.classList.toggle("is-active", i === 0);
@@ -99,43 +121,16 @@
       updateMobileGalleries();
       return;
     }
+    syncDockedEntry();
     scrubSections.forEach((scrub) => paintDesktopSlide(scrub, desktopIndex(scrub)));
   };
 
   scrubSections.forEach((scrub) => {
     paintDesktopSlide(scrub, 0);
     const viewport = scrub.querySelector(".project-viewport");
-    if (!viewport) return;
-
-    let wheelLock = 0;
-    viewport.addEventListener(
-      "wheel",
-      (e) => {
-        if (!desktop.matches || reduce) return;
-        if (!scrubInView(scrub)) return;
-        const n = scrub.querySelectorAll(".project-slide").length;
-        if (n <= 1) return;
-        const now = Date.now();
-        if (now < wheelLock) {
-          e.preventDefault();
-          return;
-        }
-        const i = desktopIndex(scrub);
-        if (e.deltaY > 8 && i < n - 1) {
-          e.preventDefault();
-          paintDesktopSlide(scrub, i + 1);
-          wheelLock = now + 420;
-        } else if (e.deltaY < -8 && i > 0) {
-          e.preventDefault();
-          paintDesktopSlide(scrub, i - 1);
-          wheelLock = now + 420;
-        }
-      },
-      { passive: false },
-    );
-
-    viewport.addEventListener("click", (e) => {
+    viewport?.addEventListener("click", (e) => {
       if (!desktop.matches || reduce) return;
+      if (!isDocked(scrub)) return;
       if (e.target.closest("a, button")) return;
       const n = scrub.querySelectorAll(".project-slide").length;
       if (n <= 1) return;
@@ -143,6 +138,47 @@
       paintDesktopSlide(scrub, i >= n - 1 ? 0 : i + 1);
     });
   });
+
+  let wheelAcc = 0;
+  let wheelLockUntil = 0;
+  window.addEventListener(
+    "wheel",
+    (e) => {
+      if (!desktop.matches || reduce) return;
+      const scrub = dockedScrub();
+      if (!scrub) {
+        wheelAcc = 0;
+        return;
+      }
+      const n = scrub.querySelectorAll(".project-slide").length;
+      if (n <= 1) return;
+
+      const i = desktopIndex(scrub);
+      const down = e.deltaY > 0;
+      const up = e.deltaY < 0;
+
+      // Still have slides in this direction — lock page scroll and cycle photos.
+      if ((down && i < n - 1) || (up && i > 0)) {
+        e.preventDefault();
+        const now = Date.now();
+        if (now < wheelLockUntil) return;
+
+        wheelAcc += e.deltaY;
+        const threshold = e.deltaMode === 1 ? 1 : 36;
+        if (Math.abs(wheelAcc) < threshold) return;
+
+        const step = wheelAcc > 0 ? 1 : -1;
+        wheelAcc = 0;
+        paintDesktopSlide(scrub, i + step);
+        wheelLockUntil = now + 380;
+        return;
+      }
+
+      // At first/last slide — release so the page can leave this project.
+      wheelAcc = 0;
+    },
+    { passive: false, capture: true },
+  );
 
   document.querySelectorAll(".mobile-gallery").forEach((gallery) => {
     gallery.addEventListener(

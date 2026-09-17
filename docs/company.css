@@ -278,11 +278,24 @@ body:not(.is-projects) { --header-h: 0px; }
 #contact {
   scroll-margin-top: var(--header-h);
 }
-/* One viewport per project — no multi-screen scrub runway (that was the empty mist). */
+/* One viewport per project — snap to base, then JS cycles photos while docked. */
 .project-scrub {
   position: relative;
   height: calc(100svh - var(--header-h));
   min-height: calc(100vh - var(--header-h));
+}
+@media (min-width: 861px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
+  .project-scrub {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  #company,
+  #contact {
+    scroll-snap-align: start;
+  }
 }
 .project-stage {
   position: relative;
@@ -552,7 +565,7 @@ body.is-projects .page-next {
   }
   .company-cta { width: min(calc(100% - 4.5rem), 20rem); }
 
-  .project-scrub { height: auto !important; }
+  .project-scrub { height: auto !important; scroll-snap-align: none; }
   .project-stage {
     position: static;
     height: auto;

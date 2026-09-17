@@ -27,13 +27,13 @@ Even if files are pushed, GitHub Pages must be enabled in repository settings.
 1. Go to: https://github.com/insitetechltd/buildtrack/settings/pages
 2. Under "Source":
    - Select: **Deploy from a branch**
-   - Branch: **main** (or **master**)
+   - Branch: **main**
    - Folder: **/docs**
 3. Click **Save**
 
 ### 3. Wrong Branch
 
-Make sure you're pushing to the correct branch (usually `main` or `master`).
+Make sure you're pushing to the correct branch (`main`).
 
 **Check current branch:**
 ```bash

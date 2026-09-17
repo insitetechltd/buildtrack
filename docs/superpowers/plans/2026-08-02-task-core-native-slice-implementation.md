@@ -2,9 +2,9 @@
 
 > **Disposition (2026-08-27): CLOSED / ARCHIVED — do not execute.**
 >
-> Work represented here was completed on `master` under **WS-QA / M-QA-03 Closed (2026-08-07)**
+> Work represented here was completed on `main` under **WS-QA / M-QA-03 Closed (2026-08-07)**
 > (L3 Maestro 5/5 rc=0; evidence in `documentation/ROADMAP.md` M-QA-03 Notes + AGENTS.md).
-> Successor SoT on master: `docs/superpowers/plans/2026-08-01-ws-qa-03-automated-confidence-and-e2e-coverage.md`,
+> Successor SoT on main: `docs/superpowers/plans/2026-08-01-ws-qa-03-automated-confidence-and-e2e-coverage.md`,
 > `TESTING_STRATEGY.md`, `maestro/TESTID_GAPS_TODO.md`, `scripts/maestro/run-local.sh`.
 > This file is retained as historical planning context from the `slice/m-qa-03-automation-loop` worktree.
 

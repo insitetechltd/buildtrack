@@ -2,7 +2,7 @@
 
 Generated: 2026-08-07 as part of WS-SUPABASE / M-SUPABASE-00 placeholder-groom cycle.
 
-Each prompt below is copy-pasteable into the NEXT TRAE chat that starts with `@solo-orchestrator` on `master` HEAD after the groom commit lands.
+Each prompt below is copy-pasteable into the NEXT TRAE chat that starts with `@solo-orchestrator` on `main` HEAD after the groom commit lands.
 
 ---
 
@@ -36,7 +36,7 @@ HARD SAFETY RULES:
  5. Service-role scripts if used to apply migration: use DRY_RUN default first; print --diff; require EXPLICIT --apply before mutation. If no --dry-run pattern in current apply script, add it (this session only the script, pattern reuse from check_and_fix_auth_users.js verbatim).
 
 AGENT WORKFLOW CONTRACT (feature variant):
-@planner → @builder → @reviewer + anti-secret gate (0 matches) + TRAE-code-review (SQL rollback headers) → [git-commit skill: commit message = "docs(supabase-02): live baseline + RLS+FK hardening"; scope docs + 2 migration SQLs + ROADMAP + AGENTS edits ONLY; NO src edits] → @test-engineer (tsc rc=0; L2 regression baseline; plus a 1-shot anon SELECT probe counts if anon key available via env EXPO_PUBLIC vars) → @qa-validator (5/5 docs review incl. anon counts 0 + signup 0 violations) → D8 Delivery push origin/master rev-list 0 → END 1-line: "M-SUPABASE-02a/b closed. Live baseline converted to confirmed-live. Anon SELECTs 0 all 7. P0 integrity mitigated."
+@planner → @builder → @reviewer + anti-secret gate (0 matches) + TRAE-code-review (SQL rollback headers) → [git-commit skill: commit message = "docs(supabase-02): live baseline + RLS+FK hardening"; scope docs + 2 migration SQLs + ROADMAP + AGENTS edits ONLY; NO src edits] → @test-engineer (tsc rc=0; L2 regression baseline; plus a 1-shot anon SELECT probe counts if anon key available via env EXPO_PUBLIC vars) → @qa-validator (5/5 docs review incl. anon counts 0 + signup 0 violations) → D8 Delivery push origin/main rev-list 0 → END 1-line: "M-SUPABASE-02a/b closed. Live baseline converted to confirmed-live. Anon SELECTs 0 all 7. P0 integrity mitigated."
 ```
 
 ---

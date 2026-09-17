@@ -81,7 +81,7 @@ Grouped by where they live. `TRAE-USER` = outside repo, at `~/.trae/`. `REPO-LOC
 | `docs/superpowers/prompts/SOLO_KICKOFF_PROMPT.md` lines 22–84 | Rewrote Agent workflow policy with @identifier + skill hooks + COMMIT GATE rule. Added MILESTONE GATE section (milestone routing, AGENTS.md + ROADMAP.md read). Added AUTONOMY POLICY section (ratified). Rewrote "When you respond" 7-step output to route skill hooks per stage, ending in Execution Ledger (changes + validation + commit SHA + risks). | ✅ Must commit. |
 | `docs/superpowers/prompts/FEATURE_KICKOFF_PROMPT.md` lines 12–16 | Default workflow line now: `@planner [Skill: brainstorming; Skill: writing-plans] → @builder [Skill: executing-plans; Skill: test-driven-development; react-native-skills > react-best-practices] → @reviewer [+ TRAE-code-review parallel] → [COMMIT GATE: git-commit skill ONLY after Reviewer no C/H findings] → @test-engineer → @qa-validator → @docs-curator → @release-manager`. Milestone Gate instruction added. | ✅ Must commit. |
 | `docs/superpowers/prompts/BUGFIX_KICKOFF_PROMPT.md` lines 12–17 | Rewritten with bug-specific skill hooks (brainstorming/TRAE-debugger on Planner, TDD+debugger on Builder), COMMIT GATE, Milestone Gate. QA Validator conditional based on user-visible mobile flow class. | ✅ Must commit. |
-| `docs/superpowers/prompts/RELEASE_KICKOFF_PROMPT.md` lines 12–20 | Rewritten with Release Manager hard safety rules (bundle-id mismatch Hard Blocker + rerun-safe + App Store public release = MANUAL). COMMIT GATE. MILESTONE GATE: WS-QA/M-QA-02 warning (never close solely on local build passes — master-side re-verification required). | ✅ Must commit. |
+| `docs/superpowers/prompts/RELEASE_KICKOFF_PROMPT.md` lines 12–20 | Rewritten with Release Manager hard safety rules (bundle-id mismatch Hard Blocker + rerun-safe + App Store public release = MANUAL). COMMIT GATE. MILESTONE GATE: WS-QA/M-QA-02 warning (never close solely on local build passes — main-side re-verification required). | ✅ Must commit. |
 | `.trae/agents/README.md` § Registration Methods lines 29–93 | Method 1 now = Canonical user-level skill install at `~/.trae/skills/solo-agents/`. Method 2 = legacy manual UI. Verification steps. Dual-source convention reiterated. | ✅ Must commit. |
 
 ### Sprint 7 Deep Dive (doc-only, no code changes this session)
@@ -123,7 +123,7 @@ From ROADMAP.md + AGENTS.md Current Delivery Status (cross-checked with Maestro 
 | WS-UX / M-UX-01 redesign slices S-UX-01A through S-UX-01E2 | **Closed** | Later slices still Pipeline per ROADMAP.md. Mention figma skill for any redesign work. |
 | WS-UX / M-UX-01 (overall) | **Active** | Next redesign pipeline after E2 is complete. |
 | WS-QA / M-QA-01 Sprint7 User Testing Rubric | **Closed 2026-08-06** | Suite rc=0, 18/18 PNGs captured. Evidence under .cache/maestro-artifacts/qa01-20260806_214425/. |
-| WS-QA / M-QA-02 UI Automation Foundation (Maestro) | **Pipeline — DO NOT MARK CLOSED** | Has shipped root Maestro foundation surface + 3 Sprint 7 bootstrap flows + 2 journey flows + run-local.sh wrapper + README. GOVERNANCE RULE from AGENTS.md line 81: stays Pipeline until master-side smoke/bootstrap wrap-up is explicitly re-verified by human. |
+| WS-QA / M-QA-02 UI Automation Foundation (Maestro) | **Pipeline — DO NOT MARK CLOSED** | Has shipped root Maestro foundation surface + 3 Sprint 7 bootstrap flows + 2 journey flows + run-local.sh wrapper + README. GOVERNANCE RULE from AGENTS.md line 81: stays Pipeline until main-side smoke/bootstrap wrap-up is explicitly re-verified by human. |
 | WS-QA / M-QA-03 Automated Confidence & E2E Coverage | **Active Hybrid expansion** | 5 live Supabase Task Core flows shipped (create/assign/progress/completion/photo-upload). Journey harness, fast-regression-vs-confidence docs still Pipeline. |
 | WS-SUPABASE / M-SUPABASE-01 | **Pipeline** | Primary focus: schema redesign + metadata migration for primary_assignee_id, delegated_user_ids, container_id, sub_container_id, tags. |
 
@@ -307,7 +307,7 @@ If Cursor has a `Quick Context` / `Project Context` UI, paste this verbatim:
 
 4. **Commit Gate ordering**: Builder → Reviewer → git commit → Test Engineer → QA Validator. NEVER commit pre-Review. NEVER reorder these.
 
-5. **M-QA-02 closure rule**: WS-QA/M-QA-02 Maestro foundation status stays Pipeline in ROADMAP.md + AGENTS.md Current Delivery Status UNLESS the master-side smoke/bootstrap wrap-up is explicitly human-verified. Local build passes on any developer machine are NOT sufficient evidence to close this milestone.
+5. **M-QA-02 closure rule**: WS-QA/M-QA-02 Maestro foundation status stays Pipeline in ROADMAP.md + AGENTS.md Current Delivery Status UNLESS the main-side smoke/bootstrap wrap-up is explicitly human-verified. Local build passes on any developer machine are NOT sufficient evidence to close this milestone.
 
 6. **Secrets / credentials**: NEVER place EXPO_PUBLIC_SUPABASE_ANON_KEY (anon key is fine and public by design), private Supabase service_role keys, ASC API keys, EAS tokens, .env.secret files, keystore material into docs / repo / chat output. Use env-var patterns only.
 
@@ -346,7 +346,7 @@ Ordered by risk of data loss:
   - WORKFLOW_TEMPLATES: agent identifier table §0, kickoff with
     Milestone Gate + Autonomy + Execution Ledger output format
   - FEATURE/BUGFIX/RELEASE kickoffs: skill hooks per step, commit gate,
-    release hard safety rules, M-QA-02 master-verification gate
+    release hard safety rules, M-QA-02 main-verification gate
   - SOLO_KICKOFF: 3 new top-level sections (policy/MILESTONE/AUTONOMY),
     7-step routed output + Execution Ledger
   - .trae/agents/README: Method 1 = canonical user-level skill install"
@@ -473,7 +473,7 @@ Write these down as first-draft assumptions to revisit with the user on next cha
 | A1 | TRAE @-menu SOLO agents were NOT visually confirmed by user (8 rows Planner → Docs Curator visible or not?) | User ran out of TRAE credit before testing reload | Optional Step 6 in §8 (investigative, TRAE-side only). Does NOT block Cursor migration — use the `.cursorrules` + `.cursor/rules/` workflow instead which has identical logic. |
 | A2 | Sprint 7 release-spoofing hardening edits (deep links + Dev Settings button `__DEV__` gating) were proposed but not applied. User has not said whether the risk is acceptable for next release. | TRAE session was informational Q&A; no explicit "go fix it" was given | Ask user on first Cursor chat. If yes → apply 3 proposed edits from §5 + run release smoke + Maestro. |
 | A3 | project-level `.trae/skills/solo-agents/` was deleted earlier this session (intentional dedup of user-level copy at ~/.trae/skills). Backup created in Step 1 §8 covers user-level copy. Does user want a repo-level synced copy for team sharing? | Open preference | Ask user. If yes → copy user-level → repo → add to git → keep in sync with symlink or manual. |
-| A4 | Current master-side M-QA-02 verification status (governance close-out gate item) unknown — last known state Pipeline per AGENTS.md + ROADMAP. Is there a CI or master runner status page we should hook into? | Project-level knowledge gap; not discoverable from current docs | Ask user. If answer is "no CI" → document in release-manager rules "no automated master verification → close M-QA-02 only after manual master checkout + run-local.sh passes on both smoke/bootstrap flows". |
+| A4 | Current main-side M-QA-02 verification status (governance close-out gate item) unknown — last known state Pipeline per AGENTS.md + ROADMAP. Is there a CI or main runner status page we should hook into? | Project-level knowledge gap; not discoverable from current docs | Ask user. If answer is "no CI" → document in release-manager rules "no automated main verification → close M-QA-02 only after manual main checkout + run-local.sh passes on both smoke/bootstrap flows". |
 | A5 | Do uncommitted files detected by `git status` at Step 2 §8 match the expected 8 SOLO workflow doc set exactly? Or are there unrelated local changes from a previous session that we accidentally include in the commit? | Can't know until Cursor actually runs the command | Examine `git status` output carefully, use `git add -p` for selective staging if needed, DO NOT blindly run the commit command verbatim if extra files appear. |
 | A6 | Is `/tmp/d7_qav.sh` 1-line placeholder actually meaningful? User-initiated, might be a diagnostic they care about. | Unknown contents | First thing on Cursor: `cat /tmp/d7_qav.sh` → decide to keep/debug/ignore. |
 

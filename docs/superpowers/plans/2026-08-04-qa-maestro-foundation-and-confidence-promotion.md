@@ -786,7 +786,7 @@ Modify `documentation/ROADMAP.md` and `AGENTS.md` with a conservative wording up
 Keep the status honest:
 
 - do not mark `M-QA-03` closed in the same change unless the full root validation set has actually been run
-- only mark `M-QA-02` closed if the root smoke/bootstrap flows and docs are verified from `master`
+- only mark `M-QA-02` closed if the root smoke/bootstrap flows and docs are verified from `main`
 
 - [ ] **Step 4: Run the highest root confidence command**
 

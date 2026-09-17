@@ -24,13 +24,13 @@ This document supersedes the 2026-08-06 handoff at [cursor-handoff-2026-08-06.md
 
 Three things are true right now on 2026-08-08:
 
-### 1.1 master HEAD 90a2b1b clean status
-- `origin/master` HEAD commit = **90a2b1b** `docs(supabase-groom): promote placeholders + UX tails, add 3 kickoff prompts` — CURRENT master HEAD at session kickoff. The 4 prior commits on master in reverse chronological order: (2) 5f377f3 `M-SUPABASE-01 close ledger edit companion (ROADMAP + AGENTS closes)`; (3) 94c743d `M-SUPABASE-01 3 inspection deliverables commit`; (4) 5194ae8 `Previous cycle cleanup post UI unresponsive fix`.
+### 1.1 main HEAD 90a2b1b clean status
+- `origin/main` HEAD commit = **90a2b1b** `docs(supabase-groom): promote placeholders + UX tails, add 3 kickoff prompts` — CURRENT main HEAD at session kickoff. The 4 prior commits on main in reverse chronological order: (2) 5f377f3 `M-SUPABASE-01 close ledger edit companion (ROADMAP + AGENTS closes)`; (3) 94c743d `M-SUPABASE-01 3 inspection deliverables commit`; (4) 5194ae8 `Previous cycle cleanup post UI unresponsive fix`.
 - Git status SHOULD be clean (no uncommitted files from the blocked 02a/02b attempt below, since TRAE returned BLOCKED before any Builder commit was produced). If Cursor `git status --short --branch` shows any Modified/Untracked files on first command: they are ORPHANED DRAFT from the aborted TRAE 02a/02b attempt — discard via `git checkout . && git clean -fd` UNLESS the user explicitly says they want them.
 
 ### 1.2 M-SUPABASE-02a/02b COMBINED CYCLE STATUS = BLOCKED RULE 1
 - The session on 2026-08-08 attempted to kick off M-SUPABASE-02a/02b combined P0 cycle per ROADMAP Orders 13.1 + 13.2 + groom Prompt 1 at `docs/superpowers/plans/2026-08-07-msupabase-groom-next-session-kickoffs.md § Prompt 1`.
-- RULE 1 HARD BLOCKER STATUS = ACTIVE. The cycle was RETURNED SESSION BLOCKED before any Builder code/docs commit was produced (no commit on master for 02a/02b yet).
+- RULE 1 HARD BLOCKER STATUS = ACTIVE. The cycle was RETURNED SESSION BLOCKED before any Builder code/docs commit was produced (no commit on main for 02a/02b yet).
 - Blocker text copied VERBATIM from TRAE output = `"no ~/.pgpass present AND user declined to paste dashboard outputs"`.
 - Resolution Options documented in the prior blocker output = **Option A** (drop ~/.pgpass pooler entry) OR **Option B** (paste §1..§7 redacted dashboard SQL outputs from WS_SUPABASE_01_READONLY_AUDIT.sql back into chat). Both options are re-listed VERBATIM inside §1.2.1 Cursor Unblock Options AND §8 first-step Cursor Unblock Checklist.
 - Live Gate 1 read-only SQL pass reference file = [WS_SUPABASE_01_READONLY_AUDIT.sql](file:///Volumes/KooDrive/InsiteApp/WS_SUPABASE_01_READONLY_AUDIT.sql) — 7 sections, EXACT section numbers 1..7 listed in §15 Appendix A so Cursor can run them without guessing.
@@ -63,7 +63,7 @@ cd /Volumes/KooDrive/InsiteApp && echo "=== Metro health (should be 200) ===" &&
 
 ## 2. Changes Between 2026-08-06 and 2026-08-08 (File Map table with Status columns: Closed 2026-08-06 → 2026-08-08; list commit SHAs 90a2b1b / 5f377f3 / 94c743d)
 
-### 2.1 Commit Delta (3 new commits on origin/master after the 2026-08-06 handoff)
+### 2.1 Commit Delta (3 new commits on origin/main after the 2026-08-06 handoff)
 
 | Commit SHA | Conventional Type | Description (1 line) | Milestone Closed |
 |---|---|---|---|
@@ -80,7 +80,7 @@ cd /Volumes/KooDrive/InsiteApp && echo "=== Metro health (should be 200) ===" &&
 | WS-QA / M-QA-03 | Active Hybrid expansion | **Closed (2026-08-07)** per AGENTS.md line 37 | S-UX-01I unlocked 18 testID gaps + hotfix; L1 journeys 5/5 PASS; L2 regression 35/151 + post-01I 85/85 components PASS; L3 Maestro 5/5 flows ALL rc=0 PASS iPhone 17 Pro Max iOS 26.0 via scripts/maestro/run-local.sh wrapper. |
 | WS-SUPABASE / M-SUPABASE-01 | Pipeline | **Closed (2026-08-07)** per AGENTS.md line 38 | 3 inspection deliverables (system coupling map + 4-domain report + 11-entry findings backlog) all QA 5/5 docs-review PASS; anti-secret 0; test:regression 37/160 PASS; tsc rc=0. |
 | WS-SUPABASE / M-SUPABASE-00 Placeholder Groom | (did not exist on 08-06) | **Closed (2026-08-07)** per AGENTS.md line 39 | Docs-only ledger-groom; 15 new ROADMAP Pipeline rows 13.1..13.15; 3 copy-paste kickoff prompts; AGENTS Status ledger + pipeline precedence updated. |
-| WS-SUPABASE / M-SUPABASE-02a RLS P0 | (was placeholder inside M-SUPABASE-01, not real row) | **Pipeline → BLOCKED IN-FLIGHT ATTEMPT** (not committed to master yet) | ROADMAP real row 13.1 now; live Gate 1 read-only SQL pass REQUIRED; 2026-08-08 TRAE session BLOCKED per Rule 1 (no ~/.pgpass + user declined dashboard paste). |
+| WS-SUPABASE / M-SUPABASE-02a RLS P0 | (was placeholder inside M-SUPABASE-01, not real row) | **Pipeline → BLOCKED IN-FLIGHT ATTEMPT** (not committed to main yet) | ROADMAP real row 13.1 now; live Gate 1 read-only SQL pass REQUIRED; 2026-08-08 TRAE session BLOCKED per Rule 1 (no ~/.pgpass + user declined dashboard paste). |
 | WS-SUPABASE / M-SUPABASE-02b FK P0 | (was placeholder inside M-SUPABASE-01, not real row) | **Pipeline → BLOCKED IN-FLIGHT ATTEMPT** (parallel to 02a; shares Gate 1) | ROADMAP real row 13.2 now; combined P0 cycle with 02a. Same BLOCKER Rule 1. |
 | WS-UX / M-UX-01 (overall) | Active | **Pipeline** (unchanged class; later slices still Pipeline) | Slices S-UX-01A through S-UX-01I closed; S-UX-01J/K/M/N new UX tails inserted as 13.12..13.15 Pipeline with Prereq = M-SUPABASE-03b. |
 | WS-UX / S-UX-01J/K/M/N | (unregistered on 08-06) | **Pipeline** (Prereq = M-SUPABASE-03b Closed) | Inserted during M-SUPABASE-00 groom 2026-08-07 commit 90a2b1b. Cannot ship until 03b migration live applies all 6 columns. |
@@ -113,7 +113,7 @@ Source of truth cross-checked: [AGENTS.md Current Delivery Status lines 31–40]
 | WS-UX / M-UX-01 (overall) | Insite redesign implementation | **Pipeline** | — | M-UIA-03, M-DATA-02 Closed | Slices beyond I = Pipeline. Redesign workstream = active; current focus = Supabase remediation first before any more UX slices ship. |
 | WS-QA / M-QA-01 Sprint7 User Testing Rubric | 4 scenarios / 18 PNGs | **Closed** | 2026-08-06 | — | Suite rc=0; iPhone 17 Pro Max sim; evidence `.cache/maestro-artifacts/qa01-20260806_214425/`. |
 | WS-QA / M-QA-02 UI Automation Foundation | Maestro base + 3 flows + 4 scripts | **Closed** | 2026-08-06 | — | 3-flow re-verify rc=0 iPhone 17 Pro Max UDID B7B2640C-4738-4F8A-AEEE-5DF3D21D2533; 4 package scripts + `documentation/MAESTRO_LOCAL_SETUP.md` runbook. |
-| WS-QA / M-QA-03 Automated Confidence & E2E Coverage | 5 Maestro live flows / Jest L1-L3 | **Closed** | 2026-08-07 | — | 18 testID gaps S-UX-01I closed + hotfix; L1 5/5 6/6 PASS; L2 35/151 + post-01I 85/85 components PASS; L3 Maestro 5/5 all rc=0. 4 master commits 0 prod edits YAML-only. |
+| WS-QA / M-QA-03 Automated Confidence & E2E Coverage | 5 Maestro live flows / Jest L1-L3 | **Closed** | 2026-08-07 | — | 18 testID gaps S-UX-01I closed + hotfix; L1 5/5 6/6 PASS; L2 35/151 + post-01I 85/85 components PASS; L3 Maestro 5/5 all rc=0. 4 main commits 0 prod edits YAML-only. |
 | WS-SUPABASE / M-SUPABASE-01 Full Inspection | 3 audit docs / 11 findings | **Closed** | 2026-08-07 | — | System coupling map + 4-domain report + 11 findings backlog (2P0/6P1/3P2). Anti-secret 0. Test Engineer baseline test:regression 37/160 PASS. |
 | WS-SUPABASE / M-SUPABASE-00 Placeholder Groom | 15 real rows + 3 prompts | **Closed** | 2026-08-07 | M-SUPABASE-01 Closed | ROADMAP 13.1..13.15 + AGENTS ledger + pipeline focus precedence. Commit 90a2b1b. |
 | **WS-SUPABASE / M-SUPABASE-02a RLS 7-table anon-block** | **P0 Security** | **Pipeline → BLOCKED IN-FLIGHT ATTEMPT** | — | Live Gate 1 read-only SQL pass MANDATORY (not optional) | **BLOCKER = Rule 1 active: `"no ~/.pgpass present AND user declined to paste dashboard outputs"`.** Cannot close with "code-path only". Must produce §Gate-1-Live-SQL 7/7 sections redacted appendix (anon SELECT row counts). Then remediation = ALTER TABLE…ENABLE RLS, REVOKE default from anon, policies using `auth.uid()` + `user_has_project_access()` helpers. Close gate anon SELECT returns 0 rows all 7 tables. Rollback-safe. |
@@ -252,7 +252,7 @@ Builder → Reviewer (zero C/H findings) → git commit (conventional format) �
 
 ### 7.5 M-QA-02 closure rule
 
-WS-QA/M-QA-02 Maestro foundation status stays Pipeline in ROADMAP + AGENTS UNLESS master-side smoke/bootstrap wrap-up is explicitly human-verified. Local build passes on any developer machine are NOT sufficient evidence to close this milestone (governance rule from AGENTS.md line 36; closed as of 2026-08-06 but the rule still applies for any future reopen).
+WS-QA/M-QA-02 Maestro foundation status stays Pipeline in ROADMAP + AGENTS UNLESS main-side smoke/bootstrap wrap-up is explicitly human-verified. Local build passes on any developer machine are NOT sufficient evidence to close this milestone (governance rule from AGENTS.md line 36; closed as of 2026-08-06 but the rule still applies for any future reopen).
 
 ### 7.6 Secrets / credentials
 
@@ -295,7 +295,7 @@ Two-bullet exact same text from §1.2.1 + the TRAE blocker output. Paste this in
 
 If you do NOT have the password AND do NOT have Dashboard access → M-SUPABASE-02a/02b REMAINS BLOCKED. Do not produce the 02a RLS policy migration files or 02b FK migration files as a "proactive" step until Gate 1 is resolved. Pick a lower-priority item (e.g., write .cursorrules, typecheck, deliverable C file creation, parallel idle P1 03e script dry-run port which is docs-only + touches 2 JS files if you want to make progress without Gate 1).
 
-### Step 3 — GIT STATUS + verify commit 90a2b1b clean master HEAD status rc=0
+### Step 3 — GIT STATUS + verify commit 90a2b1b clean main HEAD status rc=0
 
 ```bash
 cd /Volumes/KooDrive/InsiteApp
@@ -304,7 +304,7 @@ git rev-parse HEAD  # should output 90a2b1b (short) or 90a2b1b... (full 40-char 
 git status --short | wc -l  # expected = 0 clean
 ```
 
-Expected result: `## master...origin/master` ahead/behind 0, no Modified/Untracked rows (rc=0 clean).
+Expected result: `## main...origin/main` ahead/behind 0, no Modified/Untracked rows (rc=0 clean).
 
 If there ARE uncommitted files: TRAE BLOCKED the 02a/02b session before any Builder commit, but some draft files may have been written to disk then abandoned. Treat them as ORPHANED DRAFT. Default action: `git checkout . && git clean -fd` → discard all. Only keep them IF the user explicitly says "I want to continue the 02a/02b draft work from those files" and inspects them first.
 
@@ -515,7 +515,7 @@ A1..A6 preserved from 2026-08-06 handoff §12 if still applicable. A7..A9 NEW 20
 | A1 | TRAE @-menu SOLO agents were NOT visually confirmed by user (8 rows Planner → Docs Curator visible or not?) | User ran out of TRAE credit before testing reload on 2026-08-06; TRAE registration now moot for Cursor work | Irrelevant for Cursor migration → CLOSE. Use `.cursorrules` + `.cursor/rules/` 6 files workflow which has identical logic. Migration complete per §11 table rows 1 + 4. For historical curiosity only: optional can open TRAE Skills UI later to check if user returns to TRAE. |
 | A2 | Sprint 7 release-spoofing hardening edits (deep links + Dev Settings button `__DEV__` gating) were proposed but not applied. User has not said whether the risk is acceptable for next release. | TRAE sessions 08-06 → 08-08 were docs-only (QAE, M-SUPABASE-01/00); no explicit "go fix release risk" was ever given. Risk is low-severity for internal builds but grows if a public IPA ships. | Ask user on first Cursor release session. If yes → apply 3 proposed edits from 08-06 handoff §5 + run release smoke build + Maestro. If no → document assumption in release notes close-out. |
 | A3 | Project-level `.trae/skills/solo-agents/` was deleted earlier 08-06 session (intentional dedup of user-level copy at ~/.trae/skills). Backup in §8 Step 1 covers user-level copy. Does user want a repo-level synced copy for team sharing? | Open preference. User-level copy at `~/.trae` is canonical per TRAE 08-06 Method 1 install; repo-level duplicates can drift. | Ask user. If yes → copy user-level `solo-agents` dir into repo → add to git → keep in sync with symlink or manual; mention in §6 Step 1 .cursorrules that SOLO YAMLs also live at repo-local path now. If no → leave status quo. |
-| A4 | Master-side M-QA-02 verification status unknown — last known state Pipeline per 08-06 handoff. AGENTS updated it to Closed 08-06 based on 3-flow re-verify rc=0 iPhone 17 Pro Max B7B2640C-4738-4F8A-AEEE-5DF3D21D2533; but governance rule says "stays Pipeline unless master-side human verified smoke/bootstrap". Is there a CI runner? | Gap. The governance close-out gate item was re-interpreted by TRAE 08-06 QA Validator as "local passes on same UDID + simulator image that CI would use = sufficient proxy". AGENTS line 36 now says Closed. | Ask user: "Is M-QA-02 truly closed per master-side verification, or should we reopen it to Pipeline in AGENTS + ROADMAP?" If answer is master-side NOT yet performed → revert AGENTS/ROADMAP M-QA-02 to Pipeline + document governance rule reason. If answer is master verification was performed (separately, off-camera) → leave Closed as-is. |
+| A4 | Main-side M-QA-02 verification status unknown — last known state Pipeline per 08-06 handoff. AGENTS updated it to Closed 08-06 based on 3-flow re-verify rc=0 iPhone 17 Pro Max B7B2640C-4738-4F8A-AEEE-5DF3D21D2533; but governance rule says "stays Pipeline unless main-side human verified smoke/bootstrap". Is there a CI runner? | Gap. The governance close-out gate item was re-interpreted by TRAE 08-06 QA Validator as "local passes on same UDID + simulator image that CI would use = sufficient proxy". AGENTS line 36 now says Closed. | Ask user: "Is M-QA-02 truly closed per main-side verification, or should we reopen it to Pipeline in AGENTS + ROADMAP?" If answer is main-side NOT yet performed → revert AGENTS/ROADMAP M-QA-02 to Pipeline + document governance rule reason. If answer is main verification was performed (separately, off-camera) → leave Closed as-is. |
 | A5 | Do uncommitted files detected by `git status` at §8 Step 3 match expected orphaned-draft state only from aborted 02a/02b attempt? Or are there unrelated local changes from a previous session that we accidentally include in a commit? | TRAE session 2026-08-08 for 02a/02b was BLOCKED by Rule 1 BEFORE Builder produced any files. So git SHOULD be clean (0 uncommitted). But Cursor will run §8 Step 3 first thing and may find stray files. | Examine `git status` output carefully in Cursor §8 Step 3. Default action: if files = migration deliverables (.cursorrules, .cursor/rules/) that this TRAE session just created → those are EXPECTED (you will commit them via §7 COMMIT GATE). If files match ANYTHING ELSE → use `git add -p` for selective staging, DO NOT blindly commit. Discard true orphans with `git checkout . && git clean -fd`. |
 | A6 | Was `/tmp/d7_qav.sh` 1-line placeholder (08-06 Terminal 13 earlier command) actually meaningful content the user initiated as diagnostic, or is it dead temp? | Unknown contents. TRAE 08-06 QA Validator tagged it unknown. | On Cursor first free terminal: `if [ -f /tmp/d7_qav.sh ]; then cat /tmp/d7_qav.sh; else echo "no longer exists (safe)"; fi` → decide keep/debug/ignore based on 1-line contents. If still exists and is a diagnostic you care about → copy to repo-local `scripts/sys/d7_qav.sh` + commit with message `chore(sys): preserve 08-06 diagnostic placeholder` if meaningful; else safe to let `/tmp` reclaim it on reboot. |
 | **A7 (NEW 2026-08-08)** | **02a/02b unblock: will user provide Option A pgpass or Option B dashboard paste?** | TRAE session 2026-08-08 posed both options → user declined both (hence blocker text: `"no ~/.pgpass present AND user declined to paste dashboard outputs"`). The blocker is still active for Cursor. M-SUPABASE-02a/02b is the top priority item in the 1..6 queue; we can't close it without Gate 1 evidence. | Cursor first action if/when tackling 02a/02b cycle: re-paste §8 Step 2 Unblock Checklist verbatim. If user picks Option A → walk them through the 2 commands of §10.5 (format line + psql run). If Option B → open §15 Appendix A 7 section titles for paste ordering; after paste → save redacted outputs to `docs/superpowers/evidence/m-supabase-02a-02b-gate1-redacted-YYYYMMDD.md` before proceeding with Builder migration SQL files. If user again declines both → return cycle BLOCKED again (same string), pick priority 6 idle parallel 03e script dry-run port (no Gate 1 needed) to continue making progress. |
@@ -532,7 +532,7 @@ Copy VERBATIM from ROADMAP.md §Deferred Context lines 102–110:
 >
 > - WS-SEC / M-SEC-02 remains intentionally deferred: rotate previously exposed credentials and decide later whether Git history rewriting is required beyond branch-tip cleanup.
 > - Pending follow-on under `WS-SUPABASE / M-SUPABASE-01`: apply the authored `tasks` redesign metadata migration for `primary_assignee_id`, `delegated_user_ids`, `container_id`, `sub_container_id`, and `tags`; until the live schema is updated, task create and redesign-metadata edit flows use compatibility fallbacks and those fields do not persist reliably.
-> - Deferred branch follow-on: `feature/ai-llm-integration` is intentionally paused for future roadmap grooming; its code is already contained in `master`, but the feature line remains under review before any new milestone or slice is opened for it.
+> - Deferred branch follow-on: `feature/ai-llm-integration` is intentionally paused for future roadmap grooming; its code is already contained in `main`, but the feature line remains under review before any new milestone or slice is opened for it.
 > - Deferred branch follow-on: `origin/feature/local-file-cache` remains a remote-only legacy branch on unrelated history; do not delete or promote it until its scope is reviewed and mapped into a future workstream or explicitly retired.
 > - WS-FUTURE: MCP Hub architecture, AI task automation, and construction platform integrations.
 
@@ -658,7 +658,7 @@ HARD SAFETY RULES (7.0a/7.0b/7.0c FIRST IN LIST — supersede later rules on con
   7.2 App Store Connect Public checkbox = MANUAL HUMAN STEP. After ./build-and-submit.sh → status: "Submitted to ASC, awaiting manual public release". NEVER say "released to users" after submit-only.
   7.3 Rerun-safe idempotency on any bootstrap/native callback/login init/deeplink/auth finally-block. Second run must not duplicate records / double-init stores / crash.
   7.4 Commit gate ordering: Builder → Review → commit → Test → QA. NEVER reorder.
-  7.5 M-QA-02 closure: stays Pipeline unless master-side smoke/bootstrap human-verified. Local passes NEVER sufficient.
+  7.5 M-QA-02 closure: stays Pipeline unless main-side smoke/bootstrap human-verified. Local passes NEVER sufficient.
   7.6 Secrets: NO service_role keys, passwords, ASC API keys, EAS tokens, PROJECT_REF concrete values, keystore in docs/repo/chat. Env-var patterns only. Anti-secret grep before every commit gate.
   7.7 Sprint7 deep-link spoofing: apply the 3 __DEV__ hardening edits before next public release unless user says risk OK.
   7.8 Maestro rc=0 MEANINGLESS without PNG visual evidence. 8 preflight gates + 6 runner layers + visual read FIRST before accepting rc=0 PASS. Ratio sanity check: false-pass 24s vs real-pass 419s.

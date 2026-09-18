@@ -103,12 +103,37 @@ export function completionFromVerticalDrag(
   return snapCompletion(startPercentage + deltaSteps * 5);
 }
 
+export type ProgressDockTrailingSlot = "percent" | "submit";
+
+/**
+ * Progress dock trailing slot — product loop:
+ * below 100% always shows the % chip/slider; Submit appears only after a
+ * gesture has settled at 100% (not while the user is still scrubbing or
+ * after a long-press that brought the slider back).
+ */
+export function progressDockTrailingSlot(opts: {
+  completionPercentage: number;
+  forceProgressScrub?: boolean;
+  scrubSessionActive?: boolean;
+}): ProgressDockTrailingSlot {
+  if (
+    opts.completionPercentage >= 100 &&
+    !opts.forceProgressScrub &&
+    !opts.scrubSessionActive
+  ) {
+    return "submit";
+  }
+  return "percent";
+}
+
 type CompletionScrubButtonProps = {
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
   /** Mount already expanded (e.g. long-press submit at 100%). */
   startExpanded?: boolean;
+  /** Finger-down on the compact chip or remounted leave-100% track. */
+  onSessionStart?: () => void;
   /** Fired when the scrubber retracts after a press-drag (or cancel tap). */
   onRetract?: () => void;
 };
@@ -116,23 +141,26 @@ type CompletionScrubButtonProps = {
 /**
  * Progress % control — interaction contract:
  *
- * - Closed: same idle circle chrome as camera / + dock peers (44×44 slot).
- * - Press-drag: finger-down expands an *overlay* scrub track upward (does not
- *   grow the dock row); drag changes % (5% steps); finger-up commits & collapses.
- * - At 100% the dock shows Submit. Long-press Submit remounts this expanded
- *   so a second press-drag can leave 100%.
- * - Compact press-drag: Native Gesture.Pan stays on a *stable* 44×44 view.
- *   Growing the responder mid-press lets iOS cancel after one 5% step once
- *   the finger leaves the dock and sits over the work-thread ScrollView.
- * - Remounted leave-100% scrub is *born* expanded (200px pan from frame 0).
- *   That is not a mid-gesture resize. First no-move finalize is ignored so
- *   the Submit long-press lift does not retract before a downward drag.
+ * - Below 100%: dock shows the % chip/slider, never Submit. Press-drag varies
+ *   % freely (5% snap). Compact pan geometry stays 44×44 for the whole
+ *   finger-down (TF-271); the overlay track is visual-only.
+ * - Drag to 100%: slider stays until release, then retracts and Submit appears.
+ * - Long-press Submit remounts this *already expanded* at 100% (does not submit).
+ *   First no-move finalize is ignored so the Submit lift does not retract
+ *   before the next drag.
+ * - Drag below 100% and release → % chip again. Drag back to 100% and release
+ *   → Submit again. Leave/re-enter 100% any number of times until tap Submit.
+ * - Compact vs leave-100% remount: growing the responder 44→200 mid-press
+ *   lets iOS cancel after one 5% step. Leave-100% is born at 200px (not a
+ *   mid-gesture resize). After retract below 100%, remount compact so later
+ *   press-drags keep TF-271 geometry.
  */
 function CompletionScrubButton({
   value,
   onChange,
   disabled = false,
   startExpanded = false,
+  onSessionStart,
   onRetract,
 }: CompletionScrubButtonProps) {
   const [isOpen, setIsOpen] = useState(startExpanded);
@@ -142,6 +170,7 @@ function CompletionScrubButton({
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const disabledRef = useRef(disabled);
+  const onSessionStartRef = useRef(onSessionStart);
   const onRetractRef = useRef(onRetract);
   const bornExpanded = startExpanded;
   const [hitHeight, setHitHeight] = useState(
@@ -151,6 +180,7 @@ function CompletionScrubButton({
   valueRef.current = value;
   onChangeRef.current = onChange;
   disabledRef.current = disabled;
+  onSessionStartRef.current = onSessionStart;
   onRetractRef.current = onRetract;
   isOpenRef.current = isOpen;
 
@@ -214,6 +244,7 @@ function CompletionScrubButton({
         Keyboard.dismiss();
         didMoveRef.current = false;
         startPctRef.current = valueRef.current;
+        onSessionStartRef.current?.();
         if (!isOpenRef.current) {
           isOpenRef.current = true;
           setIsOpen(true);
@@ -351,7 +382,7 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [camera] · [text] · [% press-drag if <100% | submit@100%; long-press submit → scrub]
+ * Progress: [camera] · [text] · [% while <100% or still scrubbing | submit@100%; long-press submit → scrub]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]
@@ -383,6 +414,7 @@ export default function ReportReplyComposer({
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
   const [forceProgressScrub, setForceProgressScrub] = useState(false);
+  const [scrubSessionActive, setScrubSessionActive] = useState(false);
   const isAwaitingReview = mode === "awaiting_review";
   const isReviewDecision = mode === "review_decision";
   const isArchiveMode = mode === "archive";
@@ -487,14 +519,19 @@ export default function ReportReplyComposer({
   const leadingFabLocked = controlsLocked;
   const isProgressMode = mode === "progress";
 
-  // Progress dock: trailing slot is % scrub until 100%, then submit.
-  // Long-press submit forces scrub back so the user can leave 100%.
+  // Progress dock: % chip/slider until a gesture settles at 100%, then Submit.
+  // Long-press Submit remounts the slider; leave/re-enter 100% is free until tap.
+  const trailingSlot = progressDockTrailingSlot({
+    completionPercentage,
+    forceProgressScrub,
+    scrubSessionActive,
+  });
   const showProgressScrubTrailing =
     isProgressMode &&
     Boolean(onChangeCompletionPercentage) &&
-    (completionPercentage < 100 || forceProgressScrub);
+    trailingSlot === "percent";
   const showProgressSubmitTrailing =
-    isProgressMode && completionPercentage >= 100 && !forceProgressScrub;
+    isProgressMode && trailingSlot === "submit";
   // Report / awaiting keep leading % (locked) and trailing camera+send.
   const showLeadingCompletion = showCompletion && !isProgressMode;
 
@@ -504,10 +541,19 @@ export default function ReportReplyComposer({
     }
     Keyboard.dismiss();
     setForceProgressScrub(true);
+    setScrubSessionActive(true);
+  }, [isSubmitting]);
+
+  const handleProgressScrubSessionStart = useCallback(() => {
+    if (isSubmitting) {
+      return;
+    }
+    setScrubSessionActive(true);
   }, [isSubmitting]);
 
   const handleProgressScrubRetract = useCallback(() => {
     setForceProgressScrub(false);
+    setScrubSessionActive(false);
   }, []);
 
   const photoButton = !isReviewDecision ? (
@@ -573,10 +619,12 @@ export default function ReportReplyComposer({
   const progressScrubTrailing =
     showProgressScrubTrailing && onChangeCompletionPercentage ? (
       <CompletionScrubButton
+        key={forceProgressScrub ? "leave-100" : "compact"}
         value={completionPercentage}
         onChange={onChangeCompletionPercentage}
         disabled={isSubmitting}
         startExpanded={forceProgressScrub}
+        onSessionStart={handleProgressScrubSessionStart}
         onRetract={handleProgressScrubRetract}
       />
     ) : null;

@@ -288,41 +288,124 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
   });
 
-  it("progress dock at 100%: long-press then downward drag leaves 100% without clearing mid-pan", () => {
+  it("progress dock loop: vary below 100, enter Submit, long-press leave, re-enter, leave again", () => {
     const onChange = jest.fn();
     const onSubmit = jest.fn();
     const screen = render(
       <ProgressDockHarness
-        initialPercentage={100}
+        initialPercentage={0}
         onChange={onChange}
         onSubmit={onSubmit}
       />,
     );
 
-    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    const expectCompactChip = () => {
+      expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+      expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+      expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
+        expect.objectContaining({ height: 44, width: 44 }),
+      );
+      expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+        expect.objectContaining({ height: 44, width: 44 }),
+      );
+    };
+    const expectSubmit = () => {
+      expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+      expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
+        "Submit for review",
+      );
+    };
+
+    // 1. Start at 0%: % chip, not Submit.
+    expect(screen.getByText("0%")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expectCompactChip();
+
+    // 2. Vary freely below 100% (press-drag, 5% snap). Compact pan stays 44.
+    grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expectCompactChip();
+    moveCompletion(-64);
+    expect(screen.getByText("40%")).toBeTruthy();
+    moveCompletion(-128);
+    expect(screen.getByText("80%")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    releaseCompletion();
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expectCompactChip();
+
+    // 3. Drag to 100%: slider stays until release, then dock switches to Submit.
+    grantCompletion();
+    moveCompletion(-32);
+    expect(screen.getByText("100%")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 44, width: 44 }),
+    );
+    releaseCompletion();
+    expectSubmit();
+
+    // 4. Long-press Submit → expanded slider at 100% (does not submit).
+    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
       expect.objectContaining({ height: 200, width: 44 }),
     );
-
-    // Leftover lift from the Submit long-press must not retract the remounted scrub.
+    // Leftover lift from Submit must not retract before the next drag.
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
 
+    // 5. Drag below 100% → % chip (Submit gone). Keep changing %.
     grantCompletion();
-    // 16px down = two 5% steps from 100.
-    moveCompletion(16);
-    expect(onChange).toHaveBeenCalledWith(90);
-    expect(screen.getByText("90%")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    moveCompletion(32);
+    expect(screen.getByText("80%")).toBeTruthy();
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-
     releaseCompletion();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.getByText("80%")).toBeTruthy();
+    expectCompactChip();
+    grantCompletion();
+    moveCompletion(32);
+    expect(screen.getByText("60%")).toBeTruthy();
+    expectCompactChip();
+    releaseCompletion();
+    expectCompactChip();
+
+    // 6. Drag back to 100% → Submit appears again.
+    grantCompletion();
+    moveCompletion(-64);
+    expect(screen.getByText("100%")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 44, width: 44 }),
+    );
+    releaseCompletion();
+    expectSubmit();
     expect(onSubmit).not.toHaveBeenCalled();
+
+    // 7. Repeat: long-press → below 100, then back to 100, then tap Submit.
+    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    releaseCompletion();
+    grantCompletion();
+    moveCompletion(16);
+    expect(screen.getByText("90%")).toBeTruthy();
+    releaseCompletion();
+    expectCompactChip();
+    grantCompletion();
+    moveCompletion(-16);
+    expect(screen.getByText("100%")).toBeTruthy();
+    releaseCompletion();
+    expectSubmit();
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it("progress dock at 100%: submit replaces % circle", () => {
@@ -514,7 +597,23 @@ describe("ReportReplyComposer", () => {
   });
 
   it("maps vertical drag to 5% completion steps (up increases)", () => {
-    const { completionFromVerticalDrag } = require("../ReportReplyComposer");
+    const { completionFromVerticalDrag, progressDockTrailingSlot } = require("../ReportReplyComposer");
+    expect(progressDockTrailingSlot({ completionPercentage: 0 })).toBe("percent");
+    expect(progressDockTrailingSlot({ completionPercentage: 80 })).toBe("percent");
+    expect(progressDockTrailingSlot({ completionPercentage: 100 })).toBe("submit");
+    expect(
+      progressDockTrailingSlot({ completionPercentage: 100, forceProgressScrub: true }),
+    ).toBe("percent");
+    expect(
+      progressDockTrailingSlot({ completionPercentage: 100, scrubSessionActive: true }),
+    ).toBe("percent");
+    expect(
+      progressDockTrailingSlot({
+        completionPercentage: 100,
+        forceProgressScrub: true,
+        scrubSessionActive: true,
+      }),
+    ).toBe("percent");
     expect(completionFromVerticalDrag(40, -16)).toBe(50);
     expect(completionFromVerticalDrag(40, 16)).toBe(30);
     expect(completionFromVerticalDrag(0, -200)).toBe(100);

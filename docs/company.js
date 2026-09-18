@@ -172,6 +172,7 @@
 
   const update = () => {
     syncChrome();
+    syncPager();
     if (reduce || !desktop.matches) {
       scrubSections.forEach((scrub) => {
         scrub.querySelectorAll(".project-slide").forEach((s, i) => {
@@ -297,18 +298,55 @@
     setMobileIndex(gallery, 0);
   });
 
-  document.querySelector("[data-page-next]")?.addEventListener("click", () => {
+  const heroSection = document.querySelector(".hero");
+  const prevBtn = document.querySelector("[data-page-prev]");
+  const nextBtn = document.querySelector("[data-page-next]");
+
+  const nextWaypoint = () => {
     const list = waypoints();
-    const y = window.scrollY + stickyOffset() + 8;
-    let target = list[list.length - 1];
-    for (const el of list) {
-      const top = window.scrollY + el.getBoundingClientRect().top;
-      if (top > y + 40) {
-        target = el;
-        break;
-      }
+    const idx = currentWaypointIndex();
+    if (idx < 0 || idx >= list.length - 1) return null;
+    return list[idx + 1];
+  };
+
+  const prevWaypoint = () => {
+    const list = waypoints();
+    if (!list.length) return heroSection;
+    const idx = currentWaypointIndex();
+    const firstY = snapY(list[0]);
+    if (window.scrollY <= firstY + 12) return heroSection;
+    return idx > 0 ? list[idx - 1] : heroSection;
+  };
+
+  const syncPager = () => {
+    const list = waypoints();
+    const y = window.scrollY;
+    const atTop = y < 48 || !document.body.classList.contains("is-projects");
+    const last = list[list.length - 1];
+    const atLast = Boolean(last && snapY(last) <= y + 24);
+    if (prevBtn) {
+      prevBtn.hidden = atTop;
+      prevBtn.disabled = atTop;
+    }
+    if (nextBtn) {
+      nextBtn.hidden = atLast;
+      nextBtn.disabled = atLast;
+    }
+  };
+
+  prevBtn?.addEventListener("click", () => {
+    const target = prevWaypoint();
+    if (!target || target === heroSection) {
+      document.body.classList.remove("is-projects");
+      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+      return;
     }
     jumpTo(target);
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    const target = nextWaypoint();
+    if (target) jumpTo(target);
   });
 
   document.querySelectorAll('a[href^="#"]').forEach((a) => {

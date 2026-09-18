@@ -38,6 +38,14 @@
   );
   /* Shared mid-tone so stacked projects blend while scrolling between them. */
   --project-bridge: #c5dde8;
+  /* Company copy → first work stage (same bridge the project wrappers use). */
+  --company-copy-grad: linear-gradient(
+    158deg,
+    #6ea8bc 0%,
+    #8ebed0 34%,
+    #b7d5e1 72%,
+    var(--project-bridge) 100%
+  );
   --white: #fff;
   --font-d: "Syne", system-ui, sans-serif;
   --font-b: "Manrope", system-ui, sans-serif;
@@ -186,27 +194,55 @@ body:not(.is-projects) { --header-h: 0px; }
 }
 
 .company {
-  background: var(--mist);
+  /* Vertical wash into the first work stage (same --project-bridge). */
+  background: linear-gradient(
+    180deg,
+    #8ebed0 0%,
+    var(--project-bridge) 58%,
+    var(--project-bridge) 100%
+  );
   scroll-margin-top: var(--header-h);
 }
 .company-stage {
+  position: relative;
   min-height: calc(100vh - var(--header-h));
   min-height: calc(100dvh - var(--header-h));
   display: grid;
   grid-template-columns: 0.95fr 1.05fr;
   grid-template-areas: "copy visual";
   overflow: hidden;
+  /* Copy left / photo right — same diagonal as .project-flip stages. */
+  background: var(--stage-grad-flip);
+}
+.company-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(4.5rem, 18vh, 9rem);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    0deg,
+    var(--project-bridge) 0%,
+    color-mix(in srgb, var(--project-bridge) 55%, transparent) 42%,
+    transparent 100%
+  );
 }
 .company-visual {
   grid-area: visual;
   position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--blue);
+  background: transparent;
 }
 .company-copy {
   grid-area: copy;
+  position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
   padding: clamp(1.75rem, 4.5vw, 3.25rem);
@@ -214,7 +250,7 @@ body:not(.is-projects) { --header-h: 0px; }
   flex-direction: column;
   justify-content: center;
   justify-content: safe center;
-  background: var(--panel-light);
+  background: var(--company-copy-grad);
   color: var(--ink);
   overflow-y: auto;
 }
@@ -541,12 +577,24 @@ footer a {
   text-underline-offset: 3px;
   color: var(--blue-mid);
 }
-.page-next {
+.page-nav {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
   left: auto;
   bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+body.is-projects .page-nav {
+  opacity: 1;
+  pointer-events: auto;
+}
+.page-nav-btn {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 999px;
@@ -555,15 +603,16 @@ footer a {
   color: var(--ink);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 18%, transparent);
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0.9;
   transition: opacity 0.25s ease;
 }
-body.is-projects .page-next {
-  opacity: 0.9;
-  pointer-events: auto;
+.page-nav-btn:hover { opacity: 1; }
+.page-nav-btn[hidden] { display: none; }
+.page-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
-.page-next:hover { opacity: 1; }
 
 @media (min-width: 861px) and (max-height: 820px) {
   .panel {
@@ -631,6 +680,9 @@ body.is-projects .page-next {
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+  .company-stage::after {
+    display: none;
   }
   .company-visual {
     min-height: min(48vh, 22rem);
@@ -735,7 +787,7 @@ body.is-projects .page-next {
     flex-direction: column;
     padding: 2rem 1.25rem max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
   }
-  .page-next {
+  .page-nav-btn {
     width: 3rem;
     height: 3rem;
     font-size: 1.1rem;

@@ -20,6 +20,7 @@ import {
   LIBRARY_FILL_UNTIL_COUNT,
   LIBRARY_GRID_COLUMNS,
   LIBRARY_GRID_GAP,
+  libraryGridColumns,
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { resumePhotokitLibraryAfterAccept } from "@/modules/mediaLibrary/PhotokitThumbView";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
@@ -55,16 +56,17 @@ export function HybridLibraryPickerScreen() {
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
 
+  const columns = useMemo(() => libraryGridColumns(width), [width]);
   const tileSize = useMemo(
-    () => (width - LIBRARY_GRID_GAP * (LIBRARY_GRID_COLUMNS - 1)) / LIBRARY_GRID_COLUMNS,
-    [width],
+    () => (width - LIBRARY_GRID_GAP * (columns - 1)) / columns,
+    [columns, width],
   );
 
   const skeletonTileCount = useMemo(() => {
     const rowHeight = tileSize + LIBRARY_GRID_GAP;
     const gridArea = Math.max(200, height - insets.top - insets.bottom - 160);
-    return librarySkeletonTileCount(gridArea, rowHeight, LIBRARY_GRID_COLUMNS);
-  }, [height, insets.bottom, insets.top, tileSize]);
+    return librarySkeletonTileCount(gridArea, rowHeight, columns);
+  }, [columns, height, insets.bottom, insets.top, tileSize]);
 
   const albumPicker = useLibraryAlbumPicker({
     enabled: true,

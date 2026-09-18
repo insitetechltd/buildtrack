@@ -20,13 +20,11 @@ import { libraryGridDisplayUri } from "@/utils/libraryDisplayUri";
 import {
   LIBRARY_GRID_BATCH_MS,
   LIBRARY_GRID_BATCH_ROWS,
-  LIBRARY_GRID_INITIAL_ROWS,
   LIBRARY_GRID_WINDOW_SIZE,
   LIBRARY_BRIDGE_PAINT_BATCH_SIZE,
   LIBRARY_BRIDGE_PAINT_INTERVAL_MS,
   LIBRARY_PAINT_BATCH_SIZE,
   LIBRARY_PAINT_INTERVAL_MS,
-  LIBRARY_SKELETON_MIN_ROWS,
   LIBRARY_VIEWABILITY_MIN_TIME_MS,
   LIBRARY_VIEWABILITY_THRESHOLD,
   libraryPhotokitThumbPixelSize,
@@ -50,13 +48,12 @@ import {
   photokitGridRowCount,
   photokitGridRowLayout,
   photokitLookaheadRange,
-  LIBRARY_SECOND_WAVE_ITEMS,
 } from "@/utils/libraryPhotokitPrefetch";
 import {
-  LIBRARY_FILL_UNTIL_COUNT,
-  LIBRARY_GRID_COLUMNS,
   LIBRARY_GRID_GAP,
   LIBRARY_PREFETCH_UNTIL_COUNT,
+  libraryGridColumns,
+  libraryGridFirstWaveItemCount,
 } from "./libraryAlbumConstants";
 
 export type LibraryGridTileTheme = {
@@ -254,16 +251,17 @@ export function LibraryPhotoGrid({
   indexSession = null,
   onIndexNearEnd,
 }: LibraryPhotoGridProps) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const theme = useMemo(
     () => ({ ...DEFAULT_THEME, ...themeOverride }),
     [themeOverride],
   );
 
+  const columns = useMemo(() => libraryGridColumns(width), [width]);
   const tileSize = useMemo(() => {
-    const inner = width - LIBRARY_GRID_GAP * (LIBRARY_GRID_COLUMNS - 1);
-    return Math.max(1, Math.floor(inner / LIBRARY_GRID_COLUMNS));
-  }, [width]);
+    const inner = width - LIBRARY_GRID_GAP * (columns - 1);
+    return Math.max(1, Math.floor(inner / columns));
+  }, [columns, width]);
   const pixelSize = useMemo(
     () => libraryPhotokitThumbPixelSize(tileSize, PixelRatio.get()),
     [tileSize],
@@ -272,20 +270,29 @@ export function LibraryPhotoGrid({
     markLibraryThumbRequestPx(pixelSize);
   }, [pixelSize]);
   const rowHeight = tileSize + LIBRARY_GRID_GAP;
+  const firstWaveItems = useMemo(
+    () =>
+      libraryGridFirstWaveItemCount({
+        columns,
+        viewHeight: height,
+        rowHeight,
+      }),
+    [columns, height, rowHeight],
+  );
+  const initialRows = Math.max(1, Math.ceil(firstWaveItems / columns));
   const indexMode = indexSession != null;
   const indexCount = indexSession?.count ?? 0;
   const indexToken = indexSession?.token ?? 0;
   const useNativeThumbs = isPhotokitThumbsAvailable();
 
-  const indexInitialFill =
-    LIBRARY_FILL_UNTIL_COUNT + LIBRARY_SECOND_WAVE_ITEMS;
+  const indexInitialFill = firstWaveItems;
 
   const paint = useProgressiveGridPaint({
     itemCount: indexMode ? indexCount : assets.length,
     batchSize: indexMode ? LIBRARY_PAINT_BATCH_SIZE : LIBRARY_BRIDGE_PAINT_BATCH_SIZE,
     intervalMs: indexMode ? LIBRARY_PAINT_INTERVAL_MS : LIBRARY_BRIDGE_PAINT_INTERVAL_MS,
     resetKey: paintResetKey,
-    columns: LIBRARY_GRID_COLUMNS,
+    columns,
     initialFillCount: indexMode ? indexInitialFill : assets.length,
   });
 
@@ -332,7 +339,7 @@ export function LibraryPhotoGrid({
     ],
   );
 
-  const indexRowCount = photokitGridRowCount(indexCount);
+  const indexRowCount = photokitGridRowCount(indexCount, columns);
   const indexData = useMemo(() => {
     if (!indexMode) {
       return null;
@@ -374,6 +381,10 @@ export function LibraryPhotoGrid({
   assetsRef.current = assets;
   const pixelSizeRef = useRef(pixelSize);
   pixelSizeRef.current = pixelSize;
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
+  const firstWaveRef = useRef(firstWaveItems);
+  firstWaveRef.current = firstWaveItems;
   const indexSessionRef = useRef(indexSession);
   indexSessionRef.current = indexSession;
 
@@ -451,22 +462,24 @@ export function LibraryPhotoGrid({
       const last = Math.max(...indices);
       const session = indexSessionRef.current;
       if (session) {
-        const minItem = minIdx * LIBRARY_GRID_COLUMNS;
+        const cols = columnsRef.current;
+        const fillUntil = firstWaveRef.current;
+        const minItem = minIdx * cols;
         const lastItem = Math.min(
           session.count - 1,
-          (last + 1) * LIBRARY_GRID_COLUMNS - 1,
+          (last + 1) * cols - 1,
         );
         const itemIndices: number[] = [];
         for (let row = minIdx; row <= last; row += 1) {
-          for (let col = 0; col < LIBRARY_GRID_COLUMNS; col += 1) {
-            const item = row * LIBRARY_GRID_COLUMNS + col;
+          for (let col = 0; col < cols; col += 1) {
+            const item = row * cols + col;
             if (item < session.count) {
               itemIndices.push(item);
             }
           }
         }
         viewabilityRef.current(itemIndices);
-        if (minItem >= LIBRARY_FILL_UNTIL_COUNT) {
+        if (minItem >= fillUntil) {
           leftFirstScreenRef.current = true;
           setBindBeyondFirstScreen(true);
         }
@@ -474,7 +487,11 @@ export function LibraryPhotoGrid({
           beginLibraryPickerScrollUp();
         }
         if (leftFirstScreenRef.current) {
-          const range = photokitLookaheadRange(lastItem, session.count);
+          const range = photokitLookaheadRange(
+            lastItem,
+            session.count,
+            fillUntil,
+          );
           if (range) {
             startPhotokitRangeCaching(
               session.token,
@@ -489,16 +506,20 @@ export function LibraryPhotoGrid({
       }
       viewabilityRef.current(indices);
       setVisibleRange({ min: minIdx, max: last });
-      if (last >= LIBRARY_FILL_UNTIL_COUNT) {
+      if (last >= firstWaveRef.current) {
         leftFirstScreenRef.current = true;
       }
-      if (leftFirstScreenRef.current && minIdx < LIBRARY_GRID_COLUMNS) {
+      if (leftFirstScreenRef.current && minIdx < columnsRef.current) {
         beginLibraryPickerScrollUp();
       }
       if (!isPhotokitThumbsAvailable()) {
         return;
       }
-      const range = photokitLookaheadRange(last, assetsRef.current.length);
+      const range = photokitLookaheadRange(
+        last,
+        assetsRef.current.length,
+        firstWaveRef.current,
+      );
       if (!range) {
         return;
       }
@@ -536,9 +557,9 @@ export function LibraryPhotoGrid({
 
   const renderIndexRow = useCallback(
     ({ item: row }: { item: number }) => {
-      const start = row * LIBRARY_GRID_COLUMNS;
+      const start = row * columns;
       const tiles = [];
-      for (let col = 0; col < LIBRARY_GRID_COLUMNS; col += 1) {
+      for (let col = 0; col < columns; col += 1) {
         const index = start + col;
         if (index >= indexCount) {
           tiles.push(
@@ -547,7 +568,7 @@ export function LibraryPhotoGrid({
               style={{
                 width: tileSize,
                 height: tileSize,
-                marginRight: col < LIBRARY_GRID_COLUMNS - 1 ? LIBRARY_GRID_GAP : 0,
+                marginRight: col < columns - 1 ? LIBRARY_GRID_GAP : 0,
               }}
             />,
           );
@@ -572,7 +593,7 @@ export function LibraryPhotoGrid({
             testIdPrefix={testIdPrefix}
             theme={theme}
             bottomGap={0}
-            marginRight={col < LIBRARY_GRID_COLUMNS - 1 ? LIBRARY_GRID_GAP : 0}
+            marginRight={col < columns - 1 ? LIBRARY_GRID_GAP : 0}
           />,
         );
       }
@@ -589,6 +610,7 @@ export function LibraryPhotoGrid({
       );
     },
     [
+      columns,
       indexCount,
       indexToken,
       onPressAsset,
@@ -678,7 +700,7 @@ export function LibraryPhotoGrid({
     <View style={styles.listRoot} testID={listTestID}>
       {indexMode && indexData ? (
         <FlatList
-          key={indexToken}
+          key={`${indexToken}-c${columns}`}
           data={indexData}
           keyExtractor={(row) => String(row)}
           numColumns={1}
@@ -688,7 +710,7 @@ export function LibraryPhotoGrid({
           scrollEventThrottle={16}
           extraData={extraData}
           getItemLayout={getItemLayout}
-          initialNumToRender={LIBRARY_GRID_INITIAL_ROWS}
+          initialNumToRender={initialRows}
           maxToRenderPerBatch={LIBRARY_GRID_BATCH_ROWS}
           updateCellsBatchingPeriod={LIBRARY_GRID_BATCH_MS}
           windowSize={LIBRARY_GRID_WINDOW_SIZE}
@@ -702,14 +724,15 @@ export function LibraryPhotoGrid({
         />
       ) : (
         <FlatList
+          key={`ml-c${columns}`}
           data={listData}
           keyExtractor={(item) => item.id}
-          numColumns={LIBRARY_GRID_COLUMNS}
+          numColumns={columns}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
           extraData={extraData}
-          initialNumToRender={LIBRARY_GRID_INITIAL_ROWS * LIBRARY_GRID_COLUMNS}
-          maxToRenderPerBatch={LIBRARY_GRID_BATCH_ROWS * LIBRARY_GRID_COLUMNS}
+          initialNumToRender={firstWaveItems}
+          maxToRenderPerBatch={LIBRARY_GRID_BATCH_ROWS * columns}
           updateCellsBatchingPeriod={LIBRARY_GRID_BATCH_MS}
           windowSize={LIBRARY_GRID_WINDOW_SIZE}
           removeClippedSubviews={Platform.OS === "ios"}

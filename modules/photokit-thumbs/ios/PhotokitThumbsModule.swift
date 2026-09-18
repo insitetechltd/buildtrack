@@ -72,6 +72,7 @@ enum PhotokitThumbEngine {
       cachedRange = nil
       sessionLock.unlock()
       manager.stopCachingImagesForAllAssets()
+      dropSharpWaiters()
       for view in liveThumbViews.allObjects {
         if view.indexExplicit {
           view.cancelPendingRequest()
@@ -116,11 +117,12 @@ enum PhotokitThumbEngine {
     return options
   }
 
-  /// Viewport sharpen pass. Do not use for first `onPainted` (stay on fastFormat).
+  /// Viewport sharpen pass. Opportunistic = degraded then final at full
+  /// `targetSize`. Do not use for first `onPainted` (stay on fastFormat).
   static func makeSharpOptions() -> PHImageRequestOptions {
     let options = PHImageRequestOptions()
-    options.deliveryMode = .highQualityFormat
-    options.resizeMode = .exact
+    options.deliveryMode = .opportunistic
+    options.resizeMode = .fast
     options.isNetworkAccessAllowed = false
     options.isSynchronous = false
     options.version = .current
@@ -130,12 +132,65 @@ enum PhotokitThumbEngine {
   /// Cap concurrent HQ upgrades so first-screen decode cannot stall like TF 211.
   static let sharpLimit = 3
   static var sharpInflight = 0
+  /// Waiters that missed the 3-wide slot. Old 80×50ms retry dropped most iPad tiles.
+  static var sharpWaiters: [() -> Void] = []
+
+  static func acquireSharpSlot(run: @escaping () -> Void) {
+    let start = {
+      if sharpInflight < sharpLimit {
+        sharpInflight += 1
+        run()
+      } else {
+        sharpWaiters.append(run)
+      }
+    }
+    if Thread.isMainThread {
+      start()
+    } else {
+      DispatchQueue.main.async(execute: start)
+    }
+  }
+
+  static func releaseSharpSlot() {
+    let pump = {
+      sharpInflight = max(0, sharpInflight - 1)
+      guard !sharpWaiters.isEmpty else {
+        return
+      }
+      let next = sharpWaiters.removeFirst()
+      sharpInflight += 1
+      next()
+    }
+    if Thread.isMainThread {
+      pump()
+    } else {
+      DispatchQueue.main.async(execute: pump)
+    }
+  }
+
+  static func dropSharpWaiters() {
+    let clear = { sharpWaiters.removeAll(keepingCapacity: false) }
+    if Thread.isMainThread {
+      clear()
+    } else {
+      DispatchQueue.main.async(execute: clear)
+    }
+  }
 
   /// Keep in sync with JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LINEAR_SCALE` (TF237=256, 2× experiment=512).
   static let maxThumbPixel: CGFloat = 512
+  /// First paint (fastFormat). Matches JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX`.
+  /// iPad tiles are large; asking 512 on the fast path stalls Recents fill.
+  static let fastThumbPixel: CGFloat = 256
 
   static func targetSize(pixelSize: Double) -> CGSize {
     let n = min(max(pixelSize, 1), maxThumbPixel)
+    return CGSize(width: n, height: n)
+  }
+
+  static func fastTargetSize(pixelSize: Double) -> CGSize {
+    let requested = CGFloat(max(pixelSize, 1))
+    let n = min(requested, fastThumbPixel, maxThumbPixel)
     return CGSize(width: n, height: n)
   }
 

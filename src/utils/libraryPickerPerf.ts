@@ -74,7 +74,8 @@ export const LIBRARY_THUMB_MAX_PIXELS = 320;
 
 /**
  * Native grid thumbs (PhotokitThumbEngine.maxThumbPixel).
- * TF237 delivered min(tile×scale, 256). LINEAR_SCALE 2 = 512px (4× pixels).
+ * TF237 delivered min(tile×scale, 256). LINEAR_SCALE 2 = 512px HQ (4× pixels).
+ * Swift first paint uses `fastThumbPixel` = BASE_CAP_PX (256); HQ uses this cap.
  * Keep Swift `maxThumbPixel` = BASE_CAP_PX × LINEAR_SCALE.
  */
 export const LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX = 256;

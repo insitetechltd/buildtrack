@@ -121,11 +121,12 @@ type CompletionScrubButtonProps = {
  *   grow the dock row); drag changes % (5% steps); finger-up commits & collapses.
  * - At 100% the dock shows Submit. Long-press Submit remounts this expanded
  *   so a second press-drag can leave 100%.
- * - Native Gesture.Pan stays on a *stable* 44×44 view. Growing the responder
- *   mid-press (old PanResponder overlay) lets iOS cancel after one 5% step
- *   once the finger leaves the dock and sits over the work-thread ScrollView.
- *   hitSlop covers the overlay track; shouldCancelWhenOutside(false) keeps
- *   updates for the whole finger-down. Overlay is visual-only.
+ * - Compact press-drag: Native Gesture.Pan stays on a *stable* 44×44 view.
+ *   Growing the responder mid-press lets iOS cancel after one 5% step once
+ *   the finger leaves the dock and sits over the work-thread ScrollView.
+ * - Remounted leave-100% scrub is *born* expanded (200px pan from frame 0).
+ *   That is not a mid-gesture resize. First no-move finalize is ignored so
+ *   the Submit long-press lift does not retract before a downward drag.
  */
 function CompletionScrubButton({
   value,
@@ -142,6 +143,11 @@ function CompletionScrubButton({
   const onChangeRef = useRef(onChange);
   const disabledRef = useRef(disabled);
   const onRetractRef = useRef(onRetract);
+  const bornExpanded = startExpanded;
+  const [hitHeight, setHitHeight] = useState(
+    startExpanded ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
+  );
+  const ignoreArmingReleaseRef = useRef(startExpanded);
   valueRef.current = value;
   onChangeRef.current = onChange;
   disabledRef.current = disabled;
@@ -154,6 +160,7 @@ function CompletionScrubButton({
     setIsOpen(false);
     didMoveRef.current = false;
     startPctRef.current = valueRef.current;
+    setHitHeight(BUTTON_SIZE);
     if (wasOpen) {
       onRetractRef.current?.();
     }
@@ -173,15 +180,28 @@ function CompletionScrubButton({
     }
   }, [startExpanded]);
 
-  // Stable 44×44 native target — do not resize this view while a finger is down.
+  useEffect(() => {
+    if (!startExpanded) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      ignoreArmingReleaseRef.current = false;
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [startExpanded]);
+
+  // Compact chip: keep 44×44 for the whole finger-down (TF-271).
+  // Leave-100% remount: pan is born at full track height — not a mid-gesture grow.
   const pan = useRef(
     Gesture.Pan()
       .minDistance(0)
       .maxPointers(1)
       .shouldCancelWhenOutside(false)
       .cancelsTouchesInView(true)
+      .blocksExternalGesture()
+      .failOffsetX([-24, 24])
       .hitSlop({
-        top: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
+        top: bornExpanded ? 12 : SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
         bottom: 12,
         left: 12,
         right: 12,
@@ -221,6 +241,10 @@ function CompletionScrubButton({
         if (!isOpenRef.current) {
           return;
         }
+        if (ignoreArmingReleaseRef.current && !didMoveRef.current) {
+          ignoreArmingReleaseRef.current = false;
+          return;
+        }
         retractScrubber();
       }),
   ).current;
@@ -244,6 +268,7 @@ function CompletionScrubButton({
       accessibilityState={{ expanded: isOpen }}
       className="relative z-50"
       collapsable={false}
+      pointerEvents="box-none"
       style={{
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
@@ -295,8 +320,8 @@ function CompletionScrubButton({
             bottom: 0,
             left: 0,
             width: BUTTON_SIZE,
-            // Keep this frame stable. Growing it mid-press cancels iOS touch.
-            height: BUTTON_SIZE,
+            // Compact: stay 44. Born-expanded remount: 200 from first frame.
+            height: hitHeight,
             justifyContent: "flex-end",
             zIndex: 50,
           }}
@@ -461,13 +486,6 @@ export default function ReportReplyComposer({
     (isAwaitingReview || isReviewDecision) && showCompletion;
   const leadingFabLocked = controlsLocked;
   const isProgressMode = mode === "progress";
-
-  // Drop forced scrub once the value leaves 100% (normal % circle takes over).
-  useEffect(() => {
-    if (completionPercentage < 100 && forceProgressScrub) {
-      setForceProgressScrub(false);
-    }
-  }, [completionPercentage, forceProgressScrub]);
 
   // Progress dock: trailing slot is % scrub until 100%, then submit.
   // Long-press submit forces scrub back so the user can leave 100%.

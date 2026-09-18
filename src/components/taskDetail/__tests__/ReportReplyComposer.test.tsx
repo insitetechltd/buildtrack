@@ -17,6 +17,8 @@ jest.mock("react-native-gesture-handler", () => {
       shouldCancelWhenOutside: () => api,
       cancelsTouchesInView: () => api,
       hitSlop: () => api,
+      blocksExternalGesture: () => api,
+      failOffsetX: () => api,
       runOnJS: () => api,
       onBegin: (fn: () => void) => {
         scrubGesture.onBegin = fn;
@@ -57,6 +59,34 @@ function releaseCompletion() {
   act(() => {
     scrubGesture.onFinalize?.();
   });
+}
+
+function ProgressDockHarness({
+  initialPercentage,
+  onSubmit,
+  onChange,
+}: {
+  initialPercentage: number;
+  onSubmit?: jest.Mock;
+  onChange?: jest.Mock;
+}) {
+  const [percentage, setPercentage] = React.useState(initialPercentage);
+  return (
+    <ReportReplyComposer
+      mode="progress"
+      draft="done"
+      photos={[]}
+      onChangeDraft={jest.fn()}
+      onAddPhotos={jest.fn()}
+      onRemovePhoto={jest.fn()}
+      onSubmit={onSubmit ?? jest.fn()}
+      completionPercentage={percentage}
+      onChangeCompletionPercentage={(next) => {
+        onChange?.(next);
+        setPercentage(next);
+      }}
+    />
+  );
 }
 
 describe("ReportReplyComposer", () => {
@@ -233,8 +263,66 @@ describe("ReportReplyComposer", () => {
       expect.objectContaining({ height: 200, width: 44 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
+      expect.objectContaining({ height: 200, width: 44 }),
     );
+  });
+
+  it("progress dock at 100%: tap submit still submits", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="done"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={100}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+  });
+
+  it("progress dock at 100%: long-press then downward drag leaves 100% without clearing mid-pan", () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ProgressDockHarness
+        initialPercentage={100}
+        onChange={onChange}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 200, width: 44 }),
+    );
+
+    // Leftover lift from the Submit long-press must not retract the remounted scrub.
+    releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+
+    grantCompletion();
+    // 16px down = two 5% steps from 100.
+    moveCompletion(16);
+    expect(onChange).toHaveBeenCalledWith(90);
+    expect(screen.getByText("90%")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+
+    releaseCompletion();
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("progress dock at 100%: submit replaces % circle", () => {

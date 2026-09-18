@@ -58,6 +58,11 @@ export type ReportReplyComposerProps = {
   /** Progress / awaiting-review / review_decision / archive — hidden on reported. */
   completionPercentage?: number;
   onChangeCompletionPercentage?: (value: number) => void;
+  /**
+   * Last persisted completion. Omitted callers default to `completionPercentage`
+   * so % alone does not mark the dock dirty.
+   */
+  savedCompletionPercentage?: number;
 };
 
 /** Match TextField chrome min height (44). Circles stay bottom-aligned when input grows. */
@@ -81,12 +86,22 @@ const DOCK_CIRCLE_LOCKED = {
   ...DOCK_CIRCLE_IDLE,
   opacity: 0.5,
 };
+/** Green ring on a dirty % chip (variant 6). */
+const ARMED_RING = "#059669";
+const DOCK_CIRCLE_ARMED = {
+  ...DOCK_CIRCLE,
+  borderWidth: 2,
+  borderColor: ARMED_RING,
+  backgroundColor: "#f1f5f9",
+};
 const BUTTON = "items-center justify-center rounded-full";
 /** Tall enough for multi-step scrubbing; stay open across strokes until tap. */
 const SCRUB_TRACK_HEIGHT = 200;
 const TAP_MOVE_SLOP = 8;
 /** Vertical pixels per 5% step while scrubbing. */
 const PX_PER_STEP = 8;
+/** Armed / submit chip: longer than default so a hold-to-scrub is less likely to post. */
+const ARMED_LONG_PRESS_MS = 500;
 
 function snapCompletion(value: number): number {
   const snapped = Math.round(value / 5) * 5;
@@ -103,25 +118,77 @@ export function completionFromVerticalDrag(
   return snapCompletion(startPercentage + deltaSteps * 5);
 }
 
-export type ProgressDockTrailingSlot = "percent" | "submit";
+export type ProgressDockTrailingSlot = "percent" | "armed" | "submit";
+
+/** Routes that stack on Task Detail (push) and must not trip the leave-guard. */
+const PHOTO_FLOW_ROUTE_NAMES = new Set([
+  "CaptureSession",
+  "Camera",
+  "PhotoSelection",
+  "InAppLibraryPicker",
+]);
+
+export function progressDockIsDirty(opts: {
+  draft: string;
+  photoCount: number;
+  completionPercentage: number;
+  savedCompletionPercentage: number;
+}): boolean {
+  return (
+    opts.draft.trim().length > 0 ||
+    opts.photoCount > 0 ||
+    opts.completionPercentage !== opts.savedCompletionPercentage
+  );
+}
+
+/** True when beforeRemove should show Stay/Discard/Submit (not photo push). */
+export function progressDockShouldInterceptLeave(action?: {
+  type?: string;
+  payload?: { name?: string };
+}): boolean {
+  const type = action?.type;
+  if (type === "PUSH") {
+    return false;
+  }
+  if (
+    type === "NAVIGATE" &&
+    action?.payload?.name &&
+    PHOTO_FLOW_ROUTE_NAMES.has(action.payload.name)
+  ) {
+    return false;
+  }
+  return true;
+}
 
 /**
- * Progress dock trailing slot — product loop:
- * below 100% always shows the % chip/slider; Submit appears only after a
- * gesture has settled at 100% (not while the user is still scrubbing or
- * after a long-press that brought the slider back).
+ * Progress dock trailing slot — variant 6:
+ * clean → grey % press-drag; dirty → ringed % (armed tap-to-submit);
+ * dirty + 100% + note → green check. Slider while scrubbing / long-press.
  */
 export function progressDockTrailingSlot(opts: {
   completionPercentage: number;
+  savedCompletionPercentage?: number;
+  draft?: string;
+  photoCount?: number;
   forceProgressScrub?: boolean;
   scrubSessionActive?: boolean;
 }): ProgressDockTrailingSlot {
-  if (
-    opts.completionPercentage >= 100 &&
-    !opts.forceProgressScrub &&
-    !opts.scrubSessionActive
-  ) {
+  if (opts.forceProgressScrub || opts.scrubSessionActive) {
+    return "percent";
+  }
+  const saved = opts.savedCompletionPercentage ?? opts.completionPercentage;
+  const draft = opts.draft ?? "";
+  const dirty = progressDockIsDirty({
+    draft,
+    photoCount: opts.photoCount ?? 0,
+    completionPercentage: opts.completionPercentage,
+    savedCompletionPercentage: saved,
+  });
+  if (dirty && opts.completionPercentage >= 100 && draft.trim().length > 0) {
     return "submit";
+  }
+  if (dirty) {
+    return "armed";
   }
   return "percent";
 }
@@ -141,18 +208,19 @@ type CompletionScrubButtonProps = {
 /**
  * Progress % control — interaction contract:
  *
- * - Below 100%: dock shows the % chip/slider, never Submit. Press-drag varies
+ * - Below 100% when clean: dock shows the % chip/slider. Press-drag varies
  *   % freely (5% snap). Compact pan geometry stays 44×44 for the whole
  *   finger-down (TF-271); the overlay track is visual-only.
- * - Drag to 100%: slider stays until release, then retracts and Submit appears.
- * - Long-press Submit remounts this *already expanded* at 100% (does not submit).
- *   First no-move finalize is ignored so the Submit lift does not retract
+ * - Dirty (note, photos, or % ≠ saved): trailing chip is armed (green ring +
+ *   N%) or Submit-for-review at 100% with a note. Tap posts; long-press
+ *   remounts this *already expanded* at the current % (does not submit).
+ *   First no-move finalize is ignored so the lift does not retract
  *   before the next drag.
- * - Drag below 100% and release → % chip again. Drag back to 100% and release
- *   → Submit again. Leave/re-enter 100% any number of times until tap Submit.
- * - Compact vs leave-100% remount: growing the responder 44→200 mid-press
- *   lets iOS cancel after one 5% step. Leave-100% is born at 200px (not a
- *   mid-gesture resize). After retract below 100%, remount compact so later
+ * - Drag below 100% and release → armed % if still dirty. Drag back to 100%
+ *   with a note → Submit. Leave/re-enter 100% any number of times until tap.
+ * - Compact vs leave remount: growing the responder 44→200 mid-press
+ *   lets iOS cancel after one 5% step. Leave remount is born at 200px (not a
+ *   mid-gesture resize). After retract when clean, remount compact so later
  *   press-drags keep TF-271 geometry.
  */
 function CompletionScrubButton({
@@ -382,7 +450,8 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [camera] · [text] · [% while <100% or still scrubbing | submit@100%; long-press submit → scrub]
+ * Progress: [camera] · [text] · [grey % when clean | ringed % when dirty | check@100%+note;
+ *           long-press armed/submit → scrub]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]
@@ -409,6 +478,7 @@ export default function ReportReplyComposer({
   showReportFab = false,
   completionPercentage = 0,
   onChangeCompletionPercentage,
+  savedCompletionPercentage,
 }: ReportReplyComposerProps) {
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
@@ -433,7 +503,9 @@ export default function ReportReplyComposer({
       mode === "awaiting_review" ||
       mode === "review_decision");
   const isReadyToSubmitReview =
-    mode === "progress" && completionPercentage >= 100;
+    mode === "progress" &&
+    completionPercentage >= 100 &&
+    draft.trim().length > 0;
   const canSend =
     !isAwaitingReview &&
     !isReviewDecision &&
@@ -451,13 +523,16 @@ export default function ReportReplyComposer({
           ? "Reassign"
           : isReadyToSubmitReview
             ? "Submit for review"
-            : sendLabel;
+            : mode === "progress"
+              ? `Submit update, ${completionPercentage} percent`
+              : sendLabel;
   const showLeadingFab = Boolean(onPressTriageActions) || showReportFab;
 
   const handleSubmit = useCallback(() => {
     if (!canSend) {
       return;
     }
+    Keyboard.dismiss();
     onSubmit();
   }, [canSend, onSubmit]);
 
@@ -519,10 +594,12 @@ export default function ReportReplyComposer({
   const leadingFabLocked = controlsLocked;
   const isProgressMode = mode === "progress";
 
-  // Progress dock: % chip/slider until a gesture settles at 100%, then Submit.
-  // Long-press Submit remounts the slider; leave/re-enter 100% is free until tap.
+  // Variant 6: grey % when clean; ringed % when dirty; check at 100%+note.
   const trailingSlot = progressDockTrailingSlot({
     completionPercentage,
+    savedCompletionPercentage,
+    draft,
+    photoCount: photos.length,
     forceProgressScrub,
     scrubSessionActive,
   });
@@ -530,6 +607,8 @@ export default function ReportReplyComposer({
     isProgressMode &&
     Boolean(onChangeCompletionPercentage) &&
     trailingSlot === "percent";
+  const showProgressArmedTrailing =
+    isProgressMode && trailingSlot === "armed";
   const showProgressSubmitTrailing =
     isProgressMode && trailingSlot === "submit";
   // Report / awaiting keep leading % (locked) and trailing camera+send.
@@ -578,34 +657,53 @@ export default function ReportReplyComposer({
     <Pressable
       testID="report-reply-composer__send"
       accessibilityRole="button"
-      accessibilityLabel={resolvedSendLabel}
+      accessibilityLabel={
+        showProgressArmedTrailing && !canSend
+          ? `Completion ${completionPercentage} percent. Add a description to submit.`
+          : resolvedSendLabel
+      }
       accessibilityHint={
-        showProgressSubmitTrailing
+        showProgressArmedTrailing || showProgressSubmitTrailing
           ? "Long press to adjust completion percentage"
           : undefined
       }
       onPress={handleSubmit}
       onLongPress={
-        showProgressSubmitTrailing ? handleForceProgressScrub : undefined
+        showProgressArmedTrailing || showProgressSubmitTrailing
+          ? handleForceProgressScrub
+          : undefined
       }
-      delayLongPress={350}
-      // Progress@100%: keep pressable for long-press even when draft empty.
+      delayLongPress={
+        showProgressArmedTrailing || showProgressSubmitTrailing
+          ? ARMED_LONG_PRESS_MS
+          : 350
+      }
       disabled={isProgressMode ? isSubmitting : !canSend}
       hitSlop={4}
       style={
         isAwaitingReview
           ? DOCK_CIRCLE_LOCKED
-          : !canSend
-            ? DOCK_CIRCLE_IDLE
-            : {
-                ...DOCK_CIRCLE,
-                borderColor: isReadyToSubmitReview ? "#059669" : "#08576E",
-                backgroundColor: isReadyToSubmitReview ? "#059669" : "#08576E",
-              }
+          : showProgressArmedTrailing
+            ? DOCK_CIRCLE_ARMED
+            : !canSend
+              ? DOCK_CIRCLE_IDLE
+              : {
+                  ...DOCK_CIRCLE,
+                  borderColor: isReadyToSubmitReview ? "#059669" : "#08576E",
+                  backgroundColor: isReadyToSubmitReview ? "#059669" : "#08576E",
+                }
       }
     >
       {isSubmitting && !isAwaitingReview ? (
         <ActivityIndicator color="#ffffff" size="small" />
+      ) : showProgressArmedTrailing ? (
+        <Text
+          testID="report-reply-composer__send_percent"
+          className="text-[11px] font-bold"
+          style={{ color: ARMED_RING }}
+        >
+          {completionPercentage}%
+        </Text>
       ) : (
         <Ionicons
           name={isReadyToSubmitReview || isAwaitingReview ? "checkmark" : "send"}
@@ -851,11 +949,13 @@ export default function ReportReplyComposer({
           </View>
         )}
 
-        {/* Progress trailing: % scrub (<100%) or submit (100%). Report/awaiting: camera + send. */}
+        {/* Progress trailing: grey % / ringed % / check@100%+note. Report/awaiting: camera + send. */}
         {isProgressMode ? (
           <>
             {progressScrubTrailing}
-            {showProgressSubmitTrailing ? sendButton : null}
+            {showProgressArmedTrailing || showProgressSubmitTrailing
+              ? sendButton
+              : null}
           </>
         ) : !isReviewDecision ? (
           <>

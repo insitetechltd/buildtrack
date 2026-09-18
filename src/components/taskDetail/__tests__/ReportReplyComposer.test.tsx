@@ -63,24 +63,30 @@ function releaseCompletion() {
 
 function ProgressDockHarness({
   initialPercentage,
+  initialDraft = "",
+  savedPercentage,
   onSubmit,
   onChange,
 }: {
   initialPercentage: number;
+  initialDraft?: string;
+  savedPercentage?: number;
   onSubmit?: jest.Mock;
   onChange?: jest.Mock;
 }) {
   const [percentage, setPercentage] = React.useState(initialPercentage);
+  const [draft, setDraft] = React.useState(initialDraft);
   return (
     <ReportReplyComposer
       mode="progress"
-      draft="done"
+      draft={draft}
       photos={[]}
-      onChangeDraft={jest.fn()}
+      onChangeDraft={setDraft}
       onAddPhotos={jest.fn()}
       onRemovePhoto={jest.fn()}
       onSubmit={onSubmit ?? jest.fn()}
       completionPercentage={percentage}
+      savedCompletionPercentage={savedPercentage ?? initialPercentage}
       onChangeCompletionPercentage={(next) => {
         onChange?.(next);
         setPercentage(next);
@@ -170,7 +176,7 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
   });
 
-  it("progress dock: camera + text + % when under 100%; no submit", () => {
+  it("progress dock: camera + text + ringed send when dirty under 100%", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -181,12 +187,38 @@ describe("ReportReplyComposer", () => {
         onRemovePhoto={jest.fn()}
         onSubmit={jest.fn()}
         completionPercentage={40}
+        savedCompletionPercentage={40}
         onChangeCompletionPercentage={jest.fn()}
       />,
     );
 
     expect(screen.getByTestId("report-reply-composer__photo")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__send_percent")).toBeTruthy();
+    expect(screen.getByText("40%")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
+      expect.objectContaining({ borderColor: "#059669", backgroundColor: "#f1f5f9" }),
+    );
+  });
+
+  it("progress dock: clean under 100% keeps grey % and no send", () => {
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft=""
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={40}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
     expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
   });
@@ -195,13 +227,14 @@ describe("ReportReplyComposer", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
-        draft="done"
+        draft=""
         photos={[]}
         onChangeDraft={jest.fn()}
         onAddPhotos={jest.fn()}
         onRemovePhoto={jest.fn()}
         onSubmit={jest.fn()}
         completionPercentage={40}
+        savedCompletionPercentage={40}
         onChangeCompletionPercentage={jest.fn()}
       />,
     );
@@ -267,6 +300,95 @@ describe("ReportReplyComposer", () => {
     );
   });
 
+  it("progress dock dirty at 40% with note: tap send posts, long-press does not", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="rebar tied"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={40}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+  });
+
+  it("progress dock at 40% with note: tap send submits", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="rebar tied"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={40}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("progress dock photos-only: ringed chip, tap does not submit", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft=""
+        photos={[{ uri: "file://a.jpg", fileName: "a.jpg" }]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={40}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
+      expect.objectContaining({ borderColor: "#059669" }),
+    );
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("progress dock at 100% without note: ringed %, not review check", () => {
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft=""
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={100}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("report-reply-composer__send_percent")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).not.toBe(
+      "Submit for review",
+    );
+  });
+
   it("progress dock at 100%: tap submit still submits", () => {
     const onSubmit = jest.fn();
     const screen = render(
@@ -288,12 +410,13 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
   });
 
-  it("progress dock loop: vary below 100, enter Submit, long-press leave, re-enter, leave again", () => {
+  it("progress dock loop: clean scrub, arm on retract, long-press, 100%+note Submit", () => {
     const onChange = jest.fn();
     const onSubmit = jest.fn();
     const screen = render(
       <ProgressDockHarness
         initialPercentage={0}
+        initialDraft=""
         onChange={onChange}
         onSubmit={onSubmit}
       />,
@@ -309,6 +432,14 @@ describe("ReportReplyComposer", () => {
         expect.objectContaining({ height: 44, width: 44 }),
       );
     };
+    const expectArmed = (pct: number) => {
+      expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+      expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
+      expect(screen.getByText(`${pct}%`)).toBeTruthy();
+      expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
+        expect.objectContaining({ borderColor: "#059669" }),
+      );
+    };
     const expectSubmit = () => {
       expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
       expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
@@ -316,15 +447,12 @@ describe("ReportReplyComposer", () => {
       );
     };
 
-    // 1. Start at 0%: % chip, not Submit.
     expect(screen.getByText("0%")).toBeTruthy();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expectCompactChip();
 
-    // 2. Vary freely below 100% (press-drag, 5% snap). Compact pan stays 44.
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expectCompactChip();
     moveCompletion(-64);
     expect(screen.getByText("40%")).toBeTruthy();
     moveCompletion(-128);
@@ -332,77 +460,28 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
     releaseCompletion();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expectCompactChip();
+    expectArmed(80);
 
-    // 3. Drag to 100%: slider stays until release, then dock switches to Submit.
-    grantCompletion();
-    moveCompletion(-32);
-    expect(screen.getByText("100%")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
-    );
-    releaseCompletion();
-    expectSubmit();
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(onSubmit).not.toHaveBeenCalled();
 
-    // 4. Long-press Submit → expanded slider at 100% (does not submit).
     fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.getByText("100%")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
       expect.objectContaining({ height: 200, width: 44 }),
     );
-    // Leftover lift from Submit must not retract before the next drag.
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
 
-    // 5. Drag below 100% → % chip (Submit gone). Keep changing %.
     grantCompletion();
-    moveCompletion(32);
-    expect(screen.getByText("80%")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-    releaseCompletion();
-    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expect(screen.getByText("80%")).toBeTruthy();
-    expectCompactChip();
-    grantCompletion();
-    moveCompletion(32);
-    expect(screen.getByText("60%")).toBeTruthy();
-    expectCompactChip();
-    releaseCompletion();
-    expectCompactChip();
-
-    // 6. Drag back to 100% → Submit appears again.
-    grantCompletion();
-    moveCompletion(-64);
-    expect(screen.getByText("100%")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
-    );
-    releaseCompletion();
-    expectSubmit();
-    expect(onSubmit).not.toHaveBeenCalled();
-
-    // 7. Repeat: long-press → below 100, then back to 100, then tap Submit.
-    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    releaseCompletion();
-    grantCompletion();
-    moveCompletion(16);
-    expect(screen.getByText("90%")).toBeTruthy();
-    releaseCompletion();
-    expectCompactChip();
-    grantCompletion();
-    moveCompletion(-16);
+    moveCompletion(-32);
     expect(screen.getByText("100%")).toBeTruthy();
     releaseCompletion();
+    expectArmed(100);
+
+    fireEvent.changeText(screen.getByTestId("report-reply-composer__input"), "done");
     expectSubmit();
     fireEvent.press(screen.getByTestId("report-reply-composer__send"));
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -597,21 +676,71 @@ describe("ReportReplyComposer", () => {
   });
 
   it("maps vertical drag to 5% completion steps (up increases)", () => {
-    const { completionFromVerticalDrag, progressDockTrailingSlot } = require("../ReportReplyComposer");
+    const {
+      completionFromVerticalDrag,
+      progressDockTrailingSlot,
+      progressDockIsDirty,
+      progressDockShouldInterceptLeave,
+    } = require("../ReportReplyComposer");
+    expect(progressDockIsDirty({
+      draft: "",
+      photoCount: 0,
+      completionPercentage: 40,
+      savedCompletionPercentage: 40,
+    })).toBe(false);
+    expect(progressDockIsDirty({
+      draft: "note",
+      photoCount: 0,
+      completionPercentage: 40,
+      savedCompletionPercentage: 40,
+    })).toBe(true);
+    expect(progressDockIsDirty({
+      draft: "",
+      photoCount: 1,
+      completionPercentage: 40,
+      savedCompletionPercentage: 40,
+    })).toBe(true);
+    expect(progressDockIsDirty({
+      draft: "",
+      photoCount: 0,
+      completionPercentage: 60,
+      savedCompletionPercentage: 40,
+    })).toBe(true);
     expect(progressDockTrailingSlot({ completionPercentage: 0 })).toBe("percent");
     expect(progressDockTrailingSlot({ completionPercentage: 80 })).toBe("percent");
-    expect(progressDockTrailingSlot({ completionPercentage: 100 })).toBe("submit");
+    expect(progressDockTrailingSlot({ completionPercentage: 100 })).toBe("percent");
     expect(
-      progressDockTrailingSlot({ completionPercentage: 100, forceProgressScrub: true }),
+      progressDockTrailingSlot({
+        completionPercentage: 40,
+        savedCompletionPercentage: 40,
+        draft: "note",
+      }),
+    ).toBe("armed");
+    expect(
+      progressDockTrailingSlot({
+        completionPercentage: 100,
+        savedCompletionPercentage: 40,
+        draft: "",
+      }),
+    ).toBe("armed");
+    expect(
+      progressDockTrailingSlot({
+        completionPercentage: 100,
+        draft: "done",
+      }),
+    ).toBe("submit");
+    expect(
+      progressDockTrailingSlot({ completionPercentage: 100, forceProgressScrub: true, draft: "done" }),
     ).toBe("percent");
     expect(
-      progressDockTrailingSlot({ completionPercentage: 100, scrubSessionActive: true }),
+      progressDockTrailingSlot({ completionPercentage: 100, scrubSessionActive: true, draft: "done" }),
     ).toBe("percent");
     expect(
       progressDockTrailingSlot({
         completionPercentage: 100,
         forceProgressScrub: true,
         scrubSessionActive: true,
+        draft: "done",
       }),
     ).toBe("percent");
     expect(completionFromVerticalDrag(40, -16)).toBe(50);
@@ -622,6 +751,21 @@ describe("ReportReplyComposer", () => {
     expect(completionFromVerticalDrag(40, -8)).toBe(45);
     expect(completionFromVerticalDrag(40, -40)).toBe(65);
     expect(completionFromVerticalDrag(40, -80)).toBe(90);
+    expect(progressDockShouldInterceptLeave({ type: "GO_BACK" })).toBe(true);
+    expect(progressDockShouldInterceptLeave({ type: "POP" })).toBe(true);
+    expect(progressDockShouldInterceptLeave({ type: "PUSH" })).toBe(false);
+    expect(
+      progressDockShouldInterceptLeave({
+        type: "NAVIGATE",
+        payload: { name: "CaptureSession" },
+      }),
+    ).toBe(false);
+    expect(
+      progressDockShouldInterceptLeave({
+        type: "NAVIGATE",
+        payload: { name: "TasksList" },
+      }),
+    ).toBe(true);
   });
 
   it("press-drag maps continuous translationY against grant-time %", () => {
@@ -629,13 +773,14 @@ describe("ReportReplyComposer", () => {
     render(
       <ReportReplyComposer
         mode="progress"
-        draft="halfway"
+        draft=""
         photos={[]}
         onChangeDraft={jest.fn()}
         onAddPhotos={jest.fn()}
         onRemovePhoto={jest.fn()}
         onSubmit={jest.fn()}
         completionPercentage={40}
+        savedCompletionPercentage={40}
         onChangeCompletionPercentage={onChange}
       />,
     );

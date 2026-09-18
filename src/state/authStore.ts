@@ -1360,10 +1360,20 @@ export const useAuthStore = create<AuthStore>()(
                 )
               `)
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
 
             if (userError || !userData) {
-              console.error('Error fetching user data on init:', userError);
+              // Orphan JWT (e.g. TF PROD session vs this plane's users table).
+              // .single() turned PGRST116 into a LogBox redbox.
+              console.warn(
+                "Auth init: no users row for session; signing out.",
+                userError?.code || userError?.message || "empty",
+              );
+              try {
+                await supabase.auth.signOut();
+              } catch {
+                // Already signed out is fine.
+              }
               set({ isLoading: false, isAuthenticated: false, user: null, session: null, isInitialized: true });
               return;
             }

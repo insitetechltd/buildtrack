@@ -10,9 +10,8 @@ import {
   Text,
   TextInput,
   View,
-  PanResponder,
-  type PanResponderGestureState,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -122,8 +121,11 @@ type CompletionScrubButtonProps = {
  *   grow the dock row); drag changes % (5% steps); finger-up commits & collapses.
  * - At 100% the dock shows Submit. Long-press Submit remounts this expanded
  *   so a second press-drag can leave 100%.
- * - While open, the pan target is an absolute full-track layer (bottom-aligned)
- *   so the thumb at 100% stays hittable without a tall layout band.
+ * - Native Gesture.Pan stays on a *stable* 44×44 view. Growing the responder
+ *   mid-press (old PanResponder overlay) lets iOS cancel after one 5% step
+ *   once the finger leaves the dock and sits over the work-thread ScrollView.
+ *   hitSlop covers the overlay track; shouldCancelWhenOutside(false) keeps
+ *   updates for the whole finger-down. Overlay is visual-only.
  */
 function CompletionScrubButton({
   value,
@@ -171,12 +173,21 @@ function CompletionScrubButton({
     }
   }, [startExpanded]);
 
+  // Stable 44×44 native target — do not resize this view while a finger is down.
   const pan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabledRef.current,
-      onMoveShouldSetPanResponder: () => !disabledRef.current,
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {
+    Gesture.Pan()
+      .minDistance(0)
+      .maxPointers(1)
+      .shouldCancelWhenOutside(false)
+      .cancelsTouchesInView(true)
+      .hitSlop({
+        top: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
+        bottom: 12,
+        left: 12,
+        right: 12,
+      })
+      .runOnJS(true)
+      .onBegin(() => {
         if (disabledRef.current) {
           return;
         }
@@ -187,37 +198,31 @@ function CompletionScrubButton({
           isOpenRef.current = true;
           setIsOpen(true);
         }
-      },
-      onPanResponderMove: (_evt, gesture: PanResponderGestureState) => {
+      })
+      .onUpdate((event) => {
         if (disabledRef.current) {
           return;
         }
         if (
-          Math.abs(gesture.dy) > TAP_MOVE_SLOP ||
-          Math.abs(gesture.dx) > TAP_MOVE_SLOP
+          Math.abs(event.translationY) > TAP_MOVE_SLOP ||
+          Math.abs(event.translationX) > TAP_MOVE_SLOP
         ) {
           didMoveRef.current = true;
         }
         if (!didMoveRef.current) {
           return;
         }
+        // translationY is from press-down, not last step — one gesture, many 5%s.
         onChangeRef.current(
-          completionFromVerticalDrag(startPctRef.current, gesture.dy),
+          completionFromVerticalDrag(startPctRef.current, event.translationY),
         );
-      },
-      onPanResponderRelease: () => {
+      })
+      .onFinalize(() => {
         if (!isOpenRef.current) {
           return;
         }
         retractScrubber();
-      },
-      onPanResponderTerminate: () => {
-        if (!isOpenRef.current) {
-          return;
-        }
-        retractScrubber();
-      },
-    }),
+      }),
   ).current;
 
   // Thumb: 0% at bottom, 100% at top of the overlay track.
@@ -245,73 +250,75 @@ function CompletionScrubButton({
         overflow: "visible",
       }}
     >
-      <View
-        testID="report-reply-composer__completion_hit"
-        {...pan.panHandlers}
-        collapsable={false}
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          width: BUTTON_SIZE,
-          // Grow the *overlay* hit target only — does not stretch the dock row.
-          height: isOpen ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
-          justifyContent: "flex-end",
-          zIndex: 50,
-        }}
-      >
-        {isOpen ? (
-          <View
-            testID="report-reply-composer__completion_scrubber"
-            pointerEvents="none"
-            className="absolute items-center"
-            style={{
-              bottom: 0,
-              left: 0,
-              width: BUTTON_SIZE,
-              height: SCRUB_TRACK_HEIGHT,
-            }}
-          >
-            <View
-              className="absolute rounded-full bg-slate-200"
-              style={{
-                bottom: BUTTON_SIZE / 2,
-                width: 5,
-                height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
-                left: (BUTTON_SIZE - 5) / 2,
-              }}
-            />
-            <View
-              className="absolute rounded-full bg-[#08576E]"
-              style={{
-                bottom: BUTTON_SIZE / 2,
-                width: 5,
-                height: Math.max(
-                  4,
-                  (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE),
-                ),
-                left: (BUTTON_SIZE - 5) / 2,
-              }}
-            />
-          </View>
-        ) : null}
+      {isOpen ? (
         <View
-          testID="report-reply-composer__completion_thumb"
+          testID="report-reply-composer__completion_scrubber"
           pointerEvents="none"
+          className="absolute items-center"
           style={{
-            ...(isOpen
-              ? {
-                  position: "absolute" as const,
-                  bottom: thumbBottom,
-                  left: 0,
-                }
-              : null),
-            ...DOCK_CIRCLE_IDLE,
+            bottom: 0,
+            left: 0,
+            width: BUTTON_SIZE,
+            height: SCRUB_TRACK_HEIGHT,
+            zIndex: 40,
           }}
         >
-          <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
+          <View
+            className="absolute rounded-full bg-slate-200"
+            style={{
+              bottom: BUTTON_SIZE / 2,
+              width: 5,
+              height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
+              left: (BUTTON_SIZE - 5) / 2,
+            }}
+          />
+          <View
+            className="absolute rounded-full bg-[#08576E]"
+            style={{
+              bottom: BUTTON_SIZE / 2,
+              width: 5,
+              height: Math.max(
+                4,
+                (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE),
+              ),
+              left: (BUTTON_SIZE - 5) / 2,
+            }}
+          />
         </View>
-      </View>
+      ) : null}
+      <GestureDetector gesture={pan}>
+        <View
+          testID="report-reply-composer__completion_hit"
+          collapsable={false}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            width: BUTTON_SIZE,
+            // Keep this frame stable. Growing it mid-press cancels iOS touch.
+            height: BUTTON_SIZE,
+            justifyContent: "flex-end",
+            zIndex: 50,
+          }}
+        >
+          <View
+            testID="report-reply-composer__completion_thumb"
+            pointerEvents="none"
+            style={{
+              ...(isOpen
+                ? {
+                    position: "absolute" as const,
+                    bottom: thumbBottom,
+                    left: 0,
+                  }
+                : null),
+              ...DOCK_CIRCLE_IDLE,
+            }}
+          >
+            <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
+          </View>
+        </View>
+      </GestureDetector>
     </View>
   );
 }

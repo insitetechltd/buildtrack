@@ -1,73 +1,61 @@
 import React from "react";
 import { act, fireEvent, render } from "@testing-library/react-native";
 
+/** Captures Gesture.Pan callbacks so Jest can drive press-drag without a native host. */
+const scrubGesture: {
+  onBegin?: () => void;
+  onUpdate?: (event: { translationX: number; translationY: number }) => void;
+  onFinalize?: () => void;
+} = {};
+
+jest.mock("react-native-gesture-handler", () => {
+  const chain = () => {
+    const api = {
+      enabled: () => api,
+      minDistance: () => api,
+      maxPointers: () => api,
+      shouldCancelWhenOutside: () => api,
+      cancelsTouchesInView: () => api,
+      hitSlop: () => api,
+      runOnJS: () => api,
+      onBegin: (fn: () => void) => {
+        scrubGesture.onBegin = fn;
+        return api;
+      },
+      onUpdate: (fn: (event: { translationX: number; translationY: number }) => void) => {
+        scrubGesture.onUpdate = fn;
+        return api;
+      },
+      onFinalize: (fn: () => void) => {
+        scrubGesture.onFinalize = fn;
+        return api;
+      },
+    };
+    return api;
+  };
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
+    Gesture: { Pan: chain },
+  };
+});
+
 import ReportReplyComposer from "../ReportReplyComposer";
 
-/** Minimal RN touch payload so PanResponder grant/release handlers run in Jest. */
-function panTouchEvent(pageY = 0) {
-  return {
-    nativeEvent: {
-      changedTouches: [
-        {
-          identifier: 1,
-          pageX: 0,
-          pageY,
-          locationX: 0,
-          locationY: pageY,
-          timestamp: 1,
-        },
-      ],
-      identifier: 1,
-      pageX: 0,
-      pageY,
-      locationX: 0,
-      locationY: pageY,
-      timestamp: 1,
-      touches: [
-        {
-          identifier: 1,
-          pageX: 0,
-          pageY,
-          locationX: 0,
-          locationY: pageY,
-          timestamp: 1,
-        },
-      ],
-    },
-    touchHistory: {
-      indexOfSingleActiveTouch: 0,
-      mostRecentTimeStamp: 1,
-      numberActiveTouches: 1,
-      touchBank: [
-        {
-          touchActive: true,
-          startPageX: 0,
-          startPageY: 0,
-          startTimeStamp: 1,
-          currentPageX: 0,
-          currentPageY: pageY,
-          currentTimeStamp: 1,
-          previousPageX: 0,
-          previousPageY: 0,
-          previousTimeStamp: 1,
-        },
-      ],
-    },
-  };
-}
-
-function grantCompletion(screen: ReturnType<typeof render>) {
-  const el = screen.getByTestId("report-reply-composer__completion_hit");
+function grantCompletion() {
   act(() => {
-    // Invoke the PanResponder grant path directly (Jest has no real touches).
-    el.props.onResponderGrant?.(panTouchEvent());
+    scrubGesture.onBegin?.();
   });
 }
 
-function releaseCompletion(screen: ReturnType<typeof render>) {
-  const el = screen.getByTestId("report-reply-composer__completion_hit");
+function moveCompletion(translationY: number, translationX = 0) {
   act(() => {
-    el.props.onResponderRelease?.(panTouchEvent());
+    scrubGesture.onUpdate?.({ translationX, translationY });
+  });
+}
+
+function releaseCompletion() {
+  act(() => {
+    scrubGesture.onFinalize?.();
   });
 }
 
@@ -195,18 +183,21 @@ describe("ReportReplyComposer", () => {
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
 
     // Finger-down expands (press-drag is one gesture — no separate tap).
-    grantCompletion(screen);
+    grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
-    // Dock slot stays 44; overlay hit grows.
+    // Dock slot and native pan target stay 44 — overlay is visual-only.
     expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
       expect.objectContaining({ height: 44, width: 44 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 44, width: 44 }),
+    );
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber").props.style).toEqual(
       expect.objectContaining({ height: 200, width: 44 }),
     );
 
-    releaseCompletion(screen);
+    releaseCompletion();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
       expect.objectContaining({ height: 44, width: 44 }),
@@ -242,7 +233,7 @@ describe("ReportReplyComposer", () => {
       expect.objectContaining({ height: 200, width: 44 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 44 }),
+      expect.objectContaining({ height: 44, width: 44 }),
     );
   });
 
@@ -440,5 +431,34 @@ describe("ReportReplyComposer", () => {
     expect(completionFromVerticalDrag(40, 16)).toBe(30);
     expect(completionFromVerticalDrag(0, -200)).toBe(100);
     expect(completionFromVerticalDrag(100, 200)).toBe(0);
+    // Same press-down start + larger translation → more steps (not 5% then stop).
+    expect(completionFromVerticalDrag(40, -8)).toBe(45);
+    expect(completionFromVerticalDrag(40, -40)).toBe(65);
+    expect(completionFromVerticalDrag(40, -80)).toBe(90);
+  });
+
+  it("press-drag maps continuous translationY against grant-time %", () => {
+    const onChange = jest.fn();
+    render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="halfway"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={40}
+        onChangeCompletionPercentage={onChange}
+      />,
+    );
+
+    grantCompletion();
+    // Slop is 8px; first applied move must exceed it. Same grant-time 40%.
+    moveCompletion(-16);
+    moveCompletion(-40);
+    moveCompletion(-80);
+    expect(onChange.mock.calls.map((call) => call[0])).toEqual([50, 65, 90]);
+    releaseCompletion();
   });
 });

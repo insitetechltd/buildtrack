@@ -343,4 +343,44 @@ describe("photoFlowNavigation", () => {
     );
     jest.useRealTimers();
   });
+
+  it("returnToTaskDetailWithSelectedPhotos pops capture flow then navigates Task Detail when none is under it", () => {
+    jest.useFakeTimers();
+    const dispatch = jest.fn();
+    const navigate = jest.fn();
+    const photos = [{ uri: "file://b.jpg", fileName: "b.jpg", isAnnotated: false }];
+
+    returnToTaskDetailWithSelectedPhotos(
+      {
+        getState: () => ({
+          index: 2,
+          routes: [
+            { key: "list", name: "TasksList" },
+            { key: "capture", name: "CaptureSession" },
+            { key: "select", name: "PhotoSelection" },
+          ],
+        }),
+        dispatch,
+        goBack: jest.fn(),
+        navigate,
+      },
+      { taskId: "task-swipe", selectedPhotos: photos },
+    );
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 2 }),
+      }),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(150);
+    expect(navigate).toHaveBeenCalledWith("TaskDetail", {
+      taskId: "task-swipe",
+      subTaskId: undefined,
+      selectedPhotos: photos,
+    });
+    jest.useRealTimers();
+  });
 });

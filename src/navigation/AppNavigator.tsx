@@ -143,6 +143,7 @@ import {
 import {
   exitCaptureFirstFlow,
   handOffCaptureFirstToUpdateProgress,
+  launchTaskListPhotoUpdate,
   promptCaptureFirstDestination,
 } from "./captureFirstCameraFlow";
 import CaptureTaskPickerScreen from "../screens/CaptureTaskPickerScreen";
@@ -799,6 +800,7 @@ function ProjectsTasksListScreen({
   route,
 }: NativeStackScreenProps<TasksStackParamList, "TasksList">) {
   const setTasksLaunchPreset = useProjectFilterStore((state) => state.setTasksLaunchPreset);
+  const authUser = useAuthStore((state) => state.user);
 
   useEffect(() => {
     if (!route.params?.launchQueue || !route.params?.launchBucket || !route.params?.launchSource) {
@@ -845,11 +847,11 @@ function ProjectsTasksListScreen({
           },
         });
       }}
-      onNavigateToUpdateProgress={(taskId) => {
-        navigation.navigate("UpdateProgress", {
+      onNavigateToTaskPhotoUpdate={(taskId) => {
+        launchTaskListPhotoUpdate(navigation as never, {
           taskId,
-          sourceScreen: "tasks",
-          sourceTaskId: taskId,
+          companyId: authUser?.companyId,
+          userId: authUser?.id,
         });
       }}
       onNavigateBack={() =>

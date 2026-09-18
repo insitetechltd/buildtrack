@@ -28,7 +28,7 @@ import { cn } from "@/utils/cn";
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: (params?: CreateTaskParams) => void;
-  onNavigateToUpdateProgress?: (taskId: string) => void;
+  onNavigateToTaskPhotoUpdate?: (taskId: string) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
@@ -159,18 +159,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   const visibleTaskCount = output.scalarMetrics.totalVisibleTaskCount;
 
   const handleTaskUpdatePress = (taskId: string) => {
-    if (props.onNavigateToUpdateProgress) {
-      props.onNavigateToUpdateProgress(taskId);
-      return;
-    }
-
-    props.onNavigateToCreateTask({
-      editTaskId: taskId,
-      actionType: "update",
-      sourceScreen: "tasks",
-      clearForm: false,
-      _timestamp: Date.now(),
-    });
+    props.onNavigateToTaskPhotoUpdate?.(taskId);
   };
 
   const handleArchivePress = (taskId: string) => {

@@ -531,6 +531,31 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(screen.getByTestId("report-reply-composer__triage_action")).toBeTruthy();
   });
 
+  it("hydrates progress dock chips from inbound selected photos", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={jest.fn()}
+        inboundSelectedPhotos={[
+          { uri: "file://swipe.jpg", fileName: "swipe.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("report-reply-composer__photo_0")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__photos")).toBeTruthy();
+  });
+
   it("shows progress dock green submit affordance at 100% and posts via submitDockProgress", async () => {
     const submitDockProgress = jest.fn().mockResolvedValue(undefined);
     mockUseTaskDetailViewAdapter.mockReturnValue({

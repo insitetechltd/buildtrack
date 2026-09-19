@@ -15,6 +15,7 @@ import {
   pausePhotokitLibraryForAccept,
   resumePhotokitLibraryAfterAccept,
   exportPhotokitCappedJpeg,
+  exportPhotokitPreviewJpeg,
 } from "../PhotokitThumbView";
 
 describe("PhotokitThumbView JS gate", () => {
@@ -34,6 +35,7 @@ describe("PhotokitThumbView JS gate", () => {
       resumePhotokitLibraryAfterAccept();
     }).not.toThrow();
     await expect(exportPhotokitCappedJpeg("a", 1920)).resolves.toBeNull();
+    await expect(exportPhotokitPreviewJpeg("a", 512)).resolves.toBeNull();
     await expect(openPhotokitLibrary(null)).resolves.toBeNull();
     await expect(openPhotokitLibraryLimited(null, 60)).resolves.toBeNull();
     await expect(openPhotokitLibraryWithIds(["a"])).resolves.toBeNull();

@@ -14,6 +14,12 @@ export const UPDATE_PROGRESS_EXIT_ROUTE_NAMES = new Set([
   "UpdateProgress",
 ]);
 
+/** Capture + select-photos screens to pop before landing Task Detail from Tasks swipe. */
+export const PHOTO_CAPTURE_FLOW_ROUTE_NAMES = new Set([
+  "CaptureSession",
+  ...PHOTO_FLOW_ROUTE_NAMES,
+]);
+
 const TASK_DETAIL_ROUTE_NAMES = new Set([
   "TaskDetail",
   "TaskDetailFromDashboard",
@@ -169,7 +175,31 @@ export function returnToTaskDetailWithSelectedPhotos(
     const detailRoute = isDashboardStack
       ? "TaskDetailFromDashboard"
       : "TaskDetail";
-    navigation.navigate?.(detailRoute, params);
+
+    let anchorIndex = -1;
+    for (let i = currentIndex; i >= 0; i -= 1) {
+      const routeName = state.routes[i]?.name;
+      if (routeName && !PHOTO_CAPTURE_FLOW_ROUTE_NAMES.has(routeName)) {
+        anchorIndex = i;
+        break;
+      }
+    }
+
+    const popCount =
+      anchorIndex >= 0 ? currentIndex - anchorIndex : currentIndex;
+    if (popCount > 0 && navigation.dispatch) {
+      navigation.dispatch(StackActions.pop(popCount));
+    } else if (popCount > 0 && navigation.canGoBack?.() !== false) {
+      navigation.goBack();
+    }
+
+    setTimeout(() => {
+      navigation.navigate?.(detailRoute, {
+        taskId: params.taskId,
+        subTaskId: params.subTaskId,
+        selectedPhotos: params.selectedPhotos,
+      });
+    }, 150);
     return;
   }
 

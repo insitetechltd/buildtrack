@@ -85,6 +85,8 @@ jest.mock('../../state/userStore.supabase', () => ({
   useUserStoreWithInit: () => ({
     getUsersByRole: () => [{ id: 'test-user', name: 'Test User', role: 'member' }],
     getAllUsers: () => [{ id: 'test-user', name: 'Test User', role: 'member' }],
+    fetchUsers: jest.fn().mockResolvedValue(undefined),
+    fetchUsersByCompany: jest.fn().mockResolvedValue(undefined),
   }),
   useUserStore: () => ({
     getAllUsers: () => [{ id: 'test-user', name: 'Test User', role: 'member' }]
@@ -2233,8 +2235,8 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     expect(createScreen.queryByTestId('create-task__intent-selector')).toBeNull();
-    expect(createScreen.getByTestId('create-task__self_assign_badge')).toBeTruthy();
-    expect(createScreen.getByText('Assigned to You (Self)')).toBeTruthy();
+    expect(createScreen.getByTestId('create-task__assignee-picker-trigger')).toBeTruthy();
+    expect(createScreen.queryByTestId('create-task__self_assign_badge')).toBeNull();
     expect(createScreen.getByTestId('create-task__submit')).toBeTruthy();
   });
 

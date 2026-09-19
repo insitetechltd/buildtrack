@@ -29,6 +29,7 @@ import {
   canEditTaskDelegation,
   canSelectUserAsAssignee,
   filterSelectableAssigneeUsers,
+  resolveAssigneeCandidateRoleFromUser,
   resolveAssigneeRoleFromUser,
 } from '../contracts/taskDelegationPermissions';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
@@ -597,6 +598,11 @@ export function useTaskDetailViewAdapter({
     fetchProjectUserAssignments,
   ]);
 
+  const triageRosterUsers = typeof getAllUsers === "function" ? getAllUsers() : [];
+  const triageRosterAssignments =
+    task?.projectId && typeof getProjectUserAssignments === "function"
+      ? getProjectUserAssignments(task.projectId)
+      : [];
   const triageAssignableUsers = useMemo(() => {
     if (
       !user ||
@@ -608,20 +614,20 @@ export function useTaskDetailViewAdapter({
     }
     const projectMembers = getAssignableProjectUsers({
       projectId: task.projectId,
-      assignments: getProjectUserAssignments(task.projectId),
-      users: getAllUsers(),
+      assignments: triageRosterAssignments,
+      users: triageRosterUsers,
     });
     return filterSelectableAssigneeUsers(projectMembers, {
       actorRole: resolveAssigneeRoleFromUser(user),
       actorUserId: user.id,
-      resolveRole: resolveAssigneeRoleFromUser,
+      resolveRole: resolveAssigneeCandidateRoleFromUser,
     });
   }, [
     user,
     task?.projectId,
     task?.status,
-    getProjectUserAssignments,
-    getAllUsers,
+    triageRosterAssignments,
+    triageRosterUsers,
   ]);
 
   useEffect(() => {
@@ -1442,7 +1448,7 @@ export function useTaskDetailViewAdapter({
             candidateUserId: userId,
             assignableUserIds: assignedTo,
             actorRole: actorAssigneeRole,
-            candidateRole: resolveAssigneeRoleFromUser(candidate),
+            candidateRole: resolveAssigneeCandidateRoleFromUser(candidate),
           })
         ) {
           return;
@@ -1476,7 +1482,7 @@ export function useTaskDetailViewAdapter({
             candidateUserId: userId,
             assignableUserIds: assignedTo,
             actorRole: actorAssigneeRole,
-            candidateRole: resolveAssigneeRoleFromUser(candidate),
+            candidateRole: resolveAssigneeCandidateRoleFromUser(candidate),
           })
         ) {
           return;

@@ -1,3 +1,5 @@
+import { seatClassForUser, type SeatUserFields } from "@/billing/seatUsage";
+
 /**
  * S-UX-01K2 — who may edit primary/delegates, and who may be selected.
  *
@@ -8,6 +10,7 @@
  *
  * Phase B assumptions (documented in ROADMAP — no product who→whom table exists):
  * - Actor privilege defaults from SystemPermission / legacy DB role strings
+ * - Candidate privilege uses deployable seat class (CA default = worker), not company-admin rank
  * - `canSelectAssignee`: actor may select candidate iff rank(actor) >= rank(candidate)
  *   (peers + subordinates only; never up-rank)
  * - Unknown / missing candidate roles default to member (lowest assignable band)
@@ -115,6 +118,27 @@ export function resolveAssigneeRoleFromUser(user?: {
   }
   const role = user.role == null ? "" : String(user.role).trim();
   return role || undefined;
+}
+
+/**
+ * Rank used when deciding whether a project member can *be assigned*.
+ * Company admin on a job is usually a worker seat (M-AUTHZ-RC); treating them as
+ * rank-40 admin hid every CA from PM/worker Create Task pickers.
+ */
+export function resolveAssigneeCandidateRoleFromUser(
+  user?: SeatUserFields | null,
+): string | undefined {
+  if (!user) {
+    return undefined;
+  }
+  const seat = seatClassForUser(user);
+  if (seat === "pm") {
+    return "manager";
+  }
+  if (seat === "worker") {
+    return "member";
+  }
+  return resolveAssigneeRoleFromUser(user);
 }
 
 /**

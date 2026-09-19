@@ -2,15 +2,23 @@ import React, { useMemo } from "react";
 import {
   Dimensions,
   Modal as RNModal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
+import IpadTimelineEvidenceStrip from "@/components/taskDetail/IpadTimelineEvidenceStrip";
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
+import {
+  IPAD_EVIDENCE_WIDTH_CHROME_FALLBACK,
+  isIpadTimelineHost,
+  resolveIpadEvidenceLayout,
+} from "@/components/taskDetail/ipadTimelineEvidenceLayout";
 import { cn } from "@/utils/cn";
 import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
 import {
@@ -91,6 +99,9 @@ export default function TaskActivityTimeline({
   }>();
   const [galleryIndices, setGalleryIndices] = React.useState<Record<string, number>>({});
   const [containerWidths, setContainerWidths] = React.useState<Record<string, number>>({});
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const useIpadEvidence = isIpadTimelineHost(Platform);
+  const ipadContentFallback = Math.max(windowWidth - IPAD_EVIDENCE_WIDTH_CHROME_FALLBACK, 0);
   const normalizedActivities = useMemo(
     () => {
       if (thread.length > 0) {
@@ -167,10 +178,17 @@ export default function TaskActivityTimeline({
             galleryIndices[activity.id] ?? 0,
             Math.max(activity.photoUrls.length - 1, 0),
           );
-          const currentPhotoUri =
-            activity.photoUrls[currentPhotoIndex] ?? activity.photoUrls[0];
           const progressCompleteLabel =
             activity.progressLabel === "—" ? activity.progressLabel : `${activity.progressLabel} complete`;
+          const ipadEvidenceLayout =
+            useIpadEvidence && hasPhotos
+              ? resolveIpadEvidenceLayout({
+                  photoCount: activity.photoUrls.length,
+                  contentWidth: containerWidths[activity.id] || ipadContentFallback,
+                  windowWidth,
+                  windowHeight,
+                })
+              : null;
 
           return (
             <View
@@ -278,81 +296,102 @@ export default function TaskActivityTimeline({
                     <Text
                       testID={`task-activity-timeline__description-${activity.id}`}
                       className={ACTIVITY_FAMILY.titleClassName}
+                      numberOfLines={useIpadEvidence ? 2 : undefined}
                     >
                       {activity.eventLabel}
                     </Text>
 
-                    <View
-                      testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
-                      className="mt-3 overflow-hidden rounded-2xl bg-slate-200"
-                      style={{ aspectRatio: 1 }}
-                      onLayout={(event) => {
-                        const width = event.nativeEvent.layout.width;
-                        if (width && width !== containerWidths[activity.id]) {
-                          setContainerWidths((current) => ({
-                            ...current,
-                            [activity.id]: width,
-                          }));
-                        }
-                      }}
-                    >
-                      <ScrollView
-                        testID={`task-activity-timeline__photo_swipe_surface-${activity.id}`}
-                        horizontal
-                        pagingEnabled
-                        directionalLockEnabled
-                        nestedScrollEnabled
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ height: '100%' }}
-                        onMomentumScrollEnd={(event) => {
-                          const nextIndex = Math.round(
-                            event.nativeEvent.contentOffset.x /
-                              Math.max(event.nativeEvent.layoutMeasurement.width, 1),
+                    {useIpadEvidence ? (
+                      <IpadTimelineEvidenceStrip
+                        activityId={activity.id}
+                        eventLabel={activity.eventLabel}
+                        photoUrls={activity.photoUrls}
+                        contentWidth={containerWidths[activity.id] || ipadContentFallback}
+                        windowWidth={windowWidth}
+                        windowHeight={windowHeight}
+                        onOpenGallery={openGallery}
+                        onContentWidth={(width) => {
+                          setContainerWidths((current) =>
+                            current[activity.id] === width
+                              ? current
+                              : { ...current, [activity.id]: width },
                           );
-                          setGalleryIndices((current) => ({
-                            ...current,
-                            [activity.id]: Math.min(
-                              Math.max(nextIndex, 0),
-                              activity.photoUrls.length - 1,
-                            ),
-                          }));
                         }}
-                        className="h-full w-full"
+                      />
+                    ) : (
+                      <View
+                        testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
+                        className="mt-3 overflow-hidden rounded-2xl bg-slate-200"
+                        style={{ aspectRatio: 1 }}
+                        onLayout={(event) => {
+                          const width = event.nativeEvent.layout.width;
+                          if (width && width !== containerWidths[activity.id]) {
+                            setContainerWidths((current) => ({
+                              ...current,
+                              [activity.id]: width,
+                            }));
+                          }
+                        }}
                       >
-                        {activity.photoUrls.map((photoUri, photoIndex) => (
-                          <Pressable
-                            key={`${activity.id}:photo:${photoIndex}`}
-                            testID={
-                              photoIndex === currentPhotoIndex
-                                ? `task-activity-timeline__lead-photo-pressable-${activity.id}`
-                                : undefined
-                            }
-                            accessibilityRole="button"
-                            className="h-full"
-                            style={{
-                              width: containerWidths[activity.id] || Dimensions.get('window').width - 48,
-                              position: "relative",
-                            }}
-                            onPress={() => openGallery(activity.photoUrls, photoIndex)}
-                          >
-                            <ExpoImage
+                        <ScrollView
+                          testID={`task-activity-timeline__photo_swipe_surface-${activity.id}`}
+                          horizontal
+                          pagingEnabled
+                          directionalLockEnabled
+                          nestedScrollEnabled
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={{ height: '100%' }}
+                          onMomentumScrollEnd={(event) => {
+                            const nextIndex = Math.round(
+                              event.nativeEvent.contentOffset.x /
+                                Math.max(event.nativeEvent.layoutMeasurement.width, 1),
+                            );
+                            setGalleryIndices((current) => ({
+                              ...current,
+                              [activity.id]: Math.min(
+                                Math.max(nextIndex, 0),
+                                activity.photoUrls.length - 1,
+                              ),
+                            }));
+                          }}
+                          className="h-full w-full"
+                        >
+                          {activity.photoUrls.map((photoUri, photoIndex) => (
+                            <Pressable
+                              key={`${activity.id}:photo:${photoIndex}`}
                               testID={
                                 photoIndex === currentPhotoIndex
-                                  ? `task-activity-timeline__lead-photo-${activity.id}`
+                                  ? `task-activity-timeline__lead-photo-pressable-${activity.id}`
                                   : undefined
                               }
-                              accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
-                              source={buildCachedImageSource(photoUri)}
-                              contentFit="cover"
-                              cachePolicy="memory-disk"
-                              style={[StyleSheet.absoluteFillObject, { backgroundColor: "#e2e8f0" }]}
-                            />
-                          </Pressable>
-                        ))}
-                      </ScrollView>
-                    </View>
+                              accessibilityRole="button"
+                              className="h-full"
+                              style={{
+                                width: containerWidths[activity.id] || Dimensions.get('window').width - 48,
+                                position: "relative",
+                              }}
+                              onPress={() => openGallery(activity.photoUrls, photoIndex)}
+                            >
+                              <ExpoImage
+                                testID={
+                                  photoIndex === currentPhotoIndex
+                                    ? `task-activity-timeline__lead-photo-${activity.id}`
+                                    : undefined
+                                }
+                                accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
+                                source={buildCachedImageSource(photoUri)}
+                                contentFit="cover"
+                                cachePolicy="memory-disk"
+                                style={[StyleSheet.absoluteFillObject, { backgroundColor: "#e2e8f0" }]}
+                              />
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
 
-                    {activity.photoUrls.length > 1 ? (
+                    {(!useIpadEvidence && activity.photoUrls.length > 1) ||
+                    ipadEvidenceLayout?.showOverflowBadge ? (
                       <View
                         testID={`task-activity-timeline__gallery_pager-${activity.id}`}
                         className="mt-3 flex-row items-center justify-center gap-1.5"

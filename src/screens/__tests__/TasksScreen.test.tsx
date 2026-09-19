@@ -608,7 +608,7 @@ describe("TasksScreen", () => {
 
   it("shows dynamic single action on left swipe (archive for completed tasks, update for active tasks) and renders aligned icon-only row actions", async () => {
     const onNavigateToCreateTask = jest.fn();
-    const onNavigateToUpdateProgress = jest.fn();
+    const onNavigateToTaskPhotoUpdate = jest.fn();
     const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
 
     mockedModule.__setTasksScreenOverride({
@@ -667,7 +667,7 @@ describe("TasksScreen", () => {
       <TasksScreen
         onNavigateToTaskDetail={jest.fn()}
         onNavigateToCreateTask={onNavigateToCreateTask}
-        onNavigateToUpdateProgress={onNavigateToUpdateProgress}
+        onNavigateToTaskPhotoUpdate={onNavigateToTaskPhotoUpdate}
       />,
     );
 
@@ -696,7 +696,7 @@ describe("TasksScreen", () => {
     });
 
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:update-action"));
-    expect(onNavigateToUpdateProgress).toHaveBeenCalledWith("task-1");
+    expect(onNavigateToTaskPhotoUpdate).toHaveBeenCalledWith("task-1");
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
 
     // Dynamic swipe left for completed task-2: shows archive action in right-actions

@@ -126,6 +126,30 @@ describe("mapSessionSelectionToSelectedPhotos", () => {
     ]);
   });
 
+  it("keeps Accept previewUri on mapped library rows", () => {
+    expect(
+      mapSessionSelectionToSelectedPhotos([
+        {
+          id: "lib",
+          uri: "ph://keep",
+          fileName: "keep.jpg",
+          source: "library",
+          mediaLibraryAssetId: "keep",
+          previewUri: "file://preview/keep.jpg",
+          selected: true,
+        },
+      ]),
+    ).toEqual([
+      {
+        uri: "ph://keep",
+        fileName: "keep.jpg",
+        isAnnotated: false,
+        mediaLibraryAssetId: "keep",
+        previewUri: "file://preview/keep.jpg",
+      },
+    ]);
+  });
+
   it("clears remembered library album when the capture session resets", () => {
     rememberAlbumId("shots");
     resetCaptureSession();

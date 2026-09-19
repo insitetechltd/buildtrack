@@ -108,19 +108,24 @@ tags:
             id: "report-reply-composer"
           timeout: 20000
       - takeScreenshot: "du-h01-08a-alice-dock-with-photo"
-      - tapOn:
-          id: "report-reply-composer__completion"
+      # Photo dirt arms the trailing send chip (right). Long-press remounts
+      # the % scrubber in that same trailing slot — not the left camera.
+      - longPressOn:
+          id: "report-reply-composer__send"
+          timeout: 2000
       - waitForAnimationToEnd:
           timeout: 800
+      - extendedWaitUntil:
+          visible:
+            id: "report-reply-composer__completion_hit"
+          timeout: 4000
+      # Trailing chip ~90% x (12% was the left camera / input).
       - swipe:
-          start: "12%, 78%"
-          end: "12%, 42%"
-          duration: 600
+          start: "90%, 78%"
+          end: "90%, 42%"
+          duration: 800
       - waitForAnimationToEnd:
           timeout: 800
-      - tapOn:
-          id: "report-reply-composer__completion"
-          optional: true
       - tapOn:
           id: "report-reply-composer__input"
       - inputText: "Dual-user gate assignee update with photo at 100%."

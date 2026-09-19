@@ -1,5 +1,12 @@
 import React from "react";
 import { act, fireEvent, render } from "@testing-library/react-native";
+import { Dimensions } from "react-native";
+
+import {
+  LIBRARY_GRID_GAP,
+  libraryGridColumns,
+  libraryGridFirstWaveItemCount,
+} from "../libraryAlbumConstants";
 
 const mockPhotokitIdAt = jest.fn((token: number, index: number) =>
   token > 0 ? `t${token}_${index}` : "",
@@ -49,6 +56,20 @@ describe("LibraryPhotoGrid Photos index", () => {
     mockStartPhotokitRangeCaching.mockClear();
   });
 
+  function firstWaveBound() {
+    const { width, height } = Dimensions.get("window");
+    const columns = libraryGridColumns(width);
+    const tileSize = Math.max(
+      1,
+      Math.floor((width - LIBRARY_GRID_GAP * (columns - 1)) / columns),
+    );
+    return libraryGridFirstWaveItemCount({
+      columns,
+      viewHeight: height,
+      rowHeight: tileSize + LIBRARY_GRID_GAP,
+    });
+  }
+
   it("progressively binds native thumbs through the first screen and p2 wave", () => {
     jest.useFakeTimers();
     const { getByTestId, queryByTestId } = render(
@@ -73,8 +94,9 @@ describe("LibraryPhotoGrid Photos index", () => {
     });
 
     expect(getByTestId("g__tile_image_t7_11")).toBeTruthy();
-    expect(getByTestId("g__tile_image_t7_17")).toBeTruthy();
-    expect(queryByTestId("g__tile_image_t7_18")).toBeNull();
+    const lastBound = firstWaveBound() - 1;
+    expect(getByTestId(`g__tile_image_t7_${lastBound}`)).toBeTruthy();
+    expect(queryByTestId(`g__tile_image_t7_${lastBound + 1}`)).toBeNull();
 
     expect(mockStartPhotokitRangeCaching).not.toHaveBeenCalled();
 

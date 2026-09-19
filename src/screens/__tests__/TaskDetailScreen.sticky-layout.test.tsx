@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import { fireEvent, render, waitFor, act } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../TaskDetailScreen";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
@@ -24,10 +25,15 @@ jest.mock("../../state/authStore", () => ({
   },
 }));
 
+const mockDispatch = jest.fn();
+const mockAddListener = jest.fn();
+
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
     navigate: jest.fn(),
     push: jest.fn(),
+    dispatch: mockDispatch,
+    addListener: mockAddListener,
     getParent: () => ({
       getState: () => ({
         index: 2,
@@ -102,13 +108,22 @@ jest.mock("../../components/ModernScreenHeader", () => ({
   default: ({
     title,
     titleNode,
+    onBackPress,
   }: {
     title: string;
     titleNode?: React.ReactNode;
+    onBackPress?: () => void;
   }) => {
     const ReactNative = require("react-native");
-    const { Text, View } = ReactNative;
-    return <View>{titleNode ? titleNode : <Text>{title}</Text>}</View>;
+    const { Text, View, Pressable } = ReactNative;
+    return (
+      <View>
+        {onBackPress ? (
+          <Pressable testID="task-detail__header_back" onPress={onBackPress} />
+        ) : null}
+        {titleNode ? titleNode : <Text>{title}</Text>}
+      </View>
+    );
   },
 }));
 
@@ -125,6 +140,18 @@ describe("TaskDetailScreen sticky layout", () => {
   const mockUseTaskDetailViewAdapter = useTaskDetailViewAdapter as jest.MockedFunction<
     typeof useTaskDetailViewAdapter
   >;
+  let alertSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    mockAddListener.mockReset();
+    mockDispatch.mockReset();
+    mockAddListener.mockImplementation(() => jest.fn());
+    alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+  });
+
+  afterEach(() => {
+    alertSpy.mockRestore();
+  });
 
   const createAdapterOutput = (overrides: Record<string, unknown> = {}) => ({
     readiness: {
@@ -504,6 +531,31 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(screen.getByTestId("report-reply-composer__triage_action")).toBeTruthy();
   });
 
+  it("hydrates progress dock chips from inbound selected photos", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={jest.fn()}
+        inboundSelectedPhotos={[
+          { uri: "file://swipe.jpg", fileName: "swipe.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("report-reply-composer__photo_0")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__photos")).toBeTruthy();
+  });
+
   it("shows progress dock green submit affordance at 100% and posts via submitDockProgress", async () => {
     const submitDockProgress = jest.fn().mockResolvedValue(undefined);
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -521,14 +573,16 @@ describe("TaskDetailScreen sticky layout", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
-      "Submit for review",
-    );
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
 
     fireEvent.changeText(
       screen.getByTestId("report-reply-composer__input"),
       "Ready for PM review",
     );
+    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
+      "Submit for review",
+    );
+
     fireEvent.press(screen.getByTestId("report-reply-composer__send"));
 
     await waitFor(() => {
@@ -537,6 +591,281 @@ describe("TaskDetailScreen sticky layout", () => {
         photos: [],
         completionPercentage: 100,
       });
+    });
+  });
+
+  it("shows progress dock armed send at 40% and posts via submitDockProgress", async () => {
+    const submitDockProgress = jest.fn().mockResolvedValue(undefined);
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: {
+        ...createAdapterActions(),
+        submitDockProgress,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "Tied rebar at grid B",
+    );
+    expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
+      expect.objectContaining({ borderColor: "#059669" }),
+    );
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+
+    await waitFor(() => {
+      expect(submitDockProgress).toHaveBeenCalledWith({
+        description: "Tied rebar at grid B",
+        photos: [],
+        completionPercentage: 40,
+      });
+    });
+  });
+
+  it("leave-guard on header back: Stay / Discard / Submit when draft is dirty", () => {
+    const onNavigateBack = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />,
+    );
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "unsaved note",
+    );
+    fireEvent.press(screen.getByTestId("task-detail__header_back"));
+
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalled();
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+    expect(buttons.map((b) => b.text)).toEqual(["Stay", "Discard", "Submit"]);
+  });
+
+  it("leave-guard omits Submit when dirty without a description", () => {
+    const onNavigateBack = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={onNavigateBack}
+        inboundSelectedPhotos={[{ uri: "file://a.jpg", fileName: "a.jpg" }]}
+      />,
+    );
+    fireEvent.press(screen.getByTestId("task-detail__header_back"));
+
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string }>;
+    expect(buttons.map((b) => b.text)).toEqual(["Stay", "Discard"]);
+  });
+
+  it("leave-guard Discard leaves and Stay does not", () => {
+    const onNavigateBack = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />,
+    );
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "unsaved note",
+    );
+    fireEvent.press(screen.getByTestId("task-detail__header_back"));
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+    buttons.find((b) => b.text === "Stay")?.onPress?.();
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    act(() => {
+      buttons.find((b) => b.text === "Discard")?.onPress?.();
+    });
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("leave-guard beforeRemove preventDefault when dirty", () => {
+    let beforeRemove: ((event: {
+      preventDefault: () => void;
+      data: { action: unknown };
+    }) => void) | undefined;
+    mockAddListener.mockImplementation((event: string, cb: (e: unknown) => void) => {
+      if (event === "beforeRemove") {
+        beforeRemove = cb as typeof beforeRemove;
+      }
+      return jest.fn();
+    });
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />,
+    );
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "unsaved note",
+    );
+    const preventDefault = jest.fn();
+    beforeRemove?.({ preventDefault, data: { action: { type: "GO_BACK" } } });
+    expect(preventDefault).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalled();
+  });
+
+  it("leave-guard beforeRemove does not block CaptureSession push", () => {
+    let beforeRemove: ((event: {
+      preventDefault: () => void;
+      data: { action: unknown };
+    }) => void) | undefined;
+    mockAddListener.mockImplementation((event: string, cb: (e: unknown) => void) => {
+      if (event === "beforeRemove") {
+        beforeRemove = cb as typeof beforeRemove;
+      }
+      return jest.fn();
+    });
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />,
+    );
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "unsaved note",
+    );
+    const preventDefault = jest.fn();
+    beforeRemove?.({ preventDefault, data: { action: { type: "PUSH" } } });
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    beforeRemove?.({
+      preventDefault,
+      data: { action: { type: "NAVIGATE", payload: { name: "CaptureSession" } } },
+    });
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it("leave-guard Submit posts and stays on Task Detail", async () => {
+    const onNavigateBack = jest.fn();
+    const submitDockProgress = jest.fn().mockResolvedValue(undefined);
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: {
+        ...createAdapterActions(),
+        submitDockProgress,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />,
+    );
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "unsaved note",
+    );
+    fireEvent.press(screen.getByTestId("task-detail__header_back"));
+    const buttons = alertSpy.mock.calls[0][2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
+    await act(async () => {
+      buttons.find((b) => b.text === "Submit")?.onPress?.();
+    });
+    await waitFor(() => {
+      expect(submitDockProgress).toHaveBeenCalledWith({
+        description: "unsaved note",
+        photos: [],
+        completionPercentage: 40,
+      });
+    });
+    expect(onNavigateBack).not.toHaveBeenCalled();
+  });
+
+  it("leave-guard does not stack a second alert while submit is in flight", async () => {
+    const onNavigateBack = jest.fn();
+    let resolveSubmit: (() => void) | undefined;
+    const submitDockProgress = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: {
+        ...createAdapterActions(),
+        submitDockProgress,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />,
+    );
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "in flight note",
+    );
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    await waitFor(() => {
+      expect(submitDockProgress).toHaveBeenCalled();
+    });
+    alertSpy.mockClear();
+    fireEvent.press(screen.getByTestId("task-detail__header_back"));
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    await act(async () => {
+      resolveSubmit?.();
     });
   });
 

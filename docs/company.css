@@ -7,6 +7,45 @@
   --blue-mid: #7fb0c0;
   --panel-dark: #529cbf;
   --panel-light: #7fb0c0;
+  /* One continuous wash across photo + copy columns (no hard vertical seam). */
+  --stage-grad: linear-gradient(
+    105deg,
+    #edf5f8 0%,
+    #d4e8ef 38%,
+    #8ebed0 68%,
+    #529cbf 100%
+  );
+  --stage-grad-mist: linear-gradient(
+    105deg,
+    #f2f8fa 0%,
+    #dceef3 38%,
+    #a9cdd9 68%,
+    #7fb0c0 100%
+  );
+  --stage-grad-flip: linear-gradient(
+    255deg,
+    #edf5f8 0%,
+    #d4e8ef 38%,
+    #8ebed0 68%,
+    #529cbf 100%
+  );
+  --stage-grad-mist-flip: linear-gradient(
+    255deg,
+    #f2f8fa 0%,
+    #dceef3 38%,
+    #a9cdd9 68%,
+    #7fb0c0 100%
+  );
+  /* Shared mid-tone so stacked projects blend while scrolling between them. */
+  --project-bridge: #c5dde8;
+  /* Company copy → first work stage (same bridge the project wrappers use). */
+  --company-copy-grad: linear-gradient(
+    158deg,
+    #6ea8bc 0%,
+    #8ebed0 34%,
+    #b7d5e1 72%,
+    var(--project-bridge) 100%
+  );
   --white: #fff;
   --font-d: "Syne", system-ui, sans-serif;
   --font-b: "Manrope", system-ui, sans-serif;
@@ -155,27 +194,55 @@ body:not(.is-projects) { --header-h: 0px; }
 }
 
 .company {
-  background: var(--mist);
+  /* Vertical wash into the first work stage (same --project-bridge). */
+  background: linear-gradient(
+    180deg,
+    #8ebed0 0%,
+    var(--project-bridge) 58%,
+    var(--project-bridge) 100%
+  );
   scroll-margin-top: var(--header-h);
 }
 .company-stage {
+  position: relative;
   min-height: calc(100vh - var(--header-h));
   min-height: calc(100dvh - var(--header-h));
   display: grid;
   grid-template-columns: 0.95fr 1.05fr;
   grid-template-areas: "copy visual";
   overflow: hidden;
+  /* Copy left / photo right — same diagonal as .project-flip stages. */
+  background: var(--stage-grad-flip);
+}
+.company-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(4.5rem, 18vh, 9rem);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    0deg,
+    var(--project-bridge) 0%,
+    color-mix(in srgb, var(--project-bridge) 55%, transparent) 42%,
+    transparent 100%
+  );
 }
 .company-visual {
   grid-area: visual;
   position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--blue);
+  background: transparent;
 }
 .company-copy {
   grid-area: copy;
+  position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
   padding: clamp(1.75rem, 4.5vw, 3.25rem);
@@ -183,7 +250,7 @@ body:not(.is-projects) { --header-h: 0px; }
   flex-direction: column;
   justify-content: center;
   justify-content: safe center;
-  background: var(--panel-light);
+  background: var(--company-copy-grad);
   color: var(--ink);
   overflow-y: auto;
 }
@@ -279,6 +346,10 @@ body:not(.is-projects) { --header-h: 0px; }
   scroll-margin-top: var(--header-h);
 }
 /* One viewport per project — snap to base, then JS cycles photos while docked. */
+.project {
+  position: relative;
+  background: var(--project-bridge);
+}
 .project-scrub {
   position: relative;
   height: calc(100svh - var(--header-h));
@@ -286,15 +357,18 @@ body:not(.is-projects) { --header-h: 0px; }
 }
 @media (min-width: 861px) {
   html {
-    scroll-snap-type: y proximity;
+    scroll-snap-type: y mandatory;
   }
   .project-scrub {
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    scroll-margin-top: var(--header-h);
   }
   #company,
   #contact {
     scroll-snap-align: start;
+    scroll-snap-stop: always;
+    scroll-margin-top: var(--header-h);
   }
 }
 .project-stage {
@@ -304,12 +378,46 @@ body:not(.is-projects) { --header-h: 0px; }
   display: grid;
   grid-template-columns: 1.3fr 0.7fr;
   overflow: hidden;
+  background: var(--stage-grad);
 }
-.project-flip .project-stage { grid-template-columns: 0.7fr 1.3fr; }
+.project-stage::before,
+.project-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: clamp(4.5rem, 18vh, 9rem);
+  z-index: 2;
+  pointer-events: none;
+}
+.project-stage::before {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(--project-bridge) 0%,
+    color-mix(in srgb, var(--project-bridge) 55%, transparent) 42%,
+    transparent 100%
+  );
+}
+.project-stage::after {
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    var(--project-bridge) 0%,
+    color-mix(in srgb, var(--project-bridge) 55%, transparent) 42%,
+    transparent 100%
+  );
+}
+.project-flip .project-stage {
+  grid-template-columns: 0.7fr 1.3fr;
+  background: var(--stage-grad-flip);
+}
+.project-mist .project-stage { background: var(--stage-grad-mist); }
+.project-mist.project-flip .project-stage { background: var(--stage-grad-mist-flip); }
 .project-viewport {
   position: relative;
   min-width: 0;
-  background: color-mix(in srgb, var(--mist) 82%, var(--blue));
+  background: transparent;
   container-type: size;
   overflow: hidden;
   order: 1;
@@ -317,7 +425,9 @@ body:not(.is-projects) { --header-h: 0px; }
   align-items: center;
   justify-content: center;
 }
-.project-flip .project-viewport { order: 2; }
+.project-flip .project-viewport {
+  order: 2;
+}
 .project-film {
   position: relative;
   width: 100%;
@@ -363,8 +473,9 @@ body:not(.is-projects) { --header-h: 0px; }
 .counter {
   position: absolute;
   left: 1rem;
-  right: 1rem;
   bottom: 1rem;
+  right: auto;
+  width: min(11rem, calc(100% - 2rem));
   z-index: 3;
   margin: 0;
   display: flex;
@@ -374,6 +485,7 @@ body:not(.is-projects) { --header-h: 0px; }
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
+  pointer-events: none;
 }
 .counter i[data-progress] {
   flex: 1;
@@ -391,15 +503,22 @@ body:not(.is-projects) { --header-h: 0px; }
   padding: clamp(1.75rem, 4vw, 2.75rem);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  justify-content: safe center;
+  justify-content: flex-start;
   position: relative;
   overflow-y: auto;
-  background: var(--panel-dark);
+  background: transparent;
   color: #1e3540;
 }
+/* Equal flex spacers: text block midpoint lines up with photo midpoint. */
+.panel::before,
+.panel::after {
+  content: "";
+  flex: 1 1 0;
+  min-height: 0;
+  pointer-events: none;
+}
 .project-flip .panel { order: 1; }
-.project-mist .panel { background: var(--panel-light); }
+.project-mist .panel { background: transparent; }
 .titleblock { margin: 1.25rem 0 0; padding: 0; max-width: 22rem; }
 .titleblock div {
   display: grid;
@@ -458,12 +577,24 @@ footer a {
   text-underline-offset: 3px;
   color: var(--blue-mid);
 }
-.page-next {
+.page-nav {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
   left: auto;
   bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+body.is-projects .page-nav {
+  opacity: 1;
+  pointer-events: auto;
+}
+.page-nav-btn {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 999px;
@@ -472,15 +603,16 @@ footer a {
   color: var(--ink);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 18%, transparent);
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0.9;
   transition: opacity 0.25s ease;
 }
-body.is-projects .page-next {
-  opacity: 0.9;
-  pointer-events: auto;
+.page-nav-btn:hover { opacity: 1; }
+.page-nav-btn[hidden] { display: none; }
+.page-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
-.page-next:hover { opacity: 1; }
 
 @media (min-width: 861px) and (max-height: 820px) {
   .panel {
@@ -549,6 +681,9 @@ body.is-projects .page-next {
     display: flex;
     flex-direction: column;
   }
+  .company-stage::after {
+    display: none;
+  }
   .company-visual {
     min-height: min(48vh, 22rem);
     height: min(48vh, 22rem);
@@ -572,6 +707,10 @@ body.is-projects .page-next {
     display: flex;
     flex-direction: column;
   }
+  .project-stage::before,
+  .project-stage::after {
+    display: none;
+  }
   .project-viewport,
   .project-film,
   .counter {
@@ -581,6 +720,10 @@ body.is-projects .page-next {
   .project-flip .panel {
     order: 0;
     padding: 1.5rem 1.25rem 1.15rem;
+  }
+  .panel::before,
+  .panel::after {
+    display: none;
   }
   .panel h2 { font-size: clamp(1.45rem, 6vw, 1.85rem); }
   .titleblock { max-width: none; }
@@ -644,7 +787,7 @@ body.is-projects .page-next {
     flex-direction: column;
     padding: 2rem 1.25rem max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
   }
-  .page-next {
+  .page-nav-btn {
     width: 3rem;
     height: 3rem;
     font-size: 1.1rem;

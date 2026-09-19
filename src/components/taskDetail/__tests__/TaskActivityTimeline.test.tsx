@@ -1,4 +1,5 @@
 import React from "react";
+import { Platform } from "react-native";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import TaskActivityTimeline from "../TaskActivityTimeline";
@@ -365,5 +366,90 @@ describe("TaskActivityTimeline", () => {
     expect(screen.queryByText("— complete")).toBeNull();
     expect(screen.queryByText("0% complete")).toBeNull();
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-report")).toBeTruthy();
+  });
+});
+
+describe("TaskActivityTimeline iPad evidence strip", () => {
+  const originalOs = Platform.OS;
+  const originalIsPad = Platform.isPad;
+
+  beforeEach(() => {
+    Object.defineProperty(Platform, "OS", { configurable: true, get: () => "ios" });
+    Object.defineProperty(Platform, "isPad", { configurable: true, get: () => true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", { configurable: true, get: () => originalOs });
+    Object.defineProperty(Platform, "isPad", { configurable: true, get: () => originalIsPad });
+  });
+
+  function photoThread(id: string, count: number) {
+    return [
+      {
+        id,
+        actorLabel: "Jake Torres",
+        eventLabel: "Progress photos — rough-in complete",
+        timestampLabel: "Sep 17, 4:30 PM",
+        progressLabel: "65%",
+        photoUrls: Array.from({ length: count }, (_, index) => `https://example.com/photo-${index + 1}.jpg`),
+        density: "standard" as const,
+        structuralState: "ready" as const,
+      },
+    ];
+  }
+
+  it("caps a single iPad photo to 200pt instead of a square hero", async () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 1)} />);
+
+    fireEvent(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 746, height: 200 } },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).toEqual(
+        expect.objectContaining({ height: 200 }),
+      );
+    });
+    expect(screen.getByTestId("task-activity-timeline__evidence_strip-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).not.toEqual(
+      expect.objectContaining({ aspectRatio: 1 }),
+    );
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1").props.contentFit).toBe("cover");
+    expect(screen.getByTestId("task-activity-timeline__evidence_expand_hint-activity-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
+  });
+
+  it("renders a 2-up row without a square shell", () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 2)} />);
+
+    expect(screen.getByTestId("task-activity-timeline__evidence_strip-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).toEqual(
+      expect.objectContaining({ height: 180 }),
+    );
+    expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
+  });
+
+  it("shows a +N overflow badge on a 6-photo filmstrip and opens the gallery from a tile", async () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 6)} />);
+
+    fireEvent(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 746, height: 160 } },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("+3")).toBeTruthy();
+    });
+    expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.contentFit).toBe("contain");
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/photo-1.jpg",
+      cacheKey: "https://example.com/photo-1.jpg",
+    });
   });
 });

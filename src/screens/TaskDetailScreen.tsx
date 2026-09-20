@@ -8,6 +8,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -20,6 +21,11 @@ import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
+import {
+  IPAD_TASK_DETAIL_META_FLEX,
+  IPAD_TASK_DETAIL_THREAD_FLEX,
+  isIpadLandscapeMetaSplit,
+} from "@/components/taskDetail/ipadTimelineEvidenceLayout";
 import ReportReplyComposer, {
   progressDockIsDirty,
   progressDockShouldInterceptLeave,
@@ -108,6 +114,12 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     subTaskId: props.subTaskId
   });
   const t = useTranslation();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const splitIpadLandscapeMeta = isIpadLandscapeMetaSplit(
+    Platform,
+    windowWidth,
+    windowHeight,
+  );
   const user = useAuthStore((state) => state.user);
   const navigation = useNavigation<{
     navigate: (name: string, params?: object) => void;
@@ -663,6 +675,52 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       }
     : undefined;
 
+  const infoCardNode = infoCardModel ? (
+    <TaskDetailInfoCard
+      model={infoCardModel}
+      onEditPress={
+        infoCardModel.showEditAction
+          ? () => handleActionPress("edit_task")
+          : undefined
+      }
+      onReassignPress={
+        infoCardModel.showReassignAction
+          ? () => handleActionPress("reassign_task")
+          : undefined
+      }
+    />
+  ) : null;
+
+  const workThreadScroll = (
+    <ScrollView
+      testID="task-detail__workthread_scroll"
+      className="flex-1"
+      contentContainerStyle={{
+        paddingBottom: scrollRegionBottomPadding,
+        flexGrow: 1,
+      }}
+      scrollEnabled
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {output.banners.map(banner => (
+        <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
+      ))}
+
+      {hasQuickActions ? (
+        <TaskDetailQuickActions
+          model={output.quickActions!}
+          onPress={handleActionPress}
+        />
+      ) : null}
+
+      <TaskActivityTimeline
+        testID="task-detail__activity_thread"
+        thread={output.activityThread}
+      />
+    </ScrollView>
+  );
+
   return (
     <>
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
@@ -690,51 +748,44 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         keyboardVerticalOffset={0}
       >
       <View className="flex-1">
-          <View testID="task-detail__scroll_region" className="flex-1">
-          {/* Info card stays pinned; only the work-thread cards below scroll. */}
-          {infoCardModel ? (
-            <TaskDetailInfoCard
-              model={infoCardModel}
-              onEditPress={
-                infoCardModel.showEditAction
-                  ? () => handleActionPress("edit_task")
-                  : undefined
-              }
-              onReassignPress={
-                infoCardModel.showReassignAction
-                  ? () => handleActionPress("reassign_task")
-                  : undefined
-              }
-            />
-          ) : null}
-
-          <ScrollView
-            testID="task-detail__workthread_scroll"
+          <View
+            testID="task-detail__scroll_region"
             className="flex-1"
-            contentContainerStyle={{
-              paddingBottom: scrollRegionBottomPadding,
-              flexGrow: 1,
-            }}
-            scrollEnabled
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            style={
+              splitIpadLandscapeMeta
+                ? { flex: 1, flexDirection: "row" }
+                : { flex: 1 }
+            }
           >
-            {output.banners.map(banner => (
-              <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
-            ))}
-
-            {hasQuickActions ? (
-              <TaskDetailQuickActions
-                model={output.quickActions!}
-                onPress={handleActionPress}
-              />
-            ) : null}
-
-            <TaskActivityTimeline
-              testID="task-detail__activity_thread"
-              thread={output.activityThread}
-            />
-          </ScrollView>
+          {/* Portrait/phone: info card pinned above the thread. iPad landscape: info left, thread right. */}
+          {splitIpadLandscapeMeta ? (
+            <>
+              <View
+                testID="task-detail__meta_column"
+                className="border-r border-slate-200"
+                style={{ flex: IPAD_TASK_DETAIL_META_FLEX, minWidth: 0 }}
+              >
+                <ScrollView
+                  className="flex-1"
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {infoCardNode}
+                </ScrollView>
+              </View>
+              <View
+                testID="task-detail__thread_column"
+                style={{ flex: IPAD_TASK_DETAIL_THREAD_FLEX, minWidth: 0 }}
+              >
+                {workThreadScroll}
+              </View>
+            </>
+          ) : (
+            <>
+              {infoCardNode}
+              {workThreadScroll}
+            </>
+          )}
           </View>
 
           {showDetailDock && detailDock ? (

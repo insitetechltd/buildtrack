@@ -15,9 +15,8 @@ import { Image as ExpoImage } from "expo-image";
 import IpadTimelineEvidenceStrip from "@/components/taskDetail/IpadTimelineEvidenceStrip";
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import {
-  IPAD_EVIDENCE_WIDTH_CHROME_FALLBACK,
+  estimateIpadEvidenceContentWidth,
   isIpadTimelineHost,
-  resolveIpadEvidenceLayout,
 } from "@/components/taskDetail/ipadTimelineEvidenceLayout";
 import { cn } from "@/utils/cn";
 import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
@@ -101,7 +100,12 @@ export default function TaskActivityTimeline({
   const [containerWidths, setContainerWidths] = React.useState<Record<string, number>>({});
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const useIpadEvidence = isIpadTimelineHost(Platform);
-  const ipadContentFallback = Math.max(windowWidth - IPAD_EVIDENCE_WIDTH_CHROME_FALLBACK, 0);
+  const ipadIsLandscape = windowWidth > windowHeight;
+  const ipadContentFallback = estimateIpadEvidenceContentWidth({
+    platform: Platform,
+    windowWidth,
+    windowHeight,
+  });
   const normalizedActivities = useMemo(
     () => {
       if (thread.length > 0) {
@@ -127,6 +131,10 @@ export default function TaskActivityTimeline({
       })?.id,
     [normalizedActivities],
   );
+
+  React.useEffect(() => {
+    setContainerWidths({});
+  }, [ipadIsLandscape]);
 
   React.useEffect(() => {
     if (resolvedTopEntryId) {
@@ -180,15 +188,6 @@ export default function TaskActivityTimeline({
           );
           const progressCompleteLabel =
             activity.progressLabel === "—" ? activity.progressLabel : `${activity.progressLabel} complete`;
-          const ipadEvidenceLayout =
-            useIpadEvidence && hasPhotos
-              ? resolveIpadEvidenceLayout({
-                  photoCount: activity.photoUrls.length,
-                  contentWidth: containerWidths[activity.id] || ipadContentFallback,
-                  windowWidth,
-                  windowHeight,
-                })
-              : null;
 
           return (
             <View
@@ -296,7 +295,6 @@ export default function TaskActivityTimeline({
                     <Text
                       testID={`task-activity-timeline__description-${activity.id}`}
                       className={ACTIVITY_FAMILY.titleClassName}
-                      numberOfLines={useIpadEvidence ? 2 : undefined}
                     >
                       {activity.eventLabel}
                     </Text>
@@ -390,8 +388,7 @@ export default function TaskActivityTimeline({
                       </View>
                     )}
 
-                    {(!useIpadEvidence && activity.photoUrls.length > 1) ||
-                    ipadEvidenceLayout?.showOverflowBadge ? (
+                    {!useIpadEvidence && activity.photoUrls.length > 1 ? (
                       <View
                         testID={`task-activity-timeline__gallery_pager-${activity.id}`}
                         className="mt-3 flex-row items-center justify-center gap-1.5"

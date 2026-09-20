@@ -1025,4 +1025,60 @@ describe("TaskDetailScreen sticky layout", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     expect(screen.queryByTestId("report-reply-composer")).toBeNull();
   });
+
+  it("keeps the info card stacked on iPad portrait and splits it left in landscape", () => {
+    const reactNative = require("react-native");
+    const originalIsPad = reactNative.Platform.isPad;
+    const useWindowDimensionsSpy = jest.spyOn(reactNative, "useWindowDimensions");
+
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      configurable: true,
+      get: () => true,
+    });
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 834,
+      height: 1194,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const portrait = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    expect(portrait.queryByTestId("task-detail__meta_column")).toBeNull();
+    expect(portrait.queryByTestId("task-detail__thread_column")).toBeNull();
+    expect(portrait.getByTestId("task-detail__info_card")).toBeTruthy();
+    portrait.unmount();
+
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 1194,
+      height: 834,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const landscape = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    const tree = landscape.toJSON();
+    const metaIds = collectTestIds(findNodeByTestId(tree, "task-detail__meta_column"));
+    const threadIds = collectTestIds(findNodeByTestId(tree, "task-detail__thread_column"));
+    const workThreadIds = collectTestIds(findNodeByTestId(tree, "task-detail__workthread_scroll"));
+
+    expect(landscape.getByTestId("task-detail__scroll_region").props.style).toEqual(
+      expect.objectContaining({ flexDirection: "row" }),
+    );
+    expect(landscape.getByTestId("task-detail__meta_column").props.style).toEqual(
+      expect.objectContaining({ flex: 1 }),
+    );
+    expect(landscape.getByTestId("task-detail__thread_column").props.style).toEqual(
+      expect.objectContaining({ flex: 2 }),
+    );
+    expect(metaIds).toContain("task-detail__info_card");
+    expect(threadIds).toContain("task-detail__activity_thread");
+    expect(workThreadIds).not.toContain("task-detail__info_card");
+    landscape.unmount();
+
+    useWindowDimensionsSpy.mockRestore();
+    Object.defineProperty(reactNative.Platform, "isPad", {
+      configurable: true,
+      get: () => originalIsPad,
+    });
+  });
 });

@@ -398,50 +398,61 @@ describe("TaskActivityTimeline iPad evidence strip", () => {
     ];
   }
 
-  it("caps a single iPad photo to 200pt instead of a square hero", async () => {
-    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 1)} />);
-
-    fireEvent(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1"), "layout", {
-      nativeEvent: { layout: { x: 0, y: 0, width: 746, height: 200 } },
+  function layoutStrip(screen: ReturnType<typeof render>, id: string, width = 746) {
+    fireEvent(screen.getByTestId(`task-activity-timeline__lead-photo-shell-${id}`), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width, height: 173 } },
     });
+  }
+
+  it("sizes a single iPad photo as one left-aligned tile, not a square hero", async () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 1)} />);
+    layoutStrip(screen, "activity-1");
 
     await waitFor(() => {
       expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).toEqual(
-        expect.objectContaining({ height: 200 }),
+        expect.objectContaining({ height: 173 }),
       );
     });
     expect(screen.getByTestId("task-activity-timeline__evidence_strip-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
+      expect.objectContaining({ width: 231, height: 173 }),
+    );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).not.toEqual(
       expect.objectContaining({ aspectRatio: 1 }),
     );
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1").props.contentFit).toBe("cover");
-    expect(screen.getByTestId("task-activity-timeline__evidence_expand_hint-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1").props.contentFit).toBe("contain");
+    expect(screen.queryByTestId("task-activity-timeline__evidence_expand_hint-activity-1")).toBeNull();
     expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
   });
 
-  it("renders a 2-up row without a square shell", () => {
+  it("keeps two photos at the same tile size as one photo", async () => {
     const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 2)} />);
+    layoutStrip(screen, "activity-1");
 
-    expect(screen.getByTestId("task-activity-timeline__evidence_strip-activity-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).toEqual(
-      expect.objectContaining({ height: 180 }),
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
+        expect.objectContaining({ width: 231, height: 173 }),
+      );
+    });
+    expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-1").props.style).toEqual(
+      expect.objectContaining({ width: 231, height: 173 }),
     );
     expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
   });
 
-  it("shows a +N overflow badge on a 6-photo filmstrip and opens the gallery from a tile", async () => {
+  it("slides extra photos without a +N badge and opens the gallery from a tile", async () => {
     const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 6)} />);
-
-    fireEvent(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1"), "layout", {
-      nativeEvent: { layout: { x: 0, y: 0, width: 746, height: 160 } },
-    });
+    layoutStrip(screen, "activity-1");
 
     await waitFor(() => {
-      expect(screen.getByText("+3")).toBeTruthy();
+      expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-3")).toBeTruthy();
     });
-    expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
+    expect(screen.queryByText("+3")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__evidence_overflow-activity-1")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1").props.scrollEnabled).toBe(
+      true,
+    );
 
     fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1"));
 
@@ -451,5 +462,35 @@ describe("TaskActivityTimeline iPad evidence strip", () => {
       uri: "https://example.com/photo-1.jpg",
       cacheKey: "https://example.com/photo-1.jpg",
     });
+  });
+
+  it("uses 4-up landscape tiles at thread width and slides a sixth photo", async () => {
+    const reactNative = require("react-native");
+    const useWindowDimensionsSpy = jest.spyOn(reactNative, "useWindowDimensions");
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 1194,
+      height: 834,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 6)} />);
+    layoutStrip(screen, "activity-1", 700);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
+        expect.objectContaining({ width: 160, height: 120 }),
+      );
+    });
+    expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-3").props.style).toEqual(
+      expect.objectContaining({ width: 160, height: 120 }),
+    );
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1").props.scrollEnabled).toBe(
+      true,
+    );
+    expect(screen.queryByText("+2")).toBeNull();
+
+    screen.unmount();
+    useWindowDimensionsSpy.mockRestore();
   });
 });

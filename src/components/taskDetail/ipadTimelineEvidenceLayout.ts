@@ -10,9 +10,13 @@ export const IPAD_EVIDENCE_CORNER_RADIUS = 12;
 export const IPAD_EVIDENCE_PEEK_WIDTH = 36;
 export const IPAD_EVIDENCE_SLOTS_PORTRAIT = 3;
 export const IPAD_EVIDENCE_SLOTS_LANDSCAPE = 4;
-/** Tile aspect width:height (4:3) so contain shows the majority without a tall hero. */
-export const IPAD_EVIDENCE_TILE_ASPECT_WIDTH = 4;
-export const IPAD_EVIDENCE_TILE_ASPECT_HEIGHT = 3;
+/**
+ * Tile aspect width:height (3:4). Most field photos are phone-portrait;
+ * cover-crop into a portrait cell (IG/FB-style) so there is no letterbox.
+ * Landscape shots crop on the sides. Tap still opens the uncropped gallery.
+ */
+export const IPAD_EVIDENCE_TILE_ASPECT_WIDTH = 3;
+export const IPAD_EVIDENCE_TILE_ASPECT_HEIGHT = 4;
 /** Card mx-4 + inner p-4 + rail (~12+12) — used only as a first-layout fallback. */
 export const IPAD_EVIDENCE_WIDTH_CHROME_FALLBACK = 88;
 /** Landscape page split: project/task info ~1/3, thread ~2/3. */

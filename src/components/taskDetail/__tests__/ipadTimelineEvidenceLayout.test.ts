@@ -56,7 +56,7 @@ describe("resolveIpadEvidenceLayout", () => {
 
     expect(one.slotCount).toBe(IPAD_EVIDENCE_SLOTS_PORTRAIT);
     expect(one.tileWidth).toBe(231);
-    expect(one.tileHeight).toBe(173);
+    expect(one.tileHeight).toBe(308);
     expect(one.tileWidth).toBeLessThan(746);
     expect(two.tileWidth).toBe(one.tileWidth);
     expect(two.tileHeight).toBe(one.tileHeight);
@@ -83,7 +83,7 @@ describe("resolveIpadEvidenceLayout", () => {
 
     expect(four.slotCount).toBe(IPAD_EVIDENCE_SLOTS_LANDSCAPE);
     expect(four.tileWidth).toBe(160);
-    expect(four.tileHeight).toBe(120);
+    expect(four.tileHeight).toBe(213);
     expect(one.tileWidth).toBe(four.tileWidth);
     expect(four.canSlide).toBe(false);
     expect(six.canSlide).toBe(true);

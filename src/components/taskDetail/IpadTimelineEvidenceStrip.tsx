@@ -116,7 +116,7 @@ export default function IpadTimelineEvidenceStrip({
                   }
                   accessibilityLabel={`Lead photo for ${eventLabel}`}
                   source={buildCachedImageSource(photoUri)}
-                  contentFit="contain"
+                  contentFit="cover"
                   cachePolicy="memory-disk"
                   style={[StyleSheet.absoluteFillObject, { backgroundColor: "#e2e8f0" }]}
                 />

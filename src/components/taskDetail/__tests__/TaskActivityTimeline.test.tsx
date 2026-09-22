@@ -400,7 +400,7 @@ describe("TaskActivityTimeline iPad evidence strip", () => {
 
   function layoutStrip(screen: ReturnType<typeof render>, id: string, width = 746) {
     fireEvent(screen.getByTestId(`task-activity-timeline__lead-photo-shell-${id}`), "layout", {
-      nativeEvent: { layout: { x: 0, y: 0, width, height: 173 } },
+      nativeEvent: { layout: { x: 0, y: 0, width, height: 308 } },
     });
   }
 
@@ -410,17 +410,17 @@ describe("TaskActivityTimeline iPad evidence strip", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).toEqual(
-        expect.objectContaining({ height: 173 }),
+        expect.objectContaining({ height: 308 }),
       );
     });
     expect(screen.getByTestId("task-activity-timeline__evidence_strip-activity-1")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
-      expect.objectContaining({ width: 231, height: 173 }),
+      expect.objectContaining({ width: 231, height: 308 }),
     );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).not.toEqual(
       expect.objectContaining({ aspectRatio: 1 }),
     );
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1").props.contentFit).toBe("contain");
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1").props.contentFit).toBe("cover");
     expect(screen.queryByTestId("task-activity-timeline__evidence_expand_hint-activity-1")).toBeNull();
     expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
   });
@@ -431,11 +431,11 @@ describe("TaskActivityTimeline iPad evidence strip", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
-        expect.objectContaining({ width: 231, height: 173 }),
+        expect.objectContaining({ width: 231, height: 308 }),
       );
     });
     expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-1").props.style).toEqual(
-      expect.objectContaining({ width: 231, height: 173 }),
+      expect.objectContaining({ width: 231, height: 308 }),
     );
     expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
   });
@@ -479,11 +479,11 @@ describe("TaskActivityTimeline iPad evidence strip", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
-        expect.objectContaining({ width: 160, height: 120 }),
+        expect.objectContaining({ width: 160, height: 213 }),
       );
     });
     expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-3").props.style).toEqual(
-      expect.objectContaining({ width: 160, height: 120 }),
+      expect.objectContaining({ width: 160, height: 213 }),
     );
     expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1").props.scrollEnabled).toBe(
       true,

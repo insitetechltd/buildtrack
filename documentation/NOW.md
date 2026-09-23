@@ -4,11 +4,21 @@
 
 ---
 
-**This session — stale `Insite App` docs paths (2026-09-23):** Markdown `file://` registry links in `documentation/SOURCE_OF_TRUTH.md` (and other live docs) still pointed at `/Volumes/KooDrive/Insite App` after the 2026-07-09 rename. **Agent loop was not reading a missing file** — `documentation/SOURCE_OF_TRUTH.md` is opened by repo-relative path; `.cursor/rules` never used those URLs. Click-through index was broken. Converted to repo-relative links; `cd` runbooks → `InsiteApp`; doctor now FAILs if the old folder path returns (except the historical 2026-07-09 plan). **Next:** commit when asked.
+**This session — M-REPORT-01 booked (2026-09-23):** ROADMAP Pipeline `WS-FIELD / M-REPORT-01` (Order 15.0577) — Report resolve-**with-reply** must leave durable audit trail (`resolved` + `issue_resolved` + timeline-visible reply body/photos). Stage E label **E3c OPEN** (distinct from E3 without-reply Closed + E3b promote OPEN). Idle Gate A; must not jump App Store spine. **Next:** commit Stage E + this booking when asked.
 
-**This session — Stage A–D commit + Stage E start (2026-09-23):** Committing Stage A–D critical-surface work (schema/RLS, org Maestro, RC/dual-user, p-matrix, seat chips, evidence). Path-rename doc sweep stays unstaged. **Next after push:** Stage E (Report Maestro + journey rollup).
+**This session — Stage E CLOSED (2026-09-23):** Tip `89a9aa3` dirty. E1 H01 PASS · E2 D01 PASS · E3 Report Alice→Carol resolve-without-reply PASS · E4 P04–P06+P11 DEV+PROD PASS + re-seed. Close: `docs/superpowers/reports/2026-09-23-stage-e-close.md`. **E3b promote OPEN**. **E3c / M-REPORT-01 OPEN** (resolve-with-reply audit). ASC untouched. E3 Maestro re-prove + logout teardown PASS (`report-manifest-20260923_193256.json`). **Next:** commit Stage E when asked (exclude iPad analysis PNGs + `__pycache__`).
 
-**This session — Stage D CLOSED (2026-09-23):** Gate B [Proof Adversary](bc-bc70dcb4-de85-5d50-96b0-7804c21ffe59) **ITERATE** → re-prove cleared Criticals: `rc-worker-be-reprove.log` PASS (P01+U01); `dual-user-full-reprove.log` **GATE PASS** (H01+D01, no ONLY=); `p-matrix-reprove.log` + `reseed-reprove.log` after. Judge **GO**. Close: `docs/superpowers/reports/2026-09-23-stage-d-close.md`. ASC untouched.
+**This session — stale `Insite App` docs paths (2026-09-23):** Markdown registry links converted to repo-relative; doctor FAILs if old folder path returns. Landed as tip `89a9aa3`.
+
+**This session — Stage E Builder/prove (2026-09-23):** Superseded by Stage E CLOSED above.
+
+**This session — Stage E Gate A validation folded (2026-09-23):** Superseded by Stage E CLOSED.
+
+**This session — Stage E IN PROGRESS (2026-09-23):** Superseded by Stage E CLOSED.
+
+**This session — Stage A–D committed (2026-09-23):** `81c6b22` `feat(qa): close critical-surface Stages A–D` on `cursor/cbp-scrubber-tahoe-264-ddef` (pushed). Path-rename markdown sweep left unstaged.
+
+**This session — Stage D CLOSED (2026-09-23):** Gate B [Proof Adversary](bc-bc70dcb4-de85-5d50-96b0-7804c21ffe59) **ITERATE** → re-prove cleared Criticals. Judge **GO**. Close: `docs/superpowers/reports/2026-09-23-stage-d-close.md`. ASC untouched.
 
 **This session — CA Worker↔PM promote in User Management (2026-09-23):** Member cards now expose Worker/PM seat chips (invite parity). CA can change existing non-CA members via `updateUser` (`system_permission` + `deployable_seat`) gated by `canAssignCompanySeatRole` + seat upsell. Prove: UserManagement Jest 8/8 + tsc rc=0. **Superseded next:** U01/D01 cleared above.
 

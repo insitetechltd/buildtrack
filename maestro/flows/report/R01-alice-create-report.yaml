@@ -1,0 +1,162 @@
+# Alice creates a Report via capture-first → ↑ Report (not Assign).
+# Env: DU_TASK_TITLE (unique R01-<epoch>).
+# Omits post_capture_routing_sheet — capture-first never uses cameraLaunchContext=global.
+appId: com.buildtrack.app.local
+tags:
+  - stage-e
+  - report
+---
+- runFlow: ../dual-user/_boot-alice.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_peek"
+    commands:
+      - tapOn:
+          id: "capture-session__library_peek"
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "17%, 28%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- runFlow:
+    when:
+      notVisible: ".*[1-9] selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 22%"
+- extendedWaitUntil:
+    visible: ".*[1-9] selected.*"
+    timeout: 10000
+- tapOn:
+    id: "capture-session__hybrid_accept"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 25000
+- tapOn:
+    id: "photo-selection__confirm"
+# Native Alert: ↑ Report | ↔ Update | ↓ Assign — screenshot before tap
+- extendedWaitUntil:
+    visible: ".*Report.*"
+    timeout: 15000
+- takeScreenshot: "R01-chooser-report"
+- tapOn: ".*Report.*"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 25000
+- takeScreenshot: "R01-alice-form"
+# Title then description: force blur title before description tap (else Maestro
+# appends description into the still-focused title — seen 2026-09-23 headed fails).
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${DU_TASK_TITLE}
+- pressKey: Enter
+- runFlow: ../_dismiss-keyboard.yaml
+- waitForAnimationToEnd:
+    timeout: 800
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__field_description"
+    direction: DOWN
+- tapOn:
+    id: "create-task__field_description"
+- tapOn:
+    id: "createTask-description"
+- inputText: "Stage E Report Maestro Alice reports for Carol triage."
+- runFlow: ../_dismiss-keyboard.yaml
+- waitForAnimationToEnd:
+    timeout: 800
+- assertVisible: ".*Stage E Report Maestro.*"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__location-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__location-picker-trigger"
+- extendedWaitUntil:
+    visible: "Location on Site"
+    timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: "create-task__location-option-add-new"
+    commands:
+      - tapOn:
+          id: "create-task__location-option-add-new"
+      - tapOn:
+          id: "create-task__location-input"
+      - inputText: "StageE Report Bay"
+      - tapOn:
+          id: "create-task__location-save"
+- runFlow:
+    when:
+      visible: "Location on Site"
+    commands:
+      - tapOn:
+          point: "8%, 12%"
+      - waitForAnimationToEnd:
+          timeout: 800
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 12000
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit"
+    timeout: 10000
+- tapOn:
+    id: "create-task__submit"
+- tapOn:
+    id: "create-task__submit"
+    delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit-success-confirm"
+    timeout: 60000
+- assertVisible:
+    id: "create-task__submit-success-message"
+- assertVisible: ".*Issue Reported.*"
+- takeScreenshot: "R01-alice-reported"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml
+# M-DATA-04: close Realtime / auth session before leaving Alice sim idle
+# (Carol runs next on the other UDID; open JWT+Realtime stacks usage).
+- runFlow: ../_logout.yaml

@@ -1,10 +1,10 @@
 # Whole-app testing strategy (rectification)
 
 **Date:** 2026-09-22  
-**Status:** Stage C **CLOSED** (2026-09-22) — Stage D **CLOSED** (2026-09-23) — Stage E pipeline  
+**Status:** Stage C **CLOSED** (2026-09-22) — Stage D **CLOSED** (2026-09-23) — Stage E **CLOSED** (2026-09-23; E3b promote OPEN)  
 **Supersedes:** first draft of `2026-09-22-critical-surface-test-stages.md` domain-first Stages 0–5  
 **Gate A (strategy):** Opus (`bc-3b0ff084`), GPT (`bc-332939a3`), Sonnet (`bc-c49bd7d8`) — identical brief; all **REVISE**.  
-**Human GO Stage A:** 2026-09-22. **Stage B:** 2026-09-22. **Human GO F6 RLS:** 2026-09-22 (`20260922000100` + `20260922000200`). **Stage C close:** 2026-09-22 (headed Metro→PROD + S4). **Stage D close:** 2026-09-23 after Gate B ITERATE re-prove (`docs/superpowers/reports/2026-09-23-stage-d-close.md`).
+**Human GO Stage A:** 2026-09-22. **Stage B:** 2026-09-22. **Human GO F6 RLS:** 2026-09-22 (`20260922000100` + `20260922000200`). **Stage C close:** 2026-09-22 (headed Metro→PROD + S4). **Stage D close:** 2026-09-23 after Gate B ITERATE re-prove (`docs/superpowers/reports/2026-09-23-stage-d-close.md`). **Stage A–D commit:** `81c6b22`. **Stage E close:** 2026-09-23 (`docs/superpowers/reports/2026-09-23-stage-e-close.md`; tip `89a9aa3` + dirty).
 
 ---
 
@@ -293,14 +293,53 @@ Exactly three org Maestro cases: CA management reachability, O2 create+member, O
 
 ### Stage E — Field journeys rollup
 
-1. J3 = DU-H01 (already).
-2. J5 decline = DU-D01 in the ship walk (not only file tree).
-3. J4 = new Report → PM resolve/promote Maestro.
-4. Re-run O2 as narrative, not a second product.
+**Status:** **CLOSED (2026-09-23)** — Gate A [validation](bc-ab785131-1084-56d9-b2dc-d21b0e0b4b11) + [risks](bc-15ea5857-2287-52fb-bcfc-0228d8d83732) both **REVISE** folded; [Report UX map](bc-5ecff91d-c32f-5c74-8969-56d70837d521) absorbed. Close: `docs/superpowers/reports/2026-09-23-stage-e-close.md`. **E3b promote OPEN**. **E3c resolve-with-reply audit OPEN** → ROADMAP `WS-FIELD / M-REPORT-01`.
 
-**Done when:** DU-H01 + Report Maestro PASS with PNGs; P04–P06 + P11 PASS on same SHA.
+**Done when:** DU-H01 + Report→**resolve** Maestro PASS with PNG manifest on tip SHA; P04–P06 + P11 PASS on **same** source snapshot (SHA + dirty diff inventory). Promote = **E3b OPEN** (not F5-complete). Resolve-with-reply audit = **E3c / M-REPORT-01** (not claimed by E3 without-reply). ASC untouched. **Met 2026-09-23** on tip `89a9aa3` (E1/E2 re-run; exact-SHA reuse blocked).
 
----
+#### Stage E execution plan (lock before Builder)
+
+| Track | Deliverable | Files (expected) | Proof |
+|---|---|---|---|
+| **E0 Baseline** | Tip SHA + dirty inventory | `git rev-parse HEAD` + dirty name list | Record `appSha`, `dirty`, `diffInventory` in Stage E manifests. Dirty OK only for E0 allowlist. |
+| **E1 J3 reuse** | DU-H01 | `ONLY=H01` or Stage D archive | Reuse iff `HEAD == 81c6b22` and dirty ⊆ allowlist; else re-run. |
+| **E2 J5 reuse** | DU-D01 | same | Same exact-SHA rule as E1. |
+| **E3 J4 Report→resolve** | New DEV Maestro | `maestro/flows/report/` + `run-report-journey.sh` + `report-db-readback.cjs` + `test:e2e:maestro:report` | **Alice** capture-first → Alert `↑ Report` (`.*Report.*`; PNG before tap) → form → unique `R01-<epoch>` → submit → DB `status=reported`+`issue_reported` → **Carol admin** boot → pull-to-refresh + exact title/ID open → `report-reply-composer__triage_action` → assert `report-triage-speed-dial__create-task` → resolve + confirm Alerts → DB same-ID `resolved`+`issue_resolved` (Carol) + UI via `report-reply-composer__archive` (status chip text not in a11y tree). **Not** dial-closed alone. Omit `post_capture_routing_sheet`. **John ≠ triage**. Product: `resolveReport`/`triageIssue` → `insertTaskActivityDualPath`. End each phase with `_logout.yaml` (M-DATA-04). **E3b OPEN**. **E3c** (resolve-with-reply audit) = ROADMAP `M-REPORT-01` — not this row. |
+| **E3c Resolve-with-reply** | Product + prove | ROADMAP `WS-FIELD / M-REPORT-01` | **OPEN.** Close report **with** typed reply (+ photos) must leave durable audit: `resolved` + `issue_resolved` (actor/note) **and** timeline-visible reply body/photos on same task id. Distinct from E3 without-reply Closed. |
+| **E4 P matrix** | P04–P06 + P11 | `test:dual-env:p-matrix` | Same appSha + dirty inventory as E3; per-case verdicts; re-seed. |
+| **E5 O2 narrative** | Docs-only | Stage D O2 | Cite only if tip SHA matches E0; else owed. |
+
+**Residual OPEN after Stage E close:** **E3b** promote-to-task Maestro; **E3c / M-REPORT-01** resolve-with-reply audit trail.
+
+**E3 PNG inventory (runner min ≥5):** `R01-chooser-report`, `R01-alice-form`, `R01-alice-reported`, `R01-carol-resolve-confirm`, `R01-carol-resolved-detail`. Visually read **1, 4, 5**.
+
+**E0 dirty allowlist:** `maestro/flows/report/**`, `scripts/maestro/run-report-journey.sh`, `scripts/maestro/report-db-readback.cjs`, `package.json` wire, plan/NOW, `docs/superpowers/evidence/2026-09-23-stage-e/**`, Stage E close report, `src/state/taskStore.supabase.ts` (activity dual-path for `issue_resolved`/`triaged_to_task`).
+
+**Actors:** Alice = reporter (worker). **Carol** = triage (`isManagerOrAdmin`). John must not create Report (Coming soon) or triage (no `reportTriage`). Sims: Alice iPhone 16; Carol 17 Pro Max.
+
+**Dishonest waivers:** dial-closed as Resolve PASS; any leftover `reported` row ≠ Alice’s `R01-*`; Assign as Report; worker resolve as PM; soft SHA reuse; F5-complete while E3b OPEN; E5 without tip match; claiming **E3c** / resolve-with-reply audit from E3 without-reply alone.
+
+#### Gate A fold — [validation](bc-ab785131-1084-56d9-b2dc-d21b0e0b4b11) REVISE
+
+| Sev | Finding | Plan delta |
+|---|---|---|
+| C | No same-ID post-condition | DB `reported`→`resolved`+`issue_resolved` |
+| H×5 | PM dial / sync / PNG / SHA / E4 bind | Folded into E0–E4 rows |
+| M | Promote soft | E3b OPEN |
+
+#### Gate A fold — [risks](bc-15ea5857-2287-52fb-bcfc-0228d8d83732) REVISE
+
+| Sev | Finding | Plan delta |
+|---|---|---|
+| C | Silent resolve no-op | DB/UI mutation required |
+| C | Stale John list | pull-to-refresh + by-title (Carol) |
+| H | P11 leftovers / `↑ Report` / stale auth | Exact title; chooser PNG; Alice settle |
+| M | Copy routing-sheet / worker path | Omit sheet; Carol=`pm_triage` |
+| L | E5 tip | Same tip rule |
+
+#### Actor correction ([Report UX map](bc-5ecff91d-c32f-5c74-8969-56d70837d521))
+
+John `member`+pm seat ≠ `isManagerOrAdmin` → **Carol admin** is triage SoT.
 
 ## What this rectifies vs theme-centered tests
 

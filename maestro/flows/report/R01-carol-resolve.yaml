@@ -1,0 +1,56 @@
+# Carol (admin) opens Alice's report by exact title/ID and Resolve without reply.
+# Env: DU_TASK_TITLE, DU_TASK_ID
+# Hard PM discriminator: report-triage-speed-dial__create-task must be visible.
+appId: com.buildtrack.app.local
+tags:
+  - stage-e
+  - report
+---
+- runFlow: ../org/_boot-carol.yaml
+- runFlow: ../dual-user/_ensure-project.yaml
+- runFlow: ../dual-user/_open-task-by-title.yaml
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 20000
+- assertVisible: ${".*" + DU_TASK_TITLE + ".*"}
+- assertVisible: ".*Reported.*"
+- extendedWaitUntil:
+    visible:
+      id: "report-reply-composer"
+    timeout: 15000
+- tapOn:
+    id: "report-reply-composer__triage_action"
+- waitForAnimationToEnd:
+    timeout: 800
+- extendedWaitUntil:
+    visible:
+      id: "report-triage-speed-dial"
+    timeout: 10000
+# PM-only discriminator (worker dial lacks create-task)
+- assertVisible:
+    id: "report-triage-speed-dial__create-task"
+- tapOn:
+    id: "report-triage-speed-dial__resolve"
+- extendedWaitUntil:
+    visible: "Resolve without reply?"
+    timeout: 10000
+- takeScreenshot: "R01-carol-resolve-confirm"
+- tapOn: "Resolve without reply"
+- waitForAnimationToEnd:
+    timeout: 2500
+# Status chip text ("Resolved · …") is painted but not in the a11y tree
+# (task-detail__status_chips text=""). Archive dock is the reliable post-resolve signal.
+- extendedWaitUntil:
+    visible:
+      id: "report-reply-composer__archive"
+    timeout: 20000
+- assertVisible:
+    id: "report-reply-composer__archive"
+- assertNotVisible:
+    id: "report-reply-composer__triage_action"
+- assertVisible: ${".*" + DU_TASK_TITLE + ".*"}
+- takeScreenshot: "R01-carol-resolved-detail"
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml
+# M-DATA-04: sign out so Realtime channels drop before journey teardown.
+- runFlow: ../_logout.yaml

@@ -78,7 +78,8 @@
     "reset-passwords": "node scripts/reset-passwords.js",
     "eas-build-post-install": "node ./scripts/eas/eas-build-post-install.js",
     "test:picker-timing": "jest --runInBand src/utils/__tests__/libraryFirstPhotoBudget.test.ts src/utils/__tests__/libraryPickerTiming.test.ts src/utils/__tests__/libraryPhotokitThumbPixelSize.test.ts src/utils/__tests__/libraryPickerPath.test.ts src/utils/__tests__/ensureCappedLocalPhoto.test.ts src/utils/__tests__/selectedPhotoDisplay.test.ts src/utils/__tests__/libraryPreviewPin.test.ts src/utils/__tests__/libraryPhotokitGate.test.ts src/utils/__tests__/libraryCapturePrefetch.test.ts src/utils/__tests__/libraryIndexPrefetch.test.ts src/utils/__tests__/libraryPreviewIds.test.ts src/utils/__tests__/libraryPhotokitPrefetch.test.ts src/utils/__tests__/libraryAcceptGate.test.ts src/modules/mediaLibrary/__tests__/useLibraryGridAssets.native2b.test.ts src/modules/mediaLibrary/__tests__/useLibraryGridAssets.index.test.ts src/modules/mediaLibrary/__tests__/LibraryPhotoGrid.index.test.tsx src/modules/mediaLibrary/__tests__/LibraryPhotoGrid.photokit.test.tsx src/modules/mediaLibrary/__tests__/LibraryPhotoGrid.paint.test.tsx src/modules/mediaLibrary/__tests__/PhotokitThumbView.test.ts src/modules/mediaLibrary/__tests__/materializeLibrarySave.test.ts src/modules/mediaLibrary/__tests__/libraryGridColumns.test.ts",
-    "test:e2e:maestro:org-ca": "bash ./scripts/maestro/run-org-ca.sh"
+    "test:e2e:maestro:org-ca": "bash ./scripts/maestro/run-org-ca.sh",
+    "test:e2e:maestro:report": "bash ./scripts/maestro/run-report-journey.sh"
   },
   "expo": {
     "autolinking": {

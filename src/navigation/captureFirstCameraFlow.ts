@@ -173,6 +173,36 @@ export function navigateToAddPhotosCaptureSession(
 }
 
 /**
+ * Tasks list swipe-left camera: open hybrid capture immediately, then land
+ * photos on Task Detail dock (not standalone Update Progress).
+ */
+export function launchTaskListPhotoUpdate(
+  navigation: AddPhotosNav,
+  opts: {
+    taskId: string;
+    subTaskId?: string;
+    companyId?: string;
+    userId?: string;
+  },
+): void {
+  if (!opts.userId || !opts.companyId) {
+    return;
+  }
+  navigateToAddPhotosCaptureSession(navigation, {
+    returnScreen: "TaskDetail",
+    taskId: opts.taskId,
+    subTaskId: opts.subTaskId,
+    companyId: opts.companyId,
+    userId: opts.userId,
+    uploadImmediately: false,
+    entityType: "task-update",
+    sourceTaskId: opts.taskId,
+    sourceSubTaskId: opts.subTaskId,
+    sourceScreen: "tasks",
+  });
+}
+
+/**
  * Always (Activity / Tasks / Task Detail): open capture session → Select Photos → destination.
  */
 export function promptCaptureFirstSource(

@@ -43,6 +43,21 @@ jest.mock("@/modules/mediaLibrary/LibraryPhotoGrid", () => {
   };
 });
 
+jest.mock("@/utils/libraryPreviewPin", () => ({
+  pinLibraryPreviews: jest.fn(async (photos: Array<{ uri: string; mediaLibraryAssetId?: string; previewUri?: string }>) =>
+    photos.map((photo) =>
+      photo.previewUri?.startsWith("file://") || photo.uri.startsWith("file://")
+        ? photo
+        : photo.mediaLibraryAssetId
+          ? {
+              ...photo,
+              previewUri: `file:///tmp/preview-${photo.mediaLibraryAssetId}.jpg`,
+            }
+          : photo,
+    ),
+  ),
+}));
+
 jest.mock("expo-status-bar", () => ({ StatusBar: () => null }));
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
@@ -197,6 +212,7 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
         fileName: "site.jpg",
         mediaLibraryAssetId: "asset-42",
         isAnnotated: false,
+        previewUri: "file:///tmp/preview-asset-42.jpg",
       }),
     ]);
   });

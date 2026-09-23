@@ -1,4 +1,5 @@
 import React from "react";
+import { Platform } from "react-native";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import TaskActivityTimeline from "../TaskActivityTimeline";
@@ -365,5 +366,131 @@ describe("TaskActivityTimeline", () => {
     expect(screen.queryByText("— complete")).toBeNull();
     expect(screen.queryByText("0% complete")).toBeNull();
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-report")).toBeTruthy();
+  });
+});
+
+describe("TaskActivityTimeline iPad evidence strip", () => {
+  const originalOs = Platform.OS;
+  const originalIsPad = Platform.isPad;
+
+  beforeEach(() => {
+    Object.defineProperty(Platform, "OS", { configurable: true, get: () => "ios" });
+    Object.defineProperty(Platform, "isPad", { configurable: true, get: () => true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", { configurable: true, get: () => originalOs });
+    Object.defineProperty(Platform, "isPad", { configurable: true, get: () => originalIsPad });
+  });
+
+  function photoThread(id: string, count: number) {
+    return [
+      {
+        id,
+        actorLabel: "Jake Torres",
+        eventLabel: "Progress photos — rough-in complete",
+        timestampLabel: "Sep 17, 4:30 PM",
+        progressLabel: "65%",
+        photoUrls: Array.from({ length: count }, (_, index) => `https://example.com/photo-${index + 1}.jpg`),
+        density: "standard" as const,
+        structuralState: "ready" as const,
+      },
+    ];
+  }
+
+  function layoutStrip(screen: ReturnType<typeof render>, id: string, width = 746) {
+    fireEvent(screen.getByTestId(`task-activity-timeline__lead-photo-shell-${id}`), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width, height: 308 } },
+    });
+  }
+
+  it("sizes a single iPad photo as one left-aligned tile, not a square hero", async () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 1)} />);
+    layoutStrip(screen, "activity-1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).toEqual(
+        expect.objectContaining({ height: 308 }),
+      );
+    });
+    expect(screen.getByTestId("task-activity-timeline__evidence_strip-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
+      expect.objectContaining({ width: 231, height: 308 }),
+    );
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1").props.style).not.toEqual(
+      expect.objectContaining({ aspectRatio: 1 }),
+    );
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1").props.contentFit).toBe("cover");
+    expect(screen.queryByTestId("task-activity-timeline__evidence_expand_hint-activity-1")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
+  });
+
+  it("keeps two photos at the same tile size as one photo", async () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 2)} />);
+    layoutStrip(screen, "activity-1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
+        expect.objectContaining({ width: 231, height: 308 }),
+      );
+    });
+    expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-1").props.style).toEqual(
+      expect.objectContaining({ width: 231, height: 308 }),
+    );
+    expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
+  });
+
+  it("slides extra photos without a +N badge and opens the gallery from a tile", async () => {
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 6)} />);
+    layoutStrip(screen, "activity-1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-3")).toBeTruthy();
+    });
+    expect(screen.queryByText("+3")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__evidence_overflow-activity-1")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeNull();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1").props.scrollEnabled).toBe(
+      true,
+    );
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.contentFit).toBe("contain");
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/photo-1.jpg",
+      cacheKey: "https://example.com/photo-1.jpg",
+    });
+  });
+
+  it("uses 4-up landscape tiles at thread width and slides a sixth photo", async () => {
+    const reactNative = require("react-native");
+    const useWindowDimensionsSpy = jest.spyOn(reactNative, "useWindowDimensions");
+    useWindowDimensionsSpy.mockReturnValue({
+      width: 1194,
+      height: 834,
+      scale: 2,
+      fontScale: 1,
+    });
+
+    const screen = render(<TaskActivityTimeline thread={photoThread("activity-1", 6)} />);
+    layoutStrip(screen, "activity-1", 700);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1").props.style).toEqual(
+        expect.objectContaining({ width: 160, height: 213 }),
+      );
+    });
+    expect(screen.getByTestId("task-activity-timeline__evidence_tile-activity-1-3").props.style).toEqual(
+      expect.objectContaining({ width: 160, height: 213 }),
+    );
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1").props.scrollEnabled).toBe(
+      true,
+    );
+    expect(screen.queryByText("+2")).toBeNull();
+
+    screen.unmount();
+    useWindowDimensionsSpy.mockRestore();
   });
 });

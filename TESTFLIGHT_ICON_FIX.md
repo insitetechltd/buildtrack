@@ -24,7 +24,7 @@ Since the icon is embedded in the build, you need to rebuild with the new icon c
 
 1. **Rebuild the app with the updated icon:**
    ```bash
-   cd "/Volumes/KooDrive/Insite App"
+   cd "/Volumes/KooDrive/InsiteApp"
    ./build-and-submit.sh ios production
    ```
 
@@ -44,7 +44,7 @@ Your icon file meets all requirements:
 - ✅ **Size**: 1024x1024 pixels (`icon-1024.png`)
 - ✅ **Format**: PNG
 - ✅ **Color Space**: RGB
-- ✅ **Location**: `/Volumes/KooDrive/Insite App/assets/icon-1024.png`
+- ✅ **Location**: `/Volumes/KooDrive/InsiteApp/assets/icon-1024.png`
 
 ## Why This Happens
 
@@ -166,7 +166,7 @@ npx expo prebuild --clean
 ## Next Command to Run
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 ./build-and-submit.sh ios production
 ```
 

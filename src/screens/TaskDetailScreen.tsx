@@ -1,12 +1,14 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -19,7 +21,15 @@ import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
-import ReportReplyComposer from "@/components/taskDetail/ReportReplyComposer";
+import {
+  IPAD_TASK_DETAIL_META_FLEX,
+  IPAD_TASK_DETAIL_THREAD_FLEX,
+  isIpadLandscapeMetaSplit,
+} from "@/components/taskDetail/ipadTimelineEvidenceLayout";
+import ReportReplyComposer, {
+  progressDockIsDirty,
+  progressDockShouldInterceptLeave,
+} from "@/components/taskDetail/ReportReplyComposer";
 import { ReportTriageSpeedDial } from "@/components/ReportTriageSpeedDial";
 import ArchiveConfirmSheet from "@/components/ArchiveConfirmSheet";
 import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
@@ -104,11 +114,22 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     subTaskId: props.subTaskId
   });
   const t = useTranslation();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const splitIpadLandscapeMeta = isIpadLandscapeMetaSplit(
+    Platform,
+    windowWidth,
+    windowHeight,
+  );
   const user = useAuthStore((state) => state.user);
   const navigation = useNavigation<{
     navigate: (name: string, params?: object) => void;
     push?: (name: string, params?: object) => void;
     getParent?: () => { getState?: () => unknown } | undefined;
+    addListener?: (
+      event: string,
+      cb: (event: { preventDefault: () => void; data: { action: unknown } }) => void,
+    ) => () => void;
+    dispatch?: (action: unknown) => void;
   }>();
   const triageDialExpanded = useReportTriageDialExpanded();
   const [isArchiveConfirmVisible, setIsArchiveConfirmVisible] = useState(false);
@@ -117,6 +138,10 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const [replyPhotos, setReplyPhotos] = useState<SelectedPhoto[]>([]);
   const [isReplySubmitting, setIsReplySubmitting] = useState(false);
   const [dockCompletionPercentage, setDockCompletionPercentage] = useState(0);
+  const [savedCompletionPercentage, setSavedCompletionPercentage] = useState(0);
+  const allowDockLeaveRef = useRef(false);
+  const progressDockDirtyRef = useRef(false);
+  const isReplySubmittingRef = useRef(false);
 
   const detailDock =
     output.detailDock ??
@@ -128,6 +153,16 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const isPmReportTriage = Boolean(output.reportTriage);
   const showWorkerReportFab = isReportDock && !isPmReportTriage;
   const showReportSpeedDial = isPmReportTriage || showWorkerReportFab;
+  const isProgressDock = detailDock?.mode === "progress";
+  const progressDockDirty =
+    Boolean(isProgressDock) &&
+    progressDockIsDirty({
+      draft: replyDraft,
+      photoCount: replyPhotos.length,
+      completionPercentage: dockCompletionPercentage,
+      savedCompletionPercentage,
+    });
+  progressDockDirtyRef.current = progressDockDirty;
 
   useEffect(() => {
     if (
@@ -136,7 +171,12 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       detailDock?.mode === "review_decision" ||
       detailDock?.mode === "archive"
     ) {
-      setDockCompletionPercentage(detailDock.completionPercentage);
+      const server = detailDock.completionPercentage;
+      if (detailDock.mode === "progress" && progressDockDirtyRef.current) {
+        return;
+      }
+      setSavedCompletionPercentage(server);
+      setDockCompletionPercentage(server);
     }
   }, [detailDock?.completionPercentage, detailDock?.mode, props.taskId]);
 
@@ -194,19 +234,22 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       );
       return;
     }
-    if (isReplySubmitting) {
+    if (isReplySubmittingRef.current) {
       return;
     }
+    isReplySubmittingRef.current = true;
     setIsReplySubmitting(true);
     void actions
       .resolveReport(note)
       .then(() => {
         setReplyDraft("");
         setReplyPhotos([]);
+        isReplySubmittingRef.current = false;
         setIsReplySubmitting(false);
         props.onNavigateBack?.();
       })
       .catch(() => {
+        isReplySubmittingRef.current = false;
         setIsReplySubmitting(false);
         Alert.alert(
           t.errors?.error || "Error",
@@ -216,7 +259,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       });
   }, [
     actions,
-    isReplySubmitting,
     props,
     replyDraft,
     t.createTask?.resolveReportConfirmBody,
@@ -265,9 +307,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
 
   const handleSubmitReply = useCallback(async () => {
     const description = replyDraft.trim();
-    if (!description || isReplySubmitting || !detailDock) {
+    if (!description || isReplySubmittingRef.current || !detailDock) {
       return;
     }
+    Keyboard.dismiss();
+    isReplySubmittingRef.current = true;
     setIsReplySubmitting(true);
     try {
       let photoUrls: string[] = [];
@@ -287,6 +331,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           photos: photoUrls,
           completionPercentage: dockCompletionPercentage,
         });
+        setSavedCompletionPercentage(dockCompletionPercentage);
       } else {
         await actions.replyToReport({
           description,
@@ -303,19 +348,125 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           : t.createTask?.replyFailed || "Failed to send reply",
       );
     } finally {
+      isReplySubmittingRef.current = false;
       setIsReplySubmitting(false);
     }
   }, [
     actions,
     detailDock,
     dockCompletionPercentage,
-    isReplySubmitting,
     replyDraft,
     replyPhotos,
     t.createTask?.replyFailed,
     t.errors?.error,
     t.taskDetail?.failedToSubmitUpdate,
     uploadReplyPhotos,
+  ]);
+
+  const resetProgressDockDraft = useCallback(() => {
+    setReplyDraft("");
+    setReplyPhotos([]);
+    setDockCompletionPercentage(savedCompletionPercentage);
+  }, [savedCompletionPercentage]);
+
+  const promptProgressDockLeave = useCallback(
+    (onLeave: () => void) => {
+      if (!isProgressDock || !progressDockDirty) {
+        onLeave();
+        return;
+      }
+      if (isReplySubmittingRef.current) {
+        return;
+      }
+      const canSubmit = replyDraft.trim().length > 0;
+      const buttons: Array<{
+        text: string;
+        style?: "cancel" | "destructive" | "default";
+        onPress?: () => void;
+      }> = [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            resetProgressDockDraft();
+            allowDockLeaveRef.current = true;
+            onLeave();
+          },
+        },
+      ];
+      if (canSubmit) {
+        buttons.push({
+          text: "Submit",
+          onPress: () => {
+            void handleSubmitReply();
+          },
+        });
+      }
+      Alert.alert(
+        "Submit this update?",
+        "Leaving discards the note, photos, and unsaved %.",
+        buttons,
+      );
+    },
+    [
+      handleSubmitReply,
+      isProgressDock,
+      progressDockDirty,
+      replyDraft,
+      resetProgressDockDraft,
+    ],
+  );
+
+  const handleHeaderBack = useCallback(() => {
+    promptProgressDockLeave(() => {
+      props.onNavigateBack();
+    });
+  }, [promptProgressDockLeave, props]);
+
+  useEffect(() => {
+    if (typeof navigation.addListener !== "function") {
+      return;
+    }
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      if (allowDockLeaveRef.current) {
+        return;
+      }
+      if (detailDock?.mode !== "progress") {
+        return;
+      }
+      if (
+        !progressDockShouldInterceptLeave(
+          event.data?.action as { type?: string; payload?: { name?: string } },
+        )
+      ) {
+        return;
+      }
+      if (
+        !progressDockIsDirty({
+          draft: replyDraft,
+          photoCount: replyPhotos.length,
+          completionPercentage: dockCompletionPercentage,
+          savedCompletionPercentage,
+        })
+      ) {
+        return;
+      }
+      event.preventDefault();
+      promptProgressDockLeave(() => {
+        allowDockLeaveRef.current = true;
+        navigation.dispatch?.(event.data.action);
+      });
+    });
+    return unsubscribe;
+  }, [
+    detailDock?.mode,
+    dockCompletionPercentage,
+    navigation,
+    promptProgressDockLeave,
+    replyDraft,
+    replyPhotos.length,
+    savedCompletionPercentage,
   ]);
 
   const handleCancelDockReview = useCallback(async () => {
@@ -451,7 +602,9 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const scrollRegionBottomPadding = showDetailDock ? 24 : 16;
 
   if (!output.readiness.hasUsableData) {
-    if (output.continuity.shouldRenderEmptyState) {
+    // Continuity is always present from the live adapter; optional-chain so a
+    // partial mock / future regression cannot crash the loading shell.
+    if (output.continuity?.shouldRenderEmptyState) {
       return (
         <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
           <ModernScreenHeader
@@ -463,7 +616,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               />
             )}
             showBackButton={true}
-            onBackPress={props.onNavigateBack}
+            onBackPress={handleHeaderBack}
           />
           <View
             testID="task-detail__unavailable"
@@ -502,7 +655,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             />
           )}
           showBackButton={true}
-          onBackPress={props.onNavigateBack}
+          onBackPress={handleHeaderBack}
         />
         <View className="flex-1 items-center justify-center">
           <Text>Loading task details...</Text>
@@ -524,6 +677,52 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       }
     : undefined;
 
+  const infoCardNode = infoCardModel ? (
+    <TaskDetailInfoCard
+      model={infoCardModel}
+      onEditPress={
+        infoCardModel.showEditAction
+          ? () => handleActionPress("edit_task")
+          : undefined
+      }
+      onReassignPress={
+        infoCardModel.showReassignAction
+          ? () => handleActionPress("reassign_task")
+          : undefined
+      }
+    />
+  ) : null;
+
+  const workThreadScroll = (
+    <ScrollView
+      testID="task-detail__workthread_scroll"
+      className="flex-1"
+      contentContainerStyle={{
+        paddingBottom: scrollRegionBottomPadding,
+        flexGrow: 1,
+      }}
+      scrollEnabled
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {output.banners.map(banner => (
+        <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
+      ))}
+
+      {hasQuickActions ? (
+        <TaskDetailQuickActions
+          model={output.quickActions!}
+          onPress={handleActionPress}
+        />
+      ) : null}
+
+      <TaskActivityTimeline
+        testID="task-detail__activity_thread"
+        thread={output.activityThread}
+      />
+    </ScrollView>
+  );
+
   return (
     <>
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
@@ -540,7 +739,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           </View>
         )}
         showBackButton={true}
-        onBackPress={props.onNavigateBack}
+        onBackPress={handleHeaderBack}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
       />
@@ -551,51 +750,44 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         keyboardVerticalOffset={0}
       >
       <View className="flex-1">
-          <View testID="task-detail__scroll_region" className="flex-1">
-          {/* Info card stays pinned; only the work-thread cards below scroll. */}
-          {infoCardModel ? (
-            <TaskDetailInfoCard
-              model={infoCardModel}
-              onEditPress={
-                infoCardModel.showEditAction
-                  ? () => handleActionPress("edit_task")
-                  : undefined
-              }
-              onReassignPress={
-                infoCardModel.showReassignAction
-                  ? () => handleActionPress("reassign_task")
-                  : undefined
-              }
-            />
-          ) : null}
-
-          <ScrollView
-            testID="task-detail__workthread_scroll"
+          <View
+            testID="task-detail__scroll_region"
             className="flex-1"
-            contentContainerStyle={{
-              paddingBottom: scrollRegionBottomPadding,
-              flexGrow: 1,
-            }}
-            scrollEnabled
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            style={
+              splitIpadLandscapeMeta
+                ? { flex: 1, flexDirection: "row" }
+                : { flex: 1 }
+            }
           >
-            {output.banners.map(banner => (
-              <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
-            ))}
-
-            {hasQuickActions ? (
-              <TaskDetailQuickActions
-                model={output.quickActions!}
-                onPress={handleActionPress}
-              />
-            ) : null}
-
-            <TaskActivityTimeline
-              testID="task-detail__activity_thread"
-              thread={output.activityThread}
-            />
-          </ScrollView>
+          {/* Portrait/phone: info card pinned above the thread. iPad landscape: info left, thread right. */}
+          {splitIpadLandscapeMeta ? (
+            <>
+              <View
+                testID="task-detail__meta_column"
+                className="border-r border-slate-200"
+                style={{ flex: IPAD_TASK_DETAIL_META_FLEX, minWidth: 0 }}
+              >
+                <ScrollView
+                  className="flex-1"
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {infoCardNode}
+                </ScrollView>
+              </View>
+              <View
+                testID="task-detail__thread_column"
+                style={{ flex: IPAD_TASK_DETAIL_THREAD_FLEX, minWidth: 0 }}
+              >
+                {workThreadScroll}
+              </View>
+            </>
+          ) : (
+            <>
+              {infoCardNode}
+              {workThreadScroll}
+            </>
+          )}
           </View>
 
           {showDetailDock && detailDock ? (
@@ -668,6 +860,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               isTriageDialOpen={showReportSpeedDial ? triageDialExpanded : false}
               showReportFab={showWorkerReportFab}
               completionPercentage={dockCompletionPercentage}
+              savedCompletionPercentage={savedCompletionPercentage}
               onChangeCompletionPercentage={
                 detailDock.mode === "progress" ? setDockCompletionPercentage : undefined
               }

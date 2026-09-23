@@ -28,7 +28,7 @@ In `eas.json`, the Android submit config now includes:
 You can now retry the submission:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 ./submit-to-play-store.sh internal
 ```
 

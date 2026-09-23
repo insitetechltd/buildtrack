@@ -1,0 +1,17 @@
+=== E4 p-matrix start 18:39:04 sha=89a9aa3261cd3571a49d341132f37742b03e4a2a ===
+
+> template-app-53@1.0.0 test:dual-env:p-matrix
+> python3 scripts/supabase/probe-p01-p10-dual-target.py
+
+appSha=89a9aa3261cd3571a49d341132f37742b03e4a2a
+DEV keys: local .env (ref=zusulknbhaumougqckec)
+PROD keys: local .env (ref=jcnzjigxgkzhjsaekoqz)
+DEV plane=DEV projectRef=zusulknbhaumougqckec appSha=89a9aa3261cd3571a49d341132f37742b03e4a2a
+PROD plane=PROD projectRef=jcnzjigxgkzhjsaekoqz appSha=89a9aa3261cd3571a49d341132f37742b03e4a2a
+
+Wrote /Volumes/KooDrive/InsiteApp/.cache/prod-new-sot-20260915/phase2-p01-p10-matrix.md
+Wrote /Volumes/KooDrive/InsiteApp/.cache/prod-new-sot-20260915/phase2-p01-p10-matrix.json
+PROD GATE: P01–P08 + P10 + P11 + F6 + JWT track PASS (P09 Human-GO-skip)
+O4 REPORTING (FAIL/OWED): reporting: sole-admin precondition failed count=0
+DEV GATE: P01 + P04 + P11 + F6 PASS (seeded)
+=== E4 p-matrix exit= 18:39:39 ===

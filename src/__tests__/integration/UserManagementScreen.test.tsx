@@ -146,6 +146,7 @@ jest.mock("react-native/Libraries/Components/RefreshControl/RefreshControl", () 
 describe("UserManagementScreen", () => {
   const mockRequestApproveUser = jest.fn();
   const mockCopyInviteLink = jest.fn();
+  const mockRequestChangeSeat = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -215,6 +216,8 @@ describe("UserManagementScreen", () => {
             systemRoleLabel: "CA",
             positionLabel: "CA",
             companySeatLabel: "CA",
+            deployableSeatType: null,
+            canChangeSeat: false,
             isAdmin: false,
             isProtected: false,
             isPending: true,
@@ -245,6 +248,8 @@ describe("UserManagementScreen", () => {
             systemRoleLabel: "Member",
             positionLabel: "Worker",
             companySeatLabel: "Worker",
+            deployableSeatType: "worker",
+            canChangeSeat: true,
             isAdmin: false,
             isProtected: false,
             isPending: false,
@@ -271,6 +276,8 @@ describe("UserManagementScreen", () => {
             systemRoleLabel: "Member",
             positionLabel: "PM",
             companySeatLabel: "PM",
+            deployableSeatType: "pm",
+            canChangeSeat: true,
             isAdmin: false,
             isProtected: false,
             isPending: false,
@@ -325,6 +332,7 @@ describe("UserManagementScreen", () => {
         confirmRemoveAssignment: jest.fn(),
         copyInviteLink: mockCopyInviteLink,
         requestDeactivateUser: jest.fn(),
+        requestChangeSeat: mockRequestChangeSeat,
       },
     });
   });
@@ -342,12 +350,24 @@ describe("UserManagementScreen", () => {
     expect(screen.getByText("Copy invite link")).toBeTruthy();
     expect(screen.queryByTestId("user-management__copy-invite-pending-user")).toBeNull();
     expect(screen.queryByTestId("user-management__copy-invite-assigned-user")).toBeNull();
+    expect(screen.getByTestId("user-management__seat-worker-invited-user")).toBeTruthy();
+    expect(screen.getByTestId("user-management__seat-pm-invited-user")).toBeTruthy();
+    expect(screen.getByTestId("user-management__seat-pm-assigned-user")).toBeTruthy();
+    expect(screen.queryByTestId("user-management__seat-worker-pending-user")).toBeNull();
 
     fireEvent.press(screen.getByTestId("user-management__approve-user-pending-user"));
 
     expect(mockRequestApproveUser).toHaveBeenCalledWith("pending-user");
     fireEvent.press(screen.getByTestId("user-management__copy-invite-invited-user"));
     expect(mockCopyInviteLink).toHaveBeenCalledWith("invited-user");
+  });
+
+  it("delegates Worker↔PM seat taps through requestChangeSeat", () => {
+    const screen = render(<UserManagementScreen onNavigateBack={jest.fn()} />);
+    fireEvent.press(screen.getByTestId("user-management__seat-pm-invited-user"));
+    expect(mockRequestChangeSeat).toHaveBeenCalledWith("invited-user", "pm");
+    fireEvent.press(screen.getByTestId("user-management__seat-worker-assigned-user"));
+    expect(mockRequestChangeSeat).toHaveBeenCalledWith("assigned-user", "worker");
   });
 
   it("matches root Camera FAB geometry and tab-bar chrome for the add-user control", () => {

@@ -1,0 +1,24 @@
+# D1 — CA management reachability (NOT canonical O1 Dashboard-only).
+# Proves: Carol → profile → Company management → admin-stat-section-team.
+# A-D01 Dashboard-only remains OPEN product debt.
+appId: com.buildtrack.app.local
+---
+- runFlow: _boot-carol.yaml
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-company_admin"
+    timeout: 12000
+- takeScreenshot: "O1-profile-menu-ca"
+- tapOn:
+    id: "profile-menu-company_admin"
+- waitForAnimationToEnd:
+    timeout: 4000
+- extendedWaitUntil:
+    visible:
+      id: "admin-stat-section-team"
+    timeout: 20000
+- assertVisible:
+    id: "admin-stat-section-projects"
+- takeScreenshot: "O1-admin-dashboard"

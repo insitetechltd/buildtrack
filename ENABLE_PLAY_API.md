@@ -24,7 +24,7 @@ After enabling, wait 2-5 minutes for the API to propagate.
 ### Step 3: Retry Submission
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 eas submit --platform android --profile production --path android/app/build/outputs/bundle/release/app-release.aab --non-interactive
 ```
 

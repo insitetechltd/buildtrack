@@ -2,11 +2,13 @@ import { renderHook, act } from '@testing-library/react-native';
 import { useTaskStore } from '@/state/taskStore.supabase';
 import { supabase } from '@/api/supabase';
 import { Task } from '@/types/buildtrack';
+import { installNewSchemaTableFallback } from '@/state/__tests__/mockSupabaseNewSchemaTables';
 
 jest.mock('@/api/supabase');
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockFrom = mockSupabase.from as unknown as jest.Mock;
+installNewSchemaTableFallback(mockFrom);
 
 const managerId = 'manager-123';
 const workerId = 'worker-456';

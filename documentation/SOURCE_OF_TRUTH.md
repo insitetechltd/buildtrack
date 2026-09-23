@@ -16,6 +16,14 @@ This file is the authoritative source of truth for documentation governance.
 
 If this document conflicts with implemented code or configuration, trust the code and update this document.
 
+### Link path rule
+
+Canonical registry and cross-doc hyperlinks **must be repo-relative** Markdown paths (example: `[ROADMAP.md](./ROADMAP.md)`, `[AGENTS.md](../AGENTS.md)`).
+
+Never use `file:///Volumes/KooDrive/...` (or any other absolute workspace `file://` URL). The 2026-07-09 folder rename (`Insite App` → `InsiteApp`) left those links pointing at a directory that no longer exists. Product-name prose ("the Insite App") is fine; a path segment `Insite App/` is not.
+
+`npm run dev:doctor` fails if those stale folder paths reappear in Markdown.
+
 ## Authority Rule
 
 Resolve documentation conflicts in this order:
@@ -107,28 +115,28 @@ Documentation must be updated to match these files, not the other way around.
 
 These documents define how the repository should be interpreted and maintained:
 
-- [SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOURCE_OF_TRUTH.md)
-- [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
-- [AGENTS.md](file:///Volumes/KooDrive/Insite%20App/AGENTS.md)
-- [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
-- [CURSOR_DEV_HARNESS.md](file:///Volumes/KooDrive/Insite%20App/documentation/CURSOR_DEV_HARNESS.md)
-- [README.md](file:///Volumes/KooDrive/Insite%20App/README.md)
+- [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md)
+- [ROADMAP.md](./ROADMAP.md)
+- [AGENTS.md](../AGENTS.md)
+- [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
+- [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md)
+- [README.md](../README.md)
 
 ### 3. Canonical Product, UX, Architecture, And Domain References
 
 These are the primary human-readable references for current implementation-aligned behavior and approved target-state direction:
 
-- [SOFTWARE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOFTWARE_ARCHITECTURE.md)
-- [DATABASE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/DATABASE_ARCHITECTURE.md)
-- [INSITE_UI_UX_SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
-- [UI_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/UI_ARCHITECTURE.md)
-- [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
-- [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
-- [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
-- [EXPIRED_SURFACES_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/EXPIRED_SURFACES_INVENTORY.md)
-- [multi-company-project-membership.md](file:///Volumes/KooDrive/Insite%20App/documentation/multi-company-project-membership.md)
-- [MARKETING.md](file:///Volumes/KooDrive/Insite%20App/documentation/MARKETING.md)
-- [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
+- [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
+- [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
+- [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+- [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
+- [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
+- [BUG_INVENTORY.md](./BUG_INVENTORY.md)
+- [role-permission-matrix.md](./role-permission-matrix.md)
+- [EXPIRED_SURFACES_INVENTORY.md](./EXPIRED_SURFACES_INVENTORY.md)
+- [multi-company-project-membership.md](./multi-company-project-membership.md)
+- [MARKETING.md](./MARKETING.md)
+- [m-fnd-04-ui-migration-wave-matrix.md](./m-fnd-04-ui-migration-wave-matrix.md)
 
 ### 4. Canonical Operational Documentation
 
@@ -136,7 +144,7 @@ The `documentation/` folder is the primary home for stable operational runbooks 
 
 Primary index:
 
-- [documentation/README.md](file:///Volumes/KooDrive/Insite%20App/documentation/README.md)
+- [documentation/README.md](./README.md)
 
 Typical content:
 
@@ -271,58 +279,58 @@ When a document should stay active:
 
 ### Repository Entry And Governance
 
-- [README.md](file:///Volumes/KooDrive/Insite%20App/README.md)
+- [README.md](../README.md)
   - top-level repo landing page
-- [AGENTS.md](file:///Volumes/KooDrive/Insite%20App/AGENTS.md)
+- [AGENTS.md](../AGENTS.md)
   - repository-local agent inventory and workflow context
-- [SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOURCE_OF_TRUTH.md)
+- [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md)
   - documentation-governance authority
-- [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
+- [ROADMAP.md](./ROADMAP.md)
   - single canonical WS/M/S milestone inventory and execution order
-- [NOW.md](file:///Volumes/KooDrive/Insite%20App/documentation/NOW.md)
+- [NOW.md](./NOW.md)
   - session continuity (doing / next / locked / parked); overwrite in place; git-tracked; whole cycle SoT is `~/.cursor/skills/solo-dev-harness/SOP.md`
-- [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
+- [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
   - Insite-flavored operator workflow; portable SoT is harness SOP.md; dual-write process changes to SOP.md + templates + this repo
-- [CURSOR_DEV_HARNESS.md](file:///Volumes/KooDrive/Insite%20App/documentation/CURSOR_DEV_HARNESS.md)
+- [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md)
   - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse
 
 ### Product, UX, Architecture, And Domain Truth
 
-- [SOFTWARE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOFTWARE_ARCHITECTURE.md)
+- [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
   - canonical system-level architecture reference
-- [DATABASE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/DATABASE_ARCHITECTURE.md)
+- [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
   - canonical Supabase, schema, and persistence architecture reference
-- [INSITE_UI_UX_SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+- [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
   - canonical approved product UI/UX logic and target-state interaction model
-- [UI_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/UI_ARCHITECTURE.md)
+- [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
   - canonical UI ownership, layering, and navigation contract reference
-- [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
+- [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
   - consolidated current product description
-- [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
+- [BUG_INVENTORY.md](./BUG_INVENTORY.md)
   - single canonical live bug tracker
-- [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
+- [role-permission-matrix.md](./role-permission-matrix.md)
   - current normalized role and permission reference
-- [multi-company-project-membership.md](file:///Volumes/KooDrive/Insite%20App/documentation/multi-company-project-membership.md)
+- [multi-company-project-membership.md](./multi-company-project-membership.md)
   - locked multi-company project join paths, pricing boundary, liaison, and admin knowledge vs authority (`M-AUTHZ-02`, post-RC)
-- [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
+- [m-fnd-04-ui-migration-wave-matrix.md](./m-fnd-04-ui-migration-wave-matrix.md)
   - current `WS-FND / M-FND-04` UI migration wave reference
 
 ### Operational Documentation Hub
 
-- [documentation/README.md](file:///Volumes/KooDrive/Insite%20App/documentation/README.md)
+- [documentation/README.md](./README.md)
   - primary documentation hub for stable operational docs
 
 ### Validation And Process References
 
-- [TESTING_STRATEGY.md](file:///Volumes/KooDrive/Insite%20App/TESTING_STRATEGY.md)
+- [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
   - testing strategy reference
-- [MAINTABS_UX_CHECKLIST.md](file:///Volumes/KooDrive/Insite%20App/documentation/MAINTABS_UX_CHECKLIST.md)
+- [MAINTABS_UX_CHECKLIST.md](./MAINTABS_UX_CHECKLIST.md)
   - canonical MainTabs function-discovery + RC human/Maestro checklist (admin = org only; field B–E = day-to-day)
-- [maestro/README.md](file:///Volumes/KooDrive/Insite%20App/maestro/README.md)
+- [maestro/README.md](../maestro/README.md)
   - canonical Maestro-specific testing and runtime-alignment runbook
-- [CI_WORKFLOWS.md](file:///Volumes/KooDrive/Insite%20App/CI_WORKFLOWS.md)
+- [CI_WORKFLOWS.md](../CI_WORKFLOWS.md)
   - CI workflow reference
-- [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
+- [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
   - canonical operator workflow reference
 
 ## Current Active Working-Docs Registry

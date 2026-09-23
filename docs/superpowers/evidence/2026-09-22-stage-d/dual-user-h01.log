@@ -1,0 +1,849 @@
+
+> template-app-53@1.0.0 test:e2e:maestro:dual-user
+> bash ./scripts/maestro/run-dual-user-gate.sh
+
+[00:09:37 dual-user]===== DUAL-USER GATE START =====
+[00:09:37 dual-user]=== Sim coordination preflight ===
+=== Simulator lock status ===
+LOCK_DIR=/Volumes/KooDrive/InsiteApp/.cache/sim-locks
+OWNER (this shell)=tristan@tristans-mini
+
+Booted iPhones:
+  B7B2640C-4738-4F8A-AEEE-5DF3D21D2533  iPhone 17 Pro Max  FREE
+  F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA  iPhone 16  FREE
+
+On-disk locks:
+  (none)
+[00:09:37 dual-user]Claiming sim pair (fail if another chat/session holds lock or maestro is running)
+LOCKED B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 (iPhone 17 Pro Max) purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA (iPhone 16) purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+PAIR LOCKED assigner=B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 assignee=F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+[00:09:38 dual-user]Claiming shared users + project + seed namespace
+LOCKED user:john.managera purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED user:alice.workera1 purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED project:project-a purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED seed:dual-user purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+[00:09:38 dual-user]Assigner (John)  UDID=B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+[00:09:38 dual-user]Assignee (Alice) UDID=F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+[00:09:38 dual-user]ONLY=H01  SYNC_RETRIES=1  ARTIFACT_DIR=/Volumes/KooDrive/InsiteApp/.cache/maestro-artifacts/dual-user-20260923_000937
+[00:09:38 dual-user]Metro OK (attempt 1)
+[00:09:38 dual-user]ENSURE dual-user project data
+ENSURE_DU_PROJECT_OK project=Project A - Commercial Building inserted=0 users=john.managera@test.com,alice.workera1@test.com
+[00:09:39 dual-user]ENSURE Photos assigner UDID=B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ensure-create-task-photo-media: udid=B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+  media=/Volumes/KooDrive/Users/tristan/Library/Developer/CoreSimulator/Devices/B7B2640C-4738-4F8A-AEEE-5DF3D21D2533/data/Media
+  need=3 unique_fixtures=3 dcim_total=3 force_purge=0
+  REUSE: library already has exactly 3 distinct fixtures (total=3)
+[00:09:39 dual-user]ENSURE Photos assignee UDID=F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+ensure-create-task-photo-media: udid=F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+  media=/Volumes/KooDrive/Users/tristan/Library/Developer/CoreSimulator/Devices/F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA/data/Media
+  need=3 unique_fixtures=3 dcim_total=3 force_purge=0
+  REUSE: library already has exactly 3 distinct fixtures (total=3)
+[00:09:39 dual-user]Serial boot John then Alice (set DU_PARALLEL_BOOT=1 to override)
+[00:09:39 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home-dual-user
+[00:09:39 run-local.sh]   args: --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 test /Volumes/KooDrive/InsiteApp/maestro/flows/dual-user/_boot-john.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow _boot-john
+Run ../create-task-photo/_boot.yaml...
+  Launch app "com.buildtrack.app.local"... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[00:09:49 run-local.sh]   ALIVE pid=60730  elapsed=10s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms...[00:09:59 run-local.sh]   ALIVE pid=60730  elapsed=20s  (heartbeat every 10s)
+ COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when id: login-submit is not visible...
+    Run ../_logout.yaml...
+      Run _dismiss-blocking-overlays.yaml...
+        Run flow when "Save Password?" is visible...
+        Run flow when "Save Password?" is visible... SKIPPED
+        Run flow when "Save Password" is visible...
+        Run flow when "Save Password" is visible... SKIPPED
+        Run flow when "Choose how you want to add photos" is visible...
+        Run flow when "Choose how you want to add photos" is visible... SKIPPED
+        Run flow when "Allow Full Access" is visible...
+        Run flow when "Allow Full Access" is visible... SKIPPED
+        Run flow when "Allow Access to All Photos" is visible...
+        Run flow when "Allow Access to All Photos" is visible... SKIPPED
+        Run flow when "Allow.*Photos.*" is visible...
+        Run flow when "Allow.*Photos.*" is visible... SKIPPED
+        Repeat 3 times...
+          Tap on (Optional) "Dismiss"...[00:10:09 run-local.sh]   ALIVE pid=60730  elapsed=30s  (heartbeat every 10s)
+ WARNED
+        Repeat 3 times... COMPLETED
+        Run flow when "OK" is visible...
+        Run flow when "OK" is visible... SKIPPED
+        Wait for animation to end within 1000 ms... COMPLETED
+      Run _dismiss-blocking-overlays.yaml... COMPLETED
+      Run flow when "Are you sure you want to logout?" is visible...
+      Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+      Run flow when id: login-submit is not visible...
+        Tap on id: app-screen-header__profile-trigger...[00:10:19 run-local.sh]   ALIVE pid=60730  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+        Assert that id: profile-menu-logout is visible... COMPLETED
+        Tap on id: profile-menu-logout... COMPLETED
+        Assert that "Are you sure you want to logout?" is visible... COMPLETED
+        Tap on "Logout", Index: 1... COMPLETED
+        Run flow when "Are you sure you want to logout?" is visible...
+[00:10:29 run-local.sh]   ALIVE pid=60730  elapsed=50s  (heartbeat every 10s)
+        Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+        Assert that id: login-submit is visible... COMPLETED
+        Wait for animation to end within 2000 ms... COMPLETED
+      Run flow when id: login-submit is not visible... COMPLETED
+    Run ../_logout.yaml... COMPLETED
+  Run flow when id: login-submit is not visible... COMPLETED
+  Assert that id: login-submit is visible... COMPLETED
+  Tap on id: ^login-emailOrPhone$... COMPLETED
+  Erase text... COMPLETED
+  Input text john.managera@test.com... COMPLETED
+  Tap on id: ^login-password$...[00:10:39 run-local.sh]   ALIVE pid=60730  elapsed=60s  (heartbeat every 10s)
+ COMPLETED
+  Erase text... COMPLETED
+  Input text password123... COMPLETED
+  Tap on id: login-submit... COMPLETED
+  Run flow when "Save Password?" is visible...
+[00:10:49 run-local.sh]   ALIVE pid=60730  elapsed=70s  (heartbeat every 10s)
+  Run flow when "Save Password?" is visible... SKIPPED
+  Run flow when id: admin-overview-hero is visible...
+  Run flow when id: admin-overview-hero is visible... SKIPPED
+  Tap on (Optional) "Not Now"... WARNED
+  Run flow when "Save Password?" is visible...
+  Run flow when "Save Password?" is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run _assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run _assert-no-logbox.yaml... COMPLETED
+  Assert that id: root-tab__camera_icon_surface is visible... COMPLETED
+Run ../create-task-photo/_boot.yaml... COMPLETED
+Run _ensure-project.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[00:10:59 run-local.sh]   ALIVE pid=60730  elapsed=80s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Tap on (Optional) id: root-tab__activity... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run flow when ".*Project A - Commercial Building.*" is not visible...
+[00:11:09 run-local.sh]   ALIVE pid=60730  elapsed=90s  (heartbeat every 10s)
+  Run flow when ".*Project A - Commercial Building.*" is not visible... SKIPPED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Run _pull-to-refresh-activity.yaml...
+    Tap on id: root-tab__activity... COMPLETED
+    Assert that id: dashboard-screen__root is visible... COMPLETED
+    Swipe from (50%, 26%) to (50%, 78%) in 1200 ms... COMPLETED
+    Wait for animation to end within 4000 ms... COMPLETED
+  Run _pull-to-refresh-activity.yaml... COMPLETED
+  Assert that id: dashboard-screen__project_summary_section is visible... COMPLETED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Take screenshot du-active-project-project-a... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _ensure-project.yaml... COMPLETED
+Take screenshot du-boot-john-home... COMPLETED
+[00:11:19 run-local.sh]   ALIVE pid=60730  elapsed=100s  (heartbeat every 10s)
+[00:11:21 run-local.sh]   FINISHED pid=60730  elapsed=102s  rc=0  (PASS)
+[00:11:22 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home-dual-user
+[00:11:22 run-local.sh]   args: --udid F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA test /Volumes/KooDrive/InsiteApp/maestro/flows/dual-user/_boot-alice.yaml
+Running on iPhone 16 - iOS 26.5 - F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+ > Flow _boot-alice
+Run ../update-progress-photo/_boot-alice.yaml...
+  Launch app "com.buildtrack.app.local"...[00:11:32 run-local.sh]   ALIVE pid=61242  elapsed=10s  (heartbeat every 10s)
+ COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"...[00:11:42 run-local.sh]   ALIVE pid=61242  elapsed=20s  (heartbeat every 10s)
+ WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when id: login-submit is visible...
+  Run flow when id: login-submit is visible... SKIPPED
+  Run flow when "Save Password?" is visible...
+  Run flow when "Save Password?" is visible... SKIPPED
+  Tap on (Optional) "Not Now"... WARNED
+  Run flow when "Save Password?" is visible...
+[00:11:52 run-local.sh]   ALIVE pid=61242  elapsed=30s  (heartbeat every 10s)
+  Run flow when "Save Password?" is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+  Assert that id: root-tab__camera_icon_surface is visible... COMPLETED
+Run ../update-progress-photo/_boot-alice.yaml... COMPLETED
+Run _ensure-project.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+[00:12:02 run-local.sh]   ALIVE pid=61242  elapsed=40s  (heartbeat every 10s)
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Tap on (Optional) id: root-tab__activity... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run flow when ".*Project A - Commercial Building.*" is not visible...
+  Run flow when ".*Project A - Commercial Building.*" is not visible... SKIPPED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Run _pull-to-refresh-activity.yaml...
+    Tap on id: root-tab__activity...[00:12:12 run-local.sh]   ALIVE pid=61242  elapsed=50s  (heartbeat every 10s)
+ COMPLETED
+    Assert that id: dashboard-screen__root is visible... COMPLETED
+    Swipe from (50%, 26%) to (50%, 78%) in 1200 ms... COMPLETED
+    Wait for animation to end within 4000 ms... COMPLETED
+  Run _pull-to-refresh-activity.yaml... COMPLETED
+  Assert that id: dashboard-screen__project_summary_section is visible... COMPLETED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Take screenshot du-active-project-project-a... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _ensure-project.yaml... COMPLETED
+Take screenshot du-boot-alice-home... COMPLETED
+[00:12:20 run-local.sh]   FINISHED pid=61242  elapsed=58s  rc=0  (PASS)
+[00:12:20 dual-user]Serial boot PASS
+[00:12:29 dual-user]===== DU-H01 happy path title=DU-H01-1790093549 =====
+LOCKED title-prefix:DU-H01 purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED title-prefix:DU-H01-1790093549 purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+[00:12:29 dual-user]Metro OK (attempt 1)
+[00:12:29 dual-user]PHASE H01-create attempt=1/2 udid=B7B2640C… flow=DU-H01-assigner-create.yaml title=DU-H01-1790093549 taskId=<none>
+[00:12:29 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home-dual-user
+[00:12:29 run-local.sh]   args: --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 test -e DU_TASK_TITLE=DU-H01-1790093549 /Volumes/KooDrive/InsiteApp/maestro/flows/dual-user/DU-H01-assigner-create.yaml
+[00:12:39 run-local.sh]   ALIVE pid=61685  elapsed=10s  (heartbeat every 10s)
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow DU-H01-assigner-create
+Run _resume-john.yaml...
+  Launch app "com.buildtrack.app.local"...[00:12:49 run-local.sh]   ALIVE pid=61685  elapsed=20s  (heartbeat every 10s)
+ COMPLETED
+  Assert that id: app-screen-header__profile-trigger is visible... COMPLETED
+  Run flow when id: login-submit is visible...
+  Run flow when id: login-submit is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _resume-john.yaml... COMPLETED
+Run _ensure-project.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[00:12:59 run-local.sh]   ALIVE pid=61685  elapsed=30s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+[00:13:09 run-local.sh]   ALIVE pid=61685  elapsed=40s  (heartbeat every 10s)
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Tap on (Optional) id: root-tab__activity... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run flow when ".*Project A - Commercial Building.*" is not visible...
+  Run flow when ".*Project A - Commercial Building.*" is not visible... SKIPPED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Run _pull-to-refresh-activity.yaml...
+    Tap on id: root-tab__activity... COMPLETED
+    Assert that id: dashboard-screen__root is visible...[00:13:19 run-local.sh]   ALIVE pid=61685  elapsed=50s  (heartbeat every 10s)
+ COMPLETED
+    Swipe from (50%, 26%) to (50%, 78%) in 1200 ms... COMPLETED
+    Wait for animation to end within 4000 ms... COMPLETED
+  Run _pull-to-refresh-activity.yaml... COMPLETED
+  Assert that id: dashboard-screen__project_summary_section is visible... COMPLETED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Take screenshot du-active-project-project-a... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _ensure-project.yaml... COMPLETED
+Run ../_dismiss-blocking-overlays.yaml...
+  Run flow when "Save Password?" is visible...
+[00:13:29 run-local.sh]   ALIVE pid=61685  elapsed=60s  (heartbeat every 10s)
+  Run flow when "Save Password?" is visible... SKIPPED
+  Run flow when "Save Password" is visible...
+  Run flow when "Save Password" is visible... SKIPPED
+  Run flow when "Choose how you want to add photos" is visible...
+  Run flow when "Choose how you want to add photos" is visible... SKIPPED
+  Run flow when "Allow Full Access" is visible...
+  Run flow when "Allow Full Access" is visible... SKIPPED
+  Run flow when "Allow Access to All Photos" is visible...
+  Run flow when "Allow Access to All Photos" is visible... SKIPPED
+  Run flow when "Allow.*Photos.*" is visible...
+  Run flow when "Allow.*Photos.*" is visible... SKIPPED
+  Repeat 3 times...
+    Tap on (Optional) "Dismiss"... WARNED
+  Repeat 3 times... COMPLETED
+  Run flow when "OK" is visible...
+  Run flow when "OK" is visible... SKIPPED
+  Wait for animation to end within 1000 ms... COMPLETED
+Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+Tap on id: root-tab__camera_icon_surface... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Tap on (Optional) "Dismiss"...[00:13:39 run-local.sh]   ALIVE pid=61685  elapsed=70s  (heartbeat every 10s)
+ WARNED
+Assert that id: capture-session__camera is visible... COMPLETED
+Take screenshot du-h01-02b-john-camera... COMPLETED
+Run flow when id: capture-session__library_peek is visible...
+  Tap on id: capture-session__library_peek... COMPLETED
+Run flow when id: capture-session__library_peek is visible... COMPLETED
+Run flow when id: capture-session__open_library_fallback is visible...
+[00:13:49 run-local.sh]   ALIVE pid=61685  elapsed=80s  (heartbeat every 10s)
+Run flow when id: capture-session__open_library_fallback is visible... SKIPPED
+Assert that id: capture-session__hybrid_library is visible... COMPLETED
+Assert that id: capture-session__library_grid is visible... COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Take screenshot du-h01-02c-john-library... COMPLETED
+Tap on point (17%, 28%)... COMPLETED
+Wait for animation to end within 1000 ms... COMPLETED
+Run flow when ".*[1-9] selected.*" is not visible...
+[00:13:59 run-local.sh]   ALIVE pid=61685  elapsed=90s  (heartbeat every 10s)
+Run flow when ".*[1-9] selected.*" is not visible... SKIPPED
+Assert that ".*[1-9] selected.*" is visible... COMPLETED
+Tap on id: capture-session__hybrid_accept... COMPLETED
+Assert that id: photo-selection__confirm is visible... COMPLETED
+Take screenshot du-h01-02d-john-select-photos... COMPLETED
+Tap on id: photo-selection__confirm... COMPLETED
+Run flow when ".*Assign.*" is visible...
+  Tap on ".*Assign.*"... COMPLETED
+Run flow when ".*Assign.*" is visible... COMPLETED
+Run flow when id: create-task__post_capture_routing_sheet is visible...
+[00:14:09 run-local.sh]   ALIVE pid=61685  elapsed=100s  (heartbeat every 10s)
+Run flow when id: create-task__post_capture_routing_sheet is visible... SKIPPED
+Run flow when "Create Task" is visible...
+  Tap on "Create Task"... COMPLETED
+Run flow when "Create Task" is visible... COMPLETED
+Assert that id: create-task__continuous_form is visible... COMPLETED
+Take screenshot du-h01-03-john-form-with-photo... COMPLETED
+Run _assign-alice.yaml...
+  Scrolling DOWN until id: create-task__assignee-picker-trigger is visible with speed 40, visibility percentage 40%, timeout 20000 ms, with centering enabled... COMPLETED
+  Tap on id: create-task__assignee-picker-trigger... COMPLETED
+  Assert that "Assign To" is visible... COMPLETED
+  Assert that "Fetching project team members" is not visible... COMPLETED
+  Run flow when ".*users available.*" is visible...
+    Take screenshot du-assignee-picker-open... COMPLETED
+  Run flow when ".*users available.*" is visible... COMPLETED
+  Assert that id: create-task__assignee-option-alice-workera1-at-test-com is visible... COMPLETED
+  Take screenshot du-assignee-picker-open... COMPLETED
+  Scrolling DOWN until id: create-task__assignee-option-alice-workera1-at-test-com is visible with speed 40, visibility percentage 40%, timeout 20000 ms, with centering enabled... COMPLETED
+  Tap on id: create-task__assignee-option-alice-workera1-at-test-com...[00:14:19 run-local.sh]   ALIVE pid=61685  elapsed=110s  (heartbeat every 10s)
+ COMPLETED
+  Tap on id: create-task__assignee-picker-done... COMPLETED
+  Assert that id: create-task__selected_assignees is visible... COMPLETED
+  Take screenshot du-assignee-alice-selected... COMPLETED
+Run _assign-alice.yaml... COMPLETED
+Take screenshot du-h01-04-john-assign-alice... COMPLETED
+Run _submit-create-with-title.yaml...
+  Scrolling UP until id: createTask-title is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled... COMPLETED
+  Tap on id: createTask-title...[00:14:29 run-local.sh]   ALIVE pid=61685  elapsed=120s  (heartbeat every 10s)
+ COMPLETED
+  Input text ${DU_TASK_TITLE}... COMPLETED
+  Tap on id: createTask-description... COMPLETED
+  Input text Dual-user Maestro gate — assigner creates and assigns Alice.... COMPLETED
+  Run ../_dismiss-keyboard.yaml...
+    Tap on point (50%, 22%)... COMPLETED
+    Wait for animation to end within 800 ms... COMPLETED
+    Tap on point (50%, 22%)... COMPLETED
+    Wait for animation to end within 1500 ms...[00:14:39 run-local.sh]   ALIVE pid=61685  elapsed=130s  (heartbeat every 10s)
+ COMPLETED
+  Run ../_dismiss-keyboard.yaml... COMPLETED
+  Scrolling DOWN until id: create-task__submit is visible with speed 40, visibility percentage 40%, timeout 20000 ms, with centering enabled... COMPLETED
+  Tap on id: create-task__submit... COMPLETED
+  Tap on id: create-task__submit... COMPLETED
+  Assert that id: create-task__submit-success-confirm is visible... COMPLETED
+  Assert that id: create-task__submit-success-message is visible... COMPLETED
+  Take screenshot du-create-submit-success... COMPLETED
+  Tap on id: create-task__submit-success-confirm... COMPLETED
+  Assert that id: tasks-screen__root is visible... COMPLETED
+  Assert that id: tasks-screen__task_list is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _submit-create-with-title.yaml... COMPLETED
+Take screenshot du-h01-05-john-created... COMPLETED
+[00:14:48 run-local.sh]   FINISHED pid=61685  elapsed=139s  rc=0  (PASS)
+[00:14:48 dual-user]Phase H01-create raw rc=0 shots=17 need=6
+[00:14:48 dual-user]Phase H01-create PASS shots=17/6
+[00:14:48 dual-user]Resolve task id title=DU-H01-1790093549
+RESOLVE_OK title=DU-H01-1790093549 taskId=8c9524e9-2056-4522-9aac-af4d0613d6c4 status=in_progress assignee=alice.workera1@test.com
+LOCKED task:8c9524e9-2056-4522-9aac-af4d0613d6c4 purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED title-prefix:DU-H01 purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+LOCKED title-prefix:DU-H01-1790093549 purpose=dual-user-gate-H01 owner=tristan@tristans-mini
+[00:14:49 dual-user]Resolved DU_TASK_ID=8c9524e9-2056-4522-9aac-af4d0613d6c4
+[00:14:57 dual-user]Metro OK (attempt 1)
+[00:14:57 dual-user]PHASE H01-assignee attempt=1/2 udid=F537DDA8… flow=DU-H01-assignee-loop.yaml title=DU-H01-1790093549 taskId=8c9524e9-2056-4522-9aac-af4d0613d6c4
+[00:14:57 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home-dual-user
+[00:14:57 run-local.sh]   args: --udid F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA test -e DU_TASK_TITLE=DU-H01-1790093549 -e DU_TASK_ID=8c9524e9-2056-4522-9aac-af4d0613d6c4 /Volumes/KooDrive/InsiteApp/maestro/flows/dual-user/DU-H01-assignee-loop.yaml
+[00:15:07 run-local.sh]   ALIVE pid=64588  elapsed=10s  (heartbeat every 10s)
+Running on iPhone 16 - iOS 26.5 - F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+ > Flow DU-H01-assignee-loop
+Run _resume-alice.yaml...
+  Launch app "com.buildtrack.app.local"... COMPLETED
+  Assert that id: app-screen-header__profile-trigger is visible... COMPLETED
+  Run flow when id: login-submit is visible...
+  Run flow when id: login-submit is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible...[00:15:17 run-local.sh]   ALIVE pid=64588  elapsed=20s  (heartbeat every 10s)
+ COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _resume-alice.yaml... COMPLETED
+Run _ensure-project.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+[00:15:27 run-local.sh]   ALIVE pid=64588  elapsed=30s  (heartbeat every 10s)
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Tap on (Optional) id: root-tab__activity... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run flow when ".*Project A - Commercial Building.*" is not visible...
+  Run flow when ".*Project A - Commercial Building.*" is not visible... SKIPPED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Run _pull-to-refresh-activity.yaml...
+    Tap on id: root-tab__activity...[00:15:37 run-local.sh]   ALIVE pid=64588  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+    Assert that id: dashboard-screen__root is visible... COMPLETED
+    Swipe from (50%, 26%) to (50%, 78%) in 1200 ms... COMPLETED
+    Wait for animation to end within 4000 ms... COMPLETED
+  Run _pull-to-refresh-activity.yaml... COMPLETED
+  Assert that id: dashboard-screen__project_summary_section is visible... COMPLETED
+  Assert that ".*Project A - Commercial Building.*" is visible... COMPLETED
+  Take screenshot du-active-project-project-a... COMPLETED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _ensure-project.yaml... COMPLETED
+Run _open-task-by-title.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[00:15:47 run-local.sh]   ALIVE pid=64588  elapsed=50s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when id: task-detail__header_title is not visible...
+    Run flow when id: tasks-screen__task_list is not visible...
+      Tap on (Optional) id: root-tab__tasks...[00:15:57 run-local.sh]   ALIVE pid=64588  elapsed=60s  (heartbeat every 10s)
+ COMPLETED
+      Tap on (Optional) id: root-tab__tasks_pressable... COMPLETED
+      Wait for animation to end within 1500 ms... COMPLETED
+    Run flow when id: tasks-screen__task_list is not visible... COMPLETED
+    Assert that id: tasks-screen__task_list is visible... COMPLETED
+    Run _pull-to-refresh-tasks.yaml...
+      Tap on id: root-tab__tasks_pressable... COMPLETED
+      Assert that id: tasks-screen__task_list is visible... COMPLETED
+      Swipe from (50%, 28%) to (50%, 78%) in 1200 ms... COMPLETED
+      Wait for animation to end within 4000 ms... COMPLETED
+    Run _pull-to-refresh-tasks.yaml... COMPLETED
+    Tap on (Optional) id: tasks-screen__header_reset_filters...[00:16:07 run-local.sh]   ALIVE pid=64588  elapsed=70s  (heartbeat every 10s)
+ WARNED
+    Wait for animation to end within 1500 ms... COMPLETED
+    Tap on id: text-field:tasks-search__input... COMPLETED
+    Tap on (Optional) id: text-field:tasks-search__right-slot... COMPLETED
+    Input text ${DU_TASK_TITLE}... COMPLETED
+    Tap on point (50%, 8%)... COMPLETED
+    Wait for animation to end within 800 ms... COMPLETED
+    Run flow when id: ${"tasks-screen__row_" + DU_TASK_ID} is not visible...
+[00:16:17 run-local.sh]   ALIVE pid=64588  elapsed=80s  (heartbeat every 10s)
+    Run flow when id: tasks-screen__row_8c9524e9-2056-4522-9aac-af4d0613d6c4 is not visible... SKIPPED
+    Scrolling DOWN until id: ${"tasks-screen__row_" + DU_TASK_ID} is visible with speed 60, visibility percentage 40%, timeout 12000 ms, with centering enabled... COMPLETED
+    Tap on id: ${"tasks-screen__row_" + DU_TASK_ID + ":title-pressable"}... COMPLETED
+    Run flow when id: task-detail__header_title is not visible...
+      Tap on id: ${"tasks-screen__row_" + DU_TASK_ID}... COMPLETED
+    Run flow when id: task-detail__header_title is not visible... COMPLETED
+    Wait for animation to end within 2500 ms... COMPLETED
+  Run flow when id: task-detail__header_title is not visible... COMPLETED
+  Assert that id: task-detail__header_title is visible...[00:16:27 run-local.sh]   ALIVE pid=64588  elapsed=90s  (heartbeat every 10s)
+ COMPLETED
+  Assert that "${".*" + DU_TASK_TITLE + ".*"}" is visible... COMPLETED
+Run _open-task-by-title.yaml... COMPLETED
+Take screenshot du-h01-06-alice-inbox... COMPLETED
+Run flow when id: task-detail__quick-action-accept_task is visible...
+Run flow when id: task-detail__quick-action-accept_task is visible... SKIPPED
+Run flow when id: task-detail__quick-action-accept_task is not visible...
+  Take screenshot du-h01-07-alice-already-accepted... COMPLETED
+Run flow when id: task-detail__quick-action-accept_task is not visible... COMPLETED
+Run flow when id: report-reply-composer__cancel_review is visible...
+Run flow when id: report-reply-composer__cancel_review is visible... SKIPPED
+Run flow when id: report-reply-composer__cancel_review is not visible...
+  Assert that id: report-reply-composer__photo is visible... COMPLETED
+  Tap on id: report-reply-composer__photo...[00:16:37 run-local.sh]   ALIVE pid=64588  elapsed=100s  (heartbeat every 10s)
+ COMPLETED
+  Run flow when "Choose from Library" is visible...
+    Tap on "Choose from Library"... COMPLETED
+  Run flow when "Choose from Library" is visible... COMPLETED
+  Run flow when id: capture-session__camera is visible...
+  Run flow when id: capture-session__camera is visible... SKIPPED
+  Assert that id: capture-session__hybrid_library is visible... COMPLETED
+  Assert that id: capture-session__library_grid is visible... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+  Take screenshot du-h01-07b-alice-library... COMPLETED
+  Tap on point (17%, 28%)... COMPLETED
+  Wait for animation to end within 1000 ms... COMPLETED
+  Run flow when ".*[1-9] selected.*" is not visible...
+[00:16:47 run-local.sh]   ALIVE pid=64588  elapsed=110s  (heartbeat every 10s)
+  Run flow when ".*[1-9] selected.*" is not visible... SKIPPED
+  Assert that ".*[1-9] selected.*" is visible... COMPLETED
+  Tap on id: capture-session__hybrid_accept... COMPLETED
+  Assert that id: photo-selection__confirm is visible... COMPLETED
+  Tap on id: photo-selection__confirm... COMPLETED
+  Assert that id: report-reply-composer is visible... COMPLETED
+  Take screenshot du-h01-08a-alice-dock-with-photo... COMPLETED
+  Long press on id: report-reply-composer__send...[00:16:57 run-local.sh]   ALIVE pid=64588  elapsed=120s  (heartbeat every 10s)
+ COMPLETED
+  Wait for animation to end within 800 ms... COMPLETED
+  Assert that id: report-reply-composer__completion_hit is visible... COMPLETED
+  Swipe from (90%, 78%) to (90%, 42%) in 800 ms... COMPLETED
+  Wait for animation to end within 800 ms... COMPLETED
+  Tap on id: report-reply-composer__input... COMPLETED
+  Input text Dual-user gate assignee update with photo at 100%.... COMPLETED
+  Run ../_dismiss-keyboard.yaml...
+    Tap on point (50%, 22%)...[00:17:07 run-local.sh]   ALIVE pid=64588  elapsed=130s  (heartbeat every 10s)
+ COMPLETED
+    Wait for animation to end within 800 ms... COMPLETED
+    Tap on point (50%, 22%)... COMPLETED
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../_dismiss-keyboard.yaml... COMPLETED
+  Take screenshot du-h01-08-alice-updated... COMPLETED
+  Tap on id: report-reply-composer__send... COMPLETED
+  Wait for animation to end within 4000 ms... COMPLETED
+  Run flow when "OK" is visible...
+[00:17:17 run-local.sh]   ALIVE pid=64588  elapsed=140s  (heartbeat every 10s)
+  Run flow when "OK" is visible... SKIPPED
+  Run flow when "Success" is visible...
+  Run flow when "Success" is visible... SKIPPED
+  Take screenshot du-h01-09-alice-submitted... COMPLETED
+  Run flow when id: report-reply-composer__cancel_review is visible...
+    Take screenshot du-h01-09-alice-awaiting-review... COMPLETED
+  Run flow when id: report-reply-composer__cancel_review is visible... COMPLETED
+  Run flow when id: task-detail__quick-action-submit_review is visible...
+  Run flow when id: task-detail__quick-action-submit_review is visible... SKIPPED
+Run flow when id: report-reply-composer__cancel_review is not visible... COMPLETED
+[00:17:25 run-local.sh]   FINISHED pid=64588  elapsed=148s  rc=0  (PASS)
+[00:17:25 dual-user]Phase H01-assignee raw rc=0 shots=15 need=5
+[00:17:25 dual-user]Phase H01-assignee PASS shots=15/5
+[00:17:33 dual-user]Metro OK (attempt 1)
+[00:17:33 dual-user]PHASE H01-approve attempt=1/2 udid=B7B2640C… flow=DU-H01-assigner-approve.yaml title=DU-H01-1790093549 taskId=8c9524e9-2056-4522-9aac-af4d0613d6c4
+[00:17:33 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home-dual-user
+[00:17:33 run-local.sh]   args: --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 test -e DU_TASK_TITLE=DU-H01-1790093549 -e DU_TASK_ID=8c9524e9-2056-4522-9aac-af4d0613d6c4 /Volumes/KooDrive/InsiteApp/maestro/flows/dual-user/DU-H01-assigner-approve.yaml
+[00:17:43 run-local.sh]   ALIVE pid=67242  elapsed=10s  (heartbeat every 10s)
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow DU-H01-assigner-approve
+Run _resume-john.yaml...
+  Launch app "com.buildtrack.app.local"... COMPLETED
+  Assert that id: app-screen-header__profile-trigger is visible... COMPLETED
+  Run flow when id: login-submit is visible...
+[00:17:53 run-local.sh]   ALIVE pid=67242  elapsed=20s  (heartbeat every 10s)
+  Run flow when id: login-submit is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _resume-john.yaml... COMPLETED
+Run _open-task-by-title.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[00:18:03 run-local.sh]   ALIVE pid=67242  elapsed=30s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when id: task-detail__header_title is not visible...
+    Run flow when id: tasks-screen__task_list is not visible...
+      Tap on (Optional) id: root-tab__tasks... COMPLETED
+      Tap on (Optional) id: root-tab__tasks_pressable... COMPLETED
+      Wait for animation to end within 1500 ms... COMPLETED
+    Run flow when id: tasks-screen__task_list is not visible... COMPLETED
+    Assert that id: tasks-screen__task_list is visible... COMPLETED
+    Run _pull-to-refresh-tasks.yaml...
+      Tap on id: root-tab__tasks_pressable...[00:18:13 run-local.sh]   ALIVE pid=67242  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+      Assert that id: tasks-screen__task_list is visible... COMPLETED
+      Swipe from (50%, 28%) to (50%, 78%) in 1200 ms... COMPLETED
+      Wait for animation to end within 4000 ms... COMPLETED
+    Run _pull-to-refresh-tasks.yaml... COMPLETED
+    Tap on (Optional) id: tasks-screen__header_reset_filters...[00:18:23 run-local.sh]   ALIVE pid=67242  elapsed=50s  (heartbeat every 10s)
+ WARNED
+    Wait for animation to end within 1500 ms... COMPLETED
+    Tap on id: text-field:tasks-search__input... COMPLETED
+    Tap on (Optional) id: text-field:tasks-search__right-slot... COMPLETED
+    Input text ${DU_TASK_TITLE}... COMPLETED
+    Tap on point (50%, 8%)... COMPLETED
+    Wait for animation to end within 800 ms... COMPLETED
+    Run flow when id: ${"tasks-screen__row_" + DU_TASK_ID} is not visible...
+[00:18:33 run-local.sh]   ALIVE pid=67242  elapsed=60s  (heartbeat every 10s)
+    Run flow when id: tasks-screen__row_8c9524e9-2056-4522-9aac-af4d0613d6c4 is not visible... SKIPPED
+    Scrolling DOWN until id: ${"tasks-screen__row_" + DU_TASK_ID} is visible with speed 60, visibility percentage 40%, timeout 12000 ms, with centering enabled... COMPLETED
+    Tap on id: ${"tasks-screen__row_" + DU_TASK_ID + ":title-pressable"}... COMPLETED
+    Run flow when id: task-detail__header_title is not visible...
+      Tap on id: ${"tasks-screen__row_" + DU_TASK_ID}... COMPLETED
+    Run flow when id: task-detail__header_title is not visible... COMPLETED
+    Wait for animation to end within 2500 ms...[00:18:43 run-local.sh]   ALIVE pid=67242  elapsed=70s  (heartbeat every 10s)
+ COMPLETED
+  Run flow when id: task-detail__header_title is not visible... COMPLETED
+  Assert that id: task-detail__header_title is visible... COMPLETED
+  Assert that "${".*" + DU_TASK_TITLE + ".*"}" is visible... COMPLETED
+Run _open-task-by-title.yaml... COMPLETED
+Take screenshot du-h01-10-john-review... COMPLETED
+Run flow when id: report-reply-composer__approve is visible...
+  Assert that id: report-reply-composer__approve is visible... COMPLETED
+  Tap on id: report-reply-composer__approve... COMPLETED
+  Wait for animation to end within 4000 ms... COMPLETED
+Run flow when id: report-reply-composer__approve is visible... COMPLETED
+Run flow when id: task-detail__quick-action-approve_task is visible...
+[00:18:53 run-local.sh]   ALIVE pid=67242  elapsed=80s  (heartbeat every 10s)
+Run flow when id: task-detail__quick-action-approve_task is visible... SKIPPED
+Assert that id: report-reply-composer__approve is not visible... COMPLETED
+Assert that id: task-detail__quick-action-approve_task is not visible... COMPLETED
+Run flow when id: report-reply-composer__archive is visible...
+  Assert that id: report-reply-composer__archive is visible... COMPLETED
+Run flow when id: report-reply-composer__archive is visible... COMPLETED
+Run flow when id: task-detail__quick-action-archive_task is visible...
+Run flow when id: task-detail__quick-action-archive_task is visible... SKIPPED
+Assert that id: task-detail__status_chips is visible... COMPLETED
+Take screenshot du-h01-11-john-approved... COMPLETED
+[00:18:58 run-local.sh]   FINISHED pid=67242  elapsed=85s  rc=0  (PASS)
+[00:18:58 dual-user]Phase H01-approve raw rc=0 shots=6 need=2
+[00:18:58 dual-user]Phase H01-approve PASS shots=6/2
+[00:19:03 dual-user]Metro OK (attempt 1)
+[00:19:03 dual-user]PHASE H01-archive attempt=1/2 udid=B7B2640C… flow=DU-H01-assigner-archive.yaml title=DU-H01-1790093549 taskId=8c9524e9-2056-4522-9aac-af4d0613d6c4
+[00:19:03 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home-dual-user
+[00:19:03 run-local.sh]   args: --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 test -e DU_TASK_TITLE=DU-H01-1790093549 -e DU_TASK_ID=8c9524e9-2056-4522-9aac-af4d0613d6c4 /Volumes/KooDrive/InsiteApp/maestro/flows/dual-user/DU-H01-assigner-archive.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow DU-H01-assigner-archive
+Run _resume-john.yaml...
+  Launch app "com.buildtrack.app.local"...[00:19:13 run-local.sh]   ALIVE pid=68888  elapsed=10s  (heartbeat every 10s)
+ COMPLETED
+  Assert that id: app-screen-header__profile-trigger is visible... COMPLETED
+  Run flow when id: login-submit is visible...
+  Run flow when id: login-submit is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml...
+    Wait for animation to end within 1500 ms... COMPLETED
+  Run ../create-task-photo/_assert-no-logbox.yaml... COMPLETED
+Run _resume-john.yaml... COMPLETED
+Run _open-task-by-title.yaml...
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[00:19:23 run-local.sh]   ALIVE pid=68888  elapsed=20s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+[00:19:33 run-local.sh]   ALIVE pid=68888  elapsed=30s  (heartbeat every 10s)
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when id: task-detail__header_title is not visible...
+    Run flow when id: tasks-screen__task_list is not visible...
+      Tap on (Optional) id: root-tab__tasks... COMPLETED
+      Tap on (Optional) id: root-tab__tasks_pressable... COMPLETED
+      Wait for animation to end within 1500 ms... COMPLETED
+    Run flow when id: tasks-screen__task_list is not visible... COMPLETED
+    Assert that id: tasks-screen__task_list is visible... COMPLETED
+    Run _pull-to-refresh-tasks.yaml...
+      Tap on id: root-tab__tasks_pressable... COMPLETED
+      Assert that id: tasks-screen__task_list is visible... COMPLETED
+      Swipe from (50%, 28%) to (50%, 78%) in 1200 ms... COMPLETED
+      Wait for animation to end within 4000 ms... COMPLETED
+    Run _pull-to-refresh-tasks.yaml... COMPLETED
+    Tap on (Optional) id: tasks-screen__header_reset_filters...[00:19:43 run-local.sh]   ALIVE pid=68888  elapsed=40s  (heartbeat every 10s)
+ WARNED
+    Wait for animation to end within 1500 ms... COMPLETED
+    Tap on id: text-field:tasks-search__input... COMPLETED
+    Tap on (Optional) id: text-field:tasks-search__right-slot...[00:19:53 run-local.sh]   ALIVE pid=68888  elapsed=50s  (heartbeat every 10s)
+ COMPLETED
+    Input text ${DU_TASK_TITLE}... COMPLETED
+    Tap on point (50%, 8%)... COMPLETED
+    Wait for animation to end within 800 ms... COMPLETED
+    Run flow when id: ${"tasks-screen__row_" + DU_TASK_ID} is not visible...
+[00:20:03 run-local.sh]   ALIVE pid=68888  elapsed=60s  (heartbeat every 10s)
+    Run flow when id: tasks-screen__row_8c9524e9-2056-4522-9aac-af4d0613d6c4 is not visible... SKIPPED
+    Scrolling DOWN until id: ${"tasks-screen__row_" + DU_TASK_ID} is visible with speed 60, visibility percentage 40%, timeout 12000 ms, with centering enabled... COMPLETED
+    Tap on id: ${"tasks-screen__row_" + DU_TASK_ID + ":title-pressable"}... COMPLETED
+    Run flow when id: task-detail__header_title is not visible...
+      Tap on id: ${"tasks-screen__row_" + DU_TASK_ID}... COMPLETED
+    Run flow when id: task-detail__header_title is not visible... COMPLETED
+    Wait for animation to end within 2500 ms... COMPLETED
+  Run flow when id: task-detail__header_title is not visible... COMPLETED
+  Assert that id: task-detail__header_title is visible... COMPLETED
+  Assert that "${".*" + DU_TASK_TITLE + ".*"}" is visible... COMPLETED
+Run _open-task-by-title.yaml... COMPLETED
+Take screenshot du-h01-12-john-pre-archive... COMPLETED
+Run flow when id: report-reply-composer__archive is visible...
+  Tap on id: report-reply-composer__archive... COMPLETED
+  Wait for animation to end within 1500 ms... COMPLETED
+Run flow when id: report-reply-composer__archive is visible... COMPLETED
+Run flow when id: task-detail__quick-action-archive_task is visible...
+[00:20:13 run-local.sh]   ALIVE pid=68888  elapsed=70s  (heartbeat every 10s)
+Run flow when id: task-detail__quick-action-archive_task is visible... SKIPPED
+Assert that id: task-detail__archive-confirm is visible... COMPLETED
+Take screenshot du-h01-13-john-archive-confirm... COMPLETED
+Tap on id: task-detail__archive-confirm-archive... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Assert that id: task-detail__header_title is not visible... COMPLETED
+Assert that id: tasks-screen__root is visible... COMPLETED
+Take screenshot du-h01-14-john-after-archive... COMPLETED
+Tap on id: tasks-screen__filters_button... COMPLETED
+Wait for animation to end within 1500 ms... COMPLETED
+Run flow when "Apply Filters" is not visible...
+[00:20:23 run-local.sh]   ALIVE pid=68888  elapsed=80s  (heartbeat every 10s)
+Run flow when "Apply Filters" is not visible... SKIPPED
+Assert that "Apply Filters" is visible... COMPLETED
+Scrolling DOWN until id: tasks-filters-sheet__queue_archived is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled... COMPLETED
+Tap on id: tasks-filters-sheet__queue_archived... COMPLETED
+Wait for animation to end within 800 ms... COMPLETED
+Tap on id: tasks-filters-sheet__apply...[00:20:33 run-local.sh]   ALIVE pid=68888  elapsed=90s  (heartbeat every 10s)
+ COMPLETED
+Run flow when "Apply Filters" is visible...
+Run flow when "Apply Filters" is visible... SKIPPED
+Assert that "Apply Filters" is not visible... COMPLETED
+Assert that id: tasks-screen__chip_remove_queue is visible... COMPLETED
+Take screenshot du-h01-15-john-archived-filter... COMPLETED
+Assert that id: ${"tasks-screen__row_" + DU_TASK_ID} is visible... COMPLETED
+Assert that id: ${"tasks-screen__row_" + DU_TASK_ID} is visible... COMPLETED
+Take screenshot du-h01-16-john-archived-queue... COMPLETED
+[00:20:43 run-local.sh]   ALIVE pid=68888  elapsed=100s  (heartbeat every 10s)
+[00:20:46 run-local.sh]   FINISHED pid=68888  elapsed=103s  rc=0  (PASS)
+[00:20:46 dual-user]Phase H01-archive raw rc=0 shots=9 need=5
+[00:20:46 dual-user]Phase H01-archive PASS shots=9/5
+[00:20:46 dual-user]DU-H01 PASS (assign→accept→100%→review→accept→archive) title=DU-H01-1790093549
+[00:20:46 dual-user]===== DUAL-USER GATE PASS =====
+[00:20:46 dual-user]Artifacts: /Volumes/KooDrive/InsiteApp/.cache/maestro-artifacts/dual-user-20260923_000937
+RELEASED project:project-a
+RELEASED seed:dual-user
+RELEASED task:8c9524e9-2056-4522-9aac-af4d0613d6c4
+RELEASED title-prefix:DU-H01-1790093549
+RELEASED title-prefix:DU-H01
+RELEASED user:alice.workera1
+RELEASED user:john.managera
+Released 7 resource lock(s) for owner=tristan@tristans-mini
+RELEASED B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+RELEASED F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA
+Released 2 lock(s) for owner=tristan@tristans-mini

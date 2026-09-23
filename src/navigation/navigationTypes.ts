@@ -14,6 +14,8 @@ export type SelectedPhoto = {
   caption?: string;
   /** MediaLibrary asset id — used to pre-highlight in the in-app library picker. */
   mediaLibraryAssetId?: string;
+  /** Fast local JPEG for Select Photos tiles. `uri` stays ph:// until annotation/upload. */
+  previewUri?: string;
 };
 
 export type TaskDetailParams = {

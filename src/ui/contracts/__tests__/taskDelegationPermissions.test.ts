@@ -6,6 +6,7 @@ import {
   filterSelectableAssigneeIds,
   filterSelectableAssigneeUsers,
   getAssigneePrivilegeRank,
+  resolveAssigneeCandidateRoleFromUser,
   resolveAssigneeRoleFromUser,
 } from "../taskDelegationPermissions";
 
@@ -148,6 +149,57 @@ describe("taskDelegationPermissions", () => {
     });
   });
 
+  describe("resolveAssigneeCandidateRoleFromUser", () => {
+    it("treats company admin default seat as worker, not rank-40 admin", () => {
+      expect(
+        resolveAssigneeCandidateRoleFromUser({
+          id: "sara",
+          role: "admin",
+          systemPermission: "admin",
+        }),
+      ).toBe("member");
+    });
+
+    it("keeps an upgraded CA / PM seat as manager", () => {
+      expect(
+        resolveAssigneeCandidateRoleFromUser({
+          id: "sara-pm",
+          role: "admin",
+          systemPermission: "admin",
+          deployableSeat: "pm",
+        }),
+      ).toBe("manager");
+      expect(
+        resolveAssigneeCandidateRoleFromUser({
+          id: "joe-pm",
+          role: "manager",
+          systemPermission: "manager",
+        }),
+      ).toBe("manager");
+    });
+
+    it("locks actor vs candidate asymmetry (CA can assign; CA is selectable as worker)", () => {
+      const ca = {
+        id: "ca",
+        role: "admin",
+        systemPermission: "admin" as const,
+      };
+      const actorRole = resolveAssigneeRoleFromUser(ca);
+      const candidateRole = resolveAssigneeCandidateRoleFromUser(ca);
+      expect(actorRole).toBe("admin");
+      expect(getAssigneePrivilegeRank(actorRole)).toBe(40);
+      expect(candidateRole).toBe("member");
+      expect(getAssigneePrivilegeRank(candidateRole)).toBe(10);
+      // Field worker may select CA-as-candidate; CA-as-actor may select a worker.
+      expect(
+        canSelectAssignee({ actorRole: "member", candidateRole }),
+      ).toBe(true);
+      expect(
+        canSelectAssignee({ actorRole, candidateRole: "member" }),
+      ).toBe(true);
+    });
+  });
+
   describe("canSelectUserAsAssignee / filterSelectableAssigneeIds", () => {
     it("requires membership in the assignable pool", () => {
       const pool = new Set(["u1", "u2"]);
@@ -211,6 +263,40 @@ describe("taskDelegationPermissions", () => {
           resolveRole: (u) => u.role,
         }).map((u) => u.id),
       ).toEqual(["m"]);
+    });
+
+    it("lets a worker or PM assign a company admin who holds a worker seat", () => {
+      const users = [
+        {
+          id: "joe",
+          role: "worker",
+          systemPermission: "member" as const,
+        },
+        {
+          id: "sara",
+          role: "admin",
+          systemPermission: "admin" as const,
+        },
+        {
+          id: "pm",
+          role: "manager",
+          systemPermission: "manager" as const,
+        },
+      ];
+      expect(
+        filterSelectableAssigneeUsers(users, {
+          actorRole: "member",
+          actorUserId: "joe",
+          resolveRole: resolveAssigneeCandidateRoleFromUser,
+        }).map((user) => user.id),
+      ).toEqual(["joe", "sara"]);
+      expect(
+        filterSelectableAssigneeUsers(users, {
+          actorRole: "manager",
+          actorUserId: "pm",
+          resolveRole: resolveAssigneeCandidateRoleFromUser,
+        }).map((user) => user.id),
+      ).toEqual(["joe", "sara", "pm"]);
     });
 
     it("always allows selecting yourself when you are in the assignable pool", () => {

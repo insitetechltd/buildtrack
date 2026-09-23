@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 /**
- * Seed disposable DEV QA after PROD→DEV schema restore.
+ * Seed disposable DEV QA after PROD→DEV schema restore (Stage D SoT).
  *
- * Auth users are preserved across public schema nuke; public rows are not.
- * Creates company + Project A + public.users + user_project_assignments
- * for John (PM) + Alice (worker) on NEW dialect columns.
+ * Auth users may be created if missing. Always resets known Maestro passwords
+ * to password123 (p-matrix mint_qa_jwt otherwise leaves them mangled).
+ *
+ * Actors:
+ *   Carol  — Company Admin (org Maestro O1–O3 / S2–S3)
+ *   Dave   — spare admin (keeps admin_count≥2 so O4 / demotions cannot orphan Carol)
+ *   John   — field PM (member + deployable_seat=pm) for dual-user / RC
+ *   Alice  — field worker
+ *   Invitee — disposable S3 invite→password subject (must_set_password reset each seed)
  *
  * Usage:
  *   node scripts/supabase/seed-dev-qa-after-parity.cjs
@@ -17,22 +23,71 @@ const ROOT = path.resolve(__dirname, "../..");
 const PROJECT_NAME =
   process.env.MAESTRO_DU_PROJECT_NAME || "Project A - Commercial Building";
 const COMPANY_NAME = process.env.MAESTRO_QA_COMPANY_NAME || "Maestro QA Co";
+const MAESTRO_PASSWORD = process.env.MAESTRO_QA_PASSWORD || "password123";
+
+/** F6 DEV isolation subject preference (documented for p-matrix; not John). */
+const F6_DEV_SUBJECT_HINT =
+  process.env.MAESTRO_F6_DEV_EMAIL || "alice.workera1@test.com";
+
 const ACTORS = [
   {
-    email: process.env.MAESTRO_DU_ASSIGNER_EMAIL || "john.managera@test.com",
-    name: "John Manager A",
+    key: "carol",
+    email: process.env.MAESTRO_ORG_CA_EMAIL || "carol.admina@test.com",
+    name: "Carol Admin A",
     system_permission: "admin",
     user_type: "company_user",
     project_role: "lead_project_manager",
-    deployable_seat: "pm",
+    deployable_seat: "worker",
+    assignToProject: true,
+    createIfMissing: true,
   },
   {
+    key: "dave",
+    email: process.env.MAESTRO_ORG_SPARE_CA_EMAIL || "dave.adminb@test.com",
+    name: "Dave Admin B",
+    system_permission: "admin",
+    user_type: "company_user",
+    project_role: null,
+    deployable_seat: "worker",
+    assignToProject: false,
+    createIfMissing: true,
+  },
+  {
+    key: "john",
+    email: process.env.MAESTRO_DU_ASSIGNER_EMAIL || "john.managera@test.com",
+    name: "John Manager A",
+    // Field PM — isAdmin false (MAINTABS / dual-user assumption).
+    system_permission: "member",
+    user_type: "company_user",
+    project_role: "lead_project_manager",
+    deployable_seat: "pm",
+    assignToProject: true,
+    createIfMissing: true,
+  },
+  {
+    key: "alice",
     email: process.env.MAESTRO_DU_ASSIGNEE_EMAIL || "alice.workera1@test.com",
     name: "Alice Worker A1",
     system_permission: "member",
     user_type: "company_user",
     project_role: "worker",
     deployable_seat: "worker",
+    assignToProject: true,
+    createIfMissing: true,
+  },
+  {
+    key: "invitee",
+    email:
+      process.env.MAESTRO_ORG_INVITEE_EMAIL || "erin.invitee@test.com",
+    name: "Erin Invitee",
+    system_permission: "member",
+    user_type: "company_user",
+    project_role: null,
+    deployable_seat: "worker",
+    assignToProject: false,
+    createIfMissing: true,
+    // Cleared each seed so S3 can re-drive invite → set-password cleanly.
+    must_set_password: false,
   },
 ];
 
@@ -57,11 +112,45 @@ function loadDotEnv() {
 }
 
 function assertDevUrl(url) {
-  // Daily DEV project ref (insite-dev). Never seed PROD by accident.
   if (!url.includes("zusulknbhaumougqckec")) {
     console.error("FAIL: refusing seed — EXPO_PUBLIC_SUPABASE_URL is not DEV ref");
     process.exit(9);
   }
+}
+
+async function ensureAuthUser(sb, authByEmail, actor) {
+  const emailKey = actor.email.toLowerCase();
+  let auth = authByEmail.get(emailKey);
+  if (auth) {
+    const { error } = await sb.auth.admin.updateUserById(auth.id, {
+      password: MAESTRO_PASSWORD,
+      email_confirm: true,
+    });
+    if (error) {
+      console.error("FAIL: reset password", actor.email, error.message);
+      process.exit(10);
+    }
+    console.log("AUTH_PASSWORD_RESET", actor.email);
+    return auth;
+  }
+  if (!actor.createIfMissing) {
+    console.error(`FAIL: auth user missing for ${actor.email}`);
+    process.exit(4);
+  }
+  const { data, error } = await sb.auth.admin.createUser({
+    email: actor.email,
+    password: MAESTRO_PASSWORD,
+    email_confirm: true,
+    user_metadata: { name: actor.name },
+  });
+  if (error || !data?.user) {
+    console.error("FAIL: createUser", actor.email, error?.message || "no user");
+    process.exit(4);
+  }
+  auth = data.user;
+  authByEmail.set(emailKey, auth);
+  console.log("AUTH_CREATED", actor.email, auth.id);
+  return auth;
 }
 
 async function main() {
@@ -69,7 +158,9 @@ async function main() {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
-    console.error("FAIL: EXPO_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY required");
+    console.error(
+      "FAIL: EXPO_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY required",
+    );
     process.exit(2);
   }
   assertDevUrl(url);
@@ -94,14 +185,12 @@ async function main() {
     if (page > 20) break;
   }
 
+  // 1) Ensure auth + reset passwords for all actors (Carol/Dave before John demote).
   for (const actor of ACTORS) {
-    if (!authByEmail.has(actor.email.toLowerCase())) {
-      console.error(`FAIL: auth user missing for ${actor.email} — recreate in Auth first`);
-      process.exit(4);
-    }
+    await ensureAuthUser(sb, authByEmail, actor);
   }
 
-  // Company
+  // 2) Company — prefer Carol as creator when new.
   let companyId;
   {
     const { data: existing } = await sb
@@ -133,8 +222,12 @@ async function main() {
     }
   }
 
-  // public.users
-  for (const actor of ACTORS) {
+  // 3) public.users — admins first (Carol, Dave), then field actors.
+  const ordered = [
+    ...ACTORS.filter((a) => a.system_permission === "admin"),
+    ...ACTORS.filter((a) => a.system_permission !== "admin"),
+  ];
+  for (const actor of ordered) {
     const auth = authByEmail.get(actor.email.toLowerCase());
     const row = {
       id: auth.id,
@@ -145,7 +238,7 @@ async function main() {
       user_type: actor.user_type,
       is_active: true,
       is_pending: false,
-      must_set_password: false,
+      must_set_password: actor.must_set_password === true,
       deployable_seat: actor.deployable_seat,
     };
     const { error } = await sb.from("users").upsert(row, { onConflict: "id" });
@@ -153,10 +246,35 @@ async function main() {
       console.error("FAIL: upsert user", actor.email, error.message);
       process.exit(6);
     }
-    console.log("USER_OK", actor.email, auth.id);
+    console.log(
+      "USER_OK",
+      actor.email,
+      actor.system_permission,
+      actor.deployable_seat,
+    );
   }
 
-  // Project
+  // 4) Refuse orphan company (no admin).
+  {
+    const { data: admins, error } = await sb
+      .from("users")
+      .select("id, email")
+      .eq("company_id", companyId)
+      .eq("system_permission", "admin")
+      .eq("is_active", true);
+    if (error) {
+      console.error("FAIL: admin_count check", error.message);
+      process.exit(11);
+    }
+    const adminCount = (admins || []).length;
+    if (adminCount < 1) {
+      console.error("FAIL: admin_count < 1 after seed — refusing to leave orphan company");
+      process.exit(11);
+    }
+    console.log("ADMIN_COUNT_OK", adminCount, (admins || []).map((a) => a.email));
+  }
+
+  // 5) Project A
   let projectId;
   {
     const { data: existing } = await sb
@@ -168,7 +286,9 @@ async function main() {
       projectId = existing.id;
       console.log("PROJECT_OK", projectId);
     } else {
-      const creator = authByEmail.get(ACTORS[0].email.toLowerCase());
+      const creator = authByEmail.get(
+        (process.env.MAESTRO_DU_ASSIGNER_EMAIL || "john.managera@test.com").toLowerCase(),
+      );
       const { data, error } = await sb
         .from("projects")
         .insert({
@@ -188,8 +308,11 @@ async function main() {
     }
   }
 
-  // Assignments (NEW dialect: project_role)
-  for (const actor of ACTORS) {
+  // 6) UPAs for actors with assignToProject
+  const assignerId = authByEmail.get(
+    (process.env.MAESTRO_DU_ASSIGNER_EMAIL || "john.managera@test.com").toLowerCase(),
+  ).id;
+  for (const actor of ACTORS.filter((a) => a.assignToProject && a.project_role)) {
     const auth = authByEmail.get(actor.email.toLowerCase());
     const { data: existing } = await sb
       .from("user_project_assignments")
@@ -203,7 +326,7 @@ async function main() {
         .update({
           is_active: true,
           project_role: actor.project_role,
-          assigned_by: authByEmail.get(ACTORS[0].email.toLowerCase()).id,
+          assigned_by: assignerId,
         })
         .eq("id", existing.id);
       if (error) {
@@ -216,7 +339,7 @@ async function main() {
         user_id: auth.id,
         project_id: projectId,
         project_role: actor.project_role,
-        assigned_by: authByEmail.get(ACTORS[0].email.toLowerCase()).id,
+        assigned_by: assignerId,
         is_active: true,
       });
       if (error) {
@@ -227,6 +350,23 @@ async function main() {
     }
   }
 
+  // Carol landing contract: company + Project A UPA (reachable shell without empty-company trap).
+  const carolEmail = (
+    process.env.MAESTRO_ORG_CA_EMAIL || "carol.admina@test.com"
+  ).toLowerCase();
+  const carolAuth = authByEmail.get(carolEmail);
+  const { data: carolUpa } = await sb
+    .from("user_project_assignments")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("user_id", carolAuth.id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!carolUpa?.id) {
+    console.error("FAIL: Carol landing contract — missing active UPA on Project A");
+    process.exit(12);
+  }
+
   console.log(
     JSON.stringify({
       ok: true,
@@ -234,7 +374,16 @@ async function main() {
       companyId,
       projectId,
       projectName: PROJECT_NAME,
-      actors: ACTORS.map((a) => a.email),
+      passwordReset: MAESTRO_PASSWORD === "password123" ? "password123" : "custom",
+      f6DevSubjectHint: F6_DEV_SUBJECT_HINT,
+      actors: ACTORS.map((a) => ({
+        key: a.key,
+        email: a.email,
+        system_permission: a.system_permission,
+        deployable_seat: a.deployable_seat,
+        assignToProject: Boolean(a.assignToProject),
+      })),
+      carolLanding: "company+projectA",
     }),
   );
 }

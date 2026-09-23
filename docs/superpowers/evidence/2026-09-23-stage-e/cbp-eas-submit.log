@@ -1,0 +1,31 @@
+★ eas-cli@24.7.0 is now available.
+To upgrade, run:
+npm install -g eas-cli
+Proceeding with outdated version.
+
+
+Uploading your app archive to EAS Submit
+- Uploading to EAS Submit 0%
+✔ Uploaded to EAS Submit 3s
+
+ASC App ID:                 6754898737
+Project ID:                 a8596e39-81b8-4e27-bfe0-b9a8ad5e2722
+App Store Connect API Key:  
+    Key ID    :  57D87U9MQ2
+    Key Source:  local
+    Key Path  :  /Volumes/KooDrive/Users/tristan/.appstoreconnect/private_keys/AuthKey_57D87U9MQ2.p8
+Archive Path:               .eas/artifacts/build-1790165157483.ipa
+
+- Scheduling iOS submission
+✔ Scheduled iOS submission
+
+Submission details: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/8229ead4-b224-4458-8fd7-5ad729eac5d4
+
+Waiting for submission to complete. You can press Ctrl+C to exit.
+- Submitting
+✔ Submitted your app to Apple App Store Connect!
+
+Your binary has been successfully uploaded to App Store Connect!
+- It is now being processed by Apple - you will receive an email when the processing finishes.
+- It usually takes about 5-10 minutes depending on how busy Apple servers are.
+- When it's done, you can see your build here: https://appstoreconnect.apple.com/apps/6754898737/testflight/ios

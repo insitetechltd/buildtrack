@@ -15,7 +15,7 @@ interface DashboardRouteProps {
 interface TasksRouteProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: (params?: CreateTaskParams) => void;
-  onNavigateToUpdateProgress?: (taskId: string) => void;
+  onNavigateToTaskPhotoUpdate?: (taskId: string) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;

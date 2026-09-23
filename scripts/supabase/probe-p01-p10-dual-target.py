@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-P01–P10 critical-path dual-target matrix (PROD NEW SoT Harden + JWT track).
+P01–P11 + F6 critical-path dual-target matrix (PROD NEW SoT Harden + JWT track).
 
-Same case IDs on DEV (OLD control) and PROD (NEW QA). Every result includes
+Same case IDs on DEV and PROD (NEW). Every result includes
 {plane, projectRef, appSha}. App-shaped 42703/PGRST204 on PROD critical writes = FAIL
 unless the strip/junction recovery path succeeds.
 
 Service-role cases remain control. JWT-* cases prove RLS + app-shaped payloads
 under a real QA session (Auth Admin sets a temporary password for the run).
+P11 proves Report create (`status=reported` + `issue_reported` activity without
+top-level status column) → resolve (`status=resolved`) → cleanup.
+F6 proves JWT user cannot read/write tasks on a project they are not assigned to.
 
 Usage (repo root):
   python3 scripts/supabase/probe-p01-p10-dual-target.py
@@ -247,6 +250,64 @@ def auth_admin_set_password(env: EnvCtx, user_id: str, password: str) -> tuple[i
             return e.code, {"message": text}
 
 
+def auth_admin_create_user(
+    env: EnvCtx, email: str, password: str
+) -> tuple[int, Any]:
+    data = json.dumps(
+        {
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {"probe": "stage-d-o4"},
+        }
+    ).encode()
+    headers = {
+        "apikey": env.service_key,
+        "Authorization": f"Bearer {env.service_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    req = urllib.request.Request(
+        f"{env.url}/auth/v1/admin/users",
+        data=data,
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as r:
+            text = r.read().decode()
+            return r.status, json.loads(text) if text else None
+    except urllib.error.HTTPError as e:
+        text = e.read().decode()
+        try:
+            return e.code, json.loads(text) if text else {"message": text}
+        except json.JSONDecodeError:
+            return e.code, {"message": text}
+
+
+def auth_admin_delete_user(env: EnvCtx, user_id: str) -> tuple[int, Any]:
+    headers = {
+        "apikey": env.service_key,
+        "Authorization": f"Bearer {env.service_key}",
+        "Accept": "application/json",
+    }
+    req = urllib.request.Request(
+        f"{env.url}/auth/v1/admin/users/{user_id}",
+        headers=headers,
+        method="DELETE",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as r:
+            text = r.read().decode()
+            return r.status, json.loads(text) if text else None
+    except urllib.error.HTTPError as e:
+        text = e.read().decode()
+        try:
+            return e.code, json.loads(text) if text else {"message": text}
+        except json.JSONDecodeError:
+            return e.code, {"message": text}
+
+
 def auth_password_grant(
     env: EnvCtx, email: str, password: str
 ) -> tuple[int, Any]:
@@ -391,10 +452,17 @@ def simulate_app_shaped_task_create(
 
 
 def pick_qa_user(env: EnvCtx) -> dict[str, Any] | None:
+    # PROD dogfood vs DEV seed:dev-qa actors (john/alice) — prefer known emails first.
     emails = (
         ["sara@insitetest.com", "joe@insitetest.com", "john@insitetest.com"]
         if env.ref == PROD_REF
-        else ["sara@insite.com", "joe@insite.com", "sam@insite.com"]
+        else [
+            "sara@insite.com",
+            "joe@insite.com",
+            "sam@insite.com",
+            "john.managera@test.com",
+            "alice.workera1@test.com",
+        ]
     )
     for email in emails:
         code, rows = env.rest(
@@ -425,7 +493,7 @@ def run_matrix(env: EnvCtx) -> None:
     user = pick_qa_user(env)
     if not user:
         env.add("P01", False, "no QA user found", "Fixture/data")
-        for cid in ("P02", "P03", "P04", "P05", "P06", "P07", "P08"):
+        for cid in ("P02", "P03", "P04", "P05", "P06", "P07", "P08", "P11"):
             env.add(cid, False, "blocked: no QA user", "Fixture/data")
         env.add("P09", True, "SKIPPED Human GO per charge", "Human-GO-skip")
         env.add("P10", False, "blocked: no QA user", "Fixture/data")
@@ -543,7 +611,7 @@ def run_matrix(env: EnvCtx) -> None:
         )
 
     if not project_id:
-        for cid in ("P04", "P05", "P06", "P07"):
+        for cid in ("P04", "P05", "P06", "P07", "P11"):
             env.add(cid, False, "blocked: no project", "Fixture/data")
     else:
         # P04 Create task — app-shaped first, then strip/junction recovery on NEW
@@ -719,6 +787,98 @@ def run_matrix(env: EnvCtx) -> None:
                 body={"deleted_at": datetime.now(timezone.utc).isoformat()},
             )
 
+        # P11 Report lifecycle — reported + issue_reported (no top-level activity status)
+        # → resolve → cleanup. Dedicated task so P04–P07 stay independent.
+        report_payload = {
+            "project_id": project_id,
+            "title": f"Report {marker}",
+            "description": "P11 report probe",
+            "status": "reported",
+            "priority": "medium",
+            "category": "general",
+            "due_date": "2026-12-31T00:00:00Z",
+            "assigned_by": user_id,
+            "completion_percentage": 0,
+        }
+        code_r, rows_r = env.rest(
+            "tasks",
+            method="POST",
+            body=report_payload,
+            prefer="return=representation",
+        )
+        if code_r not in (200, 201) and is_missing_col(rows_r):
+            # Some tenants still reject when current_status is expected; do not send it
+            # on purpose for NEW — retry without optional legacy cols only if needed.
+            code_r, rows_r = env.rest(
+                "tasks",
+                method="POST",
+                body={
+                    k: v
+                    for k, v in report_payload.items()
+                    if k not in ("priority", "category")
+                },
+                prefer="return=representation",
+            )
+        report_id = None
+        if code_r in (200, 201) and isinstance(rows_r, list) and rows_r:
+            report_id = rows_r[0].get("id")
+        if not report_id:
+            env.add(
+                "P11",
+                False,
+                f"report_insert_http={code_r} body={rows_r!r}",
+                classify_write_fail(env, rows_r),
+            )
+        else:
+            # App insertTaskActivityDualPath: status lives in data, never top-level.
+            act_payload = {
+                "task_id": report_id,
+                "user_id": user_id,
+                "activity_type": "issue_reported",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "description": "Issue reported by P11 probe",
+                "completion_percentage": 0,
+                "data": {
+                    "title": report_payload["title"],
+                    "status": "reported",
+                },
+            }
+            code_a, act_res = env.rest(
+                "task_activities",
+                method="POST",
+                body=act_payload,
+                prefer="return=representation",
+            )
+            code_z, res_z = env.rest(
+                f"tasks?id=eq.{report_id}",
+                method="PATCH",
+                body={"status": "resolved"},
+                prefer="return=representation",
+            )
+            if code_z not in (200, 201) and is_missing_col(res_z):
+                code_z, res_z = env.rest(
+                    f"tasks?id=eq.{report_id}",
+                    method="PATCH",
+                    body={"status": "resolved", "current_status": "resolved"},
+                    prefer="return=representation",
+                )
+            ok11 = code_a in (200, 201) and code_z in (200, 201)
+            env.add(
+                "P11",
+                ok11,
+                f"report={report_id} activity_http={code_a} resolve_http={code_z}",
+                "PASS"
+                if ok11
+                else classify_write_fail(
+                    env, act_res if code_a not in (200, 201) else res_z
+                ),
+            )
+            env.rest(
+                f"tasks?id=eq.{report_id}",
+                method="PATCH",
+                body={"deleted_at": datetime.now(timezone.utc).isoformat()},
+            )
+
     # P08 ACL write dual-path (role → system_permission) — real UPDATE, not SELECT-only
     acl_body_role = {"updated_at": datetime.now(timezone.utc).isoformat()}
     # Touch a no-op-ish field via role write attempt: read current acl then rewrite same value
@@ -787,7 +947,7 @@ def run_matrix(env: EnvCtx) -> None:
     # --- JWT app-shaped track (Gate A must-fix) ---
     jwt = mint_qa_jwt(env, user)
     if not jwt:
-        for cid in ("P02j", "P04j", "P05j", "P08j", "P10j"):
+        for cid in ("P02j", "P04j", "P05j", "P08j", "P10j", "F6"):
             env.add(cid, False, "blocked: could not mint QA JWT", "Fixture/data")
     else:
         # P02j authenticated invite-user (must not unknown_error)
@@ -955,6 +1115,252 @@ def run_matrix(env: EnvCtx) -> None:
             "PASS" if ok10j else "Edge-gap",
         )
 
+        # F6 — wrong-project isolation under JWT (SoT ship path).
+        # Prefer a *non-admin* subject: company admin previously bypassed SELECT/UPDATE
+        # via OR admin (tightened in 20260922000200). Still mint a dedicated JWT so F6
+        # does not depend on whichever user pick_qa_user chose for P01.
+        f6_emails = (
+            ["john@insitetest.com", "joe@insitetest.com", "sara@insitetest.com"]
+            if env.ref == PROD_REF
+            else [
+                "alice.workera1@test.com",
+                # Prefer non-admin F6 subject (Stage D: John is field member; Carol/Dave are CA).
+                "erin.invitee@test.com",
+                "john.managera@test.com",
+                "joe@insite.com",
+                "sara@insite.com",
+            ]
+        )
+        f6_user: dict[str, Any] | None = None
+        for em in f6_emails:
+            c_u, rows_u = env.rest(
+                f"users?select=id,email,company_id,system_permission&email=eq.{urllib.parse.quote(em)}"
+            )
+            if c_u != 200 or not isinstance(rows_u, list) or not rows_u:
+                continue
+            cand = rows_u[0]
+            perm = str(cand.get("system_permission") or "").lower()
+            if perm == "admin":
+                continue
+            if cand.get("id") and cand.get("company_id"):
+                f6_user = cand
+                break
+        if not f6_user:
+            # Fallback: any distinct user in company (post-00200 membership wall applies to admin too)
+            for em in f6_emails:
+                c_u, rows_u = env.rest(
+                    f"users?select=id,email,company_id,system_permission&email=eq.{urllib.parse.quote(em)}"
+                )
+                if c_u == 200 and isinstance(rows_u, list) and rows_u:
+                    f6_user = rows_u[0]
+                    break
+        if not f6_user:
+            env.add("F6", False, "blocked: no F6 subject user", "Fixture/data")
+        else:
+            f6_jwt = mint_qa_jwt(env, f6_user)
+            f6_uid = f6_user["id"]
+            f6_company = f6_user.get("company_id") or company_id
+            if not f6_jwt:
+                env.add(
+                    "F6",
+                    False,
+                    f"blocked: could not mint F6 JWT for {f6_user.get('email')}",
+                    "Fixture/data",
+                )
+            else:
+                other_id = f6_uid
+                other_emails = f6_emails
+                for em in other_emails:
+                    if str(em).lower() == str(f6_user.get("email") or "").lower():
+                        continue
+                    c_o, rows_o = env.rest(
+                        f"users?select=id,email&email=eq.{urllib.parse.quote(em)}"
+                    )
+                    if c_o == 200 and isinstance(rows_o, list) and rows_o:
+                        cand = rows_o[0].get("id")
+                        if cand and str(cand) != str(f6_uid):
+                            other_id = cand
+                            break
+                if str(other_id) == str(f6_uid):
+                    env.add(
+                        "F6",
+                        False,
+                        "blocked: need a second distinct user for foreign owner",
+                        "Fixture/data",
+                    )
+                else:
+                    foreign_proj_body = {
+                        "name": f"F6 foreign {marker}",
+                        "description": "isolation probe — no UPA for F6 JWT subject",
+                        "company_id": f6_company,
+                        "created_by": other_id,
+                        "status": "active",
+                        "start_date": "2026-01-01T00:00:00Z",
+                        "client_info": {"probe": f"f6-{marker}"},
+                        "location": "probe-f6",
+                    }
+                    code_fp, fp_rows = env.rest(
+                        "projects",
+                        method="POST",
+                        body=foreign_proj_body,
+                        prefer="return=representation",
+                    )
+                    foreign_project_id = None
+                    if (
+                        code_fp in (200, 201)
+                        and isinstance(fp_rows, list)
+                        and fp_rows
+                    ):
+                        foreign_project_id = fp_rows[0].get("id")
+                    if not foreign_project_id:
+                        env.add(
+                            "F6",
+                            False,
+                            f"foreign_project_insert_http={code_fp} body={fp_rows!r}",
+                            classify_write_fail(env, fp_rows),
+                        )
+                    else:
+                        env.rest(
+                            "user_project_assignments",
+                            method="POST",
+                            body={
+                                "user_id": other_id,
+                                "project_id": foreign_project_id,
+                                "is_active": True,
+                                "assigned_by": other_id,
+                                "project_role": "lead_project_manager",
+                            },
+                            prefer="return=representation",
+                        )
+                        foreign_task_body = {
+                            "project_id": foreign_project_id,
+                            "title": f"F6 secret {marker}",
+                            "description": "must be invisible to non-member JWT",
+                            "status": "new",
+                            "priority": "medium",
+                            "category": "general",
+                            "due_date": "2026-12-31T00:00:00Z",
+                            "assigned_by": other_id,
+                            "completion_percentage": 0,
+                        }
+                        code_ft, ft_rows = env.rest(
+                            "tasks",
+                            method="POST",
+                            body=foreign_task_body,
+                            prefer="return=representation",
+                        )
+                        foreign_task_id = None
+                        if (
+                            code_ft in (200, 201)
+                            and isinstance(ft_rows, list)
+                            and ft_rows
+                        ):
+                            foreign_task_id = ft_rows[0].get("id")
+                        if not foreign_task_id:
+                            env.add(
+                                "F6",
+                                False,
+                                f"foreign_task_insert_http={code_ft} body={ft_rows!r}",
+                                classify_write_fail(env, ft_rows),
+                            )
+                        else:
+                            if env.dialect == "NEW":
+                                env.rest(
+                                    "task_assignments",
+                                    method="POST",
+                                    body={
+                                        "task_id": foreign_task_id,
+                                        "user_id": other_id,
+                                        "assignment_kind": "primary",
+                                        "is_active": True,
+                                        "created_by": other_id,
+                                    },
+                                    prefer="return=representation",
+                                )
+                            code_r, read_rows = env.rest(
+                                f"tasks?id=eq.{foreign_task_id}&select=id,title",
+                                key=f6_jwt,
+                            )
+                            read_denied = code_r in (401, 403) or (
+                                code_r == 200
+                                and isinstance(read_rows, list)
+                                and len(read_rows) == 0
+                            )
+                            leaked = (
+                                code_r == 200
+                                and isinstance(read_rows, list)
+                                and any(
+                                    str(r.get("id")) == str(foreign_task_id)
+                                    for r in read_rows
+                                )
+                            )
+                            code_w, write_res = env.rest(
+                                f"tasks?id=eq.{foreign_task_id}",
+                                method="PATCH",
+                                body={"description": "f6-should-fail"},
+                                prefer="return=representation",
+                                key=f6_jwt,
+                            )
+                            write_denied = code_w in (401, 403) or (
+                                code_w in (200, 204)
+                                and (
+                                    write_res == []
+                                    or write_res is None
+                                    or (
+                                        isinstance(write_res, list)
+                                        and len(write_res) == 0
+                                    )
+                                )
+                            )
+                            code_i, ins_res = env.rest(
+                                "tasks",
+                                method="POST",
+                                body={
+                                    "project_id": foreign_project_id,
+                                    "title": f"F6 jwt insert {marker}",
+                                    "description": "must deny",
+                                    "status": "new",
+                                    "assigned_by": f6_uid,
+                                    "completion_percentage": 0,
+                                },
+                                prefer="return=representation",
+                                key=f6_jwt,
+                            )
+                            insert_denied = code_i in (401, 403, 400, 409) or (
+                                code_i not in (200, 201)
+                            )
+                            ok_f6 = (
+                                read_denied
+                                and write_denied
+                                and insert_denied
+                                and not leaked
+                            )
+                            env.add(
+                                "F6",
+                                ok_f6,
+                                (
+                                    f"subject={f6_user.get('email')} "
+                                    f"foreign_task={foreign_task_id} other={other_id} "
+                                    f"read_http={code_r} patch_http={code_w} "
+                                    f"insert_http={code_i} leaked={leaked}"
+                                ),
+                                "PASS" if ok_f6 else "RLS-open",
+                            )
+                            env.rest(
+                                f"tasks?id=eq.{foreign_task_id}",
+                                method="PATCH",
+                                body={
+                                    "deleted_at": datetime.now(
+                                        timezone.utc
+                                    ).isoformat()
+                                },
+                            )
+                        env.rest(
+                            f"projects?id=eq.{foreign_project_id}",
+                            method="PATCH",
+                            body={"status": "archived"},
+                        )
+
     # Soft-archive probe project if we inserted one this run (name contains marker)
     if project_id:
         env.rest(
@@ -962,6 +1368,146 @@ def run_matrix(env: EnvCtx) -> None:
             method="PATCH",
             body={"status": "archived"},
         )
+
+    # O4 — last-admin demotion REPORTING case (Stage D).
+    # NOT added to promote gate_ids until Human GO lands a DB last-admin guard.
+    # Disposable sole-admin company; JWT demote attempt; restore-guaranteed.
+    o4_email = f"o4-sole-{marker}@example.invalid"
+    o4_pwd = f"O4-{uuid.uuid4().hex[:12]}!"
+    o4_uid: str | None = None
+    o4_company_id: str | None = None
+    try:
+        code_cu, created = auth_admin_create_user(env, o4_email, o4_pwd)
+        if code_cu not in (200, 201) or not isinstance(created, dict):
+            env.add(
+                "O4",
+                False,
+                f"reporting: createUser http={code_cu} body={created!r}",
+                "Fixture/data",
+            )
+        else:
+            o4_uid = str(created.get("id") or (created.get("user") or {}).get("id") or "")
+            if not o4_uid:
+                env.add("O4", False, f"reporting: no user id in {created!r}", "Fixture/data")
+            else:
+                code_co, co_rows = env.rest(
+                    "companies",
+                    method="POST",
+                    body={
+                        "name": f"StageD-O4-{marker}",
+                        "type": "general_contractor",
+                        "is_active": True,
+                        "created_by": o4_uid,
+                    },
+                    prefer="return=representation",
+                )
+                if code_co not in (200, 201) or not isinstance(co_rows, list) or not co_rows:
+                    env.add(
+                        "O4",
+                        False,
+                        f"reporting: company insert http={code_co} {co_rows!r}",
+                        classify_write_fail(env, co_rows),
+                    )
+                else:
+                    o4_company_id = co_rows[0]["id"]
+                    env.rest(
+                        "users",
+                        method="POST",
+                        body={
+                            "id": o4_uid,
+                            "email": o4_email,
+                            "name": "O4 Sole Admin",
+                            "company_id": o4_company_id,
+                            "system_permission": "admin",
+                            "user_type": "company_user",
+                            "is_active": True,
+                            "is_pending": False,
+                            "must_set_password": False,
+                            "deployable_seat": "worker",
+                        },
+                        prefer="return=representation",
+                    )
+                    # Precondition: sole admin
+                    code_ac, admins = env.rest(
+                        f"users?select=id&company_id=eq.{o4_company_id}"
+                        f"&system_permission=eq.admin&is_active=eq.true"
+                    )
+                    admin_n = len(admins) if isinstance(admins, list) else -1
+                    if admin_n != 1:
+                        env.add(
+                            "O4",
+                            False,
+                            f"reporting: sole-admin precondition failed count={admin_n}",
+                            "Fixture/data",
+                        )
+                    else:
+                        code_tok, tok = auth_password_grant(env, o4_email, o4_pwd)
+                        jwt_o4 = (
+                            tok.get("access_token")
+                            if code_tok == 200 and isinstance(tok, dict)
+                            else None
+                        )
+                        if not jwt_o4:
+                            env.add(
+                                "O4",
+                                False,
+                                f"reporting: mint jwt http={code_tok}",
+                                "Fixture/data",
+                            )
+                        else:
+                            before = "admin"
+                            code_d, dres = env.rest(
+                                f"users?id=eq.{o4_uid}",
+                                method="PATCH",
+                                body={"system_permission": "member"},
+                                prefer="return=representation",
+                                key=jwt_o4,
+                            )
+                            code_after, after_rows = env.rest(
+                                f"users?select=system_permission&id=eq.{o4_uid}"
+                            )
+                            after_perm = None
+                            if (
+                                code_after == 200
+                                and isinstance(after_rows, list)
+                                and after_rows
+                            ):
+                                after_perm = after_rows[0].get("system_permission")
+                            unchanged = after_perm == before
+                            denied = code_d not in (200, 201) and unchanged
+                            # Always restore if mutated
+                            if not unchanged:
+                                env.rest(
+                                    f"users?id=eq.{o4_uid}",
+                                    method="PATCH",
+                                    body={"system_permission": "admin"},
+                                )
+                            # Reporting semantics: PASS only if denied+unchanged.
+                            # Open write → restore done → report FAIL / owed RLS (not promote gate).
+                            env.add(
+                                "O4",
+                                denied,
+                                (
+                                    f"reporting: demote_http={code_d} before={before} "
+                                    f"after={after_perm} unchanged={unchanged} "
+                                    f"body={dres!r} "
+                                    f"{'OWED: DB last-admin guard' if not denied else 'denied+unchanged'}"
+                                ),
+                                "PASS"
+                                if denied
+                                else ("RLS-open" if not unchanged else "App-only-gap"),
+                            )
+    finally:
+        if o4_uid:
+            # Soft-clean public row then auth user (best-effort).
+            env.rest(f"users?id=eq.{o4_uid}", method="DELETE")
+            auth_admin_delete_user(env, o4_uid)
+        if o4_company_id:
+            env.rest(
+                f"companies?id=eq.{o4_company_id}",
+                method="PATCH",
+                body={"is_active": False},
+            )
 
 
 def write_reports(dev: EnvCtx, prod: EnvCtx) -> None:
@@ -1014,31 +1560,66 @@ def write_reports(dev: EnvCtx, prod: EnvCtx) -> None:
 
 def main() -> int:
     env_file = load_dotenv(ROOT / ".env")
+    prod_file = load_dotenv(
+        ROOT / ".cache" / "env-cutover" / "insite-prod.env.local"
+    )
     token = env_file.get("SUPABASE_ACCESS_TOKEN")
-    if not token:
-        print("FAIL: SUPABASE_ACCESS_TOKEN missing", file=sys.stderr)
-        return 1
-
     sha = git_sha()
     print(f"appSha={sha}")
 
+    import base64
+
+    def jwt_ref(k: str) -> str | None:
+        try:
+            part = k.split(".")[1]
+            part += "=" * ((4 - len(part) % 4) % 4)
+            return json.loads(base64.urlsafe_b64decode(part)).get("ref")
+        except Exception:
+            return None
+
+    def resolve_keys(
+        *,
+        plane: str,
+        ref: str,
+        local: dict[str, str],
+    ) -> tuple[str, str]:
+        """Prefer local service/anon keys when they match the plane ref."""
+        sr = local.get("SUPABASE_SERVICE_ROLE_KEY") or ""
+        anon = local.get("EXPO_PUBLIC_SUPABASE_ANON_KEY") or local.get("SUPABASE_ANON_KEY") or ""
+        if sr and jwt_ref(sr) == ref and anon and jwt_ref(anon) == ref:
+            print(f"{plane} keys: local .env (ref={ref})")
+            return sr, anon
+        if not token:
+            raise RuntimeError(
+                f"{plane}: no matching local keys and SUPABASE_ACCESS_TOKEN missing"
+            )
+        print(f"{plane} keys: management API (ref={ref})")
+        return management_key(token, ref, "service_role"), management_key(
+            token, ref, "anon"
+        )
+
     try:
+        # DEV≡PROD NEW dialect after 2026-09-15 promote-up.
+        dev_sr, dev_anon = resolve_keys(plane="DEV", ref=DEV_REF, local=env_file)
+        prod_sr, prod_anon = resolve_keys(plane="PROD", ref=PROD_REF, local=prod_file)
+        # Both planes NEW after schema parity restore.
+        dialect = "NEW"
         dev = EnvCtx(
             "DEV",
             DEV_REF,
             f"https://{DEV_REF}.supabase.co",
-            management_key(token, DEV_REF, "service_role"),
-            management_key(token, DEV_REF, "anon"),
-            "OLD",
+            dev_sr,
+            dev_anon,
+            dialect,
             sha,
         )
         prod = EnvCtx(
             "PROD",
             PROD_REF,
             f"https://{PROD_REF}.supabase.co",
-            management_key(token, PROD_REF, "service_role"),
-            management_key(token, PROD_REF, "anon"),
-            "NEW",
+            prod_sr,
+            prod_anon,
+            dialect,
             sha,
         )
     except Exception as e:
@@ -1058,10 +1639,12 @@ def main() -> int:
     print(f"Wrote {OUT_MD}")
     print(f"Wrote {OUT_JSON}")
 
-    # Promote gate: P01–P08 + P10 + JWT track on PROD
+    # Promote gate: P01–P08 + P10 + P11 + F6 + JWT track on PROD
     prod_by = {r.case_id: r for r in prod.results}
     gate_ids = [f"P0{i}" for i in range(1, 9)] + [
         "P10",
+        "P11",
+        "F6",
         "P02j",
         "P04j",
         "P05j",
@@ -1080,7 +1663,32 @@ def main() -> int:
             if r:
                 print(f"  {cid}: {r.detail}")
         return 1
-    print("PROD GATE: P01–P08 + P10 + JWT track PASS (P09 Human-GO-skip)")
+    print("PROD GATE: P01–P08 + P10 + P11 + F6 + JWT track PASS (P09 Human-GO-skip)")
+    # O4 is reporting-only (Stage D) — surface result but do not wedge promote gate.
+    o4 = prod_by.get("O4")
+    if o4:
+        print(
+            f"O4 REPORTING ({'PASS' if o4.ok else 'FAIL/OWED'}): {o4.detail}"
+        )
+    else:
+        print("O4 REPORTING: missing from PROD results")
+
+    # Honesty: required DEV cases should not stay Fixture/data forever once seeded.
+    dev_by = {r.case_id: r for r in dev.results}
+    dev_required = ["P01", "P04", "P11", "F6"]
+    dev_fails = [
+        cid
+        for cid in dev_required
+        if cid not in dev_by or not dev_by[cid].ok
+    ]
+    if dev_fails:
+        print(f"DEV GATE FAIL (post-seed required): {dev_fails}")
+        for cid in dev_fails:
+            r = dev_by.get(cid)
+            if r:
+                print(f"  {cid}: {r.detail}")
+        return 1
+    print("DEV GATE: P01 + P04 + P11 + F6 PASS (seeded)")
     return 0
 
 

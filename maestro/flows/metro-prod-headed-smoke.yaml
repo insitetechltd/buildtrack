@@ -2,17 +2,48 @@
 # - Metro already serving with .env.local PROD bake
 # - Dev client already launched (do NOT stopApp — loses packager URL)
 # - Prefer already-logged dashboard; login only if needed
+# - NO clearState (retained AsyncStorage). Runtime assert PROD ref via login-active-db-host.
 # Creds: MAESTRO_PROD_EMAIL / MAESTRO_PROD_PASSWORD
 appId: com.buildtrack.app.local
 tags:
   - metro-prod-headed
 ---
+- evalScript: ${output.prodRef = "jcnzjigxgkzhjsaekoqz"}
+- evalScript: ${output.progressNote = "MetroPROD-progress-" + Date.now()}
+# Recover if prior run left us on Task Detail / Create / Capture.
+- runFlow:
+    when:
+      visible:
+        id: "app-screen-header__back"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+      - tapOn:
+          id: "app-screen-header__back"
+          optional: true
+      - tapOn:
+          id: "app-screen-header__back"
+          optional: true
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
 - runFlow:
     when:
       visible:
         id: "login-submit"
     commands:
       - takeScreenshot: "metro-prod-00-login"
+      - extendedWaitUntil:
+          visible:
+            id: "login-active-db-host"
+          timeout: 15000
+      - assertVisible:
+          id: "login-active-db-host"
+          text: ".*jcnzjigxgkzhjsaekoqz.*"
       - tapOn:
           id: "^login-emailOrPhone$"
       - eraseText
@@ -47,6 +78,13 @@ tags:
     visible:
       id: "dashboard-screen__root"
     timeout: 90000
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-active-db-host"
+    timeout: 15000
+- assertVisible:
+    id: "dashboard-active-db-host"
+    text: ".*jcnzjigxgkzhjsaekoqz.*"
 - takeScreenshot: "metro-prod-01-dashboard"
 - evalScript: ${output.taskTitle = "MetroPROD " + Date.now()}
 # Capture-first camera tab → Select Photos (prefer shutter; library as fallback).
@@ -76,10 +114,11 @@ tags:
 - takeScreenshot: "metro-prod-01c-hybrid"
 - tapOn:
     id: "capture-session__hybrid_accept"
+# Accept pins camera draft → Select Photos (can be slow on first shutter pin).
 - extendedWaitUntil:
     visible:
       id: "photo-selection__confirm"
-    timeout: 25000
+    timeout: 90000
 - takeScreenshot: "metro-prod-01d-select-photos"
 - tapOn:
     id: "photo-selection__confirm"
@@ -168,28 +207,25 @@ tags:
     timeout: 30000
 - assertVisible: ".*[Ss]ara.*"
 - takeScreenshot: "metro-prod-03-detail-assignees"
-- runFlow:
-    when:
-      visible: "Update Progress"
-    commands:
-      - tapOn: "Update Progress"
-- runFlow:
-    when:
-      visible:
-        id: "update-progress__screen_title"
-    commands:
-      - tapOn:
-          id: "update-progress__description--preview"
-          optional: true
-      - inputText: "Metro→PROD progress note"
-      - tapOn:
-          id: "update-progress__submit"
-          optional: true
-      - tapOn:
-          text: "Submit"
-          optional: true
-      - tapOn:
-          text: "OK"
-          optional: true
+# F3 hard path — progress dock (ReportReplyComposer), not legacy Update Progress screen.
+- extendedWaitUntil:
+    visible:
+      id: "report-reply-composer__input"
+    timeout: 20000
+- tapOn:
+    id: "report-reply-composer__input"
+- inputText: ${output.progressNote}
+- runFlow: _dismiss-keyboard.yaml
+- extendedWaitUntil:
+    visible:
+      id: "report-reply-composer__send"
+    timeout: 15000
+- tapOn:
+    id: "report-reply-composer__send"
+- extendedWaitUntil:
+    visible: ${output.progressNote}
+    timeout: 60000
+- assertVisible: ${output.progressNote}
+- assertNotVisible: "Failed to submit"
 - takeScreenshot: "metro-prod-04-after-update"
 - runFlow: create-task-photo/_assert-no-logbox.yaml

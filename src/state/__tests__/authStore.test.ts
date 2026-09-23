@@ -75,6 +75,10 @@ describe('Authentication Workflow Tests', () => {
               data: defaultUsersTableRow,
               error: null,
             }),
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: defaultUsersTableRow,
+              error: null,
+            }),
           })),
         };
       }
@@ -710,6 +714,10 @@ describe('Authentication Workflow Tests', () => {
                 data: { ...defaultUsersTableRow, must_set_password: true },
                 error: null,
               }),
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { ...defaultUsersTableRow, must_set_password: true },
+                error: null,
+              }),
             })),
           };
         }
@@ -749,6 +757,10 @@ describe('Authentication Workflow Tests', () => {
                 data: { ...defaultUsersTableRow, must_set_password: true },
                 error: null,
               }),
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { ...defaultUsersTableRow, must_set_password: true },
+                error: null,
+              }),
             })),
           };
         }
@@ -772,6 +784,45 @@ describe('Authentication Workflow Tests', () => {
       expect(result.current.user?.mustSetPassword).toBe(true);
     });
 
+    it("initialize signs out when session has no users row (PGRST116 / orphan JWT)", async () => {
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: null,
+                error: {
+                  code: "PGRST116",
+                  message: "Cannot coerce the result to a single JSON object",
+                },
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+      (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: { session: { access_token: "stale", user: defaultAuthUser } },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      await act(async () => {
+        await result.current.initialize();
+      });
+
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled();
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.user).toBeNull();
+      expect(result.current.session).toBeNull();
+    });
+
     it("does not reopen Set Password when users row is false but JWT metadata is stale", async () => {
       const mockFrom = mockSupabase.from as unknown as jest.Mock;
       mockFrom.mockImplementation((table: string) => {
@@ -780,6 +831,10 @@ describe('Authentication Workflow Tests', () => {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn(() => ({
               single: jest.fn().mockResolvedValue({
+                data: { ...defaultUsersTableRow, must_set_password: false },
+                error: null,
+              }),
+              maybeSingle: jest.fn().mockResolvedValue({
                 data: { ...defaultUsersTableRow, must_set_password: false },
                 error: null,
               }),

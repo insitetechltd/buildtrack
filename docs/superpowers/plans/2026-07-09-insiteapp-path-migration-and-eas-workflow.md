@@ -1,5 +1,7 @@
 # InsiteApp Path Migration & EAS Workflow Cleanup Implementation Plan
 
+> **Status:** Completed. Current repo root is `/Volumes/KooDrive/InsiteApp`. Paths below that still say `Insite App` are the **pre-rename FROM** location, kept for audit. A 2026-09-23 docs audit found leftover Markdown `file://` absolute links still pointing at the old folder; those were converted to repo-relative links. `npm run dev:doctor` now fails if the stale folder path reappears outside this file.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move the repo to a no-space path (`/Volumes/KooDrive/InsiteApp`), eliminate runtime reliance on space-containing paths, and standardize EAS local build + artifacts under a single, deterministic directory.

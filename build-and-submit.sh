@@ -87,6 +87,14 @@ fi
 echo "📦 Using build artifact: $LATEST_IPA"
 echo ""
 
+# S4 — refuse wrong-ref / DEV bake before any ASC upload (Stage C).
+if [ "$PROFILE" = "production" ]; then
+    echo "🔐 S4 IPA bake assert (PROD ref; DEV absent)..."
+    bash "$PROJECT_ROOT/scripts/eas/assert-ipa-prod-bake.sh" "$LATEST_IPA" \
+        || { echo "❌ S4 IPA bake assert failed — refusing submit."; exit 1; }
+    echo ""
+fi
+
 echo "🔍 Verifying build..."
 echo "----------------------------------------"
 

@@ -38,7 +38,7 @@ Alternative method to upload AAB directly through Google Play Console (without E
 1. In the **App bundles** section, click **Upload**
 2. Navigate to your AAB file:
    ```
-   /Volumes/KooDrive/Insite App/android/app/build/outputs/bundle/release/app-release.aab
+   /Volumes/KooDrive/InsiteApp/android/app/build/outputs/bundle/release/app-release.aab
    ```
 3. Select `app-release.aab`
 4. Click **Open**
@@ -206,7 +206,7 @@ Before uploading:
 
 **AAB File**:
 ```
-/Volumes/KooDrive/Insite App/android/app/build/outputs/bundle/release/app-release.aab
+/Volumes/KooDrive/InsiteApp/android/app/build/outputs/bundle/release/app-release.aab
 ```
 
 **Play Console**:

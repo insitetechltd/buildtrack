@@ -4,6 +4,8 @@ import { resolveLibraryLocalUri } from "@/modules/captureSession/materializeLibr
 import { pinDraftMedia } from "@/utils/draftMediaCache";
 import { isSystemLibraryDisplayUri } from "@/utils/libraryDisplayUri";
 
+/** Fast Accept preview for Select Photos tiles (not the upload/annotation cap). */
+export const LIBRARY_PREVIEW_MAX_EDGE_PX = 512;
 export const LIBRARY_EXPORT_MAX_EDGE_PX = MAX_IMAGE_WIDTH;
 
 type CappedPhotoInput = {

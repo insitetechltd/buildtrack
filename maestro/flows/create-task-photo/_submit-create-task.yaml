@@ -16,24 +16,23 @@ appId: com.buildtrack.app.local
 - inputText: "Maestro create-task photo suite attachment coverage."
 # Dismiss keyboard while title row is still centered (50%,22% hits location row if scrolled down).
 - runFlow: ../_dismiss-keyboard.yaml
-# Location on site — pick existing option so later taps do not open the sheet.
+# Location on site is optional for create (required only for Report intent).
+# Project A may have zero seeded locations after DEV restore — skip the sheet.
 - scrollUntilVisible:
     centerElement: true
     element:
-      id: "create-task__location-picker-trigger"
+      id: "create-task__assignee-picker-trigger"
     direction: DOWN
-- tapOn:
-    id: "create-task__location-picker-trigger"
-- extendedWaitUntil:
-    visible: "Location on Site"
-    timeout: 10000
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      text: ".*Living room.*"
-    direction: DOWN
-    timeout: 10000
-- tapOn: ".*Living room.*"
+    timeout: 15000
+# If a prior step left the location sheet open, close it.
+- runFlow:
+    when:
+      visible: "Location on Site"
+    commands:
+      - tapOn:
+          point: "8%, 12%"
+      - waitForAnimationToEnd:
+          timeout: 800
 - extendedWaitUntil:
     visible:
       id: "create-task__continuous_form"

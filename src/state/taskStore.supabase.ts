@@ -2880,23 +2880,22 @@ export const useTaskStore = create<TaskStore>()(
           }
 
           const activityTimestamp = new Date().toISOString();
-          await supabase
-            .from('task_activities')
-            .insert({
-              task_id: taskId,
-              user_id: userId,
-              activity_type: 'triaged_to_task' as ActivityType,
-              timestamp: activityTimestamp,
-              data: {
-                fromStatus: task.status,
-                toStatus: nextStatus,
-                assignedTo: payload.assignedTo,
-                reason: `Issue triaged and assigned by ${triagingUser}`,
-              },
-              description: `Issue triaged and assigned by ${triagingUser}`,
-              completion_percentage: 0,
-              status: nextStatus,
-            });
+          const triageActivity = await insertTaskActivityDualPath(supabase, {
+            task_id: taskId,
+            user_id: userId,
+            activity_type: 'triaged_to_task' as ActivityType,
+            timestamp: activityTimestamp,
+            data: {
+              fromStatus: task.status,
+              toStatus: nextStatus,
+              assignedTo: payload.assignedTo,
+              reason: `Issue triaged and assigned by ${triagingUser}`,
+            },
+            description: `Issue triaged and assigned by ${triagingUser}`,
+            completion_percentage: 0,
+            status: nextStatus,
+          });
+          if (triageActivity.error) throw triageActivity.error;
 
           const updatedTask: Task = {
             ...task,
@@ -2963,22 +2962,22 @@ export const useTaskStore = create<TaskStore>()(
           );
           if (stripResult.error) throw stripResult.error;
 
-          await supabase
-            .from('task_activities')
-            .insert({
-              task_id: taskId,
-              user_id: userId,
-              activity_type: 'issue_resolved' as ActivityType,
-              timestamp: resolvedAt,
-              data: {
-                fromStatus: task.status,
-                toStatus: 'resolved',
-                reason: resolveNote,
-              },
-              description: `Issue resolved by ${resolvingUser}: ${resolveNote}`,
-              completion_percentage: 0,
-              status: 'resolved',
-            });
+          // NEW SoT: task_activities has no top-level status — dual-path strips into data.
+          const activityInsert = await insertTaskActivityDualPath(supabase, {
+            task_id: taskId,
+            user_id: userId,
+            activity_type: 'issue_resolved' as ActivityType,
+            timestamp: resolvedAt,
+            data: {
+              fromStatus: task.status,
+              toStatus: 'resolved',
+              reason: resolveNote,
+            },
+            description: `Issue resolved by ${resolvingUser}: ${resolveNote}`,
+            completion_percentage: 0,
+            status: 'resolved',
+          });
+          if (activityInsert.error) throw activityInsert.error;
 
           const updatedTask: Task = {
             ...task,

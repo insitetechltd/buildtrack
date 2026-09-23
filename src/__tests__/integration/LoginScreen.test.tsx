@@ -1,4 +1,5 @@
 import React from "react";
+import { StyleSheet } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import LoginScreen from "@/screens/LoginScreen";
@@ -64,6 +65,7 @@ describe("LoginScreen", () => {
         password: "secret123",
         isPasswordVisible: false,
         buildIdentifierLabel: "v1.2.3 (456i-tf)",
+        activeSupabaseProjectRef: "jcnzjigxgkzhjsaekoqz",
         validationErrors: {},
         isLoading: false,
         isPasswordEnabled: true,
@@ -83,8 +85,15 @@ describe("LoginScreen", () => {
   it("renders login fields and delegates submit through the login adapter", () => {
     const screen = render(<LoginScreen />);
 
-    expect(screen.getByText("Construction Task Management")).toBeTruthy();
+    expect(screen.getByText("Taskr")).toBeTruthy();
+    expect(screen.queryByText("Construction Task Management")).toBeNull();
+    expect(StyleSheet.flatten(screen.getByTestId("login-form-column").props.style).width).toBe(
+      320,
+    );
     expect(screen.getByText("v1.2.3 (456i-tf)")).toBeTruthy();
+    expect(screen.getByTestId("login-active-db-host").props.children).toBe(
+      "jcnzjigxgkzhjsaekoqz",
+    );
     expect(screen.getByText("Sign In")).toBeTruthy();
     expect(screen.queryByTestId("login-signup-web")).toBeNull();
 
@@ -108,6 +117,7 @@ describe("LoginScreen", () => {
         password: "",
         isPasswordVisible: false,
         buildIdentifierLabel: "v1.2.3 (456i-tf)",
+        activeSupabaseProjectRef: "jcnzjigxgkzhjsaekoqz",
         validationErrors: {},
         isLoading: false,
         isPasswordEnabled: false,

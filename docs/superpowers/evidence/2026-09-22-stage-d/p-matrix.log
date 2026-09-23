@@ -1,0 +1,15 @@
+
+> template-app-53@1.0.0 test:dual-env:p-matrix
+> python3 scripts/supabase/probe-p01-p10-dual-target.py
+
+appSha=ed87a32c4d656af1051909849054b4559dacec61
+DEV keys: local .env (ref=zusulknbhaumougqckec)
+PROD keys: local .env (ref=jcnzjigxgkzhjsaekoqz)
+DEV plane=DEV projectRef=zusulknbhaumougqckec appSha=ed87a32c4d656af1051909849054b4559dacec61
+PROD plane=PROD projectRef=jcnzjigxgkzhjsaekoqz appSha=ed87a32c4d656af1051909849054b4559dacec61
+
+Wrote /Volumes/KooDrive/InsiteApp/.cache/prod-new-sot-20260915/phase2-p01-p10-matrix.md
+Wrote /Volumes/KooDrive/InsiteApp/.cache/prod-new-sot-20260915/phase2-p01-p10-matrix.json
+PROD GATE: P01–P08 + P10 + P11 + F6 + JWT track PASS (P09 Human-GO-skip)
+O4 REPORTING (FAIL/OWED): reporting: sole-admin precondition failed count=0
+DEV GATE: P01 + P04 + P11 + F6 PASS (seeded)

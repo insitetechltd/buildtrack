@@ -118,4 +118,4 @@ Use this pack in future projects by:
 - `release-manager.md`
 - `docs-curator.md`
 
-See [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md) for the full workflow and [AGENT_TEAM_TEMPLATE.md](file:///Volumes/KooDrive/Insite%20App/AGENT_TEAM_TEMPLATE.md) for reuse in future repos.
+See [SOLO_OPERATING_PROCEDURE.md](../../SOLO_OPERATING_PROCEDURE.md) for the full workflow and [AGENT_TEAM_TEMPLATE.md](../../AGENT_TEAM_TEMPLATE.md) for reuse in future repos.

@@ -48,7 +48,7 @@ I've created a Node.js script (`rebuild_auth_users_from_users.js`) that uses the
 ### Step 1: Navigate to Project Directory
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 ```
 
 ### Step 2: Run the Script

@@ -1,54 +1,40 @@
-# From Update Progress: Add photos → Choose from Library → in-app gallery.
-# Photos seeded by ensure-create-task-photo-media.sh (same as Create Task suite).
-# Product SoT: InAppLibraryPicker (not Apple PHPicker / ImagePicker.launchImageLibraryAsync).
+# From Task Detail dock: photo → CaptureSession library peek → grid ready.
+# Sims: never shutter. Leaves caller on hybrid library for pick helpers.
 appId: com.buildtrack.app.local
 ---
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "update-progress__take_photo"
-    direction: UP
 - tapOn:
-    id: "update-progress__take_photo"
-- assertVisible: "Add Photos"
-- tapOn: "Choose from Library"
+    id: "report-reply-composer__photo"
 - runFlow:
     when:
-      visible: "Allow Full Access"
+      visible: "Choose from Library"
     commands:
-      - tapOn: "Allow Full Access"
-- runFlow:
-    when:
-      visible: "Allow Access to All Photos"
-    commands:
-      - tapOn: "Allow Access to All Photos"
-- runFlow:
-    when:
-      visible: "Allow.*Photos.*"
-    commands:
-      - tapOn: "Allow.*Photos.*"
-- extendedWaitUntil:
-    visible:
-      id: "in-app-library__screen"
-    timeout: 15000
+      - tapOn: "Choose from Library"
 - runFlow:
     when:
       visible:
-        id: "in-app-library__loading"
+        id: "capture-session__camera"
     commands:
-      - extendedWaitUntil:
-          notVisible:
-            id: "in-app-library__loading"
-          timeout: 10000
-- runFlow:
-    when:
-      visible: "Allow Full Access"
-    commands:
-      - tapOn: "Allow Full Access"
+      - runFlow:
+          when:
+            visible:
+              id: "capture-session__library_peek"
+          commands:
+            - tapOn:
+                id: "capture-session__library_peek"
+      - runFlow:
+          when:
+            visible:
+              id: "capture-session__open_library_fallback"
+          commands:
+            - tapOn:
+                id: "capture-session__open_library_fallback"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
 - waitForAnimationToEnd:
-    timeout: 1000
-- assertNotVisible: "No Photos"
-- assertNotVisible:
-    id: "in-app-library__permission_denied"
-# Guard: Apple PHPicker chrome must not appear
-- assertNotVisible: "Collections"
+    timeout: 2000

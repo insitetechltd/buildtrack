@@ -24,7 +24,7 @@ This pass does not cover:
 
 - Preserve working production and release helpers unless they are clearly non-functional or duplicated.
 - Prefer small, reversible edits that fit the existing repository style.
-- Keep path handling safe for the repository location `/Volumes/KooDrive/Insite App`.
+- Keep path handling safe for the repository location `/Volumes/KooDrive/InsiteApp`.
 - Mirror current CI expectations for validation: local success should include `npx tsc --noEmit` and `npm run test:regression`.
 - Avoid destructive script validation; use bounded, read-only, or no-op checks where possible.
 

@@ -38,6 +38,8 @@ jest.mock("../../../state/userStore.supabase", () => ({
   useUserStoreWithInit: () => ({
     getUsersByRole: jest.fn().mockReturnValue([]),
     getAllUsers: mockGetAllUsers,
+    fetchUsers: jest.fn().mockResolvedValue(undefined),
+    fetchUsersByCompany: jest.fn().mockResolvedValue(undefined),
   }),
 }));
 
@@ -434,6 +436,60 @@ describe("useCreateTaskViewAdapter", () => {
     expect(result.current.output.assigneePicker.filteredUsers.map((user) => user.id)).toEqual([
       "user-3",
     ]);
+  });
+
+  it("refreshes the assignee picker after project roster fetch returns teammates", async () => {
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "project-1", name: "App Review Site", location: "Site" },
+    ]);
+    mockUseProjectFilterStore.mockReturnValue({
+      selectedProjectId: "project-1",
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
+    });
+    mockGetAllUsers.mockReturnValue([
+      { id: "user-1", name: "Joe", email: "joe@example.com", role: "worker" },
+    ]);
+    mockGetProjectUserAssignments.mockReturnValue([
+      { userId: "user-1", projectId: "project-1", isActive: true },
+    ]);
+
+    const { result, rerender } = renderHook(() =>
+      useCreateTaskViewAdapter({ intent: "create" }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.output.context.activeProjectName).toBe("App Review Site");
+    });
+    expect(result.current.output.assigneePicker.availableUsers.map((user) => user.id)).toEqual([
+      "user-1",
+    ]);
+
+    mockGetAllUsers.mockReturnValue([
+      { id: "user-1", name: "Joe", email: "joe@example.com", role: "worker" },
+      {
+        id: "user-2",
+        name: "Sara",
+        email: "sara@example.com",
+        role: "admin",
+        systemPermission: "admin",
+      },
+      { id: "user-3", name: "Crew", email: "crew@example.com", role: "worker" },
+    ]);
+    mockGetProjectUserAssignments.mockReturnValue([
+      { userId: "user-1", projectId: "project-1", isActive: true },
+      { userId: "user-2", projectId: "project-1", isActive: true },
+      { userId: "user-3", projectId: "project-1", isActive: true },
+    ]);
+
+    rerender({});
+
+    await waitFor(() => {
+      expect(result.current.output.assigneePicker.availableUsers.map((user) => user.id)).toEqual([
+        "user-1",
+        "user-2",
+        "user-3",
+      ]);
+    });
   });
 
   it("hydrates edit mode fields and locks assignees from status-derived context", async () => {

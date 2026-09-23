@@ -34,6 +34,7 @@ type PhotokitThumbsNative = {
   pauseLibraryForAccept?: () => void;
   resumeLibraryAfterAccept?: () => void;
   exportCappedJpeg?: (assetId: string, maxPixel: number) => string | Promise<string>;
+  exportPreviewJpeg?: (assetId: string, maxPixel: number) => string | Promise<string>;
 };
 
 export type PhotokitLibrarySession = {
@@ -46,6 +47,7 @@ export type PhotokitThumbNativeProps = {
   index?: number;
   token?: number;
   pixelSize: number;
+  contentFit?: "cover" | "contain";
   style?: object;
   testID?: string;
   onPainted?: () => void;
@@ -286,7 +288,8 @@ export function resumePhotokitLibraryAfterAccept(): void {
 }
 
 /**
- * Capped JPEG for annotation/upload. Not first-paint thumbs (those stay .fastFormat).
+ * Capped JPEG for annotation/upload. Grid thumbs stay .fastFormat then a
+ * capped HQ upgrade in PhotokitThumbView (not this export).
  * Empty string / null = native missing or asset unresolved.
  */
 export async function exportPhotokitCappedJpeg(
@@ -305,4 +308,21 @@ export async function exportPhotokitCappedJpeg(
       return null;
     }
   });
+}
+
+/** Select Photos / editor first paint. FastFormat tile — not the 1920 evidence export. */
+export async function exportPhotokitPreviewJpeg(
+  assetId: string,
+  maxPixel: number,
+): Promise<string | null> {
+  const native = loadNativeModule();
+  if (!native?.exportPreviewJpeg || !assetId || maxPixel < 1) {
+    return null;
+  }
+  try {
+    const uri = await Promise.resolve(native.exportPreviewJpeg(assetId, maxPixel));
+    return typeof uri === "string" && uri.startsWith("file://") ? uri : null;
+  } catch {
+    return null;
+  }
 }

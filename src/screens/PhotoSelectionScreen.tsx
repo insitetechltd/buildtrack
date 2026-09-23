@@ -18,6 +18,7 @@ import { ScrollView as GestureScrollView } from "react-native-gesture-handler";
 import { CropOverlay } from "../components/photoEdit/CropOverlay";
 import { DrawOverlay } from "../components/photoEdit/DrawOverlay";
 import { PreviewEditToolbar } from "../components/photoEdit/PreviewEditToolbar";
+import { SelectedPhotoThumb } from "../components/photoEdit/SelectedPhotoThumb";
 import SortablePhotoGrid from "../components/photoEdit/SortablePhotoGrid";
 import { cn } from "../utils/cn";
 import {
@@ -112,6 +113,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
   const previewUri =
     enlargedPhoto?.annotatedUri ||
     editSourceUri ||
+    enlargedPhoto?.previewUri ||
     enlargedPhoto?.uri ||
     undefined;
 
@@ -180,16 +182,25 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               }
             }}
           >
-            <ExpoImage
-              source={{ uri: previewUri }}
-              cachePolicy="memory-disk"
-              contentFit="contain"
-              transition={120}
-              style={{
-                width: previewImageSize.width,
-                height: previewImageSize.height,
-              }}
-            />
+            {previewUri.startsWith("file://") ? (
+              <ExpoImage
+                source={{ uri: previewUri }}
+                cachePolicy="memory-disk"
+                contentFit="contain"
+                transition={120}
+                style={{
+                  width: previewImageSize.width,
+                  height: previewImageSize.height,
+                }}
+              />
+            ) : (
+              <SelectedPhotoThumb
+                photo={enlargedPhoto}
+                width={previewImageSize.width}
+                height={previewImageSize.height}
+                contentFit="contain"
+              />
+            )}
             {cropMode ? (
               <CropOverlay
                 uri={previewUri}
@@ -366,11 +377,12 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                       index === enlargedPhotoIndex ? "border-blue-500" : "border-transparent",
                     )}
                   >
-                    <ExpoImage
-                      source={{ uri: photo.annotatedUri || photo.uri }}
-                      cachePolicy="memory-disk"
+                    <SelectedPhotoThumb
+                      photo={photo}
+                      width={56}
+                      height={56}
                       contentFit="cover"
-                      style={{ width: 56, height: 56, borderRadius: 6 }}
+                      style={{ borderRadius: 6, overflow: "hidden" }}
                     />
                   </Pressable>
                 ))}

@@ -1,3 +1,5 @@
+import { seatClassForUser, type SeatUserFields } from "@/billing/seatUsage";
+
 /**
  * S-UX-01K2 — who may edit primary/delegates, and who may be selected.
  *
@@ -8,10 +10,19 @@
  *
  * Phase B assumptions (documented in ROADMAP — no product who→whom table exists):
  * - Actor privilege defaults from SystemPermission / legacy DB role strings
+ * - Candidate privilege uses deployable seat class (CA default = worker), not company-admin rank
  * - `canSelectAssignee`: actor may select candidate iff rank(actor) >= rank(candidate)
  *   (peers + subordinates only; never up-rank)
  * - Unknown / missing candidate roles default to member (lowest assignable band)
  * - RLS / DB enforcement deferred
+ *
+ * Stage C seat pin (intentional asymmetry — do not unify without a product decision):
+ * - Actor side: `resolveAssigneeRoleFromUser` → company `systemPermission` / role
+ *   (CA stays rank-40 admin so they can assign anyone on the job).
+ * - Candidate side: `resolveAssigneeCandidateRoleFromUser` → `seatClassForUser`
+ *   (CA default seat = worker/member rank-10 so field creators can still pick a CA).
+ * SoT helpers: `@/billing/seatUsage` (`seatClassForUser`) + this file.
+ * Stage D org Maestro must import these — never re-derive CA=admin for candidates.
  */
 
 export type TaskStatusLike = string | null | undefined;
@@ -115,6 +126,27 @@ export function resolveAssigneeRoleFromUser(user?: {
   }
   const role = user.role == null ? "" : String(user.role).trim();
   return role || undefined;
+}
+
+/**
+ * Rank used when deciding whether a project member can *be assigned*.
+ * Company admin on a job is usually a worker seat (M-AUTHZ-RC); treating them as
+ * rank-40 admin hid every CA from PM/worker Create Task pickers.
+ */
+export function resolveAssigneeCandidateRoleFromUser(
+  user?: SeatUserFields | null,
+): string | undefined {
+  if (!user) {
+    return undefined;
+  }
+  const seat = seatClassForUser(user);
+  if (seat === "pm") {
+    return "manager";
+  }
+  if (seat === "worker") {
+    return "member";
+  }
+  return resolveAssigneeRoleFromUser(user);
 }
 
 /**

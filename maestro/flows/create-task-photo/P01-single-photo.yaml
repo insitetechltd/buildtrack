@@ -1,4 +1,4 @@
-# P01 — Single photo → confirm → submit
+# P01 — Single photo → submit (capture-first; photo already on form after _open-library).
 appId: com.buildtrack.app.local
 tags:
   - create-task-photo
@@ -8,10 +8,15 @@ tags:
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: _open-library.yaml
-
-- runFlow: _pick-first.yaml
-- takeScreenshot: "ct-P01-selection-one"
-- runFlow: _confirm-selection.yaml
+# Legacy library pick path — only if still on in-app library (pre-capture-first).
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - runFlow: _pick-first.yaml
+      - takeScreenshot: "ct-P01-selection-one"
+      - runFlow: _confirm-selection.yaml
 - takeScreenshot: "ct-P01-form-one"
 - runFlow: _submit-create-task.yaml
 - takeScreenshot: "ct-P01-done"

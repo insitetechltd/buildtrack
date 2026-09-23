@@ -133,7 +133,7 @@ These were explicitly added into the redesign spec and are part of the approved 
 
 ## Existing App Review Completed
 
-The existing Taskr / Insite app at `\KooDrive\Insite App` was reviewed to compare old behavior against the new design.
+The existing Taskr / Insite app at `\KooDrive\InsiteApp` was reviewed to compare old behavior against the new design.
 
 Confirmed strengths in the old app:
 
@@ -254,12 +254,12 @@ Roadmap / documentation handling:
 The biggest operational issue discovered at the end of the session:
 
 - this session was bound to a separate selected folder
-- the real app repo is `/KooDrive/Insite App`
+- the real app repo is `/Volumes/KooDrive/InsiteApp` (renamed from `Insite App` on 2026-07-09)
 - the user does not want to maintain two working directories for the same project
 
 Recommended future-session instruction:
 
-- use `/KooDrive/Insite App` as the only working directory
+- use `/Volumes/KooDrive/InsiteApp` as the only working directory
 - consolidate future design docs, mock artifacts, and implementation work there
 - do not continue long-term work in the temporary parallel workspace
 
@@ -285,7 +285,7 @@ A future session should:
 4. read the implementation plan
 5. confirm Slice 1 is already done
 6. continue from Slice 2
-7. prefer using `/KooDrive/Insite App` as the only working repo if possible
+7. prefer using `/Volumes/KooDrive/InsiteApp` as the only working repo if possible
 
 ## Short Summary
 

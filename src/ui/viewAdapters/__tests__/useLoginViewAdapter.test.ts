@@ -17,6 +17,19 @@ jest.mock("@/state/authStore", () => ({
   }),
 }));
 
+jest.mock("@/state/databaseConfigStore", () => ({
+  useDatabaseConfig: (selector: (s: {
+    activeEnvironment: string;
+    environments: Record<string, { url: string }>;
+  }) => unknown) =>
+    selector({
+      activeEnvironment: "production",
+      environments: {
+        production: { url: "https://jcnzjigxgkzhjsaekoqz.supabase.co" },
+      },
+    }),
+}));
+
 jest.mock("@/utils/useTranslation", () => ({
   useTranslation: () => ({
     common: { ok: "OK" },

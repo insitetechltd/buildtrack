@@ -1,0 +1,23 @@
+=== E4 re-seed start 18:39:39 ===
+
+> template-app-53@1.0.0 seed:dev-qa
+> node scripts/supabase/seed-dev-qa-after-parity.cjs
+
+AUTH_PASSWORD_RESET carol.admina@test.com
+AUTH_PASSWORD_RESET dave.adminb@test.com
+AUTH_PASSWORD_RESET john.managera@test.com
+AUTH_PASSWORD_RESET alice.workera1@test.com
+AUTH_PASSWORD_RESET erin.invitee@test.com
+COMPANY_OK 2f13d7d6-5c26-439b-90c0-b39bd839e66b
+USER_OK carol.admina@test.com admin worker
+USER_OK dave.adminb@test.com admin worker
+USER_OK john.managera@test.com member pm
+USER_OK alice.workera1@test.com member worker
+USER_OK erin.invitee@test.com member worker
+ADMIN_COUNT_OK 2 [ 'carol.admina@test.com', 'dave.adminb@test.com' ]
+PROJECT_OK fa5f662d-3080-42e0-92d3-19a23b66e8af
+UPA_UPDATED carol.admina@test.com lead_project_manager
+UPA_UPDATED john.managera@test.com lead_project_manager
+UPA_UPDATED alice.workera1@test.com worker
+{"ok":true,"plane":"dev","companyId":"2f13d7d6-5c26-439b-90c0-b39bd839e66b","projectId":"fa5f662d-3080-42e0-92d3-19a23b66e8af","projectName":"Project A - Commercial Building","passwordReset":"password123","f6DevSubjectHint":"alice.workera1@test.com","actors":[{"key":"carol","email":"carol.admina@test.com","system_permission":"admin","deployable_seat":"worker","assignToProject":true},{"key":"dave","email":"dave.adminb@test.com","system_permission":"admin","deployable_seat":"worker","assignToProject":false},{"key":"john","email":"john.managera@test.com","system_permission":"member","deployable_seat":"pm","assignToProject":true},{"key":"alice","email":"alice.workera1@test.com","system_permission":"member","deployable_seat":"worker","assignToProject":true},{"key":"invitee","email":"erin.invitee@test.com","system_permission":"member","deployable_seat":"worker","assignToProject":false}],"carolLanding":"company+projectA"}
+=== E4 re-seed exit= 18:39:43 ===

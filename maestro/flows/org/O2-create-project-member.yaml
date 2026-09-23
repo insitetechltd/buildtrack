@@ -1,0 +1,128 @@
+# D2 — Create project + place Alice as member.
+# Requires Maestro -e STAGE_D_O2_NAME=... (run-org-ca.sh passes it).
+# Location fill must center the location input — otherwise eraseText/inputText
+# lands on Description (assertVisible "Jobsite A" still passes globally).
+appId: com.buildtrack.app.local
+---
+- runFlow: O1-ca-shell.yaml
+- tapOn:
+    id: "admin-stat-projects"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "projects-create-action"
+    timeout: 15000
+- tapOn:
+    id: "projects-create-action"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "project-form-clientName"
+    timeout: 20000
+- takeScreenshot: "O2-create-form"
+- tapOn:
+    id: "project-form-clientName"
+- inputText: "Stage D Client"
+- assertVisible: "Stage D Client"
+- tapOn:
+    id: "project-form-name"
+- inputText: "${MAESTRO_STAGE_D_O2_NAME}"
+- assertVisible: "${MAESTRO_STAGE_D_O2_NAME}"
+- tapOn:
+    id: "project-form-description"
+- inputText: "Stage D O2 create+member proof"
+- assertVisible: "Stage D O2 create+member proof"
+# Blur description before scrolling — avoids erase/type hitting the wrong field.
+- tapOn:
+    point: "50%, 11%"
+- waitForAnimationToEnd:
+    timeout: 1200
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "project-form-location"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: "project-form-location"
+- inputText: "Jobsite A"
+# Both must remain visible: location fill must not overwrite description.
+- assertVisible: "Jobsite A"
+- assertVisible: "Stage D O2 create+member proof"
+- tapOn:
+    point: "50%, 11%"
+- waitForAnimationToEnd:
+    timeout: 1200
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "project-form-team-card"
+    direction: DOWN
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Include Alice Worker A1 on this project"
+    timeout: 20000
+- tapOn: "Include Alice Worker A1 on this project"
+- tapOn:
+    point: "50%, 11%"
+- waitForAnimationToEnd:
+    timeout: 1200
+- swipe:
+    start: "50%, 55%"
+    end: "50%, 85%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 1200
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-project__submit"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: "O2-before-submit"
+- tapOn:
+    id: "create-project__submit"
+- tapOn:
+    id: "create-project__submit"
+    delay: 1500
+- takeScreenshot: "O2-after-submit"
+- runFlow:
+    when:
+      visible: "Missing required fields"
+    commands:
+      - takeScreenshot: "O2-validation-errors"
+      - tapOn: "OK"
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "project-form-clientName"
+          direction: UP
+          timeout: 10000
+      - takeScreenshot: "O2-validation-top"
+      # Hard fail — do not proceed as if create succeeded.
+      - assertVisible: "THIS_O2_VALIDATION_SHOULD_NOT_APPEAR"
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+- runFlow:
+    when:
+      visible: "Error"
+    commands:
+      - takeScreenshot: "O2-create-error"
+      - tapOn: "OK"
+- extendedWaitUntil:
+    visible:
+      id: "projects-create-action"
+    timeout: 90000
+# List order is not newest-first — filter by name so the card is on-screen.
+- tapOn: "Search projects..."
+- inputText: "${MAESTRO_STAGE_D_O2_NAME}"
+- extendedWaitUntil:
+    visible: "${MAESTRO_STAGE_D_O2_NAME}"
+    timeout: 45000
+- assertVisible: "${MAESTRO_STAGE_D_O2_NAME}"
+- takeScreenshot: "O2-project-created"

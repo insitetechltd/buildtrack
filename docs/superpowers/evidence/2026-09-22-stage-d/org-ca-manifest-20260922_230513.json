@@ -1,0 +1,29 @@
+{
+  "ok": false,
+  "failedAt": "O1",
+  "runId": "20260922_230513",
+  "udid": "B7B2640C-4738-4F8A-AEEE-5DF3D21D2533",
+  "appSha": "ed87a32c4d656af1051909849054b4559dacec61",
+  "dirty": true,
+  "diffStat": " 33 files changed, 1735 insertions(+), 244 deletions(-)",
+  "diffHash": "f798f39edfc9e24c34930094965fcd2486a68c040ae881ee0cf65297a40d9685",
+  "stageDO2Name": "StageD-O2-20260922_230513",
+  "flows": [
+    {
+      "id": "O1",
+      "flow": "O1-ca-shell.yaml",
+      "ok": false
+    }
+  ],
+  "pngFound": [
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O1-admin-dashboard.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O1-carol-boot-home.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O1-profile-menu-ca.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O2-after-submit.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O2-before-submit.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O2-create-form.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O2-validation-errors.png",
+    "/Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/headed/O2-validation-top.png"
+  ],
+  "notes": "O1=reachability only; A-D01 Dashboard-only OPEN; S3=real invite handoff"
+}

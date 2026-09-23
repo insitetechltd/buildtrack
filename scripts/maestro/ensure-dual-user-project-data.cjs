@@ -125,9 +125,27 @@ async function main() {
     }
   }
 
-  console.log(
-    `ENSURE_DU_PROJECT_OK project=${project.name} inserted=${inserts.length} users=${emails.join(",")}`,
+  const john = userByEmail.get(USERS[0].email);
+  const alice = userByEmail.get(USERS[1].email);
+  const cacheDir = path.join(ROOT, ".cache");
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const envOut = path.join(cacheDir, "maestro-du-users.env");
+  fs.writeFileSync(
+    envOut,
+    [
+      `DU_JOHN_ID=${john.id}`,
+      `DU_ALICE_ID=${alice.id}`,
+      `DU_JOHN_EMAIL=${USERS[0].email}`,
+      `DU_ALICE_EMAIL=${USERS[1].email}`,
+      `DU_PROJECT_ID=${project.id}`,
+      "",
+    ].join("\n"),
   );
+
+  console.log(
+    `ENSURE_DU_PROJECT_OK project=${project.name} inserted=${inserts.length} users=${emails.join(",")} johnId=${john.id} aliceId=${alice.id}`,
+  );
+  console.log(`WROTE ${envOut}`);
 }
 
 main().catch((err) => {

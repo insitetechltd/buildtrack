@@ -1,7 +1,6 @@
 # Ordinary day-to-day boot (John): no clearState.
-# Resume live session when already authenticated; login only if on Login.
+# Always land as John: if another session is live (Erin after org S3, Carol, etc.), logout first.
 # Tier policy: clearState only for intentional first-install / TCC / sandbox-reset flows.
-# Identity switch: use ../_logout.yaml then login — do not wipe the container.
 appId: com.buildtrack.app.local
 ---
 - launchApp:
@@ -14,17 +13,24 @@ appId: com.buildtrack.app.local
 - runFlow: ../_dismiss-blocking-overlays.yaml
 - runFlow:
     when:
-      visible:
+      notVisible:
         id: "login-submit"
     commands:
-      - tapOn:
-          id: "^login-emailOrPhone$"
-      - inputText: "john.managera@test.com"
-      - tapOn:
-          id: "^login-password$"
-      - inputText: "password123"
-      - tapOn:
-          id: "login-submit"
+      - runFlow: ../_logout.yaml
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 45000
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
 - runFlow:
     when:
       visible: "Save Password?"

@@ -136,6 +136,48 @@ async function main() {
     process.exit(4);
   }
 
+  // Membership wall (F6): actor must have active UPA on the seed project or
+  // Tasks soft-scope + RLS hide the row after search (U01 2026-09-22 failure mode).
+  const ensureUpa = async (memberId, role = "contractor") => {
+    const { data: existing, error: existingErr } = await supabase
+      .from("user_project_assignments")
+      .select("id, is_active, project_role")
+      .eq("project_id", project.id)
+      .eq("user_id", memberId)
+      .maybeSingle();
+    if (existingErr) {
+      console.error("FAIL: lookup UPA", existingErr.message);
+      process.exit(4);
+    }
+    if (existing?.is_active) return;
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("user_project_assignments")
+        .update({ is_active: true })
+        .eq("id", existing.id);
+      if (error) {
+        console.error("FAIL: reactivate UPA", error.message);
+        process.exit(4);
+      }
+      return;
+    }
+    const { error } = await supabase.from("user_project_assignments").insert({
+      user_id: memberId,
+      project_id: project.id,
+      project_role: role,
+      assigned_by: creator.id,
+      is_active: true,
+    });
+    if (error) {
+      console.error("FAIL: insert UPA", error.message);
+      process.exit(4);
+    }
+  };
+  await ensureUpa(user.id, "contractor");
+  if (creator.id !== user.id) {
+    await ensureUpa(creator.id, "lead_project_manager");
+  }
+
   const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   // NEW schema only (DEV≡PROD): no assigned_to / current_status / attachments / accepted.
   const payload = {

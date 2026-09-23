@@ -1,6 +1,7 @@
-# Open API-seeded task → Task Detail → Update Progress.
+# Open API-seeded task → Task Detail with progress dock visible.
 # Prerequisite: scripts/maestro/ensure-update-progress-seed-task.cjs
-# Runner must pass -e UP_SEED_TITLE=... (and optionally UP_SEED_TASK_ID).
+# Runner must pass -e UP_SEED_TITLE=... and UP_SEED_TASK_ID=...
+# Product SoT (2026-09): Task Detail dock — root camera FAB is hidden here.
 appId: com.buildtrack.app.local
 ---
 - runFlow:
@@ -14,7 +15,6 @@ appId: com.buildtrack.app.local
       - tapOn:
           text: "Dismiss"
           optional: true
-# Land on Tasks (search works from list)
 - tapOn:
     id: "root-tab__tasks_pressable"
 - extendedWaitUntil:
@@ -33,15 +33,19 @@ appId: com.buildtrack.app.local
     visible:
       id: "tasks-screen__task_list"
     timeout: 25000
-# Sync API-seeded task into local store before search.
-- tapOn:
-    id: "tasks-screen__header_reset_filters"
-- waitForAnimationToEnd:
-    timeout: 3000
-# Pull-ish: search once, then open the seeded row by testID (not text index).
-# Do not erase+retype — iOS concatenates leftover search text.
+- runFlow:
+    when:
+      visible:
+        id: "tasks-screen__header_reset_filters"
+    commands:
+      - tapOn:
+          id: "tasks-screen__header_reset_filters"
+      - waitForAnimationToEnd:
+          timeout: 3000
+# Always eraseText first — iOS TextInput appends without clear.
 - tapOn:
     id: "text-field:tasks-search__input"
+- eraseText
 - inputText: ${UP_SEED_TITLE}
 - tapOn:
     point: "50%, 8%"
@@ -57,12 +61,18 @@ appId: com.buildtrack.app.local
             notVisible:
               id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
           commands:
-            - tapOn:
-                id: "tasks-screen__header_reset_filters"
-            - waitForAnimationToEnd:
-                timeout: 3000
+            - runFlow:
+                when:
+                  visible:
+                    id: "tasks-screen__header_reset_filters"
+                commands:
+                  - tapOn:
+                      id: "tasks-screen__header_reset_filters"
+                  - waitForAnimationToEnd:
+                      timeout: 3000
             - tapOn:
                 id: "text-field:tasks-search__input"
+            - eraseText
             - inputText: ${UP_SEED_TITLE}
             - tapOn:
                 point: "50%, 8%"
@@ -78,7 +88,6 @@ appId: com.buildtrack.app.local
             id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
           direction: DOWN
           timeout: 10000
-      # First tap may clear swipe-block state; second opens Task Detail.
       - tapOn:
           id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
       - tapOn:
@@ -90,7 +99,6 @@ appId: com.buildtrack.app.local
     visible:
       id: "task-detail__header_title"
     timeout: 20000
-# Worker assignee may still need Accept before Update.
 - runFlow:
     when:
       visible:
@@ -100,12 +108,7 @@ appId: com.buildtrack.app.local
           id: "task-detail__quick-action-accept_task"
       - waitForAnimationToEnd:
           timeout: 2000
-# Camera-from-task-detail → Update Progress (C3)
-- tapOn:
-    id: "root-tab__camera_icon_surface"
 - extendedWaitUntil:
     visible:
-      id: "update-progress__screen_title"
+      id: "report-reply-composer__photo"
     timeout: 12000
-- assertVisible:
-    id: "update-progress__take_photo"

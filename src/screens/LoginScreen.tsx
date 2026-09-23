@@ -139,10 +139,21 @@ export default function LoginScreen() {
     <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
       <StatusBar style="dark" />
 
-      <View className="absolute top-12 right-4 z-10">
-        <Text className="text-sm text-gray-400 font-mono">
+      <View className="absolute top-12 right-4 z-10 items-end">
+        <Text
+          testID="login-build-identity"
+          className="text-sm text-gray-400 font-mono"
+        >
           {output.buildIdentifierLabel}
         </Text>
+        {output.activeSupabaseProjectRef ? (
+          <Text
+            testID="login-active-db-host"
+            className="text-[10px] text-gray-400 font-mono mt-0.5"
+          >
+            {output.activeSupabaseProjectRef}
+          </Text>
+        ) : null}
       </View>
 
       <KeyboardAvoidingView

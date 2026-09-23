@@ -177,6 +177,27 @@ describe("taskDelegationPermissions", () => {
         }),
       ).toBe("manager");
     });
+
+    it("locks actor vs candidate asymmetry (CA can assign; CA is selectable as worker)", () => {
+      const ca = {
+        id: "ca",
+        role: "admin",
+        systemPermission: "admin" as const,
+      };
+      const actorRole = resolveAssigneeRoleFromUser(ca);
+      const candidateRole = resolveAssigneeCandidateRoleFromUser(ca);
+      expect(actorRole).toBe("admin");
+      expect(getAssigneePrivilegeRank(actorRole)).toBe(40);
+      expect(candidateRole).toBe("member");
+      expect(getAssigneePrivilegeRank(candidateRole)).toBe(10);
+      // Field worker may select CA-as-candidate; CA-as-actor may select a worker.
+      expect(
+        canSelectAssignee({ actorRole: "member", candidateRole }),
+      ).toBe(true);
+      expect(
+        canSelectAssignee({ actorRole, candidateRole: "member" }),
+      ).toBe(true);
+    });
   });
 
   describe("canSelectUserAsAssignee / filterSelectableAssigneeIds", () => {

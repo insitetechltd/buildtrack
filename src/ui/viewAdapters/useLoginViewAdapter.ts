@@ -6,6 +6,7 @@ import * as Application from "expo-application";
 import { loginIdentifierIsRegistered } from "@/api/loginIdentifierLookup";
 import { SIGNUP_URL } from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
+import { useDatabaseConfig } from "@/state/databaseConfigStore";
 import type {
   LoginAccountLookupStatus,
   LoginPrimaryAction,
@@ -16,6 +17,7 @@ import {
   formatBuildIdentityLabel,
   resolveNativeBuildParts,
 } from "@/utils/buildIdentity";
+import { supabaseProjectRefFromUrl } from "@/utils/supabaseProjectRef";
 import { useTranslation } from "@/utils/useTranslation";
 
 export interface LoginViewAdapterHookResult {
@@ -79,6 +81,17 @@ function buildIdentifierLabel(): string {
 export function useLoginViewAdapter(): LoginViewAdapterHookResult {
   const t = useTranslation();
   const { login, isLoading } = useAuthStore();
+  const activeEnvironment = useDatabaseConfig((s) => s.activeEnvironment);
+  const environments = useDatabaseConfig((s) => s.environments);
+  const activeSupabaseProjectRef = useMemo(() => {
+    const activeName = activeEnvironment || "production";
+    const url =
+      environments[activeName]?.url ||
+      environments.production?.url ||
+      process.env.EXPO_PUBLIC_SUPABASE_URL ||
+      "";
+    return supabaseProjectRefFromUrl(url);
+  }, [activeEnvironment, environments]);
   const [emailOrPhone, setEmailOrPhoneState] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -270,6 +283,7 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
       password,
       isPasswordVisible,
       buildIdentifierLabel: buildIdentifierLabel(),
+      activeSupabaseProjectRef,
       validationErrors,
       isLoading,
       isPasswordEnabled,
@@ -279,6 +293,7 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
     }),
     [
       accountLookupStatus,
+      activeSupabaseProjectRef,
       emailOrPhone,
       isLoading,
       isPasswordEnabled,

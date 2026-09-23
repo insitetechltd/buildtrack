@@ -43,10 +43,11 @@ RC can ship on the RC map (P01+U01 min). Closing the sequential ledger is a sepa
 | Track | Sim | Login | Seed creator (when needed) |
 |-------|-----|-------|----------------------------|
 | Dual-user gate | 17 Pro Max + iPhone 16 | John + Alice | (flow-created) |
+| Org CA (Stage D) | iPhone 17 Pro Max | **Carol** `carol.admina@test.com` | Carol (+ spare Dave `dave.adminb@test.com`) |
 | Solo Section E sequential | iPhone 17 Pro | **Bob** `bob.workera2@test.com` | Sarah `sarah.managerb@test.com` |
 | RC min / U-suite | default runner | John `_boot.yaml` | John |
 
-Do not run John or Alice on 17 Pro while dual-user is active.
+Do not run John or Alice on 17 Pro while dual-user is active. Org CA may use 17 Pro Max when dual-user is idle (resource-lock `user:carol.admina`).
 
 ---
 
@@ -143,17 +144,17 @@ Org: company, projects-as-containers, seats, billing. **Not** automatic project 
 
 **Target (post-RC `M-AUTHZ-02`):** admin must be able to see which of **their** people are on which projects (including other companies’ projects). That is roster knowledge, not project authority. Join paths / pricing: `documentation/multi-company-project-membership.md`.
 
-Admin has **no** Activity / Camera / Tasks. Do **not** ask admin to create, update, or approve tasks.
+Admin has **no** Activity / Camera / Tasks **as product intent** (A-D01). **Shipped code (2026-09):** same MainTabs for CA + avatar → Company management — Stage D proves **reachability** only (`O1-ca-shell.yaml`); A-D01 Dashboard-only remains **OPEN product debt** (not closed by Stage D).
 
 | ID | Journey | Manual | Maestro |
 |----|---------|--------|---------|
-| A-D01 | Dashboard only; field tabs absent | ☐ | Gap |
+| A-D01 | Dashboard only; field tabs absent | ☐ | **OPEN debt** — Stage D does **not** PASS this; proves CA→Company management reachability instead |
 | A-D02 | Company name | ☐ | Gap |
 | A-D03 | Projects stat → list | ☐ | Gap |
-| A-D04 | Team stat → User Management | ☐ | Gap |
+| A-D04 | Team stat → User Management | ☐ | Partial Stage D O2/O3 path |
 | A-D05 | Completed / Admins stats (display) | ☐ | Gap |
-| A-P01–P06 | Projects list / create / detail / edit / members | ☐ | Gap |
-| A-U01–U07 | Invite, copy HTTPS link, assign seats, last-admin protect | ☐ | Gap; clipboard Exempt |
+| A-P01–P06 | Projects list / create / detail / edit / members | ☐ | Partial Stage D O2 (`O2-create-project-member.yaml`) |
+| A-U01–U07 | Invite, copy HTTPS link, assign seats, last-admin protect | ☐ | Partial Stage D O3 validation + O4 reporting P-case; clipboard Exempt |
 | A-PR01 | Role Admin | ☐ | Gap |
 | A-PR02 | Company plan | ☐ | Gap |
 | A-PR03 | Checkout (`buy.stripe.com`) | ☐ | Exempt |
@@ -205,4 +206,4 @@ That runs **P01** then **U01** via `scripts/maestro/run-*-one.sh` (Photos ensure
 
 Optional extra (not substitute): `test:e2e:maestro:journeys`, `test:e2e:maestro:task-core`, full P/U suites.
 
-**Assumption:** Maestro “manager” (`john.managera`) is a **field** tab user (`isAdmin` false), not company admin.
+**Assumption:** Maestro “manager” (`john.managera`) is a **field** tab user (`isAdmin` false), not company admin. Stage D seed enforces John `system_permission=member` + `deployable_seat=pm`; Org CA is **Carol** `carol.admina@test.com`.

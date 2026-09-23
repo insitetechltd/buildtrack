@@ -1,4 +1,6 @@
 # DU-D01 phase 2 — John creates task assigned to Alice (decline path).
+# Capture-first (same as DU-H01): camera FAB → library peek → Accept → Create form.
+# Sims have no working camera — never shutter.
 appId: com.buildtrack.app.local
 tags:
   - dual-user
@@ -16,8 +18,78 @@ tags:
     optional: true
 - extendedWaitUntil:
     visible:
+      id: "capture-session__camera"
+    timeout: 20000
+- takeScreenshot: "du-d01-02b-john-camera"
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_peek"
+    commands:
+      - tapOn:
+          id: "capture-session__library_peek"
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: "du-d01-02c-john-library"
+- tapOn:
+    point: "17%, 28%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- runFlow:
+    when:
+      notVisible: ".*[1-9] selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 22%"
+- extendedWaitUntil:
+    visible: ".*[1-9] selected.*"
+    timeout: 10000
+- tapOn:
+    id: "capture-session__hybrid_accept"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 25000
+- takeScreenshot: "du-d01-02d-john-select-photos"
+- tapOn:
+    id: "photo-selection__confirm"
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+- extendedWaitUntil:
+    visible:
       id: "create-task__continuous_form"
     timeout: 25000
+- takeScreenshot: "du-d01-03-john-form"
 - runFlow: _assign-alice.yaml
 - runFlow: _submit-create-with-title.yaml
 - takeScreenshot: "du-d01-01-john-created"

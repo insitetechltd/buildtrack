@@ -1,0 +1,43 @@
+# D4 S2 — Logout Carol → login John (cross-identity workspace clear).
+# Asserts John field shell + Company management absent.
+appId: com.buildtrack.app.local
+---
+- runFlow: O1-ca-shell.yaml
+- runFlow: ../_logout.yaml
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 45000
+- takeScreenshot: "S2-logged-out"
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- takeScreenshot: "S2-john-field-shell"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-logout"
+    timeout: 12000
+- assertNotVisible:
+    id: "profile-menu-company_admin"
+- takeScreenshot: "S2-john-no-ca-menu"

@@ -602,7 +602,9 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const scrollRegionBottomPadding = showDetailDock ? 24 : 16;
 
   if (!output.readiness.hasUsableData) {
-    if (output.continuity.shouldRenderEmptyState) {
+    // Continuity is always present from the live adapter; optional-chain so a
+    // partial mock / future regression cannot crash the loading shell.
+    if (output.continuity?.shouldRenderEmptyState) {
       return (
         <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
           <ModernScreenHeader

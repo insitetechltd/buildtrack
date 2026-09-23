@@ -1,0 +1,55 @@
+# Carol Org CA ordinary boot — no clearState.
+# Always land as Carol: if another session is live (John after S2, etc.), logout first.
+# Landing contract (seed): company + Project A UPA → Activity shell reachable.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "login-submit"
+    commands:
+      - runFlow: ../_logout.yaml
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 45000
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "carol.admina@test.com"
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+# Carol may land on Admin overview hero or Activity; force Activity for shared shell assert.
+- runFlow:
+    when:
+      visible:
+        id: "admin-overview-hero"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+          optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- takeScreenshot: "O1-carol-boot-home"

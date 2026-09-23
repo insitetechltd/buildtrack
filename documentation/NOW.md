@@ -4,6 +4,34 @@
 
 ---
 
+**This session — stale `Insite App` docs paths (2026-09-23):** Markdown `file://` registry links in `documentation/SOURCE_OF_TRUTH.md` (and other live docs) still pointed at `/Volumes/KooDrive/Insite App` after the 2026-07-09 rename. **Agent loop was not reading a missing file** — `documentation/SOURCE_OF_TRUTH.md` is opened by repo-relative path; `.cursor/rules` never used those URLs. Click-through index was broken. Converted to repo-relative links; `cd` runbooks → `InsiteApp`; doctor now FAILs if the old folder path returns (except the historical 2026-07-09 plan). **Next:** commit when asked.
+
+**This session — Stage A–D commit + Stage E start (2026-09-23):** Committing Stage A–D critical-surface work (schema/RLS, org Maestro, RC/dual-user, p-matrix, seat chips, evidence). Path-rename doc sweep stays unstaged. **Next after push:** Stage E (Report Maestro + journey rollup).
+
+**This session — Stage D CLOSED (2026-09-23):** Gate B [Proof Adversary](bc-bc70dcb4-de85-5d50-96b0-7804c21ffe59) **ITERATE** → re-prove cleared Criticals: `rc-worker-be-reprove.log` PASS (P01+U01); `dual-user-full-reprove.log` **GATE PASS** (H01+D01, no ONLY=); `p-matrix-reprove.log` + `reseed-reprove.log` after. Judge **GO**. Close: `docs/superpowers/reports/2026-09-23-stage-d-close.md`. ASC untouched.
+
+**This session — CA Worker↔PM promote in User Management (2026-09-23):** Member cards now expose Worker/PM seat chips (invite parity). CA can change existing non-CA members via `updateUser` (`system_permission` + `deployable_seat`) gated by `canAssignCompanySeatRole` + seat upsell. Prove: UserManagement Jest 8/8 + tsc rc=0. **Superseded next:** U01/D01 cleared above.
+
+**This session — Stage D CLOSE-READY with 1 owed (2026-09-22):** Gate A both REVISE folded. **Org Maestro PASS** manifest `docs/superpowers/evidence/2026-09-22-stage-d/org-ca-manifest-20260922_231641.json` (O1/O2/O3/S2/S3); O2 DB Alice UPA; headed PNGs in `docs/superpowers/evidence/2026-09-22-stage-d/headed/`. **P-matrix** PROD+DEV GATE PASS (O4 reporting sole-admin count=0). **Re-seed** password123 OK. **Dual-user H01 PASS** (`ONLY=H01` log `dual-user-h01.log`; full ALL still fails D01 create-form — capture-first drift, owed). **RC:** P01 PASS; **U01 owed** (seeded Tasks row not found). Product/Maestro fixes: ProjectForm keyboard+validation Alert; O2 location-center; S3 `taskr://` mint; Carol/John identity boots; create-task capture-first `_open-library`; dual-user `longPressOn` timeout YAML. Tip dirty. Do not Submit for Review. **Superseded:** U01/D01 cleared 2026-09-23.
+
+**This session — Stage D BUILDER WIP (2026-09-22):** Gate A both REVISE folded. Landed: D0 seed (Carol+Dave CA, John field, password reset) green; MAINTABS partition + A-D01 debt note; `create-project__submit` + invite seat selected; org flows + `test:e2e:maestro:org-ca`; O4 reporting-only in p-matrix. **Superseded:** Stage D prove above.
+
+**This session — Stage C CLOSED (2026-09-22):** Full T1. Headed Metro→PROD Maestro **PASS** rc=0 · 91s · iPhone 17 Pro Max `B7B2640C…` (PROD ref assert + create+photo + dock progress marker). S4 IPA assert + CBP hard gate; seat pin Jest. Evidence: `docs/superpowers/evidence/2026-09-22-stage-c/stage-c-close-result.json` + `headed/*.png`. Tip `ed87a32` dirty. **Superseded next:** Stage D.
+
+**This session — Stage C Builder WIP (2026-09-22):** Gate A (validation + risks) both REVISE → folded. Landed: S4 `scripts/eas/assert-ipa-prod-bake.sh` (Hermes strings; self-test PASS on TF 278 IPA) + CBP/`build-and-submit.sh` hard gate; seat actor/candidate asymmetry Jest+docs; login/dashboard `*-active-db-host` + Maestro hard F3 update marker; JWT smoke local-key + runpy fix PASS. Evidence: `docs/superpowers/evidence/2026-09-22-stage-c/stage-c-partial-result.json`. **Superseded:** Stage C closed same day via headed PASS.
+
+**This session — Stage C IN PROGRESS (2026-09-22):** Full T1 (not A/B Builder-only). SoT Stage C execution plan locked in `docs/superpowers/plans/2026-09-22-critical-surface-test-stages.md` (C1 Z3 headed Metro→PROD + SHA evidence; C2 S4 IPA bake assert via `strings` on Hermes `main.jsbundle`; C3 seat pin = `seatClassForUser` / `resolveAssigneeCandidateRoleFromUser`). Gate A ×2 dispatched (risks + validation). Sims free. Tip `ed87a32`. Do not Submit for Review.
+
+**This session — F6 RLS harden APPLIED (2026-09-22):** Human GO. Dropped all `*_authenticated_interim` open doors (`20260922000100`) then removed admin OR bypass on tasks SELECT/UPDATE + task_activities SELECT (`20260922000200`) — membership wall only; `tasks_delete_admin` kept. Applied pooler **DEV then PROD** (interim_left=0; policy USING = `user_has_project_access` only). Prove: `npm run test:dual-env:p-matrix` **PROD+DEV GATE PASS incl. F6**. **Superseded next:** Stage C in progress.
+
+**This session — Stage B CLOSED (2026-09-22):** Contract class green — `test:schema-parity` ok (CHECKs 30/30 DEV≡PROD; TaskStatus ⊆ PROD incl. `reported`; self-test PASS). **F6** JWT isolation landed; initially **FAIL RLS-open** (`tasks_authenticated_interim` + admin OR). Cleared by Human GO RLS apply above.
+
+**This session — Stage A CLOSED (2026-09-22):** Human GO. SoT `docs/superpowers/plans/2026-09-22-critical-surface-test-stages.md`. Continuity crash = product bug-fix (optional-chain) + fixture complete. 5 red Jest green. P11 Report in p-matrix **PROD+DEV PASS**. `seed:dev-qa` + `test:dual-env:p-matrix:prep`. `tsc` rc=0; `test:critical` exit 0. No `test:ship-core`. **Superseded next:** Stage B closed same day.
+
+**This session — critical-surface test map Gate A (2026-09-22):** Multi-model REVISE (Opus/GPT/Sonnet, identical brief). SoT rewritten: risk-ranked ship paths + L/D/P/H proofs; domains/personas = indexes; theme photo suites = specialist. Stage A first: repair 5 red Jest (check TaskDetail `continuity` as possible live bug), extend `test:critical` (no new script name), land **P11 Report** now, seed DEV QA. Plan: `docs/superpowers/plans/2026-09-22-critical-surface-test-stages.md`. **Superseded:** Stage A closed same day.
+
+**This session — PROD Report create `tasks_status_check` APPLIED (2026-09-22):** Human GO. Cause: TF 278 Report writes `status='reported'` + activity `issue_reported`; live CHECKs lacked both after the 2026-09-15 DEV←PROD restore. Patched `supabase/migrations/20260904000100_issue_triage_reported_resolved_status.sql` (skip missing `current_status`; keep `photo_upload`/`delegation`). Applied pooler session: **DEV** `aws-1-ap-south-1` rc=0 then **PROD** `aws-0-ap-south-1` rc=0. Human Report retry **PASS**. Destination prove `ed87a32`: dual-env critical **0 FAIL / 3 WARN** (assigned_at absent = NEW dialect); P-matrix **PROD GATE P01–P08+P10+JWT PASS** (P09 Human-GO-skip); headed JWT smoke create/progress/`task_files`/`task_stars`/junction **PASS**; reported insert + `issue_reported` activity + resolve **201/201/200**. Jest `test:tasks` **48/48**, `test:uploads` **9/9**. DEV P-matrix blocked (no `sara@insite.com`/`joe@insite.com` after restore). 5 pre-existing Jest integration/journey FAILs (header `continuity`, `task_assignments` mock, shell loading, auth bootstrap) — not this CHECK. Maestro not run (DEV-only; needs sim claim). **Next:** continue TF **278** release-review dogfood. Do not Submit for Review.
+
 **This session — CBP TF 278 submitted (2026-09-22):** Gate 0 waived (user-ordered CBP of iPad 3:4 cover tiles; Metro→PROD GO on `fa5cff1`; JS layout only). App `2722654` (3-up/4-up **3:4 `cover`** — no letterbox; landscape shots crop sides; gallery `contain`; portrait meta top / landscape meta left from 277). Prove: layout + timeline **19/19 PASS**. Local `./build-local.sh ios production` → IPA **v1.1.3 (278)** `.eas/artifacts/build-1790051685807.ipa` (CFBundleVersion 278; bundle `com.buildtrack.app.local`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/a9209ba5-5ec6-4d0c-8660-50dc66f2b3ed (✔ Uploaded ASC; Apple processing). ASC Public / Submit for Review untouched. **Next:** wait 278 VALID → install on iPad for release-review candidate. Do not Submit for Review unless asked.
 
 **This session — iPad tiles 3:4 cover (2026-09-20):** Field photos are mostly phone-portrait. Equal 3-up / 4-up cells stay, but aspect is **3:4** with `cover` (no letterbox). Landscape shots crop on the sides; tap still opens uncropped gallery. Phone square hero unchanged. **Next:** superseded for iPad dogfood by TF **278**.
@@ -85,7 +113,7 @@
 
 **This session — Metro→PROD + CBP TF 260 (2026-09-15):** Wrong order — TF submitted before update PASS. Create+photo + Detail assignees had been green; update was red. Submission: https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/be897e6f-8469-4f0b-9f2a-6192c58f02f5.
 
-**This session — PROD stabilize pass / full NEW cutover (2026-09-15):** Freeze SHA **`9d26c2b`**. Slice 1–2 `schemaDualPath` HIGH writers + `task_files`/`task_stars`; Slice 3 user-JWT P-matrix + headed-adjacent smoke **PASS** on that SHA; Slice 4 Edge redeployed DEV+PROD (invite/billing/cancel/checkout/webhook/addons/signup*). **No PROD TF yet** — needs human Metro camera dogfood + Judge GO. Residuals: HQ Edge, `schema_migrations`, reported/resolved DDL, P09, DEV→NEW tenant migrate.
+**This session — PROD stabilize pass / full NEW cutover (2026-09-15):** Freeze SHA **`9d26c2b`**. Slice 1–2 `schemaDualPath` HIGH writers + `task_files`/`task_stars`; Slice 3 user-JWT P-matrix + headed-adjacent smoke **PASS** on that SHA; Slice 4 Edge redeployed DEV+PROD (invite/billing/cancel/checkout/webhook/addons/signup*). **No PROD TF yet** — needs human Metro camera dogfood + Judge GO. Residuals: HQ Edge, `schema_migrations`, P09, DEV→NEW tenant migrate. `reported`/`resolved` CHECK **applied DEV+PROD 2026-09-22**.
 
 **This session — Dual-plane SOP law (2026-09-15):** Encoded `develop → debug → stable → destination → working` as portable SOP **§13**. Root cause: 2026-08-26 split treated “don’t junk PROD” as “don’t prove PROD.” Destination `42703`/`PGRST204` = FAIL not WARN.
 
@@ -210,9 +238,9 @@
 1. **ASC 1.1.3 resubmit (Human):** after TF **257** is VALID, attach **257** (not 244/254/256); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
 2. Extra GO: Stripe 60d promo + founding-CA Checkout on PROD (sandbox DEV start-checkout smoke PASS 2026-09-11)
 3. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
-4. Idle: PROD `reported`/`resolved` DDL Human GO before claiming that path on PROD TF (`login_identifier_is_registered` already live on PROD)
+4. Idle: Report path DDL **applied DEV+PROD 2026-09-22** — prove by retrying Report on TF 278 (`login_identifier_is_registered` already live on PROD)
 
-**Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** — future enhancement. **Voice/mic on dock** — future enhancement. **PROD DDL** for reported/resolved — shelved until this Task Detail dock slice is resolved + committed.
+**Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** — future enhancement. **Voice/mic on dock** — future enhancement.
 
 ## Recently closed / shipped this session
 
@@ -242,7 +270,7 @@
 - **Project status `on_hold`:** dormant reserved DB CHECK slot
 - **Subtasks:** create / drill-in UI **off** until a dedicated future enhancement; do not restore Add Subtask on Task Detail Other-actions or dock. Store + `parentTaskId` may remain for existing data.
 - **Voice/mic on Task Detail dock:** shelved (future enhancement).
-- **PROD DDL** (`reported`/`resolved`): shelved until this dock slice is closed + committed.
+- **PROD DDL** (`reported`/`resolved`): **applied 2026-09-22** on DEV+PROD (Human GO). Prove via TF 278 Report retry.
 
 ## Sims / locks
 

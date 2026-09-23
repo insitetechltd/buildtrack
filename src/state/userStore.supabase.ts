@@ -101,6 +101,7 @@ interface UserStore {
     nextRole: string,
     limits: { pmSeatLimit: number; workerSeatLimit: number },
     nextIsActive?: boolean,
+    nextDeployableSeat?: "pm" | "worker" | null,
   ) => { canChange: boolean; reason?: string; seatType: "pm" | "worker" | null };
 
   // User approval
@@ -351,6 +352,7 @@ export const useUserStore = create<UserStore>()(
         nextRole: string,
         limits: { pmSeatLimit: number; workerSeatLimit: number },
         nextIsActive = true,
+        nextDeployableSeat?: "pm" | "worker" | null,
       ) => {
         const user = get().getUserById(userId);
         if (!user) {
@@ -374,7 +376,14 @@ export const useUserStore = create<UserStore>()(
         const { exceeds, seatType, usage } = roleChangeExceedsSeatLimit(
           companyUsers,
           limits,
-          { userId, nextRole: mappedRole, nextIsActive },
+          {
+            userId,
+            nextRole: mappedRole,
+            nextIsActive,
+            ...(nextDeployableSeat !== undefined
+              ? { nextDeployableSeat }
+              : {}),
+          },
         );
         if (exceeds) {
           return {
@@ -572,6 +581,12 @@ export const useUserStore = create<UserStore>()(
           }
           if (typeof updates.isPending === "boolean") {
             dbUpdates.is_pending = updates.isPending;
+          }
+          if (updates.deployableSeat !== undefined) {
+            dbUpdates.deployable_seat =
+              updates.deployableSeat === "pm" || updates.deployableSeat === "worker"
+                ? updates.deployableSeat
+                : null;
           }
 
           if (Object.keys(dbUpdates).length === 0 && dbRole === undefined) {

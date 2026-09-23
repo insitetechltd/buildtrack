@@ -112,6 +112,14 @@ describe("TaskDetailScreen header regression", () => {
     readiness: {
       hasUsableData: true,
     },
+    continuity: {
+      isInitialLoading: false,
+      isBackgroundRefreshing: false,
+      hasCachedFrame: true,
+      shouldRenderSkeletonShell: false,
+      shouldRenderEmptyState: false,
+      freshnessLabel: "",
+    },
     header: {
       title: "Task Details",
     },
@@ -205,6 +213,17 @@ describe("TaskDetailScreen header regression", () => {
       output: {
         readiness: {
           hasUsableData: false,
+        },
+        continuity: {
+          isInitialLoading: true,
+          isBackgroundRefreshing: false,
+          hasCachedFrame: false,
+          shouldRenderSkeletonShell: true,
+          shouldRenderEmptyState: false,
+          freshnessLabel: "",
+        },
+        header: {
+          title: "",
         },
       },
       actions: createAdapterActions(),

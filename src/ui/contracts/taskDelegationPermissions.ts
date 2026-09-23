@@ -15,6 +15,14 @@ import { seatClassForUser, type SeatUserFields } from "@/billing/seatUsage";
  *   (peers + subordinates only; never up-rank)
  * - Unknown / missing candidate roles default to member (lowest assignable band)
  * - RLS / DB enforcement deferred
+ *
+ * Stage C seat pin (intentional asymmetry — do not unify without a product decision):
+ * - Actor side: `resolveAssigneeRoleFromUser` → company `systemPermission` / role
+ *   (CA stays rank-40 admin so they can assign anyone on the job).
+ * - Candidate side: `resolveAssigneeCandidateRoleFromUser` → `seatClassForUser`
+ *   (CA default seat = worker/member rank-10 so field creators can still pick a CA).
+ * SoT helpers: `@/billing/seatUsage` (`seatClassForUser`) + this file.
+ * Stage D org Maestro must import these — never re-derive CA=admin for candidates.
  */
 
 export type TaskStatusLike = string | null | undefined;

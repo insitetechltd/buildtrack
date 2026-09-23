@@ -1,0 +1,5 @@
+{"id":"O1","flow":"O1-ca-shell.yaml","ok":true}
+{"id":"O2","flow":"O2-create-project-member.yaml","ok":true}
+{"id":"O3","flow":"O3-invite-validation.yaml","ok":true}
+{"id":"S2","flow":"S2-logout-relogin.yaml","ok":true}
+{"id":"S3","flow":"S3-set-password.yaml","ok":false}

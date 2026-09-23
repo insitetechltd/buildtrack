@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-09-22T13:29:17.642303+00:00",
+  "stage": "C",
+  "verdict": "CLOSED",
+  "appSha": "ed87a32c4d656af1051909849054b4559dacec61",
+  "dirtyTree": true,
+  "dirtyNote": "Stage C implementation dirty on tip; headed prove used this working tree with Metro PROD .env.local bake",
+  "plane": "PROD",
+  "projectRef": "jcnzjigxgkzhjsaekoqz",
+  "udid": "B7B2640C-4738-4F8A-AEEE-5DF3D21D2533",
+  "device": "iPhone 17 Pro Max iOS 26.0",
+  "metro": {
+    "bake": "temporary .env.local from insite-prod.env.local (removed after)",
+    "status": "packager-status:running during prove",
+    "log": ".cache/metro-prod-stage-c-20260922/metro.log"
+  },
+  "maestro": {
+    "rc": 0,
+    "elapsedSec": 91,
+    "artifacts": ".cache/maestro-home/.maestro/tests/2026-09-22_212653",
+    "flow": "maestro/flows/metro-prod-headed-smoke.yaml",
+    "pngRead": {
+      "dashboard": "App Review Site + PROD host chip path",
+      "create": "Task created successfully",
+      "detailAssignees": "Assigned by Sara",
+      "progressUpdate": "timeline shows MetroPROD-progress-* marker \u2014 PASS"
+    }
+  },
+  "C1_jwt": {
+    "verdict": "PASS",
+    "artifact": ".cache/prod-new-sot-20260915/headed-prod-qa-smoke.json"
+  },
+  "C1_headed": {
+    "verdict": "PASS",
+    "evidencePngs": "docs/superpowers/evidence/2026-09-22-stage-c/headed/"
+  },
+  "C2_S4": {
+    "verdict": "PASS",
+    "ok": true,
+    "label": "ipa",
+    "ipa": ".eas/artifacts/build-1790051685807.ipa",
+    "sha256": "5d1f06cea30993916efdd80424adbbfe27fdf0053c135ecba47e24fc1971be82",
+    "bundleId": "com.buildtrack.app.local",
+    "version": "1.1.3",
+    "buildNumber": "278",
+    "prodRef": "jcnzjigxgkzhjsaekoqz",
+    "devRefAbsent": true
+  },
+  "C3_seat": {
+    "verdict": "PASS"
+  },
+  "gateA": {
+    "validation": "bc-e60b6c46-e735-5a54-9553-c944022a1c75",
+    "risks": "bc-38da141a-c1c7-5d68-bb53-60fa993ddfd3"
+  },
+  "judge": "GO \u2014 Stage C Done criteria met (headed PROD PASS + S4 wrong-ref would fail CBP)"
+}

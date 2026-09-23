@@ -1,48 +1,43 @@
-# Description + submit Update Progress; assert success alert.
+# Dock progress update: note + scrub toward 100% + send (Task Detail SoT).
 appId: com.buildtrack.app.local
 ---
 - evalScript: ${output.progressNote = "Maestro UP photo " + Date.now()}
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "update-progress__description"
-    direction: DOWN
-- tapOn:
-    id: "update-progress__description"
-- inputText: ${output.progressNote}
-# Keyboard covers Submit. Do not use hideKeyboard. Tap chrome that is not the
-# description field so XCTest is not tapping through the keyboard onto Submit.
-- runFlow: ../_dismiss-keyboard.yaml
-- tapOn: "Photos & Files"
-- tapOn:
-    id: "update-progress__completion-value"
-- runFlow: ../_dismiss-keyboard.yaml
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "update-progress__submit"
-    direction: DOWN
-- runFlow:
-    when:
-      visible: "Done"
-    commands:
-      - tapOn: "Done"
-      - tapOn:
-          point: "50%, 8%"
-      - tapOn: "Photos & Files"
-      - waitForAnimationToEnd:
-          timeout: 1500
-- tapOn:
-    id: "update-progress__submit"
-- tapOn:
-    id: "update-progress__submit"
-    delay: 2000
+# Photo dirt arms send; long-press remounts % scrub in trailing slot.
+- longPressOn:
+    id: "report-reply-composer__send"
+- waitForAnimationToEnd:
+    timeout: 800
 - extendedWaitUntil:
-    visible: ".*Progress update added successfully!.*"
-    timeout: 25000
-- tapOn: "OK"
+    visible:
+      id: "report-reply-composer__completion_hit"
+    timeout: 4000
+- swipe:
+    start: "90%, 78%"
+    end: "90%, 42%"
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: "report-reply-composer__input"
+- inputText: ${output.progressNote}
+- runFlow: ../_dismiss-keyboard.yaml
+- tapOn:
+    id: "report-reply-composer__send"
+- waitForAnimationToEnd:
+    timeout: 4000
 - runFlow:
     when:
       visible: "OK"
     commands:
       - tapOn: "OK"
+- runFlow:
+    when:
+      visible: "Success"
+    commands:
+      - tapOn: "OK"
+- runFlow:
+    when:
+      visible: ".*Progress update.*"
+    commands:
+      - tapOn: "OK"
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml

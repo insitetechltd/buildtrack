@@ -29,6 +29,7 @@ RESOLVE_TASK="${ROOT}/scripts/maestro/resolve-dual-user-task-id.cjs"
 SIM_LOCK="${ROOT}/scripts/maestro/sim-lock.sh"
 RESOURCE_LOCK="${ROOT}/scripts/maestro/resource-lock.sh"
 DU_TASK_ENV="${ROOT}/.cache/maestro-du-task.env"
+DU_USERS_ENV="${ROOT}/.cache/maestro-du-users.env"
 MAESTRO_HOME="${MAESTRO_LOCAL_HOME:-$ROOT/.cache/maestro-home-dual-user}"
 export MAESTRO_LOCAL_HOME="${MAESTRO_HOME}"
 ONLY="${ONLY:-ALL}"
@@ -192,6 +193,12 @@ ensure_dual_user_data() {
   set -e
   printf '%s\n' "${out}"
   [[ "${rc}" -eq 0 ]] || die "Dual-user data ensure failed (rc=${rc})"
+  [[ -f "${DU_USERS_ENV}" ]] || die "Missing ${DU_USERS_ENV} after ensure"
+  # shellcheck disable=SC1090
+  source "${DU_USERS_ENV}"
+  export DU_JOHN_ID DU_ALICE_ID
+  [[ -n "${DU_JOHN_ID:-}" && -n "${DU_ALICE_ID:-}" ]] || die "DU_JOHN_ID/DU_ALICE_ID empty after ensure"
+  log "Dual-user ids john=${DU_JOHN_ID:0:8}… alice=${DU_ALICE_ID:0:8}…"
 }
 
 count_screenshots_for_flow() {
@@ -267,17 +274,24 @@ run_phase() {
 
     log "PHASE ${tag} attempt=${attempt}/${max_attempts} udid=${udid:0:8}… flow=${flow} title=${title:-<none>} taskId=${task_id:-<none>}"
     set +e
+    # Always forward dual-user ids when present (create needs them for assignee chips).
+    local john_e=() alice_e=()
+    if [[ -n "${DU_JOHN_ID:-}" ]]; then john_e=( -e "DU_JOHN_ID=${DU_JOHN_ID}" ); fi
+    if [[ -n "${DU_ALICE_ID:-}" ]]; then alice_e=( -e "DU_ALICE_ID=${DU_ALICE_ID}" ); fi
     if [[ -n "${title}" && -n "${task_id}" ]]; then
       bash "${WRAPPER}" --udid "${udid}" test ${driver_flag} \
         -e "DU_TASK_TITLE=${title}" \
         -e "DU_TASK_ID=${task_id}" \
+        "${john_e[@]}" "${alice_e[@]}" \
         "${flow_path}" 2>&1 | tee "${log_file}"
     elif [[ -n "${title}" ]]; then
       bash "${WRAPPER}" --udid "${udid}" test ${driver_flag} \
         -e "DU_TASK_TITLE=${title}" \
+        "${john_e[@]}" "${alice_e[@]}" \
         "${flow_path}" 2>&1 | tee "${log_file}"
     else
       bash "${WRAPPER}" --udid "${udid}" test ${driver_flag} \
+        "${john_e[@]}" "${alice_e[@]}" \
         "${flow_path}" 2>&1 | tee "${log_file}"
     fi
     last_rc=${PIPESTATUS[0]}

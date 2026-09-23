@@ -65,6 +65,7 @@ describe("LoginScreen", () => {
         password: "secret123",
         isPasswordVisible: false,
         buildIdentifierLabel: "v1.2.3 (456i-tf)",
+        activeSupabaseProjectRef: "jcnzjigxgkzhjsaekoqz",
         validationErrors: {},
         isLoading: false,
         isPasswordEnabled: true,
@@ -90,6 +91,9 @@ describe("LoginScreen", () => {
       320,
     );
     expect(screen.getByText("v1.2.3 (456i-tf)")).toBeTruthy();
+    expect(screen.getByTestId("login-active-db-host").props.children).toBe(
+      "jcnzjigxgkzhjsaekoqz",
+    );
     expect(screen.getByText("Sign In")).toBeTruthy();
     expect(screen.queryByTestId("login-signup-web")).toBeNull();
 
@@ -113,6 +117,7 @@ describe("LoginScreen", () => {
         password: "",
         isPasswordVisible: false,
         buildIdentifierLabel: "v1.2.3 (456i-tf)",
+        activeSupabaseProjectRef: "jcnzjigxgkzhjsaekoqz",
         validationErrors: {},
         isLoading: false,
         isPasswordEnabled: false,

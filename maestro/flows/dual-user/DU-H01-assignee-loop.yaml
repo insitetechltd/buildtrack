@@ -112,7 +112,6 @@ tags:
       # the % scrubber in that same trailing slot — not the left camera.
       - longPressOn:
           id: "report-reply-composer__send"
-          timeout: 2000
       - waitForAnimationToEnd:
           timeout: 800
       - extendedWaitUntil:

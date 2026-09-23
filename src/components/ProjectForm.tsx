@@ -139,29 +139,24 @@ export default function ProjectForm({
   }, [mode, project?.id]);
 
 
-  const validateForm = () => {
+  const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
       newErrors.name = "Project name is required";
     }
-
     if (!formData.description.trim()) {
       newErrors.description = "Project description is required";
     }
-
     if (!formData.location.trim()) {
       newErrors.location = "Location is required";
     }
-
     if (!formData.clientInfo.name.trim()) {
       newErrors.clientName = "Client name is required";
     }
-
     if (formData.endDate <= formData.startDate) {
       newErrors.endDate = "End date must be after start date";
     }
-
     if (mode === "create") {
       const selectedAdmins = Object.values(teamSelection).filter(
         (row) => row.asProjectAdmin,
@@ -172,13 +167,11 @@ export default function ProjectForm({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    setErrors({});
-    
-    if (!validateForm()) return;
+    if (Object.keys(newErrors).length > 0) {
+      // Scrolled-to-footer submit otherwise fails silently above the fold.
+      Alert.alert("Missing required fields", Object.values(newErrors).join("\n"));
+      return;
+    }
 
     try {
       const initialMembers =
@@ -291,7 +284,11 @@ export default function ProjectForm({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
     >
-      <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="always">
+      <ScrollView
+        className="flex-1 px-4 py-3"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         {/* Project Information — elevate whole card while status menu is open so it paints above Location */}
         <View
           testID="project-form-info-card"
@@ -319,6 +316,7 @@ export default function ProjectForm({
               inputRef={clientNameInputRef}
               collapseEmptyChrome
               onChangeText={(text) => handleClientChange("name", text)}
+              onEndEditing={(event) => handleClientChange("name", event.nativeEvent.text)}
               maxLength={100}
               returnKeyType="next"
               onKeyPress={(event) => handleFieldKeyPress("clientName", event)}
@@ -342,6 +340,7 @@ export default function ProjectForm({
               inputRef={projectNameInputRef}
               collapseEmptyChrome
               onChangeText={handleNameChange}
+              onEndEditing={(event) => handleNameChange(event.nativeEvent.text)}
               maxLength={100}
               returnKeyType="next"
               onKeyPress={(event) => handleFieldKeyPress("name", event)}
@@ -366,6 +365,7 @@ export default function ProjectForm({
               collapseEmptyChrome
               inputClassName="min-h-[90px]"
               onChangeText={handleDescriptionChange}
+              onEndEditing={(event) => handleDescriptionChange(event.nativeEvent.text)}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -467,6 +467,7 @@ export default function ProjectForm({
             collapseEmptyChrome
             inputClassName="min-h-[130px]"
             onChangeText={handleLocationChange}
+            onEndEditing={(event) => handleLocationChange(event.nativeEvent.text)}
             multiline
             numberOfLines={5}
             textAlignVertical="top"
@@ -549,6 +550,7 @@ export default function ProjectForm({
             <View className="flex-1">
               <Text className="text-lg font-semibold text-slate-900 mb-2">Estimated End Date</Text>
               <Pressable
+                testID="project-form-end-date"
                 onPress={() => setShowEndDatePicker(true)}
                 className={cn(
                   "border rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between",
@@ -716,12 +718,20 @@ export default function ProjectForm({
         {/* Action Buttons */}
         <View className="flex-row space-x-3 mb-6">
           <Pressable
+            testID="create-project__cancel"
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
             onPress={onCancel}
             className="flex-1 bg-gray-200 rounded-lg py-3"
           >
-            <Text className="text-gray-700 font-medium text-center">Cancel</Text>
+            <Text pointerEvents="none" className="text-gray-700 font-medium text-center">
+              Cancel
+            </Text>
           </Pressable>
           <Pressable
+            testID="create-project__submit"
+            accessibilityRole="button"
+            accessibilityLabel="Create"
             onPress={handleSubmit}
             disabled={isSubmitting}
             className={cn(
@@ -729,7 +739,7 @@ export default function ProjectForm({
               isSubmitting ? "bg-gray-300" : "bg-blue-600"
             )}
           >
-            <Text className="text-white font-medium text-center">
+            <Text pointerEvents="none" className="text-white font-medium text-center">
               {isSubmitting ? "Saving..." : submitButtonText}
             </Text>
           </Pressable>

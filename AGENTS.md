@@ -93,6 +93,7 @@ These constraints apply across the agent pack unless a role narrows them further
 - Task domain source of truth: `src/state/taskStore.supabase.ts`.
 - Backend integration root: `src/api/supabase.ts`.
 - Build and release sources of truth: `package.json`, `app.json`, `eas.json`, `patches/`, root build scripts, `documentation/`.
+- **Fastlane (ios/fastlane/):** Minimal setup for TestFlight → App Store promotion and manual IPA upload only. Do NOT replace EAS build pipeline. Agents may only run documented lanes (`promote`, `tf_upload`); never freestyle `deliver` / `gym` commands. Never commit `.p8` ASC API keys or credentials; use environment variables only. See `ios/fastlane/README.md`.
 - **Quality loop (2026-08-30):** Intake → Spec → Implement → Prove → Judge. Close = Judge GO, not Reviewer alone. User is not required to fill a kickoff template.
 - Shared safety rules:
   - Never revert unrelated user changes.

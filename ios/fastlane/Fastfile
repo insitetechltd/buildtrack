@@ -1,0 +1,128 @@
+# Fastfile
+# BuildTrack iOS - Minimal Fastlane Setup
+#
+# Purpose: Fills gaps not covered by EAS (promote TF → App Store, manual IPA upload).
+# Do NOT duplicate EAS build lanes — continue using ./build-and-submit.sh for daily TF.
+#
+# Allowed lanes:
+#   - promote: Promote an existing TestFlight build to App Store review (requires CONFIRM=true)
+#   - tf_upload: Upload a pre-built IPA to TestFlight (optional, for manual submissions)
+#
+# Required environment variables:
+#   ASC_KEY_ID: App Store Connect API Key ID (e.g., 57D87U9MQ2)
+#   ASC_ISSUER_ID: App Store Connect Issuer ID (UUID)
+#   ASC_KEY_PATH: Path to the .p8 API key file (never commit this file)
+#
+# Optional environment variables:
+#   CONFIRM: Set to "true" to bypass interactive confirmation (promote lane)
+#   SKIP_WAITING_FOR_BUILD_PROCESSING: Set to "true" to skip waiting for processing (tf_upload lane)
+#
+# Examples:
+#   bundle exec fastlane promote build_number:261 CONFIRM=true
+#   bundle exec fastlane tf_upload ipa_path:./build.ipa
+
+default_platform(:ios)
+
+platform :ios do
+  before_all do
+    # Verify required ASC API credentials are present
+    unless ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_KEY_PATH"]
+      UI.user_error!("❌ Missing App Store Connect API credentials. Set ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_PATH.")
+    end
+
+    # Verify the key file exists
+    unless File.exist?(ENV["ASC_KEY_PATH"])
+      UI.user_error!("❌ ASC API key file not found at: #{ENV["ASC_KEY_PATH"]}")
+    end
+  end
+
+  desc "Promote an existing TestFlight build to App Store review"
+  desc "Usage: bundle exec fastlane promote build_number:261 CONFIRM=true"
+  desc "Human Gate: requires CONFIRM=true environment variable"
+  lane :promote do |options|
+    # Human gate: require explicit confirmation
+    unless ENV["CONFIRM"] == "true"
+      UI.user_error!("❌ Refusing promote without CONFIRM=true. This submits to App Store review.")
+    end
+
+    build_number = options[:build_number]
+    unless build_number
+      UI.user_error!("❌ Missing required parameter: build_number")
+    end
+
+    UI.important("🚀 Promoting build #{build_number} to App Store review...")
+    UI.message("Bundle ID: com.buildtrack.app.local")
+    UI.message("App ID: 6754898737")
+
+    # Authenticate with App Store Connect API
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"],
+      in_house: false
+    )
+
+    # Submit the build for review
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.buildtrack.app.local",
+      app_version: nil, # Will use the version from the build
+      build_number: build_number.to_s,
+      skip_screenshots: true,
+      skip_metadata: true,
+      skip_app_version_update: true,
+      submit_for_review: true,
+      automatic_release: false, # Manual release after approval
+      submission_information: {
+        add_id_info_uses_idfa: false
+      },
+      precheck_include_in_app_purchases: false
+    )
+
+    UI.success("✅ Build #{build_number} submitted for App Store review!")
+    UI.message("Check status at: https://appstoreconnect.apple.com")
+  end
+
+  desc "Upload a pre-built IPA to TestFlight"
+  desc "Usage: bundle exec fastlane tf_upload ipa_path:./build.ipa"
+  desc "Optional: Set SKIP_WAITING_FOR_BUILD_PROCESSING=true to skip processing wait"
+  lane :tf_upload do |options|
+    ipa_path = options[:ipa_path]
+    unless ipa_path
+      UI.user_error!("❌ Missing required parameter: ipa_path")
+    end
+
+    unless File.exist?(ipa_path)
+      UI.user_error!("❌ IPA file not found at: #{ipa_path}")
+    end
+
+    UI.important("📤 Uploading IPA to TestFlight...")
+    UI.message("IPA: #{ipa_path}")
+
+    # Authenticate with App Store Connect API
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"],
+      in_house: false
+    )
+
+    # Upload to TestFlight
+    pilot(
+      api_key: api_key,
+      ipa: ipa_path,
+      skip_waiting_for_build_processing: ENV["SKIP_WAITING_FOR_BUILD_PROCESSING"] == "true",
+      skip_submission: false, # Make available to testers
+      distribute_external: false, # Internal testers only by default
+      notify_external_testers: false
+    )
+
+    UI.success("✅ IPA uploaded to TestFlight!")
+    if ENV["SKIP_WAITING_FOR_BUILD_PROCESSING"] == "true"
+      UI.message("⏳ Processing skipped. Check App Store Connect for build status.")
+    else
+      UI.message("✅ Build processing complete and ready for testing.")
+    end
+    UI.message("View at: https://appstoreconnect.apple.com")
+  end
+end

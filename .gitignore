@@ -64,7 +64,10 @@ current-task-detail-runtime.png
 
 # Expo prebuild output only (do not ignore modules/*/ios — that drops local Expo pods)
 /ios/
-/android/
+# Exception: Fastlane setup (minimal, does not duplicate EAS)
+!/ios/Gemfile
+!/ios/Gemfile.lock
+!/ios/fastlane/
 
 # Android Keystore (explicit - android/ is already ignored but being explicit)
 *.keystore

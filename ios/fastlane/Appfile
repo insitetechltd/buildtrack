@@ -1,0 +1,21 @@
+# Appfile
+# BuildTrack iOS Fastlane Configuration
+#
+# Bundle ID and Apple Team are read from environment variables.
+# Set these in your shell environment or .env file:
+#   FASTLANE_APPLE_ID=your-apple-id@example.com
+#   FASTLANE_TEAM_ID=YOURTEAMID (10-char Apple Developer Team ID)
+#   ASC_KEY_ID=57D87U9MQ2
+#   ASC_ISSUER_ID=169799ef-c185-49f3-8c48-7d82e7ba7683
+#   ASC_KEY_PATH=/path/to/AuthKey_57D87U9MQ2.p8
+#
+# Never commit .p8 keys or credentials to git.
+
+app_identifier("com.buildtrack.app.local")
+
+# Optional: Fastlane will prompt or read from ENV if not set
+apple_id(ENV["FASTLANE_APPLE_ID"]) if ENV["FASTLANE_APPLE_ID"]
+team_id(ENV["FASTLANE_TEAM_ID"]) if ENV["FASTLANE_TEAM_ID"]
+
+# App Store Connect app identifier (from eas.json)
+itc_team_id(ENV["FASTLANE_ITC_TEAM_ID"] || ENV["FASTLANE_TEAM_ID"]) if ENV["FASTLANE_ITC_TEAM_ID"] || ENV["FASTLANE_TEAM_ID"]

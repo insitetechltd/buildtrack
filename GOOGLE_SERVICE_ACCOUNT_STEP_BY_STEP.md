@@ -128,7 +128,7 @@ Open the JSON file and find the `client_email` field. It looks like:
 
 ```bash
 # In your terminal, navigate to project root
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 
 # Move the downloaded JSON file (replace with actual filename)
 # The file is usually in Downloads folder

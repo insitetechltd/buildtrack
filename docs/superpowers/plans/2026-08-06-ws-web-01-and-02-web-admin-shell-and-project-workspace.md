@@ -1707,7 +1707,7 @@ Scaffold implementation key points (full code ~280 lines — write directly):
 - Row actions: Edit, Change Role, Deactivate / Reactivate, Resend Invite.
 - Modals for each action via WebModal.
 
-Use the existing [UserManagementScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/UserManagementScreen.tsx) as a source of truth for chip colors.
+Use the existing [UserManagementScreen.tsx](../../../src/screens/UserManagementScreen.tsx) as a source of truth for chip colors.
 
 - [ ] **Step 8.3: Run test → PASS; run full typecheck**
 

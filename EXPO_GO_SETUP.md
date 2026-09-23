@@ -27,7 +27,7 @@ Expo Go is a free mobile app that allows you to run your React Native app withou
 
 ```bash
 # Navigate to project directory
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 
 # Start the development server
 npx expo start

@@ -127,7 +127,7 @@ Common reasons you might see:
 Run this command to check what architectures are in your AAB:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 bundletool dump manifest --bundle=android/app/build/outputs/bundle/release/app-release.aab | grep -i "native"
 ```
 

@@ -88,8 +88,8 @@ Use `npm run test:regression` as the default local pre-PR checkpoint. It mirrors
 
 ## Related Files
 
-- [TESTING_STRATEGY.md](file:///Volumes/KooDrive/Insite%20App/TESTING_STRATEGY.md)
-- [ci-pull-requests.yml](file:///Volumes/KooDrive/Insite%20App/.github/workflows/ci-pull-requests.yml)
-- [ci-post-merge.yml](file:///Volumes/KooDrive/Insite%20App/.github/workflows/ci-post-merge.yml)
-- [ci-nightly.yml](file:///Volumes/KooDrive/Insite%20App/.github/workflows/ci-nightly.yml)
-- [ci-weekly.yml](file:///Volumes/KooDrive/Insite%20App/.github/workflows/ci-weekly.yml)
+- [TESTING_STRATEGY.md](./TESTING_STRATEGY.md)
+- [ci-pull-requests.yml](.github/workflows/ci-pull-requests.yml)
+- [ci-post-merge.yml](.github/workflows/ci-post-merge.yml)
+- [ci-nightly.yml](.github/workflows/ci-nightly.yml)
+- [ci-weekly.yml](.github/workflows/ci-weekly.yml)

@@ -51,10 +51,10 @@ if (updates.acceptedAt) updateData.accepted_at = updates.acceptedAt;
 ```
 
 ## Files Modified
-1. `/Volumes/KooDrive/Insite App/src/screens/TaskDetailScreen.tsx`
+1. `/Volumes/KooDrive/InsiteApp/src/screens/TaskDetailScreen.tsx`
    - Added `fetchTasks` import from task store (line 46)
 
-2. `/Volumes/KooDrive/Insite App/src/state/taskStore.supabase.ts`
+2. `/Volumes/KooDrive/InsiteApp/src/state/taskStore.supabase.ts`
    - Added `accepted_by` field mapping (line 692)
    - Added `accepted_at` field mapping (line 693)
 

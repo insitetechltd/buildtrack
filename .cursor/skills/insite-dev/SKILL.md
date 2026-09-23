@@ -70,7 +70,7 @@ For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/mu
 - Tasks: `src/state/taskStore.supabase.ts`
 - Supabase client: `src/api/supabase.ts`
 - Nav: `src/navigation/AppNavigator.tsx`
-- Docs governance: `documentation/SOURCE_OF_TRUTH.md`
+- Docs governance: `documentation/SOURCE_OF_TRUTH.md` (repo-relative Markdown links only — never `file:///Volumes/KooDrive/...`)
 - Session continuity: `documentation/NOW.md`
 - Multi-company membership (post-RC): `documentation/multi-company-project-membership.md`
 - **Roadmap discussion lock (2026-08-19):** `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` — read before changing Wave 2 / AI / DMS / post-RC order

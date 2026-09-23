@@ -102,7 +102,7 @@ The only remaining blocker is the privacy policy requirement, which is a content
 After adding the privacy policy, test submission:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 ./submit-to-play-store.sh internal
 ```
 

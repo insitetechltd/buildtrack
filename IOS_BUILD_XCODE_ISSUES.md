@@ -67,7 +67,7 @@ npx expo install --check
 The fastest solution is to use EAS cloud builds:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 npx eas build --platform ios --profile production
 ```
 

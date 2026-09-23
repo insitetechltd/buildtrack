@@ -4,7 +4,7 @@ Date: 2026-07-02
 
 ## Scope
 
-This audit is based on the current repository state in `Insite App`, with emphasis on:
+This audit is based on the current repository state in `InsiteApp`, with emphasis on:
 
 - `src/navigation/AppNavigator.tsx`
 - `src/screens/DashboardScreen.tsx`

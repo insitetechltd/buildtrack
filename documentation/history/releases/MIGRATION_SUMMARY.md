@@ -3,7 +3,7 @@
 ## Date: November 7, 2025
 
 ## Overview
-This is a fresh copy of the BuildTrack codebase migrated from `/Users/tristan/Desktop/BuildTrack` to `/Volumes/KooDrive/Insite App`.
+This is a fresh copy of the BuildTrack codebase migrated from `/Users/tristan/Desktop/BuildTrack` to `/Volumes/KooDrive/InsiteApp`.
 
 ## Purpose
 Created to resolve build and dependency issues by starting with a clean installation while preserving all source code and configuration.

@@ -5,7 +5,7 @@
 The QR code is automatically displayed when you start the Expo dev server. To see it:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 npx expo start
 ```
 

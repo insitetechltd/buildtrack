@@ -70,7 +70,7 @@ Even with Play Console permissions, you may still need to enable the API:
 After granting Play Console permissions:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 eas submit --platform android --profile production --path android/app/build/outputs/bundle/release/app-release.aab --non-interactive
 ```
 

@@ -146,7 +146,7 @@ Use this layer on nightly and weekly schedules.
 
 ### Coverage Floor
 
-The current Jest thresholds are defined in [jest.config.js](file:///Volumes/KooDrive/Insite%20App/jest.config.js):
+The current Jest thresholds are defined in [jest.config.js](./jest.config.js):
 
 - lines: `70%`
 - statements: `70%`

@@ -4,7 +4,7 @@ Date: 2026-07-03
 
 ## Purpose
 
-This report compares the existing Taskr app implementation in `\KooDrive\Insite App` against the new Insite redesign direction documented in:
+This report compares the existing Taskr app implementation in `\KooDrive\InsiteApp` against the new Insite redesign direction documented in:
 
 - `docs/superpowers/specs/2026-07-03-insite-app-redesign-design.md`
 

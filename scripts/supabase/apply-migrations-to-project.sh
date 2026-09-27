@@ -2,8 +2,9 @@
 # Apply numbered supabase/migrations/*.sql to an explicit project (pooler session).
 # M-OPS-ENV-01: require --project-ref + --env-file so DEV .env cannot silently target PROD.
 #
-# Skips: DRAFT_*, *ROLLBACK*, and dormant 20260825000600_projects_drop_on_hold.sql
-#   (reserved on_hold CHECK slot — do not apply without separate product GO).
+# Skips: DRAFT_*, *ROLLBACK*, dormant 20260825000600_projects_drop_on_hold.sql
+#   (reserved on_hold CHECK slot — do not apply without separate product GO),
+#   and 20260928000100_company_subscriptions_last_webhook_event.sql until Tristan GO.
 #
 # Usage:
 #   bash scripts/supabase/apply-migrations-to-project.sh \
@@ -94,6 +95,7 @@ SKIP_BASENAMES=(
   "20260808000301_msupabase03b_ROLLBACK.sql"
   "20260808110001_sux01n_project_containers_ROLLBACK.sql"
   "20260825000600_projects_drop_on_hold.sql"
+  "20260928000100_company_subscriptions_last_webhook_event.sql"
 )
 
 should_skip() {

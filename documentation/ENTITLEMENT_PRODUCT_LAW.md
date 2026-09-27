@@ -17,6 +17,7 @@ Literal “block every unpaid request” is **not** the product. Gates are **act
 | Entitlement / `billing-subscription-status` fetch fails during founder check | Founding CA | Stay gated (do not unlock) | **FAIL-CLOSED** | Gate clears only on positive `companyHasPaidStripePlan` |
 | Existing PM / Worker / CA already in app (not in founder gate) | Field / CA | Task list, create, update, photos continue even if billing Edge is down or sub lapses | **FAIL-OPEN** (task access) | No MainTabs hard-block on `billing-subscription-status` |
 | Invite / seat over-cap | CA inviting | Cap enforced at invite / seat math | **FAIL-CLOSED** (invite) | Seat limits + Edge invite (see seatUsage / inviteUser) |
+| Stripe `customer.subscription.deleted` (or live status canceled) | Company | `subscription_status=canceled`; **seat meters → 0** (invite fail-closed); other meters kept for audit | **FAIL-CLOSED** (founder + invites) | `stripe-webhook` cancel path; task access still fail-open for field users |
 | Last company admin demote | CA | Block demote of sole admin | **FAIL-CLOSED** | DB trigger `users_guard_last_admin` (O4) |
 | Cross-company / cross-project data | Any JWT | Deny | **FAIL-CLOSED** | RLS F6/F7 (p-matrix) |
 

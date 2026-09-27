@@ -57,16 +57,6 @@ function billingPhaseFromStatus(status: string): "trial" | "active" | "override"
   return status === "trialing" ? "trial" : "active";
 }
 
-function buildTrialSnapshotFromPrice(
-  paidSnapshot: EntitlementsSnapshot,
-): EntitlementsSnapshot {
-  return {
-    ...paidSnapshot,
-    billing_phase: "trial",
-    trial_discount_model: "stripe_native_trial",
-  };
-}
-
 function entriesLimitKindFromMeters(meters: MeterMap): string {
   if (meters.entries_trial_total != null) return "trial_total";
   if (meters.entries_monthly == null) return "unlimited";
@@ -88,9 +78,13 @@ function entitlementsRowFromSnapshot(
     entriesLimit = meters.entries_monthly ?? null;
   }
 
+  // Seat defaults removed — caller must assertPaidPlanMetersComplete (or cancel zeros).
+  if (typeof meters.pm_seats === "undefined" || typeof meters.worker_seats === "undefined") {
+    throw new Error("entitlementsRowFromSnapshot: missing seat meters");
+  }
   return {
-    pm_seat_limit: meters.pm_seats ?? 1,
-    worker_seat_limit: meters.worker_seats ?? 5,
+    pm_seat_limit: meters.pm_seats ?? 0,
+    worker_seat_limit: meters.worker_seats ?? 0,
     project_limit: meters.projects ?? null,
     entries_limit: entriesLimit,
     entries_limit_kind: entriesKind,
@@ -103,41 +97,52 @@ function entitlementsRowFromSnapshot(
   };
 }
 
-async function resolvePlanPriceId(
-  admin: AdminClient,
-  stripePriceId: string,
-  livemode: boolean,
-  metadataPlanPriceId?: string | null,
-): Promise<string | null> {
-  if (metadataPlanPriceId) {
-    const { data } = await admin
-      .from("plan_prices")
-      .select("id")
-      .eq("id", metadataPlanPriceId)
-      .maybeSingle();
-    if (data?.id) return data.id as string;
+function assertNoDbError(
+  error: { message?: string } | null | undefined,
+  context: string,
+): void {
+  if (error) {
+    throw new Error(`${context}: ${error.message || "db_error"}`);
   }
-
-  const { data } = await admin
-    .from("plan_prices")
-    .select("id")
-    .eq("stripe_price_id", stripePriceId)
-    .eq("livemode", livemode)
-    .maybeSingle();
-
-  return (data?.id as string | undefined) ?? null;
 }
 
-async function buildPaidSnapshot(
-  admin: AdminClient,
-  planPriceId: string,
-): Promise<EntitlementsSnapshot> {
-  const { data, error } = await admin.rpc("build_entitlements_snapshot_from_price", {
-    p_plan_price_id: planPriceId,
-    p_billing_phase: "active",
-  });
-  if (error) throw error;
-  return data as EntitlementsSnapshot;
+function shouldSkipStaleWebhookEvent(
+  eventCreatedUnix: number,
+  lastAppliedIso: string | null | undefined,
+): boolean {
+  if (!lastAppliedIso) return false;
+  const lastUnix = Math.floor(new Date(lastAppliedIso).getTime() / 1000);
+  if (!Number.isFinite(lastUnix) || !Number.isFinite(eventCreatedUnix)) {
+    return false;
+  }
+  return eventCreatedUnix < lastUnix;
+}
+
+function assertPaidPlanMetersComplete(
+  mergedMeters: MeterMap,
+  subscriptionId: string,
+  lockedPlanPriceId: string,
+): void {
+  if (Object.keys(mergedMeters).length === 0) {
+    throw new Error(
+      `subscription ${subscriptionId} merged meters empty (base=${lockedPlanPriceId})`,
+    );
+  }
+  const missing: string[] = [];
+  for (const key of ["pm_seats", "worker_seats", "projects", "storage_bytes"]) {
+    if (!(key in mergedMeters)) missing.push(key);
+  }
+  if (
+    !("entries_monthly" in mergedMeters) &&
+    !("entries_trial_total" in mergedMeters)
+  ) {
+    missing.push("entries_monthly|entries_trial_total");
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `subscription ${subscriptionId} partial meters missing [${missing.join(",")}] (base=${lockedPlanPriceId})`,
+    );
+  }
 }
 
 async function claimWebhookEvent(
@@ -162,10 +167,18 @@ async function releaseWebhookEvent(
   admin: AdminClient,
   stripeEventId: string,
 ): Promise<void> {
-  await admin
+  const { error } = await admin
     .from("billing_webhook_events")
     .delete()
     .eq("stripe_event_id", stripeEventId);
+  if (error) {
+    // If release fails, Stripe retries look like duplicates and the event is lost.
+    console.error("stripe-webhook: releaseWebhookEvent failed", {
+      stripeEventId,
+      message: error.message,
+    });
+    throw new Error(`release_webhook_event_failed: ${error.message}`);
+  }
 }
 
 function generateTempPassword(): string {
@@ -275,10 +288,11 @@ async function mintInviteOpenLink(
   const origin = supabaseUrl.replace(/\/$/, "");
   const signInLink =
     `${origin}/functions/v1/invite-open?token_hash=${encodeURIComponent(hashedToken)}`;
-  await admin
+  const { error: inviteUpdateError } = await admin
     .from("users")
     .update({ invite_sign_in_link: signInLink })
     .eq("id", userId);
+  assertNoDbError(inviteUpdateError, "invite_sign_in_link_update");
   return signInLink;
 }
 
@@ -308,45 +322,50 @@ async function provisionCheckoutFirstSignup(
   }
 
   // Already provisioned for this subscription?
-  const { data: existingSub } = await admin
+  const { data: existingSub, error: existingSubError } = await admin
     .from("company_subscriptions")
     .select("company_id")
     .eq("stripe_subscription_id", subscriptionId)
     .maybeSingle();
+  assertNoDbError(existingSubError, "signup_existing_sub_lookup");
   if (existingSub?.company_id) {
     const companyId = existingSub.company_id as string;
     // Ensure invite link exists for status poll / recovery.
-    const { data: founder } = await admin
+    const { data: founder, error: founderError } = await admin
       .from("users")
       .select("id, email, invite_sign_in_link")
       .eq("company_id", companyId)
       .ilike("email", email)
       .maybeSingle();
+    assertNoDbError(founderError, "signup_founder_lookup");
     if (founder?.id && !founder.invite_sign_in_link) {
       await mintInviteOpenLink(admin, supabaseUrl, email, founder.id as string);
     }
     return { companyId };
   }
 
-  const { data: existingProfile } = await admin
+  const { data: existingProfile, error: existingProfileError } = await admin
     .from("users")
     .select("id, company_id, email")
     .ilike("email", email)
     .maybeSingle();
+  assertNoDbError(existingProfileError, "signup_profile_lookup");
 
   if (existingProfile?.company_id) {
     // Email already owns a company — attach this subscription; do not create a second.
     const companyId = existingProfile.company_id as string;
-    await admin.from("company_subscriptions").upsert({
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const { error: attachSubError } = await admin.from("company_subscriptions").upsert({
       company_id: companyId,
       stripe_customer_id: typeof session.customer === "string"
         ? session.customer
         : session.customer?.id ?? null,
       stripe_subscription_id: subscriptionId,
-      status: "trialing",
+      status: mapStripeStatus(subscription.status),
       livemode: session.livemode,
       locked_plan_price_id: planPriceId,
     }, { onConflict: "company_id" });
+    assertNoDbError(attachSubError, "signup_attach_subscription_upsert");
 
     await stripe.subscriptions.update(subscriptionId, {
       metadata: {
@@ -358,13 +377,13 @@ async function provisionCheckoutFirstSignup(
       },
     });
 
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     await handleSubscriptionLifecycle(
       admin,
       stripe,
       {
         id: `local_replay_${subscriptionId}`,
         type: "customer.subscription.updated",
+        created: Math.floor(Date.now() / 1000),
       } as Stripe.Event,
       subscription,
     );
@@ -396,11 +415,12 @@ async function provisionCheckoutFirstSignup(
     });
     if (created.error || !created.data.user?.id) {
       // Race: user created between lookup and create
-      const { data: raced } = await admin
+      const { data: raced, error: racedError } = await admin
         .from("users")
         .select("id, company_id")
         .ilike("email", email)
         .maybeSingle();
+      assertNoDbError(racedError, "signup_raced_profile_lookup");
       if (raced?.company_id) {
         return provisionCheckoutFirstSignup(admin, stripe, supabaseUrl, session);
       }
@@ -582,6 +602,7 @@ async function syncSubscriptionRecord(
   companyId: string,
   subscription: Stripe.Subscription,
   lockedPlanPriceId: string,
+  eventCreatedUnix?: number,
 ) {
   const trialEndsAt = subscription.trial_end
     ? new Date(subscription.trial_end * 1000).toISOString()
@@ -615,7 +636,7 @@ async function syncSubscriptionRecord(
           .sort((a, b) => b - a)[0] ??
         null;
 
-  const { error } = await admin.from("company_subscriptions").upsert({
+  const row: Record<string, unknown> = {
     company_id: companyId,
     stripe_customer_id:
       typeof subscription.customer === "string"
@@ -632,16 +653,28 @@ async function syncSubscriptionRecord(
       : null,
     locked_plan_price_id: lockedPlanPriceId,
     livemode: subscription.livemode,
-  }, { onConflict: "company_id" });
+  };
+  // Requires migration 20260928000100 (HUMAN GATE). Omit until applied → upsert still works.
+  if (typeof eventCreatedUnix === "number" && Number.isFinite(eventCreatedUnix)) {
+    row.last_webhook_event_created_at = new Date(eventCreatedUnix * 1000).toISOString();
+  }
+
+  let { error } = await admin.from("company_subscriptions").upsert(row, {
+    onConflict: "company_id",
+  });
+  // Column lands with HUMAN GATE migration 20260928000100 — retry without it.
+  if (
+    error &&
+    row.last_webhook_event_created_at != null &&
+    /last_webhook_event_created_at|PGRST204|42703/i.test(error.message || "")
+  ) {
+    delete row.last_webhook_event_created_at;
+    ({ error } = await admin.from("company_subscriptions").upsert(row, {
+      onConflict: "company_id",
+    }));
+  }
 
   if (error) throw error;
-}
-
-function primaryStripePriceId(subscription: Stripe.Subscription): string | null {
-  const item = subscription.items?.data?.[0];
-  const price = item?.price;
-  if (!price) return null;
-  return typeof price === "string" ? price : price.id;
 }
 
 const PENDING_WORKER_META = "insite_pending_worker_addon_qty";
@@ -709,12 +742,13 @@ async function maybeApplyPendingAddonDecreases(
     return { subscription, applied: false };
   }
 
-  const { data: addonPriceRows } = await admin
+  const { data: addonPriceRows, error: addonPriceError } = await admin
     .from("plan_prices")
     .select(
       "stripe_price_id, plan_tiers:plan_tier_id ( slug, kind )",
     )
     .eq("livemode", subscription.livemode);
+  assertNoDbError(addonPriceError, "pending_addon_price_lookup");
 
   const workerPriceIds = new Set<string>();
   const pmPriceIds = new Set<string>();
@@ -756,6 +790,8 @@ async function maybeApplyPendingAddonDecreases(
     }
   }
 
+  // Idempotent on retry: if items already match pending qty (or deleted),
+  // updateItems may be empty — still clear pending metadata.
   const updated = await stripe.subscriptions.update(subscription.id, {
     proration_behavior: "none",
     items: updateItems.length > 0 ? updateItems : undefined,
@@ -776,39 +812,206 @@ async function maybeApplyPendingAddonDecreases(
   return { subscription: updated, applied: true };
 }
 
-async function handleSubscriptionLifecycle(
+/**
+ * Cancel path: status → canceled; seat meters → 0 (invite fail-closed).
+ * Founder unlock already fails on status; field task access stays fail-open.
+ * See documentation/ENTITLEMENT_PRODUCT_LAW.md.
+ */
+async function applyCanceledSubscription(
   admin: AdminClient,
-  stripe: Stripe,
-  event: Stripe.Event,
+  companyId: string,
   subscription: Stripe.Subscription,
+  event: Stripe.Event,
 ) {
-  // Apply deferred remove-seat qty before merging entitlements.
-  const pendingApply = await maybeApplyPendingAddonDecreases(
-    stripe,
-    admin,
-    subscription,
-  );
-  subscription = pendingApply.subscription;
+  const { data: priorEnt, error: priorEntError } = await admin
+    .from("company_entitlements")
+    .select("entitlements_snapshot, source_plan_price_id, billing_phase")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  assertNoDbError(priorEntError, "cancel_entitlements_lookup");
 
+  const priorSnap = (priorEnt?.entitlements_snapshot ?? {}) as EntitlementsSnapshot;
+  const priorMeters = (priorSnap.meters ?? {}) as MeterMap;
+  const meters: MeterMap = {
+    ...priorMeters,
+    pm_seats: 0,
+    worker_seats: 0,
+  };
+  const lockedPlanPriceId =
+    (priorEnt?.source_plan_price_id as string | undefined) ||
+    (priorSnap.locked_plan_price_id as string | undefined);
+  if (!lockedPlanPriceId) {
+    throw new Error(
+      `cancel missing locked_plan_price_id for company ${companyId}`,
+    );
+  }
+
+  const snapshot: EntitlementsSnapshot = {
+    locked_plan_price_id: lockedPlanPriceId,
+    billing_phase: "active",
+    meters,
+  };
+
+  // Entitlements + revision first (order-safe), then subscription status.
+  const { data: existingRev, error: revLookupError } = await admin
+    .from("company_entitlement_revisions")
+    .select("id")
+    .eq("stripe_event_id", event.id)
+    .maybeSingle();
+  assertNoDbError(revLookupError, "cancel_revision_lookup");
+  if (!existingRev?.id) {
+    await appendRevision(
+      admin,
+      companyId,
+      "webhook",
+      "active",
+      lockedPlanPriceId,
+      snapshot,
+      event.id,
+    );
+  }
+
+  await upsertEntitlements(
+    admin,
+    companyId,
+    snapshot,
+    "canceled",
+    "active",
+    lockedPlanPriceId,
+  );
+
+  await syncSubscriptionRecord(
+    admin,
+    companyId,
+    { ...subscription, status: "canceled" } as Stripe.Subscription,
+    lockedPlanPriceId,
+    typeof event.created === "number" ? event.created : undefined,
+  );
+
+  const { error: auditError } = await admin.from("billing_audit_log").insert({
+    company_id: companyId,
+    action: "webhook_sync",
+    after_snapshot: snapshot,
+    reason: `${event.type} ${subscription.id} status=canceled seats_zeroed`,
+  });
+  assertNoDbError(auditError, "cancel_audit_insert");
+}
+
+async function resolveCompanyIdForSubscription(
+  admin: AdminClient,
+  subscription: Stripe.Subscription,
+  eventId: string,
+): Promise<string | null> {
   const metadata = subscription.metadata ?? {};
   let companyId = metadata.company_id as string | undefined;
 
   if (!companyId) {
-    const { data: existing } = await admin
+    const { data: existing, error } = await admin
       .from("company_subscriptions")
       .select("company_id")
       .eq("stripe_subscription_id", subscription.id)
       .maybeSingle();
+    assertNoDbError(error, "subscription_company_lookup");
     companyId = existing?.company_id as string | undefined;
   }
 
   if (!companyId) {
     console.warn("stripe-webhook: subscription missing company_id metadata", {
       subscriptionId: subscription.id,
+      eventId,
+    });
+    return null;
+  }
+  return companyId;
+}
+
+async function loadPriorSubscriptionRow(
+  admin: AdminClient,
+  companyId: string,
+): Promise<{
+  status?: string;
+  locked_plan_price_id?: string;
+  last_webhook_event_created_at?: string | null;
+} | null> {
+  const withCol = await admin
+    .from("company_subscriptions")
+    .select("status, locked_plan_price_id, last_webhook_event_created_at")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (
+    withCol.error &&
+    /last_webhook_event_created_at|PGRST204|42703/i.test(
+      withCol.error.message || "",
+    )
+  ) {
+    const fallback = await admin
+      .from("company_subscriptions")
+      .select("status, locked_plan_price_id")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    assertNoDbError(fallback.error, "prior_subscription_lookup");
+    return fallback.data as {
+      status?: string;
+      locked_plan_price_id?: string;
+    } | null;
+  }
+  assertNoDbError(withCol.error, "prior_subscription_lookup");
+  return withCol.data as {
+    status?: string;
+    locked_plan_price_id?: string;
+    last_webhook_event_created_at?: string | null;
+  } | null;
+}
+
+async function handleSubscriptionLifecycle(
+  admin: AdminClient,
+  stripe: Stripe,
+  event: Stripe.Event,
+  eventSubscription: Stripe.Subscription,
+) {
+  // Live Stripe retrieve is SoT — never trust a stale event-embedded object alone.
+  let subscription = await stripe.subscriptions.retrieve(eventSubscription.id);
+
+  const companyId = await resolveCompanyIdForSubscription(
+    admin,
+    subscription,
+    event.id,
+  );
+  if (!companyId) return;
+
+  const priorSub = await loadPriorSubscriptionRow(admin, companyId);
+  const eventCreated =
+    typeof event.created === "number" ? event.created : 0;
+
+  if (
+    shouldSkipStaleWebhookEvent(
+      eventCreated,
+      priorSub?.last_webhook_event_created_at,
+    )
+  ) {
+    console.warn("stripe-webhook: skipping stale event", {
       eventId: event.id,
+      eventCreated,
+      lastApplied: priorSub?.last_webhook_event_created_at,
+      subscriptionId: subscription.id,
     });
     return;
   }
+
+  // Never un-cancel from a late updated/created when Stripe still says canceled.
+  if (subscription.status === "canceled") {
+    await applyCanceledSubscription(admin, companyId, subscription, event);
+    return;
+  }
+
+  // Apply deferred remove-seat qty before merging entitlements.
+  // Retry-safe: if Stripe items already match, updateItems may be empty.
+  const pendingApply = await maybeApplyPendingAddonDecreases(
+    stripe,
+    admin,
+    subscription,
+  );
+  subscription = pendingApply.subscription;
 
   // Merge base + add-on meters from all subscription items.
   const items = subscription.items?.data ?? [];
@@ -936,43 +1139,39 @@ async function handleSubscriptionLifecycle(
 
   const lockedPlanPriceId = baseLockedPlanPriceId;
 
-  // Never persist an empty meter map when Stripe items resolved to a base plan —
-  // that wipe drops seat caps (seen after addon subscription.updated).
-  if (Object.keys(mergedMeters).length === 0) {
-    throw new Error(
-      `subscription ${subscription.id} merged meters empty (base=${lockedPlanPriceId})`,
-    );
-  }
-
-  const { data: priorSub } = await admin
-    .from("company_subscriptions")
-    .select("status, locked_plan_price_id")
-    .eq("company_id", companyId)
-    .maybeSingle();
+  // Never persist empty/partial meters when a base plan resolved (before any DB write).
+  assertPaidPlanMetersComplete(
+    mergedMeters,
+    subscription.id,
+    lockedPlanPriceId,
+  );
 
   const priorStatus = priorSub?.status as string | undefined;
   const mappedStatus = mapStripeStatus(subscription.status);
 
-  await syncSubscriptionRecord(
-    admin,
-    companyId,
-    subscription,
-    lockedPlanPriceId,
-  );
+  // Hard rule: never resurrect canceled DB from a non-canceled path if live
+  // retrieve somehow raced; live canceled already returned above.
+  if (priorStatus === "canceled" && mappedStatus !== "canceled") {
+    // Allow genuine reactivation (customer resubscribes → new active). Live SoT wins.
+    console.log("stripe-webhook: reactivation from canceled", {
+      companyId,
+      subscriptionId: subscription.id,
+      mappedStatus,
+    });
+  }
 
-  let snapshot: EntitlementsSnapshot;
+  const snapshot: EntitlementsSnapshot = {
+    locked_plan_price_id: lockedPlanPriceId,
+    billing_phase: billingPhase,
+    trial_discount_model: billingPhase === "trial" ? "stripe_native_trial" : undefined,
+    meters: mergedMeters,
+  };
+
   let revisionSource:
     | "signup"
     | "trial_end"
     | "webhook"
     | "addon_change" = "webhook";
-
-  snapshot = {
-    locked_plan_price_id: lockedPlanPriceId,
-    billing_phase: billingPhase,
-    trial_discount_model: billingPhase === "trial" ? "stripe_native_trial" : undefined,
-    meters: mergedMeters,
-  } as EntitlementsSnapshot;
 
   const isTrialEnd =
     priorStatus === "trialing" && mappedStatus === "active";
@@ -991,13 +1190,24 @@ async function handleSubscriptionLifecycle(
     priorSub.locked_plan_price_id !== lockedPlanPriceId;
   const statusChanged = priorStatus && priorStatus !== mappedStatus;
 
-  if (
-    isSignup ||
-    isTrialEnd ||
-    priceChanged ||
-    statusChanged ||
-    pendingApply.applied
-  ) {
+  // Order-safe: revision + entitlements before subscription status write.
+  // Idempotent: skip revision insert if this event id already recorded.
+  const { data: existingRev, error: revLookupError } = await admin
+    .from("company_entitlement_revisions")
+    .select("id")
+    .eq("stripe_event_id", event.id)
+    .maybeSingle();
+  assertNoDbError(revLookupError, "revision_lookup");
+
+  const shouldRevise =
+    !existingRev?.id &&
+    (isSignup ||
+      isTrialEnd ||
+      priceChanged ||
+      statusChanged ||
+      pendingApply.applied);
+
+  if (shouldRevise) {
     await appendRevision(
       admin,
       companyId,
@@ -1007,6 +1217,34 @@ async function handleSubscriptionLifecycle(
       snapshot,
       event.id,
     );
+  } else if (
+    !existingRev?.id &&
+    pendingApply.applied === false &&
+    // Addon qty change without status/price change still needs a revision.
+    event.type === "customer.subscription.updated"
+  ) {
+    // Detect meter delta vs prior entitlements for mid-cycle addon +1.
+    const { data: priorEnt, error: priorEntError } = await admin
+      .from("company_entitlements")
+      .select("entitlements_snapshot")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    assertNoDbError(priorEntError, "prior_entitlements_for_addon_rev");
+    const priorMeters = ((priorEnt?.entitlements_snapshot as EntitlementsSnapshot)
+      ?.meters ?? {}) as MeterMap;
+    const metersChanged =
+      JSON.stringify(priorMeters) !== JSON.stringify(mergedMeters);
+    if (metersChanged) {
+      await appendRevision(
+        admin,
+        companyId,
+        "addon_change",
+        billingPhase,
+        lockedPlanPriceId,
+        snapshot,
+        event.id,
+      );
+    }
   }
 
   await upsertEntitlements(
@@ -1018,12 +1256,21 @@ async function handleSubscriptionLifecycle(
     lockedPlanPriceId,
   );
 
-  await admin.from("billing_audit_log").insert({
+  await syncSubscriptionRecord(
+    admin,
+    companyId,
+    subscription,
+    lockedPlanPriceId,
+    eventCreated,
+  );
+
+  const { error: auditError } = await admin.from("billing_audit_log").insert({
     company_id: companyId,
     action: "webhook_sync",
     after_snapshot: snapshot,
     reason: `${event.type} ${subscription.id} status=${mappedStatus}`,
   });
+  assertNoDbError(auditError, "webhook_audit_insert");
 }
 
 async function handleCheckoutSessionCompleted(
@@ -1056,13 +1303,14 @@ async function handleCheckoutSessionCompleted(
   // Full entitlements sync happens on customer.subscription.created|updated.
   if (!planPriceId) return;
 
+  const liveSub = await stripe.subscriptions.retrieve(subscriptionId);
   const { error } = await admin.from("company_subscriptions").upsert({
     company_id: companyId,
     stripe_customer_id: typeof session.customer === "string"
       ? session.customer
       : session.customer?.id ?? null,
     stripe_subscription_id: subscriptionId,
-    status: "trialing",
+    status: mapStripeStatus(liveSub.status),
     livemode: session.livemode,
     locked_plan_price_id: planPriceId,
   }, { onConflict: "company_id" });
@@ -1144,19 +1392,26 @@ Deno.serve(async (req) => {
           break;
 
         case "customer.subscription.deleted": {
-          const subscription = event.data.object as Stripe.Subscription;
-          const { data: row } = await admin
-            .from("company_subscriptions")
-            .select("company_id")
-            .eq("stripe_subscription_id", subscription.id)
-            .maybeSingle();
-          if (row?.company_id) {
-            await admin.from("company_subscriptions").update({
-              status: "canceled",
-            }).eq("company_id", row.company_id);
-            await admin.from("company_entitlements").update({
-              subscription_status: "canceled",
-            }).eq("company_id", row.company_id);
+          const eventSub = event.data.object as Stripe.Subscription;
+          // Prefer live retrieve (deleted subs still return status=canceled).
+          let subscription: Stripe.Subscription;
+          try {
+            subscription = await stripe.subscriptions.retrieve(eventSub.id);
+          } catch {
+            subscription = eventSub;
+          }
+          const companyId = await resolveCompanyIdForSubscription(
+            admin,
+            subscription,
+            event.id,
+          );
+          if (companyId) {
+            await applyCanceledSubscription(
+              admin,
+              companyId,
+              subscription,
+              event,
+            );
           }
           break;
         }

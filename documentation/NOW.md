@@ -4,7 +4,9 @@
 
 ---
 
-**This session — Bot housekeeping (2026-09-27):** Docs/chore only. Store README Maestro paths → `maestro/flows/marketing/…`; Recent Activity Option A marked shipped @ 280 (`fff978f`); committed iPad timeline + Recent Activity analysis PNGs (~1.9MB); NOW `## Next (definitive)` rewritten off TF-257/pre-280 stale steps. gitignore already had `fastlane/report.xml` + `__pycache__`. **Next:** ASC 280 WFR; then housekeeping PR close-out per Next block.
+**This session — stripe-webhook harden PREPARE (2026-09-27):** Tip push after `f0e59e3` lifecycle gaps (stale-event overwrite after cancel, deleted swallows DB errors, partial meters). **No deploy.** Migration `20260928000100_company_subscriptions_last_webhook_event.sql` HUMAN GATE (skipped in apply script until GO). Billing Jest 67/67. **Next (Human):** apply migration DEV→PROD on GO → deploy webhook DEV → rerun Stripe test-mode suite → PROD deploy.
+
+**This session — Bot housekeeping (2026-09-27):** Docs/chore only. Store README Maestro paths → `maestro/flows/marketing/…`; Recent Activity Option A marked shipped @ 280 (`fff978f`); committed iPad timeline + Recent Activity analysis PNGs (~1.9MB); NOW `## Next (definitive)` rewritten off TF-257/pre-280 stale steps. gitignore already had `fastlane/report.xml` + `__pycache__`. **Superseded next:** stripe-webhook harden PREPARE above.
 
 **This session — Grok daily follow-up CLOSED (2026-09-27):** Full prompt vs prior #2+#3 — **no plan change on P2** (already PROVEN @ `d2e3200`). **P1 landed:** taxonomy path-resolve assert; report-journey hard-fail if `_logout.yaml` missing; `test:e2e:maestro:critical` → `maestro/flows/smoke` (bare `flows/` had no top-level YAML post-taxonomy); gitignore `fastlane/report.xml` + `__pycache__`. Map: **UI-12** + **HY-01** rows; ledger WEB-01/Z-02/AZ-03 updated. Path fixes were already in `e55c685`. **Superseded next:** Bot housekeeping above.
 

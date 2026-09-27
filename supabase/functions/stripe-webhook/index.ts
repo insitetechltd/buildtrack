@@ -187,7 +187,7 @@ function assertPaidPlanMetersComplete(
 /**
  * Mutable claim lease (billing_webhook_claims). Append-only billing_webhook_events
  * is written only after success — never DELETE that audit table.
- * Requires migration 20260928000200 (HUMAN GATE).
+ * Requires migration 20260928000200 (applied DEV+PROD 2026-09-28).
  */
 async function acquireWebhookClaim(
   admin: AdminClient,
@@ -795,7 +795,7 @@ async function syncSubscriptionRecord(
     locked_plan_price_id: lockedPlanPriceId,
     livemode: subscription.livemode,
   };
-  // Requires migration 20260928000100 (HUMAN GATE). Never write 0/epoch; never regress.
+  // Requires migration 20260928000100 (applied DEV+PROD 2026-09-28). Never write 0/epoch; never regress.
   const priorForTs = await admin
     .from("company_subscriptions")
     .select("last_webhook_event_created_at")
@@ -820,7 +820,7 @@ async function syncSubscriptionRecord(
   let { error } = await admin.from("company_subscriptions").upsert(row, {
     onConflict: "company_id",
   });
-  // Column lands with HUMAN GATE migration 20260928000100 — retry without it.
+  // Compat: retry without column if schema lag (pre-20260928000100).
   if (
     error &&
     row.last_webhook_event_created_at != null &&

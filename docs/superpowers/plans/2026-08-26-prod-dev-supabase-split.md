@@ -69,7 +69,7 @@ DEV (current project)              PROD (new empty)
 - [x] Label Dashboard: rename `buildtrack-production` display → `insite-dev` (user confirmed 2026-08-29); PROD named `insite-prod`  
 
 ### B — PROD schema + Edge (no live Stripe yet)
-- [x] Apply `supabase/migrations` to PROD (2026-08-29) via `scripts/supabase/apply-migrations-to-project.sh` + pooler `aws-0-ap-south-1`; skipped DRAFT/ROLLBACK/`20260825000600` on_hold drop; dual-path seat triggers for greenfield `system_permission`  
+- [x] Apply `supabase/migrations` to PROD (2026-08-29) via `scripts/supabase/apply-migrations-to-project.sh` + pooler `aws-0-ap-south-1`; skipped DRAFT/ROLLBACK; on_hold drop now parked at `supabase/migrations_dormant/20260825000600_…` (not on push path); dual-path seat triggers for greenfield `system_permission`  
 - [x] Deploy: create-checkout-session, stripe-webhook, invite-user, invite-open, update-company-addons → PROD (`scripts/supabase/deploy-edge-to-project.sh --project-ref`)  
 - [x] Edge secrets: `BILLING_CURRENCY=hkd` + checkout deep links; Stripe **omitted** until App Store submit  
 - [x] Storage bucket `buildtrack-files` public=false + policies (from migrations)  

@@ -1,4 +1,4 @@
--- HUMAN GATE — DO NOT APPLY without Tristan GO (2026-09-28 stripe-webhook claim/retry).
+-- Applied DEV+PROD 2026-09-28 (operator `supabase db query -f`; history repair pending).
 --
 -- Problem: claim-before-work wrote into append-only billing_webhook_events, then
 -- releaseWebhookEvent tried DELETE on failure. Trigger billing_deny_row_mutation
@@ -13,7 +13,6 @@
 --   - Does NOT drop/alter append-only trigger on billing_webhook_events
 --   - Does NOT DELETE or UPDATE billing_webhook_events
 --
--- Apply: DEV then PROD (remove from SKIP_BASENAMES) BEFORE redeploying stripe-webhook.
 -- Rollback (manual): DROP TABLE IF EXISTS public.billing_webhook_claims;
 
 CREATE TABLE IF NOT EXISTS public.billing_webhook_claims (

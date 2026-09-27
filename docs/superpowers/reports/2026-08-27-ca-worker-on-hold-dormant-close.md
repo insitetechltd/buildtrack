@@ -26,13 +26,13 @@
 - Product UI: On Hold removed; Active label = **On-going**
 - App: `normalizeProjectStatus('on_hold')` → `active`
 - DB CHECK still allows `on_hold` (0 rows live)
-- Migration file marked **DORMANT — DO NOT APPLY**: `supabase/migrations/20260825000600_projects_drop_on_hold.sql`
+- Migration file marked **DORMANT — DO NOT APPLY**: `supabase/migrations_dormant/20260825000600_projects_drop_on_hold.sql`
 - **Revive:** product GO → apply remap + tighten CHECK, or re-purpose the slug with new meaning + app type/label updates
 
 ## App / docs touched this close
 
 - `src/ui/contracts/projectStatus.ts` — dormant-slot comments
-- `supabase/migrations/20260825000600_projects_drop_on_hold.sql` — DORMANT header
+- `supabase/migrations_dormant/20260825000600_projects_drop_on_hold.sql` — DORMANT (parked folder)
 - `documentation/NOW.md` — Locked + Parked
 - This report
 

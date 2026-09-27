@@ -4,6 +4,7 @@
 # Converts the existing parity project into greenfield NEW:
 #   1) wipe public + storage objects
 #   2) apply supabase/migrations/*.sql in order
+#      (does NOT include supabase/migrations_dormant/ — parked SQL stays off this path)
 #   3) purge auth.users via Admin API
 #   4) rewrite .env.parity.local for PARITY_TARGET=new
 #   5) optionally run test:parity:new

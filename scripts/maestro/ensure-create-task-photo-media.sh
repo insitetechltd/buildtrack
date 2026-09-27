@@ -123,7 +123,7 @@ echo "  PURGE+SEED: logout → shutdown → clear DCIM/PhotoData → boot → ad
 # M-DATA-04: sign out before terminate/shutdown so Supabase Realtime channels close cleanly.
 if xcrun simctl list devices | grep "${UDID}" | grep -q "(Booted)"; then
   WRAPPER="${ROOT}/scripts/maestro/run-local.sh"
-  LOGOUT_FLOW="${ROOT}/maestro/flows/_logout.yaml"
+  LOGOUT_FLOW="${ROOT}/maestro/flows/_shared/_logout.yaml"
   if [[ -x "${WRAPPER}" || -f "${WRAPPER}" ]] && [[ -f "${LOGOUT_FLOW}" ]]; then
     if curl -sf "http://127.0.0.1:8081/status" >/dev/null 2>&1; then
       set +e

@@ -34,7 +34,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" >/dev/null 2>&1 && pwd -P)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." >/dev/null 2>&1 && pwd -P)"
 RUN_LOCAL="$SCRIPT_DIR/run-local.sh"
 BUILD_FLOWS_PY="$SCRIPT_DIR/build_qa01_flows.py"
-FLOWS_DIR="$ROOT_DIR/maestro/flows"
+FLOWS_DIR="$ROOT_DIR/maestro/flows/qa01"
 
 # Defaults (override with CLI flags):
 UDID="${MAESTRO_UDID:-B7B2640C-4738-4F8A-AEEE-5DF3D21D2533}"

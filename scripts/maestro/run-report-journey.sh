@@ -45,7 +45,7 @@ teardown_logout() {
   set +e
   bash "${WRAPPER}" test \
     --udid "${udid}" \
-    "${ROOT}/maestro/flows/_logout.yaml" \
+    "${ROOT}/maestro/flows/_shared/_logout.yaml" \
     >/dev/null 2>&1
   set -e
 }

@@ -2,13 +2,13 @@
 # ASC listing automation via Fastlane Deliver.
 #
 # Usage:
-#   bash scripts/asc/deliver.sh paste              # metadata + screenshots (default build 279)
+#   bash scripts/asc/deliver.sh paste              # metadata + screenshots (default build 280)
 #   bash scripts/asc/deliver.sh paste --dry-run    # validate only
 #   ASC_SUBMIT=1 bash scripts/asc/deliver.sh submit
 #   ASC_SUBMIT=1 bash scripts/asc/deliver.sh all   # paste then submitForReview
 #
 # Env:
-#   ASC_BUILD_NUMBER   default 279
+#   ASC_BUILD_NUMBER   default 280
 #   ASC_APP_VERSION    default 1.1.3
 #   ASC_SKIP_SCREENSHOTS=1
 #   ASC_SUBMIT=1       required for submit / all→submit
@@ -54,7 +54,7 @@ PY
 fi
 
 export EXPO_APPLE_TEAM_TYPE="${EXPO_APPLE_TEAM_TYPE:-COMPANY_OR_ORGANIZATION}"
-export ASC_BUILD_NUMBER="${ASC_BUILD_NUMBER:-279}"
+export ASC_BUILD_NUMBER="${ASC_BUILD_NUMBER:-280}"
 export ASC_APP_VERSION="${ASC_APP_VERSION:-1.1.3}"
 export ASC_SCREENSHOTS_PATH="${ASC_SCREENSHOTS_PATH:-$ROOT/.cache/asc-deliver/screenshots}"
 

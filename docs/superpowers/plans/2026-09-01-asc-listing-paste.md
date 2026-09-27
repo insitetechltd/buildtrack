@@ -16,8 +16,8 @@ Seller name stays **Tri Stan Ching KOO**. Do **not** convert to Insite Works Lim
 ## Automation (preferred)
 
 ```bash
-# Metadata + screenshots + attach build (default ASC_BUILD_NUMBER=279)
-npm run asc:paste
+# Metadata + screenshots + attach build (default ASC_BUILD_NUMBER=280)
+ASC_BUILD_NUMBER=280 npm run asc:paste
 
 # After you finish ASC completeness review:
 ASC_SUBMIT=1 npm run asc:submit
@@ -36,7 +36,7 @@ CBP: bare **CBP** = commit → local build → S4 → EAS TF upload.
 
 | Item | State |
 |---|---|
-| Build to attach | Prefer **279** only |
+| Build to attach | Prefer **280** (279 superseded) |
 | Screenshots SoT | Regenerated 2026-09-26 (Option A Activity) |
 | Human | One-time ASC completeness review, then `ASC_SUBMIT=1 npm run asc:submit` |
 
@@ -44,4 +44,4 @@ CBP: bare **CBP** = commit → local build → S4 → EAS TF upload.
 
 ## Manual fallback (web UI)
 
-Use the paste pack only if Deliver fails. Same fields: App Information URLs, EN + zh-Hant metadata, review notes, build **279**, Public unticked.
+Use the paste pack only if Deliver fails. Same fields: App Information URLs, EN + zh-Hant metadata, review notes, build **280**, Public unticked.

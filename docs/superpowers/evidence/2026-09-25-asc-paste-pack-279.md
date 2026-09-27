@@ -1,5 +1,7 @@
 # ASC paste pack — Taskr 1.1.3 · build **279**
 
+**Superseded as App Store candidate (2026-09-27):** attach **280** (`ASC_BUILD_NUMBER=280 npm run asc:paste`). This pack remains the listing copy SoT.
+
 **Date:** 2026-09-25  
 **UI:** https://appstoreconnect.apple.com/apps/6754898737 → version **1.1.3**  
 **Bundle:** `com.buildtrack.app.local`  

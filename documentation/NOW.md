@@ -4,7 +4,9 @@
 
 ---
 
-**This session — Grok daily follow-up CLOSED (2026-09-27):** Full prompt vs prior #2+#3 — **no plan change on P2** (already PROVEN @ `d2e3200`). **P1 landed:** taxonomy path-resolve assert; report-journey hard-fail if `_logout.yaml` missing; `test:e2e:maestro:critical` → `maestro/flows/smoke` (bare `flows/` had no top-level YAML post-taxonomy); gitignore `fastlane/report.xml` + `__pycache__`. Map: **UI-12** + **HY-01** rows; ledger WEB-01/Z-02/AZ-03 updated. Path fixes were already in `e55c685`. **Next:** ASC 280 WFR.
+**This session — Bot housekeeping (2026-09-27):** Docs/chore only. Store README Maestro paths → `maestro/flows/marketing/…`; Recent Activity Option A marked shipped @ 280 (`fff978f`); committed iPad timeline + Recent Activity analysis PNGs (~1.9MB); NOW `## Next (definitive)` rewritten off TF-257/pre-280 stale steps. gitignore already had `fastlane/report.xml` + `__pycache__`. **Next:** ASC 280 WFR; then housekeeping PR close-out per Next block.
+
+**This session — Grok daily follow-up CLOSED (2026-09-27):** Full prompt vs prior #2+#3 — **no plan change on P2** (already PROVEN @ `d2e3200`). **P1 landed:** taxonomy path-resolve assert; report-journey hard-fail if `_logout.yaml` missing; `test:e2e:maestro:critical` → `maestro/flows/smoke` (bare `flows/` had no top-level YAML post-taxonomy); gitignore `fastlane/report.xml` + `__pycache__`. Map: **UI-12** + **HY-01** rows; ledger WEB-01/Z-02/AZ-03 updated. Path fixes were already in `e55c685`. **Superseded next:** Bot housekeeping above.
 
 **This session — Grok residual #2+#3 CLOSED (2026-09-27):** No ASC 280 / IPA impact (prove + Edge only). **#2** p-matrix **P04d** JWT soft-delete + list absence — DEV+PROD PASS, in promote gate. **#3** signup `insert_if_missing` fixture + Edge `resolveAuthUserIdByEmail` when auth exists without `public.users`; `stripe-webhook` redeployed DEV+PROD; `test:edge:signup-happy-path` GO both cases. Evidence: `docs/superpowers/evidence/2026-09-27-s6-s10-prove/` + phase2 matrix. **Superseded next:** Grok daily follow-up CLOSED above.
 
@@ -275,24 +277,16 @@
 - **Play listing API (2026-09-02):** committed EN + zh-HK copy + contact from `documentation/MARKETING.md` (replaced stale “across companies” EN). Icon, feature graphic, and screenshots were already on the listing. Production draft still **FAILED_PRECONDITION** via API (no error detail) — App content questionnaires are Console-only. Not a public listing GO. Do not claim Android on `documentation/MARKETING.md` until live.
 - **Sideload APK (2026-09-02):** universal APK from Play AAB vc **41** → Desktop `Taskr-1.1.3-vc41.apk` (145 MB, signed, target 36). Not the debug APK. If the phone already has Taskr from Play, uninstall first (upload-key vs Play signing).
 
-**You (Human-only — agent cannot click ASC / DNS / live charge):**
-
-1. Paste EN + zh-HK + upload 6.7" JPEGs in ASC (`6754898737`). Do not Submit for Review until you intend to.
-2. Point `www.insiteworks.co` at GitHub Pages; confirm 200; then 301 old Pages URLs.
-3. Extra GO: create live 60-day 100% promo codes; founding-CA Starter Checkout smoke on PROD.
-4. Optional: 6.1" physical shots; honest Company frame as Sara (not Joe). iPad 13" set recaptured on sim.
-5. Apple org / D-U-N-S (Gate 2) stays OPEN — paperwork-now, flip **after** this listing ships.
-
-**Idle-parallel:** picker HUD is Metro/`__DEV__` only. HQ thumbs parked. **`M-PERF-04`** opened (2026-09-05) — field write-path perf review (Create Task / Update Progress / photo upload latency). **Not** the App Store binary.
+**You (Human-only — agent cannot click ASC / Public):** wait for Apple on **1.1.3 / build 280** (WAITING_FOR_REVIEW; Public off). Reply only if rejected. Do **not** tick Public unless asked. (Pre-280 ASC paste / TF 257 attach / Stripe promo checklist **superseded** — listing already submitted.)
 
 ## Next (definitive)
 
-1. **ASC 1.1.3 resubmit (Human):** after TF **257** is VALID, attach **257** (not 244/254/256); paste Support/Marketing URLs + EN/zh-HK from `documentation/MARKETING.md`; replace Review notes (`docs/superpowers/evidence/2026-09-11-asc-resubmit-review-notes.md`); checklist `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Screenshots already in ASC.
-2. Extra GO: Stripe 60d promo + founding-CA Checkout on PROD (sandbox DEV start-checkout smoke PASS 2026-09-11)
-3. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
-4. Idle: Report path DDL **applied DEV+PROD 2026-09-22** — prove by retrying Report on TF 278 (`login_identifier_is_registered` already live on PROD)
+1. **ASC Taskr 1.1.3 build 280** — WAITING_FOR_REVIEW. **Public off.** Human: wait for Apple; reply only if rejected. Do not tick Public unless asked.
+2. **Closed on tip (do not re-open):** blind-spot S0–S10; `stripe-webhook` redeployed DEV+PROD (`4bf51de`); Maestro path drift (`e55c685`); P04d + signup insert-if-missing (`d2e3200`); taxonomy path hygiene (`c8423c2`); S5 last-admin guard GO (O4 promote gate).
+3. **Housekeeping close-out (next ops):** close superseded PRs **#8 / #12**; decide **#10 / #7**; merge CBP branch into **main** with the **#9** `master`→`main` rename **after 280 clears review**; branch/stash cleanup; tick-or-archive `env01-phase-d` checklist + `prod-dev-supabase-split` plans.
+4. **Roadmap after housekeeping:** `M-OPS-03` (parked owner writes + Destination Contract Builder Phase A1; DDL human-gated) → **`M-AUTHZ-02`**. Do not jump.
 
-**Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** — future enhancement. **Voice/mic on dock** — future enhancement.
+**Parked by design:** E3b; E3c / `M-REPORT-01`; web-billing seats (Gate A NO-GO); A-D01. Also parked: soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → `M-OPS-03` future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** / **voice-mic on dock** — future enhancement.
 
 ## Recently closed / shipped this session
 

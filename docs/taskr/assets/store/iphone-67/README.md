@@ -10,7 +10,7 @@ Apple size: **1320 × 2868** JPEG. Recaptured **2026-09-26 21:45** on iPhone 17 
 | `04-task-thread.jpg` | Task thread with proof | Yes — scaffold hero T01 with progress photo |
 
 **Login for re-capture:** `john.managera@test.com` / Store Demo — Amoy Fit-Out  
-**Flows:** `maestro/flows/store-demo-iphone-shots.yaml` · seed `scripts/maestro/seed-store-demo-photos.cjs`
+**Flows:** `maestro/flows/marketing/store-demo-iphone-shots.yaml` · seed `scripts/maestro/seed-store-demo-photos.cjs`
 
 Captions (optional overlay in ASC; files themselves have none):
 

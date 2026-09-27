@@ -10,7 +10,7 @@ Apple size: **2064 × 2752** JPEG (iPad Pro 13" portrait). Recaptured **2026-09-
 | `04-task-thread.jpg` | Task thread with proof | Yes — scaffold hero with progress photo |
 
 **Login for re-capture:** `john.managera@test.com` / Store Demo — Amoy Fit-Out  
-**Flows:** `maestro/flows/store-demo-ipad-shots.yaml` · seed `scripts/maestro/seed-store-demo-photos.cjs`
+**Flows:** `maestro/flows/marketing/store-demo-ipad-shots.yaml` · seed `scripts/maestro/seed-store-demo-photos.cjs`
 
 Captions (optional overlay in ASC; files themselves have none):
 

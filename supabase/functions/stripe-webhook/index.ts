@@ -1233,7 +1233,8 @@ async function handleSubscriptionLifecycle(
   const billingPhase = billingPhaseFromStatus(mapStripeStatus(subscription.status));
 
   // Helper: build meters for a given plan_price_id without enforcing base-vs-addon.
-  // Contract: src/billing/webhookMetersGuard.ts (Jest). Must destructure { data, error }.
+  // Contract: src/billing/webhookMetersGuard.ts + subscriptionMetersMerge.ts (Jest).
+  // Deno Edge cannot import src/; keep this loop identical to mergeSubscriptionItemMeters.
   async function buildMetersSnapshotFromPrice(
     planPriceId: string,
   ): Promise<MeterMap> {
@@ -1253,6 +1254,7 @@ async function handleSubscriptionLifecycle(
     return (data as { meters?: MeterMap } | null)?.meters ?? {};
   }
 
+  // Same algorithm as src/billing/subscriptionMetersMerge.mergeSubscriptionItemMeters
   const mergedMeters: MeterMap = {};
   for (const it of items as any[]) {
     const price = it?.price as any;
@@ -1298,6 +1300,7 @@ async function handleSubscriptionLifecycle(
   const lockedPlanPriceId = baseLockedPlanPriceId;
 
   // Never persist empty/partial meters when a base plan resolved (before any DB write).
+  // Applies to growth AND internal_complimentary (any base with a plan_prices row).
   assertPaidPlanMetersComplete(
     mergedMeters,
     subscription.id,

@@ -7,6 +7,10 @@ Exit criterion (blind-spot audit WEB-01):
   webhook provisions company + founding CA → signup-checkout-status ready
   (invite link + companyId).
 
+Also proves founder insert-if-missing (Grok residual #3):
+  precreate auth.users → delete public.users → same checkout path must still
+  provision via promoteFoundingAdminProfile INSERT branch + auth-id recovery.
+
 Plane: DEV only (Stripe test mode + livemode=false catalog).
 Does not charge a live card. Does not touch PROD.
 
@@ -130,6 +134,39 @@ def rest_get(
     return body
 
 
+def auth_admin_create_user(
+    base: str, service: str, email: str, password: str
+) -> tuple[int, Any]:
+    return http_json(
+        "POST",
+        f"{base}/auth/v1/admin/users",
+        {
+            "apikey": service,
+            "Authorization": f"Bearer {service}",
+            "Accept": "application/json",
+        },
+        {
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {"probe": "s6-insert-branch"},
+        },
+    )
+
+
+def rest_delete_users_by_id(base: str, service: str, user_id: str) -> tuple[int, Any]:
+    return http_json(
+        "DELETE",
+        f"{base}/rest/v1/users?id=eq.{urllib.parse.quote(user_id)}",
+        {
+            "apikey": service,
+            "Authorization": f"Bearer {service}",
+            "Accept": "application/json",
+            "Prefer": "return=minimal",
+        },
+    )
+
+
 def ensure_sellable_growth_price(base: str, service: str) -> tuple[str, str]:
     rows = rest_get(
         base,
@@ -159,7 +196,6 @@ def update_sandbox_config(plan_price_id: str, unlimited_id: str | None) -> None:
     if not SANDBOX_CONFIG.is_file():
         return
     text = SANDBOX_CONFIG.read_text()
-    # Replace growth planPriceId string only (UUID pattern after growth block).
     import re
 
     text2, n = re.subn(
@@ -184,52 +220,25 @@ def update_sandbox_config(plan_price_id: str, unlimited_id: str | None) -> None:
         print(f"updated sandbox config growth={n} unlimited={n2}")
 
 
-def main() -> int:
-    env = load_dotenv(ROOT / ".env")
-    base = (env.get("EXPO_PUBLIC_SUPABASE_URL") or "").rstrip("/")
-    anon = env.get("EXPO_PUBLIC_SUPABASE_ANON_KEY") or ""
-    service = env.get("SUPABASE_SERVICE_ROLE_KEY") or ""
-    stripe_secret = env.get("STRIPE_SECRET_KEY") or ""
-    whsec = env.get("STRIPE_WEBHOOK_SECRET") or ""
-
-    if DEV_REF not in base:
-        print(f"FAIL: must run against DEV ({DEV_REF})", file=sys.stderr)
-        return 1
-    if not stripe_secret.startswith("sk_test_"):
-        print("FAIL: STRIPE_SECRET_KEY must be sk_test_ (DEV probe)", file=sys.stderr)
-        return 1
-    if not anon or not service or not whsec:
-        print("FAIL: need anon + service_role + STRIPE_WEBHOOK_SECRET", file=sys.stderr)
-        return 1
-
-    sha = git_sha()
-    marker = uuid.uuid4().hex[:10]
-    email = f"s6.signup.{marker}@example.com"
-    company = f"S6 Signup {marker}"
-    admin_name = "S6 Signup Admin"
-
-    plan_price_id, _stripe_price = ensure_sellable_growth_price(base, service)
-    unlimited_rows = [
-        r
-        for r in rest_get(
-            base,
-            service,
-            "plan_prices",
-            {
-                "select": "id,plan_tiers:plan_tier_id(slug)",
-                "livemode": "eq.false",
-                "is_sellable": "eq.true",
-                "currency": "eq.hkd",
-            },
-        )
-        if (r.get("plan_tiers") or {}).get("slug") == "unlimited"
-    ]
-    update_sandbox_config(
-        plan_price_id, unlimited_rows[0]["id"] if unlimited_rows else None
-    )
-
+def run_signup_case(
+    *,
+    label: str,
+    base: str,
+    anon: str,
+    service: str,
+    stripe_secret: str,
+    whsec: str,
+    plan_price_id: str,
+    sha: str,
+    email: str,
+    company: str,
+    admin_name: str,
+    marker: str,
+    event_prefix: str,
+) -> dict[str, Any]:
     artifact: dict[str, Any] = {
         "ok": False,
+        "case": label,
         "plane": "DEV",
         "projectRef": DEV_REF,
         "appSha": sha,
@@ -237,8 +246,8 @@ def main() -> int:
         "planPriceId": plan_price_id,
         "steps": [],
     }
+    print(f"\n=== {label} email={email} ===")
 
-    # 1) start-signup-checkout
     code, out = http_json(
         "POST",
         f"{base}/functions/v1/start-signup-checkout",
@@ -268,13 +277,8 @@ def main() -> int:
     )
     print(f"[{'PASS' if ok_start else 'FAIL'}] start-signup-checkout http={code}")
     if not ok_start:
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        (OUT_DIR / "s6-signup-happy-path.json").write_text(
-            json.dumps(artifact, indent=2) + "\n"
-        )
-        return 1
+        return artifact
 
-    # 2) Confirm Checkout via payment_pages + tok_visa (test mode, amount 0 with trial)
     code_pm, pm = stripe(
         stripe_secret,
         "POST",
@@ -291,11 +295,7 @@ def main() -> int:
             {"step": "create_payment_method", "ok": False, "http": code_pm, "body": pm}
         )
         print(f"[FAIL] payment_method http={code_pm}")
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        (OUT_DIR / "s6-signup-happy-path.json").write_text(
-            json.dumps(artifact, indent=2) + "\n"
-        )
-        return 1
+        return artifact
 
     code_c, conf = stripe(
         stripe_secret,
@@ -307,7 +307,6 @@ def main() -> int:
         "complete",
         "succeeded",
     )
-    # payment_pages returns status=complete; also accept checkout session retrieve
     code_s, sess = stripe(stripe_secret, "GET", f"/v1/checkout/sessions/{session_id}")
     sess_ok = (
         code_s == 200
@@ -334,13 +333,8 @@ def main() -> int:
         f"page={code_c} session={sess.get('status') if isinstance(sess, dict) else None}"
     )
     if not ok_confirm or not isinstance(sess, dict):
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        (OUT_DIR / "s6-signup-happy-path.json").write_text(
-            json.dumps(artifact, indent=2) + "\n"
-        )
-        return 1
+        return artifact
 
-    # 3) Ensure webhook ran — Stripe usually delivers; if status still pending, forward once
     ready: dict[str, Any] | None = None
     forwarded = False
     for i in range(24):
@@ -357,12 +351,11 @@ def main() -> int:
             "pending",
             "open",
         ):
-            # Forward signed checkout.session.completed (DEV webhook secret)
             code_s2, sess2 = stripe(
                 stripe_secret, "GET", f"/v1/checkout/sessions/{session_id}"
             )
             if code_s2 == 200 and isinstance(sess2, dict):
-                evt_id = f"evt_s6_probe_{marker}"
+                evt_id = f"evt_{event_prefix}_{marker}"
                 event = {
                     "id": evt_id,
                     "object": "event",
@@ -425,7 +418,6 @@ def main() -> int:
     )
     print(f"[{'PASS' if ok_ready else 'FAIL'}] signup-checkout-status ready={ok_ready}")
 
-    # 4) DB oracle
     users = rest_get(
         base,
         service,
@@ -465,15 +457,166 @@ def main() -> int:
     artifact["ok"] = ok_all
     artifact["companyId"] = company_id
     artifact["inviteLinkPresent"] = bool((ready or {}).get("inviteLink"))
+    if users:
+        artifact["userId"] = users[0].get("id")
+    return artifact
+
+
+def prepare_insert_branch_orphan(
+    base: str, service: str, email: str
+) -> dict[str, Any]:
+    """Auth exists, public.users missing — forces webhook insert-if-missing."""
+    pwd = f"S6Insert-{uuid.uuid4().hex[:12]}!"
+    code, created = auth_admin_create_user(base, service, email, pwd)
+    user_id = None
+    if isinstance(created, dict):
+        user_id = (created.get("id") or (created.get("user") or {}).get("id"))
+    step: dict[str, Any] = {
+        "step": "precreate_auth_orphan_profile",
+        "ok": False,
+        "http": code,
+        "authUserId": user_id,
+    }
+    if code not in (200, 201) or not user_id:
+        step["body"] = created
+        print(f"[FAIL] auth precreate http={code}")
+        return step
+
+    # Trigger may have inserted public.users — strip it so promote hits INSERT.
+    dcode, _ = rest_delete_users_by_id(base, service, str(user_id))
+    left = rest_get(
+        base,
+        service,
+        "users",
+        {"select": "id", "id": f"eq.{user_id}"},
+    )
+    step["deleteHttp"] = dcode
+    step["profileAbsent"] = len(left) == 0
+    step["ok"] = len(left) == 0
+    print(
+        f"[{'PASS' if step['ok'] else 'FAIL'}] orphan fixture "
+        f"auth={user_id} profile_absent={step['profileAbsent']}"
+    )
+    return step
+
+
+def main() -> int:
+    env = load_dotenv(ROOT / ".env")
+    base = (env.get("EXPO_PUBLIC_SUPABASE_URL") or "").rstrip("/")
+    anon = env.get("EXPO_PUBLIC_SUPABASE_ANON_KEY") or ""
+    service = env.get("SUPABASE_SERVICE_ROLE_KEY") or ""
+    stripe_secret = env.get("STRIPE_SECRET_KEY") or ""
+    whsec = env.get("STRIPE_WEBHOOK_SECRET") or ""
+
+    if DEV_REF not in base:
+        print(f"FAIL: must run against DEV ({DEV_REF})", file=sys.stderr)
+        return 1
+    if not stripe_secret.startswith("sk_test_"):
+        print("FAIL: STRIPE_SECRET_KEY must be sk_test_ (DEV probe)", file=sys.stderr)
+        return 1
+    if not anon or not service or not whsec:
+        print("FAIL: need anon + service_role + STRIPE_WEBHOOK_SECRET", file=sys.stderr)
+        return 1
+
+    sha = git_sha()
+    plan_price_id, _stripe_price = ensure_sellable_growth_price(base, service)
+    unlimited_rows = [
+        r
+        for r in rest_get(
+            base,
+            service,
+            "plan_prices",
+            {
+                "select": "id,plan_tiers:plan_tier_id(slug)",
+                "livemode": "eq.false",
+                "is_sellable": "eq.true",
+                "currency": "eq.hkd",
+            },
+        )
+        if (r.get("plan_tiers") or {}).get("slug") == "unlimited"
+    ]
+    update_sandbox_config(
+        plan_price_id, unlimited_rows[0]["id"] if unlimited_rows else None
+    )
+
+    common = dict(
+        base=base,
+        anon=anon,
+        service=service,
+        stripe_secret=stripe_secret,
+        whsec=whsec,
+        plan_price_id=plan_price_id,
+        sha=sha,
+    )
+
+    # Case A — fresh signup (createUser → update/insert after trigger)
+    m_a = uuid.uuid4().hex[:10]
+    fresh = run_signup_case(
+        label="fresh_signup",
+        email=f"s6.signup.{m_a}@example.com",
+        company=f"S6 Signup {m_a}",
+        admin_name="S6 Signup Admin",
+        marker=m_a,
+        event_prefix="s6_probe",
+        **common,
+    )
+
+    # Case B — insert-if-missing: auth present, public.users absent
+    m_b = uuid.uuid4().hex[:10]
+    email_b = f"s6.insert.{m_b}@example.com"
+    orphan = prepare_insert_branch_orphan(base, service, email_b)
+    insert_case = run_signup_case(
+        label="insert_if_missing",
+        email=email_b,
+        company=f"S6 Insert {m_b}",
+        admin_name="S6 Insert Admin",
+        marker=m_b,
+        event_prefix="s6_insert",
+        **common,
+    )
+    insert_case["steps"].insert(0, orphan)
+    if not orphan.get("ok"):
+        insert_case["ok"] = False
+
+    # Prove the founding profile id matches the precreated auth user (INSERT, not new auth)
+    if orphan.get("ok") and orphan.get("authUserId") and insert_case.get("userId"):
+        id_match = str(orphan["authUserId"]) == str(insert_case["userId"])
+        insert_case["steps"].append(
+            {
+                "step": "auth_id_reused_on_insert",
+                "ok": id_match,
+                "authUserId": orphan["authUserId"],
+                "profileUserId": insert_case["userId"],
+            }
+        )
+        print(f"[{'PASS' if id_match else 'FAIL'}] auth id reused on profile insert")
+        if not id_match:
+            insert_case["ok"] = False
+
+    report = {
+        "ok": bool(fresh.get("ok") and insert_case.get("ok")),
+        "plane": "DEV",
+        "projectRef": DEV_REF,
+        "appSha": sha,
+        "planPriceId": plan_price_id,
+        "cases": {
+            "fresh_signup": fresh,
+            "insert_if_missing": insert_case,
+        },
+    }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / "s6-signup-happy-path.json"
-    out_path.write_text(json.dumps(artifact, indent=2) + "\n")
-    print(f"artifact: {out_path}")
-    if ok_all:
-        print("GO: signup happy path (test-mode checkout → company + invite)")
+    out_path.write_text(json.dumps(report, indent=2) + "\n")
+    print(f"\nartifact: {out_path}")
+    if report["ok"]:
+        print("GO: signup happy path + insert-if-missing branch")
         return 0
-    print("NO-GO: signup happy path", file=sys.stderr)
+    print("NO-GO: signup happy path / insert-if-missing", file=sys.stderr)
+    if not fresh.get("ok"):
+        print("  fresh_signup FAIL", file=sys.stderr)
+    if not insert_case.get("ok"):
+        print("  insert_if_missing FAIL", file=sys.stderr)
     return 1
 
 

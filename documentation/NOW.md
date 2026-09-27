@@ -4,7 +4,9 @@
 
 ---
 
-**This session — Blind-spot S0–S10 CLOSED (2026-09-27):** Capability map + taxonomy + proves through Gate C. **S5** last-admin GO + O4 PASS DEV+PROD. **S6** `test:edge:signup-happy-path` GO (DEV catalog reseed + auth trigger repair). **S7** `documentation/ENTITLEMENT_PRODUCT_LAW.md` + Jest. **S8** `documentation/MAESTRO_QUARANTINE.md`. **S9** Gate C Maestro rc=0 + PNGs. Evidence: `docs/superpowers/evidence/2026-09-27-{test-blind-spot-audit,s0-s2-prove,s3-s5-prove,s6-s10-prove}/`. **Owed:** none for webhook deploy — `stripe-webhook` redeployed DEV+PROD 2026-09-27; signup + webhook faith re-GO. **Next:** Grok bot memory = capability map; ASC 280 WFR unchanged.
+**This session — Grok residual #2+#3 CLOSED (2026-09-27):** No ASC 280 / IPA impact (prove + Edge only). **#2** p-matrix **P04d** JWT soft-delete + list absence — DEV+PROD PASS, in promote gate. **#3** signup `insert_if_missing` fixture + Edge `resolveAuthUserIdByEmail` when auth exists without `public.users`; `stripe-webhook` redeployed DEV+PROD; `test:edge:signup-happy-path` GO both cases. Evidence: `docs/superpowers/evidence/2026-09-27-s6-s10-prove/` + phase2 matrix. **Next:** ASC 280 WFR; Grok bot memory = capability map.
+
+**This session — Blind-spot S0–S10 CLOSED (2026-09-27):** Capability map + taxonomy + proves through Gate C. **S5** last-admin GO + O4 PASS DEV+PROD. **S6** `test:edge:signup-happy-path` GO (DEV catalog reseed + auth trigger repair). **S7** `documentation/ENTITLEMENT_PRODUCT_LAW.md` + Jest. **S8** `documentation/MAESTRO_QUARANTINE.md`. **S9** Gate C Maestro rc=0 + PNGs. Evidence: `docs/superpowers/evidence/2026-09-27-{test-blind-spot-audit,s0-s2-prove,s3-s5-prove,s6-s10-prove}/`. **Superseded next:** Grok #2+#3 CLOSED above.
 
 **This session — Blind-spot S3–S4 PROVED / S5 GO blocked (2026-09-27):** **Superseded** by S0–S10 CLOSED above.
 

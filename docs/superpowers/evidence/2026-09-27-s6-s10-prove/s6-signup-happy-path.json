@@ -2,60 +2,166 @@
   "ok": true,
   "plane": "DEV",
   "projectRef": "zusulknbhaumougqckec",
-  "appSha": "d3ddbe2",
-  "email": "s6.signup.f3ebc439f2@example.com",
+  "appSha": "e55c685",
   "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
-  "steps": [
-    {
-      "step": "start_signup_checkout",
+  "cases": {
+    "fresh_signup": {
       "ok": true,
-      "http": 200,
-      "sessionId": "cs_test_b1g6PLUNT0oSQc1c7Dv28hIYjr0u7hxaFUORuJzD97nE1mHZlJ6Hr7URSj",
-      "error": null
-    },
-    {
-      "step": "stripe_checkout_confirm",
-      "ok": true,
-      "http": 200,
-      "sessionStatus": "complete",
-      "paymentStatus": "paid",
-      "subscription": "sub_1UKIZoDDDvw16uUvksWsrjIw"
-    },
-    {
-      "step": "signup_checkout_status_ready",
-      "ok": true,
-      "status": {
-        "status": "ready",
-        "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=e9aa6abbee3a6a21c1106b5a864468eb9c41f7504c1174f304855111&open=1",
-        "email": "s6.signup.f3ebc439f2@example.com",
-        "mustSetPassword": true,
-        "companyId": "0f191696-0421-4bb7-aaf9-6d5d497dddc3"
-      }
-    },
-    {
-      "step": "db_user_oracle",
-      "ok": true,
-      "user": [
+      "case": "fresh_signup",
+      "plane": "DEV",
+      "projectRef": "zusulknbhaumougqckec",
+      "appSha": "e55c685",
+      "email": "s6.signup.c76a27798e@example.com",
+      "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
+      "steps": [
         {
-          "id": "5c6a4671-5417-45c1-b949-b0e380db2e76",
-          "email": "s6.signup.f3ebc439f2@example.com",
-          "company_id": "0f191696-0421-4bb7-aaf9-6d5d497dddc3",
-          "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=e9aa6abbee3a6a21c1106b5a864468eb9c41f7504c1174f304855111",
-          "system_permission": "admin"
-        }
-      ]
-    },
-    {
-      "step": "db_company_oracle",
-      "ok": true,
-      "company": [
+          "step": "start_signup_checkout",
+          "ok": true,
+          "http": 200,
+          "sessionId": "cs_test_b1cnB0rDOSJo9aEpwcFAEggd1vMz4jTScjEekwiMgbTNvOJmWmmZoheDgP",
+          "error": null
+        },
         {
-          "id": "0f191696-0421-4bb7-aaf9-6d5d497dddc3",
-          "name": "S6 Signup f3ebc439f2"
+          "step": "stripe_checkout_confirm",
+          "ok": true,
+          "http": 200,
+          "sessionStatus": "complete",
+          "paymentStatus": "paid",
+          "subscription": "sub_1UKIkuDDDvw16uUvOH2UM8n5"
+        },
+        {
+          "step": "forward_checkout_completed",
+          "ok": true,
+          "http": 200,
+          "body": {
+            "received": true
+          },
+          "eventId": "evt_s6_probe_c76a27798e"
+        },
+        {
+          "step": "signup_checkout_status_ready",
+          "ok": true,
+          "status": {
+            "status": "ready",
+            "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=70eb6300469ee66879ceed9d2f9bef31b98393064e9bd414f380154f&open=1",
+            "email": "s6.signup.c76a27798e@example.com",
+            "mustSetPassword": true,
+            "companyId": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404"
+          }
+        },
+        {
+          "step": "db_user_oracle",
+          "ok": true,
+          "user": [
+            {
+              "id": "09f23fdc-6fa3-4e78-8de6-48894c50f8ad",
+              "email": "s6.signup.c76a27798e@example.com",
+              "company_id": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404",
+              "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=70eb6300469ee66879ceed9d2f9bef31b98393064e9bd414f380154f",
+              "system_permission": "admin"
+            }
+          ]
+        },
+        {
+          "step": "db_company_oracle",
+          "ok": true,
+          "company": [
+            {
+              "id": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404",
+              "name": "S6 Signup c76a27798e"
+            }
+          ]
         }
-      ]
+      ],
+      "companyId": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404",
+      "inviteLinkPresent": true,
+      "userId": "09f23fdc-6fa3-4e78-8de6-48894c50f8ad"
+    },
+    "insert_if_missing": {
+      "ok": true,
+      "case": "insert_if_missing",
+      "plane": "DEV",
+      "projectRef": "zusulknbhaumougqckec",
+      "appSha": "e55c685",
+      "email": "s6.insert.a25f341f50@example.com",
+      "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
+      "steps": [
+        {
+          "step": "precreate_auth_orphan_profile",
+          "ok": true,
+          "http": 200,
+          "authUserId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8",
+          "deleteHttp": 204,
+          "profileAbsent": true
+        },
+        {
+          "step": "start_signup_checkout",
+          "ok": true,
+          "http": 200,
+          "sessionId": "cs_test_b1RJ5RBe4CrePqtfZHr2bcYFVBPOwiDwc5qbNQO4KAStBfgprofmBaT50G",
+          "error": null
+        },
+        {
+          "step": "stripe_checkout_confirm",
+          "ok": true,
+          "http": 200,
+          "sessionStatus": "complete",
+          "paymentStatus": "paid",
+          "subscription": "sub_1UKIlFDDDvw16uUvcXBlelHa"
+        },
+        {
+          "step": "forward_checkout_completed",
+          "ok": true,
+          "http": 200,
+          "body": {
+            "received": true
+          },
+          "eventId": "evt_s6_insert_a25f341f50"
+        },
+        {
+          "step": "signup_checkout_status_ready",
+          "ok": true,
+          "status": {
+            "status": "ready",
+            "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=de57f512de83ba195325468af018963cabacf7e3b95e41923ad2300f&open=1",
+            "email": "s6.insert.a25f341f50@example.com",
+            "mustSetPassword": true,
+            "companyId": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad"
+          }
+        },
+        {
+          "step": "db_user_oracle",
+          "ok": true,
+          "user": [
+            {
+              "id": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8",
+              "email": "s6.insert.a25f341f50@example.com",
+              "company_id": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad",
+              "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=de57f512de83ba195325468af018963cabacf7e3b95e41923ad2300f",
+              "system_permission": "admin"
+            }
+          ]
+        },
+        {
+          "step": "db_company_oracle",
+          "ok": true,
+          "company": [
+            {
+              "id": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad",
+              "name": "S6 Insert a25f341f50"
+            }
+          ]
+        },
+        {
+          "step": "auth_id_reused_on_insert",
+          "ok": true,
+          "authUserId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8",
+          "profileUserId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8"
+        }
+      ],
+      "companyId": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad",
+      "inviteLinkPresent": true,
+      "userId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8"
     }
-  ],
-  "companyId": "0f191696-0421-4bb7-aaf9-6d5d497dddc3",
-  "inviteLinkPresent": true
+  }
 }

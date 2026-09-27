@@ -16,7 +16,9 @@
 - DEV `plan_tiers` / `plan_prices` were empty after restore → seeded tiers + `sync-hkd-plan-prices-to-db.py` (test HKD).
 - DEV missing `on_auth_user_created` → repaired from `handle_new_user` SQL (PROD already had trigger).
 - Stripe Checkout completed via `payment_pages/{cs}/confirm` + `tok_visa` (`expected_amount=0` with trial).
-- Webhook upsert hardening landed in `supabase/functions/stripe-webhook/index.ts` (founder profile insert-if-missing). **Edge deploy blocked** this session (`SUPABASE_ACCESS_TOKEN` 401) — trigger repair unblocked prove; redeploy webhook when token refreshed.
+- Webhook upsert hardening landed in `supabase/functions/stripe-webhook/index.ts` (founder profile insert-if-missing). **Redeployed DEV+PROD 2026-09-27** after token refresh.
+- **Grok #3 CLOSED:** `test:edge:signup-happy-path` proves `fresh_signup` + `insert_if_missing` (auth orphan → profile INSERT + auth id reuse). Artifact: `s6-signup-happy-path.json`.
+- **Grok #2 CLOSED:** p-matrix **P04d** JWT soft-delete + `deleted_at=is.null` list absence — DEV+PROD PASS; in promote `gate_ids`.
 
 ## S9 notes
 

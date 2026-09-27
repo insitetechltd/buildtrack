@@ -950,7 +950,7 @@ def run_matrix(env: EnvCtx) -> None:
     # --- JWT app-shaped track (Gate A must-fix) ---
     jwt = mint_qa_jwt(env, user)
     if not jwt:
-        for cid in ("P02j", "P04j", "P05j", "P08j", "P10j", "F6", "F7"):
+        for cid in ("P02j", "P04j", "P04d", "P05j", "P08j", "P10j", "F6", "F7"):
             env.add(cid, False, "blocked: could not mint QA JWT", "Fixture/data")
     else:
         # P02j authenticated invite-user (must not unknown_error)
@@ -980,7 +980,7 @@ def run_matrix(env: EnvCtx) -> None:
                 jwt_project = existing[0]["id"]
 
         if not jwt_project:
-            for cid in ("P04j", "P05j"):
+            for cid in ("P04j", "P04d", "P05j"):
                 env.add(cid, False, "blocked: no project for JWT", "Fixture/data")
         else:
             ok4j, detail4j, task_j = simulate_app_shaped_task_create(
@@ -1062,14 +1062,51 @@ def run_matrix(env: EnvCtx) -> None:
                     f"status={code} files={fcode} stars={scode}",
                     "PASS" if ok5j else "App-NEW-gap",
                 )
-                env.rest(
+                # P04d — app-shaped soft-delete under JWT + active-list absence
+                # (was service_key-only cleanup; never proved worker JWT delete path)
+                deleted_iso = datetime.now(timezone.utc).isoformat()
+                code_sd, sd_body = env.rest(
                     f"tasks?id=eq.{task_j}",
                     method="PATCH",
-                    body={"deleted_at": datetime.now(timezone.utc).isoformat()},
-                    key=env.service_key,
+                    body={
+                        "deleted_at": deleted_iso,
+                        "deleted_by": user_id,
+                        "updated_at": deleted_iso,
+                    },
+                    prefer="return=representation",
+                    key=jwt,
                 )
+                if code_sd not in (200, 201) and is_missing_col(sd_body):
+                    code_sd, sd_body = env.rest(
+                        f"tasks?id=eq.{task_j}",
+                        method="PATCH",
+                        body={"deleted_at": deleted_iso},
+                        prefer="return=representation",
+                        key=jwt,
+                    )
+                code_list, listed = env.rest(
+                    f"tasks?id=eq.{task_j}&deleted_at=is.null&select=id",
+                    key=jwt,
+                )
+                list_absent = code_list == 200 and isinstance(listed, list) and len(listed) == 0
+                ok4d = code_sd in (200, 201) and list_absent
+                env.add(
+                    "P04d",
+                    ok4d,
+                    f"jwt soft_delete http={code_sd} list_absent={list_absent}",
+                    "PASS" if ok4d else classify_write_fail(env, sd_body),
+                )
+                if not ok4d:
+                    # Ensure no probe litter if JWT soft-delete failed
+                    env.rest(
+                        f"tasks?id=eq.{task_j}",
+                        method="PATCH",
+                        body={"deleted_at": deleted_iso},
+                        key=env.service_key,
+                    )
             else:
                 env.add("P05j", False, "blocked: no JWT task", "Fixture/data")
+                env.add("P04d", False, "blocked: no JWT task", "Fixture/data")
 
         # P08j ACL write under JWT (applyUsersAclWrite shape)
         desired_role = "admin" if str(acl) == "admin" else "worker"
@@ -1970,6 +2007,7 @@ def main() -> int:
         "F7",
         "P02j",
         "P04j",
+        "P04d",
         "P05j",
         "P08j",
         "P10j",

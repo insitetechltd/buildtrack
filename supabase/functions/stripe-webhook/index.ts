@@ -181,6 +181,24 @@ async function detectUserAdminColumns(
   return { hasRole: false, hasSystemPermission: true };
 }
 
+/**
+ * Resolve auth.users id by email when createUser fails with already-registered.
+ * Uses generateLink (admin) which returns the existing user without requiring a
+ * public.users row — the exact orphan case insert-if-missing closes.
+ */
+async function resolveAuthUserIdByEmail(
+  admin: AdminClient,
+  email: string,
+): Promise<string | null> {
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  });
+  if (error) return null;
+  const id = data?.user?.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
 async function promoteFoundingAdminProfile(
   admin: AdminClient,
   params: {
@@ -389,7 +407,21 @@ async function provisionCheckoutFirstSignup(
       if (raced?.id) {
         userId = raced.id as string;
       } else {
-        throw new Error(created.error?.message || "create_user_failed");
+        // Auth user may exist while public.users is missing (restore / missing
+        // on_auth_user_created). Resolve auth id so promoteFoundingAdminProfile
+        // can insert-if-missing — do not fail closed on "already registered".
+        const msg = created.error?.message || "";
+        const alreadyRegistered = /already|registered|exists/i.test(msg);
+        if (alreadyRegistered) {
+          const authId = await resolveAuthUserIdByEmail(admin, email);
+          if (authId) {
+            userId = authId;
+          } else {
+            throw new Error(msg || "create_user_failed");
+          }
+        } else {
+          throw new Error(msg || "create_user_failed");
+        }
       }
     } else {
       userId = created.data.user.id;

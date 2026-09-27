@@ -36,9 +36,9 @@ CBP: bare **CBP** = commit → local build → S4 → EAS TF upload.
 
 | Item | State |
 |---|---|
-| Build to attach | Prefer **280** (279 superseded) |
-| Screenshots SoT | Regenerated 2026-09-26 (Option A Activity) |
-| Human | One-time ASC completeness review, then `ASC_SUBMIT=1 npm run asc:submit` |
+| Build to attach | **280** selected 2026-09-27 (`asc:paste`) |
+| Screenshots SoT | Regenerated 2026-09-26 (Option A Activity); re-uploaded with 280 paste |
+| Human | Completeness review, then `ASC_SUBMIT=1 ASC_BUILD_NUMBER=280 npm run asc:submit` |
 
 ---
 

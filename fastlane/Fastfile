@@ -20,6 +20,44 @@ platform :ios do
     UI.success("ASC auth OK — #{app.name} (#{app.id})")
   end
 
+  desc "Read-only: list recent iOS builds and whether 280 is VALID"
+  lane :asc_build_status do |options|
+    api_key = asc_api_key
+    want = (options[:build_number] || ENV["ASC_BUILD_NUMBER"] || "280").to_s
+    app = Spaceship::ConnectAPI::App.find("com.buildtrack.app.local")
+    UI.user_error!("App not found") unless app
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.message("Editable version: #{version&.version_string || '(none)'} state=#{version&.app_store_state}")
+    if version&.build
+      UI.message("Currently selected build: #{version.build.version} (#{version.build.id})")
+    else
+      UI.message("Currently selected build: (none)")
+    end
+
+    %w[VALID PROCESSING FAILED INVALID].each do |state|
+      builds = Spaceship::ConnectAPI::Build.all(
+        app_id: app.id,
+        processing_states: state,
+        platform: Spaceship::ConnectAPI::Platform::IOS
+      )
+      nums = Array(builds).first(15).map { |b| "#{b.version}:#{b.processing_state || state}" }
+      UI.message("#{state}: #{nums.empty? ? '(none)' : nums.join(', ')}")
+    end
+
+    valid = Array(
+      Spaceship::ConnectAPI::Build.all(
+        app_id: app.id,
+        processing_states: "VALID",
+        platform: Spaceship::ConnectAPI::Platform::IOS
+      )
+    ).find { |b| b.version.to_s == want }
+    if valid
+      UI.success("Build #{want} is VALID (#{valid.id})")
+    else
+      UI.important("Build #{want} is not VALID yet — Deliver can still upload metadata; select_build will fail until Apple finishes processing.")
+    end
+  end
+
   desc "Attach CFBundleVersion to the editable App Store version"
   lane :asc_select_build do |options|
     api_key = asc_api_key

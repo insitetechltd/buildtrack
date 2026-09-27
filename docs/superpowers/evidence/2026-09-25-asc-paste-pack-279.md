@@ -42,8 +42,8 @@ Screenshots: leave existing **4×** iPhone 6.7" + **4×** iPad 13" unless a fram
 
 ## 2) Build
 
-Select **279** only.  
-Do **not** select: 244 · 254 · 256 · 257 · 258 · 278 (or any other stale binary).
+Select **280** only.  
+Do **not** select: 244 · 254 · 256 · 257 · 258 · 278 · **279** (or any other stale binary).
 
 ---
 
@@ -198,7 +198,7 @@ Paste into: version 1.1.3 → App Review Information → Notes.
 Demo password stays **only** in ASC demo-account fields (not in git).
 
 ```text
-Please review build 279.
+Please review build 280.
 
 Taskr is a construction field app for one company: capture a site photo, assign work, update with photo proof, then approve or send back.
 
@@ -232,11 +232,11 @@ How to review:
 ## 7) Before Submit for Review
 
 - [ ] App Information URLs pasted / verified  
-- [ ] Build **279** selected (not 244 / 254 / 256 / 257 / 258 / 278)  
+- [x] Build **280** selected (agent paste 2026-09-27; not 244 / 254 / 256 / 257 / 258 / 278 / 279)  
 - [ ] EN metadata pasted  
 - [ ] zh-HK metadata pasted  
 - [ ] Screenshots left as-is (or fixed from disk)  
-- [ ] App Review Notes pasted (build **279**)  
+- [x] App Review Notes pasted (build **280**)  
 - [ ] Resolution Center answered if still open  
 - [ ] **Public** unticked  
 - [ ] Seller still **Tri Stan Ching KOO**  

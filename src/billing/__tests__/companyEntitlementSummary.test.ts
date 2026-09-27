@@ -146,7 +146,7 @@ describe("companyEntitlementSummary", () => {
     const view = buildCompanyEntitlementView(pilotEntitlements, subscription);
     const message = buildCompanyPlanDialogMessage(view, buildOrgPlanSummary(catalog));
     expect(message).toContain("Current: Starter");
-    expect(formatEntitlementLimitsLabel(view!, catalog)).toContain("1 pm seats");
+    expect(formatEntitlementLimitsLabel(view!, catalog)).toContain("1 pm seat");
   });
 
   it("formats limits without a loaded catalog", () => {

@@ -1,8 +1,23 @@
--- Drop project status `on_hold` (product: remove On Hold; Active display → On-going).
--- Remap existing on_hold rows → active (still-open safest), then tighten CHECK.
+-- DORMANT — DO NOT APPLY (product decision 2026-08-27).
 --
--- HUMAN GATE: do NOT apply live without explicit GO.
--- App already stops offering on_hold in pickers/filters/labels before this apply.
+-- Intent (when revived): drop project status `on_hold` from DB CHECK after remapping
+-- existing rows → `active`. Product UI already removed On Hold; Active displays as
+-- "On-going". App normalizes legacy `on_hold` → `active` in
+-- `src/ui/contracts/projectStatus.ts`.
+--
+-- Why parked: keep the CHECK slot reserved in case we need a fifth project status
+-- later (reuse `on_hold` slug or replace with a new product meaning). Tightening
+-- the CHECK now would burn the slot and force another migration to reopen it.
+--
+-- To revive: Human GO → run remap + drop/add CHECK below → update app types /
+-- normalizeProjectStatus if the slot gets a new meaning (not silent On Hold).
+--
+-- Live DEV (2026-08-27): CHECK still allows planning|active|on_hold|completed|cancelled;
+-- zero rows currently on `on_hold`.
+--
+-- Operator skip: scripts/supabase/apply-migrations-to-project.sh SKIP_BASENAMES.
+-- Plain `supabase db push` WOULD still apply this file — rename to
+-- `*.sql.dormant` or move under `supabase/migrations_dormant/` before any push.
 
 -- 1) Remap legacy rows
 UPDATE public.projects

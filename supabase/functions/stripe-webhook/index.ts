@@ -872,15 +872,24 @@ async function handleSubscriptionLifecycle(
   const billingPhase = billingPhaseFromStatus(mapStripeStatus(subscription.status));
 
   // Helper: build meters for a given plan_price_id without enforcing base-vs-addon.
+  // Contract: src/billing/webhookMetersGuard.ts (Jest). Must destructure { data, error }.
   async function buildMetersSnapshotFromPrice(
     planPriceId: string,
   ): Promise<MeterMap> {
-    const data = await admin.rpc("build_entitlements_snapshot_from_price", {
-      p_plan_price_id: planPriceId,
-      // Use a non-(trial|active) billing phase so addons don't fail validation.
-      p_billing_phase: "migration",
-    });
-    return (data as { meters?: MeterMap }).meters ?? {};
+    const { data, error } = await admin.rpc(
+      "build_entitlements_snapshot_from_price",
+      {
+        p_plan_price_id: planPriceId,
+        // Use a non-(trial|active) billing phase so addons don't fail validation.
+        p_billing_phase: "migration",
+      },
+    );
+    if (error) {
+      throw new Error(
+        `build_entitlements_snapshot_from_price failed for ${planPriceId}: ${error.message}`,
+      );
+    }
+    return (data as { meters?: MeterMap } | null)?.meters ?? {};
   }
 
   const mergedMeters: MeterMap = {};
@@ -926,6 +935,14 @@ async function handleSubscriptionLifecycle(
   }
 
   const lockedPlanPriceId = baseLockedPlanPriceId;
+
+  // Never persist an empty meter map when Stripe items resolved to a base plan —
+  // that wipe drops seat caps (seen after addon subscription.updated).
+  if (Object.keys(mergedMeters).length === 0) {
+    throw new Error(
+      `subscription ${subscription.id} merged meters empty (base=${lockedPlanPriceId})`,
+    );
+  }
 
   const { data: priorSub } = await admin
     .from("company_subscriptions")

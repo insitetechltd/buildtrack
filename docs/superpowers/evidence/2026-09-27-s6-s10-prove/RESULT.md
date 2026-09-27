@@ -19,6 +19,7 @@
 - Webhook upsert hardening landed in `supabase/functions/stripe-webhook/index.ts` (founder profile insert-if-missing). **Redeployed DEV+PROD 2026-09-27** after token refresh.
 - **Grok #3 CLOSED:** `test:edge:signup-happy-path` proves `fresh_signup` + `insert_if_missing` (auth orphan → profile INSERT + auth id reuse). Artifact: `s6-signup-happy-path.json`.
 - **Grok #2 CLOSED:** p-matrix **P04d** JWT soft-delete + `deleted_at=is.null` list absence — DEV+PROD PASS; in promote `gate_ids`.
+- **Grok P1 CLOSED:** path fixes `e55c685`; `test:taxonomy` resolves 622 flow refs; report-journey hard-fails if `_logout.yaml` missing; `test:e2e:maestro:critical` → `maestro/flows/smoke`; gitignore fastlane report + `__pycache__`; map UI-12 + HY-01.
 
 ## S9 notes
 

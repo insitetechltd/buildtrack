@@ -35,17 +35,22 @@ die() { log "FAIL: $*"; exit 1; }
 UDID_CAROL="${MAESTRO_UDID_CAROL:-${MAESTRO_UDID_ASSIGNER:-$PREFERRED_CAROL}}"
 UDID_ALICE="${MAESTRO_UDID_ALICE:-${MAESTRO_UDID_ASSIGNEE:-$PREFERRED_ALICE}}"
 
-# Best-effort sign-out on both sims so Realtime/JWT do not linger after FAIL
-# or interrupt (YAML happy-path also calls _logout.yaml; this covers mid-flow abort).
+# Sign-out on both sims so Realtime/JWT do not linger after FAIL or interrupt
+# (YAML happy-path also calls _logout.yaml; this covers mid-flow abort).
+# Missing logout YAML is a hard fail — never silently skip teardown plumbing.
+LOGOUT_FLOW="${ROOT}/maestro/flows/_shared/_logout.yaml"
+[[ -f "${LOGOUT_FLOW}" ]] || die "logout flow missing: ${LOGOUT_FLOW}"
+
 teardown_logout() {
   local udid="$1"
   local label="$2"
   [[ -n "${udid}" ]] || return 0
+  [[ -f "${LOGOUT_FLOW}" ]] || die "logout flow missing: ${LOGOUT_FLOW}"
   log "Teardown logout ${label} udid=${udid:0:8}…"
   set +e
   bash "${WRAPPER}" test \
     --udid "${udid}" \
-    "${ROOT}/maestro/flows/_shared/_logout.yaml" \
+    "${LOGOUT_FLOW}" \
     >/dev/null 2>&1
   set -e
 }

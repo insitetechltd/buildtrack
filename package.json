@@ -53,7 +53,7 @@
     "test:e2e:maestro:create-task-photo:one": "bash ./scripts/maestro/run-create-task-photo-one.sh",
     "test:e2e:maestro:update-progress-photo": "bash ./scripts/maestro/run-update-progress-photo-suite.sh",
     "test:e2e:maestro:update-progress-photo:one": "bash ./scripts/maestro/run-update-progress-photo-one.sh",
-    "test:e2e:maestro:critical": "bash ./scripts/maestro/run-local.sh test maestro/flows",
+    "test:e2e:maestro:critical": "bash ./scripts/maestro/run-local.sh test maestro/flows/smoke",
     "test:e2e:maestro:journeys": "bash ./scripts/maestro/run-local.sh test maestro/flows/journeys/journey-projectswitch-create-taskdetail-update.yaml && bash ./scripts/maestro/run-local.sh test maestro/flows/journeys/journey-login-switch-projects.yaml",
     "test:confidence": "npm run test:regression && npm run test:e2e:journeys",
     "test:simulation": "USE_REAL_SUPABASE=1 jest src/__tests__/simulation",

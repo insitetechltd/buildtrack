@@ -218,6 +218,101 @@ function maestroRootOrphans() {
     .map((n) => `maestro/flows/${n}`);
 }
 
+/** Collect maestro/flows YAML string literals from text. */
+function extractMaestroYamlRefs(text) {
+  const out = new Set();
+  const re = /maestro\/flows\/[A-Za-z0-9_./-]+\.ya?ml/g;
+  let m;
+  while ((m = re.exec(text))) out.add(m[0].replace(/\\/g, "/"));
+  return out;
+}
+
+/**
+ * Hygiene: every maestro/flows YAML path referenced in package.json,
+ * scripts/, and runFlow: lines must resolve on disk.
+ */
+function assertReferencedMaestroFlows() {
+  /** @type {{ref:string, from:string}[]} */
+  const refs = [];
+
+  const pkgPath = path.join(ROOT, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    for (const ref of extractMaestroYamlRefs(fs.readFileSync(pkgPath, "utf8"))) {
+      refs.push({ ref, from: "package.json" });
+    }
+  }
+
+  for (const rel of walk(
+    path.join(ROOT, "scripts"),
+    (p) => /\.(sh|bash|mjs|cjs|js|ts|py|yml|yaml|md)$/.test(p),
+  )) {
+    const abs = path.join(ROOT, rel);
+    let text;
+    try {
+      text = fs.readFileSync(abs, "utf8");
+    } catch {
+      continue;
+    }
+    for (const ref of extractMaestroYamlRefs(text)) {
+      refs.push({ ref, from: rel });
+    }
+  }
+
+  // runFlow: relative includes inside maestro/flows/**/*.yaml
+  for (const rel of walk(
+    path.join(ROOT, "maestro/flows"),
+    (p) => p.endsWith(".yaml") || p.endsWith(".yml"),
+  )) {
+    const abs = path.join(ROOT, rel);
+    let text;
+    try {
+      text = fs.readFileSync(abs, "utf8");
+    } catch {
+      continue;
+    }
+    // Inline form: `- runFlow: ../_shared/_logout.yaml`
+    const inlineRe = /^\s*-\s*runFlow:\s*([^\s#]+?\.(?:ya?ml))/gm;
+    let m;
+    while ((m = inlineRe.exec(text))) {
+      const target = m[1].replace(/^["']|["']$/g, "");
+      if (target.startsWith("http") || target.includes("${")) continue;
+      const resolved = path
+        .normalize(path.join(path.dirname(abs), target))
+        .replace(/\\/g, "/");
+      const relResolved = path.relative(ROOT, resolved).replace(/\\/g, "/");
+      if (relResolved.startsWith("maestro/flows/")) {
+        refs.push({ ref: relResolved, from: `${rel} (runFlow)` });
+      }
+    }
+    // Block form: `runFlow:\n  file: foo.yaml` (rare)
+    const fileRe = /^\s*file:\s*([^\s#]+?\.(?:ya?ml))/gm;
+    while ((m = fileRe.exec(text))) {
+      const target = m[1].replace(/^["']|["']$/g, "");
+      const resolved = path
+        .normalize(path.join(path.dirname(abs), target))
+        .replace(/\\/g, "/");
+      const relResolved = path.relative(ROOT, resolved).replace(/\\/g, "/");
+      if (relResolved.startsWith("maestro/flows/")) {
+        refs.push({ ref: relResolved, from: `${rel} (runFlow file:)` });
+      }
+    }
+  }
+
+  /** @type {string[]} */
+  const missing = [];
+  const seen = new Set();
+  for (const { ref, from } of refs) {
+    const key = `${ref}@@${from}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const abs = path.join(ROOT, ref);
+    if (!fs.existsSync(abs)) {
+      missing.push(`${ref}  (from ${from})`);
+    }
+  }
+  return { checked: refs.length, missing };
+}
+
 function main() {
   const reg = buildRegistry();
   const yaml = toYaml(reg);
@@ -252,6 +347,13 @@ function main() {
     );
   }
 
+  const flowRefs = assertReferencedMaestroFlows();
+  if (flowRefs.missing.length) {
+    errors.push(
+      `Maestro flow path(s) referenced but missing on disk (${flowRefs.missing.length}/${flowRefs.checked} refs):\n  - ${flowRefs.missing.join("\n  - ")}`,
+    );
+  }
+
   // Enforce naming for tests/edge and tests/dual-plane only (greenfield homes)
   for (const f of reg.entries.filter((e) => e.kind === "jest")) {
     if (
@@ -283,6 +385,9 @@ function main() {
     process.exit(1);
   }
   console.log("test:taxonomy OK");
+  console.log(
+    `(maestro flow path refs checked=${flowRefs.checked} missing=0)`,
+  );
   if (!WRITE) {
     console.log(
       `(registry ${reg.entries.length} entries; containers ${CONTAINERS.length})`,

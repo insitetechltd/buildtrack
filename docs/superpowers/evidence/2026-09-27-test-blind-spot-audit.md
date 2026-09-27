@@ -10,9 +10,9 @@
 
 ## A. Verdict
 
-**NOT STABILIZED** (S0–S2 closed; remaining P0s open)
+**STABILIZING** (S0–S10 + Grok P1/P2 closed @ `d2e3200+`; residual P0s remain)
 
-S0–S4 closed @ `7d65e97` (S3/S4 evidence in `2026-09-27-s3-s5-prove/`). **S5 blocked** on Human GO for last-admin SQL. Still open: entitlement-mutating webhook matrix, signup automation, O4 guard apply, Maestro hygiene. CI mock-only Jest. No N≥5 flake bar.
+S0–S10 closed 2026-09-27. Grok follow-up closed: Maestro path hygiene, P04d JWT soft-delete, signup insert-if-missing. Still open: entitlement-mutating webhook matrix, EG-13 product intent, invite-open lifecycle, PROD live-card signup HUMAN, Maestro N≥5 flake bar. CI mock-only Jest.
 
 ---
 
@@ -76,6 +76,8 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | UI-09 | Photo-flow unit (picker/Accept) | Mobile | — | Blank tiles / hang | UX | `test:photo-flow` | J-MOCK | WEAK | Large Jest surface; not device taps | tip | PARTIAL |
 | UI-10 | Focus / keyboard / submit Gate C | Mobile | field | Dead fields | UX | `maestro/flows/smoke/gate-c-login-create-task.yaml` | DEV-MAESTRO | STRONG | s6-s10-prove/gate-c PNGs | 2026-09-27 | PROVEN |
 | UI-11 | Offline / kill mid-upload | Mobile | field | Lost draft | DATA-LOSS | drafts in OPS-02 Jest (partial) | J-MOCK | WEAK | No Maestro poor-network | — | UNPROVEN |
+| UI-12 | Activity feed row / evidence strip | Mobile | field | Broken thumbs / layout | UX | `ActivityStyleRowCard.test.tsx` | J-MOCK | WEAK | Jest-only; no Maestro/device frame | tip | PARTIAL |
+| HY-01 | Maestro path hygiene (scripts/package.json/runFlow) | Hygiene | ops | Suite calls missing YAML | UX | `test:taxonomy` path-resolve assert | J-MOCK | STRONG | assert-test-taxonomy.mjs + e55c685/d2e3200 path fixes | 2026-09-27 | PROVEN |
 
 ‖ Maestro faith still requires Gate 0–8 + PNG read; `rc=0` alone is WEAK.  
 ¶ Report without-reply has DB oracle; resolve-**with**-reply (E3c) OPEN.
@@ -85,7 +87,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | ID | Capability | Axis | Actors | Failure mode | Faith | Script/layer | Plane | Oracle | Evidence | Last proven | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Z-01 | Task create/update/approve/reject rules | Zustand | field | Illegal status | DATA-LOSS | `test:tasks`, `test:integration` | J-MOCK | WEAK | Mocked Supabase | tip | PARTIAL |
-| Z-02 | Optimistic + rollback | Zustand | field | Ghost rows | DATA-LOSS | taskStore unit/workflow | J-MOCK | WEAK | — | tip | PARTIAL |
+| Z-02 | Optimistic + rollback (Create Task soft-delete under JWT) | Zustand/RLS | worker JWT | Ghost rows after upload fail | DATA-LOSS | p-matrix **P04d** (+ Jest evidencePhotoSubmit) | PROD-DEST (+DEV) | STRONG | jwt soft_delete http=200 list_absent | 2026-09-27 @ d2e3200 | PROVEN (JWT soft-delete path); full adapter rollback still PARTIAL |
 | Z-03 | primary ∪ delegates / `canSelectAssignee` | Authz rules | CA/PM/Worker | Wrong assignee pool | AUTH | taskDelegationPermissions.test.ts | J-MOCK | STRONG (pure) | allow+deny ranks | tip | PROVEN (unit only) |
 | Z-04 | Draft queue / discard | Zustand | field | Stuck drafts | UX | OPS-02 era tests | J-MOCK | WEAK | — | UNKNOWN | PARTIAL |
 | Z-05 | Stale list/detail after nav + realtime | Zustand | multi-device | Divergent UI | UX | `test:e2e:journeys` (shell) | J-MOCK | WEAK | No realtime converge assert | — | UNPROVEN |
@@ -95,7 +97,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 
 | ID | Capability | Axis | Actors | Failure mode | Faith | Script/layer | Plane | Oracle | Evidence | Last proven | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| WEB-01 | signup.html → start-checkout → poll status → company | Web | new CA | Broken day-1 revenue | MONEY | `test:edge:signup-happy-path` (DEV test-mode) | DEV-PROBE | STRONG | s6-signup-happy-path.json | 2026-09-27 | PROVEN (DEV); PROD live card remains HUMAN |
+| WEB-01 | signup.html → start-checkout → poll status → company | Web | new CA | Broken day-1 revenue | MONEY | `test:edge:signup-happy-path` (fresh + **insert_if_missing**) | DEV-PROBE | STRONG | s6-signup-happy-path.json both cases GO; webhook redeployed DEV+PROD | 2026-09-27 @ d2e3200 | PROVEN (DEV); PROD live card remains HUMAN |
 | WEB-02 | billing.html cancel / portal | Web | CA | Stuck paid / false cancel | MONEY | billing.js + cancel Edge | HUMAN | WEAK | NOW cancel smoke 2026-09-12 | dated | HUMAN-ONLY |
 | WEB-03 | Non-IAP / web-only signup (ASC) | Compliance | Reviewer | App Review reject | MONEY | ASC notes + paste pack | HUMAN | WEAK | ASC submit 280 | 2026-09-27 | HUMAN-ONLY |
 | WEB-04 | Seat add-ons sync (web↔Stripe↔app) | Web/Edge | CA | Cap drift | MONEY | seatUsage.test.ts (client math) | J-MOCK | WEAK | No live Stripe quantity assert | tip | UNPROVEN |
@@ -136,9 +138,9 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | 1 | EG-01/02 `stripe-webhook` | Forged/replay grants seats | **CLOSED (claim path)** 2026-09-27 — still owed: entitlement-mutating event matrix + PROD webhook secret plane | DEV-PROBE | `test:edge:stripe-webhook-faith` | Extend to checkout.session.completed fixture |
 | 2 | EG-13 / WEB entitlement | Paying features without live sub | Task access not gated on subscription; founder gate only | J-MOCK + HUMAN | Document product intent; if fail-closed desired, add gate + Jest; if fail-open, assert meters still block invites | `companyPlanGate` / seat invite path |
 | 3 | DB-04 Cross-company deny | Tenant A reads tenant B | **CLOSED** 2026-09-27 — p-matrix **F7** promote gate | PROD-DEST | F7 | Keep in gate |
-| 4 | WEB-01 Signup happy path | Day-1 revenue broken | Only invalid-payload probes; Human PASS not SHA-bound automation | HUMAN→PROD-DEST | Scripted Stripe test-mode checkout + `signup-checkout-status` → company row (no live charge in CI) | dual-env:critical expand or Playwright web |
+| 4 | WEB-01 Signup happy path | Day-1 revenue broken | **CLOSED (DEV)** 2026-09-27 — fresh + insert-if-missing @ d2e3200; PROD live card still HUMAN | DEV-PROBE | Keep `test:edge:signup-happy-path` | PROD live card Human |
 | 5 | EG-09 `update-company-addons` | Unbilled seat growth | **ACL dry CLOSED**; happy qty mutate still NONE | DEV-PROBE | Qty mutate under test-mode | Extend faith probe |
-| 6 | AZ-03 Last-admin guard | Demote sole CA → lockout | **SQL ready; apply GO blocked** | PROD-DEST | Apply `20260927000100` + `O4_PROMOTE_GATE=1` | Human GO |
+| 6 | AZ-03 Last-admin guard | Demote sole CA → lockout | **CLOSED** 2026-09-27 — SQL applied DEV+PROD; O4 in promote gate | PROD-DEST | Keep `O4_PROMOTE_GATE=1` | — |
 | 7 | DP-03/04 tip re-prove | Ship on stale destination | **CLOSED** 2026-09-27 @ `7d65e97` | PROD-DEST | S0 | Re-run on next tip |
 | 8 | DB-02 Anon 7-table re-probe | Policy drift since 2026-08-08 | **CLOSED** 2026-09-27 in critical | PROD-DEST | Keep in critical | — |
 | 9 | EG-11 Invite token lifecycle | Replay invite-open | Parser-only Jest | DEV-PROBE | Token used once then rejected | invite-open + Auth admin API test |
@@ -153,7 +155,9 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | UI-04 X02/X05 | Accept + creator-approve gaps on checklist | DEV-MAESTRO | Extend dual-user |
 | DB-11 | Observability not wired in store tests | J-MOCK | Assert `recordDeferredFallbackFire` in deferred strip tests |
 | Live suite pollution | Most Maestro suites lack row teardown | DEV-MAESTRO | Document accepted pollution OR add cleanup |
-| Flake / quarantine | No N≥5 ledger | Process | Add quarantine.md + weekly flake job |
+| Flake / quarantine | N≥3 ledger landed; N≥5 weekly job still owed | Process | Keep `MAESTRO_QUARANTINE.md`; measure tip flake |
+| UI-12 | Activity evidence strip Jest-only | J-MOCK | Headed/Maestro frame when Activity UI next touched |
+| HY-01 | Path resolve in taxonomy | J-MOCK | Keep assert; extend if new runners invent path vars |
 
 ### Nice-to-have
 
@@ -299,8 +303,8 @@ Do **not** start S1–S9 until S0 is green on the SHA you intend to trust.
 2. ~~**S1**~~ **CLOSED** — `test:edge:stripe-webhook-faith`.  
 3. ~~**S2**~~ **CLOSED** — F7 cross-company in p-matrix promote gate.
 
-**S0–S10 CLOSED 2026-09-27.** Daily Grok bot should load this map as memory. Residual: Edge `stripe-webhook` upsert deploy when `SUPABASE_ACCESS_TOKEN` refreshed; PROD live-card signup remains HUMAN; Maestro N≥3 flake bar not yet measured on tip.
+**S0–S10 CLOSED 2026-09-27.** Grok daily follow-up **CLOSED 2026-09-27 @ d2e3200+**: P1 path hygiene (`e55c685` + taxonomy path-resolve + report-journey missing-flow hard-fail + `maestro:critical`→`flows/smoke`); P2 P04d JWT soft-delete DEV+PROD; P2 signup insert-if-missing DEV. Daily Grok bot should load this map as memory. Residual: PROD live-card signup HUMAN; Maestro N≥5 flake bar not measured on tip; UI-12 still Jest-only.
 
 ---
 
-*S0–S10 proved 2026-09-27. Daily Grok bot should load this map as memory.*
+*S0–S10 + Grok P1/P2 residuals proved 2026-09-27. Daily Grok bot should load this map as memory.*

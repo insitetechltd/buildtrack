@@ -79,6 +79,7 @@ export function assertPaidPlanMetersComplete(
  * Stale-event gate: never apply an older Stripe event after a newer one.
  * `lastAppliedUnix` is `company_subscriptions.last_webhook_event_created_at`
  * (unix seconds). Null/undefined = no prior apply (allow).
+ * Missing/zero event.created must not skip (and must not write epoch).
  */
 export function shouldSkipStaleWebhookEvent(
   eventCreatedUnix: number,
@@ -87,8 +88,64 @@ export function shouldSkipStaleWebhookEvent(
   if (lastAppliedUnix == null || !Number.isFinite(lastAppliedUnix)) {
     return false;
   }
-  if (!Number.isFinite(eventCreatedUnix)) return false;
+  if (!Number.isFinite(eventCreatedUnix) || eventCreatedUnix <= 0) {
+    return false;
+  }
   return eventCreatedUnix < lastAppliedUnix;
+}
+
+/** Stripe event.created for ordering — reject missing/zero/epoch. */
+export function normalizeWebhookEventCreatedUnix(
+  created: number | null | undefined,
+): number | null {
+  if (typeof created !== "number" || !Number.isFinite(created) || created <= 0) {
+    return null;
+  }
+  return Math.floor(created);
+}
+
+/**
+ * Never write a missing timestamp; never move last_webhook_event_created_at
+ * backwards. Returns ISO to persist, or null to leave the column unchanged.
+ */
+export function nextLastWebhookEventCreatedAtIso(
+  eventCreatedUnix: number | null,
+  priorIso: string | null | undefined,
+): string | null {
+  if (eventCreatedUnix == null) return null;
+  const nextIso = new Date(eventCreatedUnix * 1000).toISOString();
+  if (!priorIso) return nextIso;
+  const priorUnix = Math.floor(new Date(priorIso).getTime() / 1000);
+  if (!Number.isFinite(priorUnix)) return nextIso;
+  if (eventCreatedUnix < priorUnix) return null;
+  return nextIso;
+}
+
+export type WebhookClaimStatus = "processing" | "done" | "failed";
+export type WebhookClaimDecision = "proceed" | "duplicate" | "in_flight";
+
+/** Lease for in-flight processing claims (stale → reclaimable). */
+export const WEBHOOK_CLAIM_LEASE_MS = 5 * 60 * 1000;
+
+/**
+ * Claim/retry semantics (billing_webhook_claims):
+ * - no row / failed / stale processing → proceed (re-claim)
+ * - done → duplicate (HTTP 200)
+ * - fresh processing → in_flight (HTTP non-2xx so Stripe retries)
+ */
+export function decideWebhookClaimAction(
+  existing: { status: WebhookClaimStatus; claimed_at: string } | null,
+  nowMs: number,
+  leaseMs: number = WEBHOOK_CLAIM_LEASE_MS,
+): WebhookClaimDecision {
+  if (!existing) return "proceed";
+  if (existing.status === "done") return "duplicate";
+  if (existing.status === "failed") return "proceed";
+  const claimedMs = new Date(existing.claimed_at).getTime();
+  if (!Number.isFinite(claimedMs) || nowMs - claimedMs >= leaseMs) {
+    return "proceed";
+  }
+  return "in_flight";
 }
 
 /**

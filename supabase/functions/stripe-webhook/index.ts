@@ -111,11 +111,50 @@ function shouldSkipStaleWebhookEvent(
   lastAppliedIso: string | null | undefined,
 ): boolean {
   if (!lastAppliedIso) return false;
+  if (!Number.isFinite(eventCreatedUnix) || eventCreatedUnix <= 0) return false;
   const lastUnix = Math.floor(new Date(lastAppliedIso).getTime() / 1000);
-  if (!Number.isFinite(lastUnix) || !Number.isFinite(eventCreatedUnix)) {
-    return false;
-  }
+  if (!Number.isFinite(lastUnix)) return false;
   return eventCreatedUnix < lastUnix;
+}
+
+function normalizeWebhookEventCreatedUnix(
+  created: number | null | undefined,
+): number | null {
+  if (typeof created !== "number" || !Number.isFinite(created) || created <= 0) {
+    return null;
+  }
+  return Math.floor(created);
+}
+
+/** null = do not write / do not regress last_webhook_event_created_at. */
+function nextLastWebhookEventCreatedAtIso(
+  eventCreatedUnix: number | null,
+  priorIso: string | null | undefined,
+): string | null {
+  if (eventCreatedUnix == null) return null;
+  const nextIso = new Date(eventCreatedUnix * 1000).toISOString();
+  if (!priorIso) return nextIso;
+  const priorUnix = Math.floor(new Date(priorIso).getTime() / 1000);
+  if (!Number.isFinite(priorUnix)) return nextIso;
+  if (eventCreatedUnix < priorUnix) return null;
+  return nextIso;
+}
+
+type WebhookClaimDecision = "proceed" | "duplicate" | "in_flight";
+const WEBHOOK_CLAIM_LEASE_MS = 5 * 60 * 1000;
+
+function decideWebhookClaimAction(
+  existing: { status: string; claimed_at: string } | null,
+  nowMs: number,
+): WebhookClaimDecision {
+  if (!existing) return "proceed";
+  if (existing.status === "done") return "duplicate";
+  if (existing.status === "failed") return "proceed";
+  const claimedMs = new Date(existing.claimed_at).getTime();
+  if (!Number.isFinite(claimedMs) || nowMs - claimedMs >= WEBHOOK_CLAIM_LEASE_MS) {
+    return "proceed";
+  }
+  return "in_flight";
 }
 
 function assertPaidPlanMetersComplete(
@@ -145,39 +184,140 @@ function assertPaidPlanMetersComplete(
   }
 }
 
-async function claimWebhookEvent(
+/**
+ * Mutable claim lease (billing_webhook_claims). Append-only billing_webhook_events
+ * is written only after success — never DELETE that audit table.
+ * Requires migration 20260928000200 (HUMAN GATE).
+ */
+async function acquireWebhookClaim(
   admin: AdminClient,
   event: Stripe.Event,
-): Promise<boolean> {
-  const { error } = await admin.from("billing_webhook_events").insert({
+): Promise<WebhookClaimDecision> {
+  const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
+
+  const { data: existing, error: lookupError } = await admin
+    .from("billing_webhook_claims")
+    .select("status, claimed_at")
+    .eq("stripe_event_id", event.id)
+    .maybeSingle();
+  if (lookupError) {
+    throw new Error(`webhook_claim_lookup: ${lookupError.message}`);
+  }
+
+  const decision = decideWebhookClaimAction(
+    existing as { status: string; claimed_at: string } | null,
+    nowMs,
+  );
+  if (decision === "duplicate" || decision === "in_flight") {
+    return decision;
+  }
+
+  if (!existing) {
+    const { error: insertError } = await admin.from("billing_webhook_claims").insert({
+      stripe_event_id: event.id,
+      event_type: event.type,
+      livemode: event.livemode,
+      status: "processing",
+      claimed_at: nowIso,
+      last_error: null,
+    });
+    if (insertError?.code === "23505") {
+      // Concurrent first delivery — re-evaluate.
+      return acquireWebhookClaim(admin, event);
+    }
+    if (insertError) {
+      throw new Error(`webhook_claim_insert: ${insertError.message}`);
+    }
+    return "proceed";
+  }
+
+  // Reclaim failed or stale processing (status-gated update avoids racing a fresh lease).
+  const patch = {
+    status: "processing" as const,
+    claimed_at: nowIso,
+    last_error: null as string | null,
+    event_type: event.type,
+    livemode: event.livemode,
+  };
+  let reclaimQuery = admin
+    .from("billing_webhook_claims")
+    .update(patch)
+    .eq("stripe_event_id", event.id);
+  if (existing.status === "failed") {
+    reclaimQuery = reclaimQuery.eq("status", "failed");
+  } else {
+    const leaseCutoffIso = new Date(nowMs - WEBHOOK_CLAIM_LEASE_MS).toISOString();
+    reclaimQuery = reclaimQuery
+      .eq("status", "processing")
+      .lt("claimed_at", leaseCutoffIso);
+  }
+  const { data: reclaimed, error: reclaimError } = await reclaimQuery.select(
+    "stripe_event_id",
+  );
+  if (reclaimError) {
+    throw new Error(`webhook_claim_reclaim: ${reclaimError.message}`);
+  }
+  if (!reclaimed || reclaimed.length === 0) {
+    // Lost race — re-read once (avoid recursive reclaim loops).
+    const { data: again, error: againError } = await admin
+      .from("billing_webhook_claims")
+      .select("status, claimed_at")
+      .eq("stripe_event_id", event.id)
+      .maybeSingle();
+    if (againError) {
+      throw new Error(`webhook_claim_reread: ${againError.message}`);
+    }
+    return decideWebhookClaimAction(
+      again as { status: string; claimed_at: string } | null,
+      Date.now(),
+    );
+  }
+  return "proceed";
+}
+
+async function markWebhookClaimFailed(
+  admin: AdminClient,
+  stripeEventId: string,
+  err: unknown,
+): Promise<void> {
+  const message = err instanceof Error ? err.message : String(err);
+  const { error } = await admin
+    .from("billing_webhook_claims")
+    .update({
+      status: "failed",
+      last_error: message.slice(0, 2000),
+    })
+    .eq("stripe_event_id", stripeEventId);
+  if (error) {
+    console.error("stripe-webhook: markWebhookClaimFailed", {
+      stripeEventId,
+      message: error.message,
+    });
+  }
+}
+
+/** Success: mark claim done + append-only audit insert (idempotent). */
+async function markWebhookClaimDone(
+  admin: AdminClient,
+  event: Stripe.Event,
+): Promise<void> {
+  const { error: doneError } = await admin
+    .from("billing_webhook_claims")
+    .update({ status: "done", last_error: null })
+    .eq("stripe_event_id", event.id);
+  if (doneError) {
+    throw new Error(`webhook_claim_done: ${doneError.message}`);
+  }
+
+  const { error: auditError } = await admin.from("billing_webhook_events").insert({
     stripe_event_id: event.id,
     event_type: event.type,
     livemode: event.livemode,
     payload_hash: null,
   });
-  if (error) {
-    if (error.code === "23505") return false;
-    throw error;
-  }
-  return true;
-}
-
-/** Allow Stripe retries after mid-handler failure (claim-before-work otherwise deadlocks). */
-async function releaseWebhookEvent(
-  admin: AdminClient,
-  stripeEventId: string,
-): Promise<void> {
-  const { error } = await admin
-    .from("billing_webhook_events")
-    .delete()
-    .eq("stripe_event_id", stripeEventId);
-  if (error) {
-    // If release fails, Stripe retries look like duplicates and the event is lost.
-    console.error("stripe-webhook: releaseWebhookEvent failed", {
-      stripeEventId,
-      message: error.message,
-    });
-    throw new Error(`release_webhook_event_failed: ${error.message}`);
+  if (auditError && auditError.code !== "23505") {
+    throw new Error(`webhook_events_audit_insert: ${auditError.message}`);
   }
 }
 
@@ -541,6 +681,7 @@ async function provisionCheckoutFirstSignup(
     {
       id: `local_replay_${subscriptionId}`,
       type: "customer.subscription.updated",
+      created: Math.floor(Date.now() / 1000),
     } as Stripe.Event,
     subscription,
   );
@@ -602,7 +743,7 @@ async function syncSubscriptionRecord(
   companyId: string,
   subscription: Stripe.Subscription,
   lockedPlanPriceId: string,
-  eventCreatedUnix?: number,
+  eventCreatedUnix?: number | null,
 ) {
   const trialEndsAt = subscription.trial_end
     ? new Date(subscription.trial_end * 1000).toISOString()
@@ -654,9 +795,26 @@ async function syncSubscriptionRecord(
     locked_plan_price_id: lockedPlanPriceId,
     livemode: subscription.livemode,
   };
-  // Requires migration 20260928000100 (HUMAN GATE). Omit until applied → upsert still works.
-  if (typeof eventCreatedUnix === "number" && Number.isFinite(eventCreatedUnix)) {
-    row.last_webhook_event_created_at = new Date(eventCreatedUnix * 1000).toISOString();
+  // Requires migration 20260928000100 (HUMAN GATE). Never write 0/epoch; never regress.
+  const priorForTs = await admin
+    .from("company_subscriptions")
+    .select("last_webhook_event_created_at")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (
+    !priorForTs.error ||
+    !/last_webhook_event_created_at|PGRST204|42703/i.test(
+      priorForTs.error.message || "",
+    )
+  ) {
+    const nextTs = nextLastWebhookEventCreatedAtIso(
+      normalizeWebhookEventCreatedUnix(eventCreatedUnix),
+      (priorForTs.data as { last_webhook_event_created_at?: string | null } | null)
+        ?.last_webhook_event_created_at,
+    );
+    if (nextTs) {
+      row.last_webhook_event_created_at = nextTs;
+    }
   }
 
   let { error } = await admin.from("company_subscriptions").upsert(row, {
@@ -885,7 +1043,7 @@ async function applyCanceledSubscription(
     companyId,
     { ...subscription, status: "canceled" } as Stripe.Subscription,
     lockedPlanPriceId,
-    typeof event.created === "number" ? event.created : undefined,
+    normalizeWebhookEventCreatedUnix(event.created) ?? undefined,
   );
 
   const { error: auditError } = await admin.from("billing_audit_log").insert({
@@ -980,10 +1138,10 @@ async function handleSubscriptionLifecycle(
   if (!companyId) return;
 
   const priorSub = await loadPriorSubscriptionRow(admin, companyId);
-  const eventCreated =
-    typeof event.created === "number" ? event.created : 0;
+  const eventCreated = normalizeWebhookEventCreatedUnix(event.created);
 
   if (
+    eventCreated != null &&
     shouldSkipStaleWebhookEvent(
       eventCreated,
       priorSub?.last_webhook_event_created_at,
@@ -1364,9 +1522,13 @@ Deno.serve(async (req) => {
   });
 
   try {
-    const claimed = await claimWebhookEvent(admin, event);
-    if (!claimed) {
+    const claim = await acquireWebhookClaim(admin, event);
+    if (claim === "duplicate") {
       return jsonResponse({ received: true, duplicate: true });
+    }
+    if (claim === "in_flight") {
+      // Non-2xx so Stripe retries; concurrent delivery must not be ack'd as done.
+      return jsonResponse({ error: "in_flight" }, 409);
     }
 
     try {
@@ -1419,8 +1581,9 @@ Deno.serve(async (req) => {
         default:
           console.log("stripe-webhook: ignored event type", event.type);
       }
+      await markWebhookClaimDone(admin, event);
     } catch (handlerErr) {
-      await releaseWebhookEvent(admin, event.id);
+      await markWebhookClaimFailed(admin, event.id, handlerErr);
       throw handlerErr;
     }
 

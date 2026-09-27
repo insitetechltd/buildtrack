@@ -2,10 +2,14 @@ import {
   assertMergedMetersNonEmpty,
   assertNoDbError,
   assertPaidPlanMetersComplete,
+  decideWebhookClaimAction,
   metersAfterSubscriptionCanceled,
   metersFromEntitlementsRpcResult,
+  nextLastWebhookEventCreatedAtIso,
+  normalizeWebhookEventCreatedUnix,
   shouldSkipStaleWebhookEvent,
   shouldTreatAsCanceled,
+  WEBHOOK_CLAIM_LEASE_MS,
 } from "../webhookMetersGuard";
 
 const completeMeters = {
@@ -66,11 +70,12 @@ describe("webhookMetersGuard", () => {
     ).not.toThrow();
   });
 
-  it("skips stale events older than last applied", () => {
+  it("skips stale events older than last applied; ignores zero created", () => {
     expect(shouldSkipStaleWebhookEvent(100, 200)).toBe(true);
     expect(shouldSkipStaleWebhookEvent(200, 200)).toBe(false);
     expect(shouldSkipStaleWebhookEvent(201, 200)).toBe(false);
     expect(shouldSkipStaleWebhookEvent(100, null)).toBe(false);
+    expect(shouldSkipStaleWebhookEvent(0, 200)).toBe(false);
   });
 
   it("never treats canceled live Stripe as active; blocks resurrect from canceled DB", () => {
@@ -93,5 +98,77 @@ describe("webhookMetersGuard", () => {
       assertNoDbError({ message: "connection reset" }, "cancel_sub_update"),
     ).toThrow(/cancel_sub_update: connection reset/);
     expect(() => assertNoDbError(null, "ok")).not.toThrow();
+  });
+
+  describe("claim/retry semantics", () => {
+    const now = Date.parse("2026-09-28T00:00:00.000Z");
+
+    it("proceeds when no claim exists (first delivery)", () => {
+      expect(decideWebhookClaimAction(null, now)).toBe("proceed");
+    });
+
+    it("duplicate when claim is done (success dedupe)", () => {
+      expect(
+        decideWebhookClaimAction(
+          { status: "done", claimed_at: "2026-09-27T00:00:00.000Z" },
+          now,
+        ),
+      ).toBe("duplicate");
+    });
+
+    it("proceeds when prior claim failed (re-claimable)", () => {
+      expect(
+        decideWebhookClaimAction(
+          { status: "failed", claimed_at: "2026-09-27T23:59:00.000Z" },
+          now,
+        ),
+      ).toBe("proceed");
+    });
+
+    it("in_flight when processing inside lease (non-2xx for Stripe)", () => {
+      expect(
+        decideWebhookClaimAction(
+          {
+            status: "processing",
+            claimed_at: new Date(now - 60_000).toISOString(),
+          },
+          now,
+        ),
+      ).toBe("in_flight");
+    });
+
+    it("proceeds when processing lease expired (stale reclaim)", () => {
+      expect(
+        decideWebhookClaimAction(
+          {
+            status: "processing",
+            claimed_at: new Date(now - WEBHOOK_CLAIM_LEASE_MS - 1).toISOString(),
+          },
+          now,
+        ),
+      ).toBe("proceed");
+    });
+  });
+
+  describe("last_webhook_event_created_at monotonicity", () => {
+    it("rejects missing/zero created", () => {
+      expect(normalizeWebhookEventCreatedUnix(undefined)).toBeNull();
+      expect(normalizeWebhookEventCreatedUnix(0)).toBeNull();
+      expect(normalizeWebhookEventCreatedUnix(-1)).toBeNull();
+      expect(normalizeWebhookEventCreatedUnix(1_700_000_000)).toBe(1_700_000_000);
+    });
+
+    it("never writes epoch and never moves timestamp backwards", () => {
+      expect(nextLastWebhookEventCreatedAtIso(null, "2026-09-01T00:00:00.000Z")).toBeNull();
+      const prior = "2026-09-28T00:00:00.000Z";
+      const priorUnix = Math.floor(Date.parse(prior) / 1000);
+      expect(nextLastWebhookEventCreatedAtIso(priorUnix - 10, prior)).toBeNull();
+      expect(nextLastWebhookEventCreatedAtIso(priorUnix + 10, prior)).toBe(
+        new Date((priorUnix + 10) * 1000).toISOString(),
+      );
+      expect(nextLastWebhookEventCreatedAtIso(priorUnix + 10, null)).toBe(
+        new Date((priorUnix + 10) * 1000).toISOString(),
+      );
+    });
   });
 });

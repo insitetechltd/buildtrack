@@ -4,7 +4,9 @@
 
 ---
 
-**This session — stripe-webhook harden PREPARE (2026-09-27):** Tip push after `f0e59e3` lifecycle gaps (stale-event overwrite after cancel, deleted swallows DB errors, partial meters). **No deploy.** Migration `20260928000100_company_subscriptions_last_webhook_event.sql` HUMAN GATE (skipped in apply script until GO). Billing Jest 67/67. **Next (Human):** apply migration DEV→PROD on GO → deploy webhook DEV → rerun Stripe test-mode suite → PROD deploy.
+**This session — stripe-webhook claim/retry PREPARE (2026-09-28):** Failed events were stuck (append-only DELETE release). Mutable `billing_webhook_claims` + success-only audit insert; timestamp never regresses/epoch. Migration `20260928000200_billing_webhook_claims.sql` HUMAN GATE (SKIP until GO). **No deploy.** **Next (Human):** apply `…00200` on DEV (after `…00100` if not already) → deploy webhook → Stripe suite → PROD.
+
+**This session — stripe-webhook harden PREPARE (2026-09-27):** Tip push after `f0e59e3` lifecycle gaps (stale-event overwrite after cancel, deleted swallows DB errors, partial meters). Migration `20260928000100_…` HUMAN GATE. **Superseded next:** claim/retry PREPARE above.
 
 **This session — Bot housekeeping (2026-09-27):** Docs/chore only. Store README Maestro paths → `maestro/flows/marketing/…`; Recent Activity Option A marked shipped @ 280 (`fff978f`); committed iPad timeline + Recent Activity analysis PNGs (~1.9MB); NOW `## Next (definitive)` rewritten off TF-257/pre-280 stale steps. gitignore already had `fastlane/report.xml` + `__pycache__`. **Superseded next:** stripe-webhook harden PREPARE above.
 

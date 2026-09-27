@@ -44,7 +44,8 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 | L4 human | QA Validator + you | accept |
 | L5 destination | `test:dual-env:p-matrix` + Metro→PROD QA | PROD contract (SOP §13) |
 
-Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.
+Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.  
+**Logical containers / naming law:** `documentation/TEST_TAXONOMY.md` · registry `tests/registry.yaml` · `npm run test:taxonomy`. New tests must pick one container ID and follow naming; no Maestro YAML at `maestro/flows/` root.
 
 ## Dual-plane prove (Insite overlay of SOP §13)
 

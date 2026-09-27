@@ -1,0 +1,59 @@
+{
+  "dev_ref": "zusulknbhaumougqckec",
+  "prod_ref": "jcnzjigxgkzhjsaekoqz",
+  "dev_runner": "psql",
+  "prod_runner": "psql",
+  "columns_match": true,
+  "dev_column_count": 252,
+  "prod_column_count": 252,
+  "only_dev": [],
+  "only_prod": [],
+  "checks_match": true,
+  "dev_check_count": 30,
+  "prod_check_count": 30,
+  "only_dev_checks": [],
+  "only_prod_checks": [],
+  "prefer": {
+    "enums": {
+      "dev_count": 0,
+      "prod_count": 0,
+      "match": true,
+      "only_dev": [],
+      "only_prod": []
+    },
+    "defaults": {
+      "dev_count": 104,
+      "prod_count": 104,
+      "match": true,
+      "only_dev": [],
+      "only_prod": []
+    },
+    "triggers": {
+      "dev_count": 20,
+      "prod_count": 20,
+      "match": true,
+      "only_dev": [],
+      "only_prod": []
+    }
+  },
+  "task_status": {
+    "ts_count": 2,
+    "prod_check_count": 18,
+    "reported_in_ts": true,
+    "reported_in_prod_check": true,
+    "missing_in_prod_check": [],
+    "subset_ok": true,
+    "prod_check_def": "CHECK ((status = ANY (ARRAY['reported'::text, 'resolved'::text, 'new'::text, 'not_started'::text, 'assigned'::text, 'received'::text, 'declined'::text, 'accepted'::text, 'in_progress'::text, 'wip'::text, 'submitted_for_review'::text, 'reviewing'::text, 'approved'::text, 'completed'::text, 'done'::text, 'rejected'::text, 'cancelled'::text, 'dismissed'::text])))"
+  },
+  "dev_tables": 26,
+  "prod_tables": 26,
+  "dev_funcs": 19,
+  "prod_funcs": 19,
+  "dev_policies": 67,
+  "prod_policies": 67,
+  "funcs_match": true,
+  "policies_match": true,
+  "tables_match": true,
+  "prefer_match": true,
+  "ok": true
+}

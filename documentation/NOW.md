@@ -4,6 +4,16 @@
 
 ---
 
+**This session — Blind-spot S0–S10 CLOSED (2026-09-27):** Capability map + taxonomy + proves through Gate C. **S5** last-admin GO + O4 PASS DEV+PROD. **S6** `test:edge:signup-happy-path` GO (DEV catalog reseed + auth trigger repair). **S7** `documentation/ENTITLEMENT_PRODUCT_LAW.md` + Jest. **S8** `documentation/MAESTRO_QUARANTINE.md`. **S9** Gate C Maestro rc=0 + PNGs. Evidence: `docs/superpowers/evidence/2026-09-27-{test-blind-spot-audit,s0-s2-prove,s3-s5-prove,s6-s10-prove}/`. **Owed:** redeploy `stripe-webhook` when Supabase access token refreshed (upsert hardening in tree). **Next:** Grok bot memory = capability map; ASC 280 WFR unchanged.
+
+**This session — Blind-spot S3–S4 PROVED / S5 GO blocked (2026-09-27):** **Superseded** by S0–S10 CLOSED above.
+
+**This session — Blind-spot S0–S2 PROVED (2026-09-27):** Tip `7d65e97`. **S0** schema-parity + dual-env critical + p-matrix PASS. **S1** webhook faith GO. **S2** F7 PASS. **Superseded next:** S3–S5 above.
+
+**This session — Test taxonomy containers LANDED (2026-09-27):** SoT `documentation/TEST_TAXONOMY.md` + `tests/registry.yaml` + `npm run test:taxonomy`. Maestro flows rehomed under container folders. **Superseded next:** S0–S2 prove above.
+
+**This session — Test blind-spot audit NOT STABILIZED (2026-09-27):** Ran multi-model prompt against tip `7d65e97`. Artifacts: `docs/superpowers/evidence/2026-09-27-test-blind-spot-audit.md` (capability map + P0 ledger). Top gaps: `stripe-webhook` untested, cross-company RLS NO-PLANE, signup happy path Human-only, tip destination matrix SHA-stale vs Stage E. Next prove slice S0 = schema-parity + p-matrix on tip. Daily Grok bot memory = this map. **Superseded next:** Test taxonomy containers above.
+
 **This session — ASC Submit for Review 280 PASS (2026-09-27):** User-ordered `ASC_SUBMIT`. Version **1.1.3** is **WAITING_FOR_REVIEW** with build **280**. ReviewSubmission `731376ca-1398-4138-8ab3-083c42079c0e`. Deliver’s first try failed (`ensure_version!` on READY_FOR_REVIEW); Spaceship `submit_for_review` on the existing submission succeeded. **Public off.** Seller **Tri Stan Ching KOO**. Logs: `docs/superpowers/evidence/2026-09-27-asc-deliver/asc-submit-280-retry.log`. **Next (Human):** wait for Apple; reply if rejected. Do **not** tick Public unless asked.
 
 **This session — ASC paste 280 PASS (2026-09-27):** Fastlane Deliver attached **280** on version **1.1.3**. **Superseded next:** Submit for Review 280 PASS above.

@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "plane": "DEV",
+  "projectRef": "zusulknbhaumougqckec",
+  "appSha": "7d65e97",
+  "email": "s6.signup.b3bbdf700f@example.com",
+  "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
+  "steps": [
+    {
+      "step": "start_signup_checkout",
+      "ok": true,
+      "http": 200,
+      "sessionId": "cs_test_b1RqY0VxR6wh13wToN0x0RsIoxbqyJFRnjDc5pb10rMgBwXsE9Oce3pe7k",
+      "error": null
+    },
+    {
+      "step": "stripe_checkout_confirm",
+      "ok": true,
+      "http": 200,
+      "sessionStatus": "complete",
+      "paymentStatus": "paid",
+      "subscription": "sub_1UKHufDDDvw16uUvqFOwTLJH"
+    },
+    {
+      "step": "signup_checkout_status_ready",
+      "ok": true,
+      "status": {
+        "status": "ready",
+        "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=14d831d0efbac426be5bc2f7cc71100305b726abdb64a67e9252943e&open=1",
+        "email": "s6.signup.b3bbdf700f@example.com",
+        "mustSetPassword": true,
+        "companyId": "168cee2b-2d04-44b6-9f7f-329b0a1e07a3"
+      }
+    },
+    {
+      "step": "db_user_oracle",
+      "ok": true,
+      "user": [
+        {
+          "id": "cc7b2a7e-e91c-45b0-8b33-ff9409379d4b",
+          "email": "s6.signup.b3bbdf700f@example.com",
+          "company_id": "168cee2b-2d04-44b6-9f7f-329b0a1e07a3",
+          "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=14d831d0efbac426be5bc2f7cc71100305b726abdb64a67e9252943e",
+          "system_permission": "admin"
+        }
+      ]
+    },
+    {
+      "step": "db_company_oracle",
+      "ok": true,
+      "company": [
+        {
+          "id": "168cee2b-2d04-44b6-9f7f-329b0a1e07a3",
+          "name": "S6 Signup b3bbdf700f"
+        }
+      ]
+    }
+  ],
+  "companyId": "168cee2b-2d04-44b6-9f7f-329b0a1e07a3",
+  "inviteLinkPresent": true
+}

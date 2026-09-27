@@ -1,0 +1,81 @@
+
+> template-app-53@1.0.0 test:dual-env:critical
+> python3 scripts/supabase/probe-critical-paths-dual-env.py
+
+DEV keys: local (ref=zusulknbhaumougqckec)
+PROD keys: local (ref=jcnzjigxgkzhjsaekoqz)
+=== Critical-path dual-env probe ===
+DEV  zusulknbhaumougqckec
+PROD jcnzjigxgkzhjsaekoqz
+
+--- DEV ---
+  [PASS] users.admin_column: role=False system_permission=True
+  [PASS] upa.role_column: category=False project_role=True
+  [PASS] upa.timestamp_column: assigned_at=False created_at=True
+  [PASS] projects.core: ['budget', 'client_info', 'company_id', 'created_at', 'created_by', 'description', 'end_date', 'id', 'location', 'name', 'start_date', 'status', 'updated_at']
+  [PASS] tasks.status_surface: status=True current_status=False
+  [WARN] app_query.upa_order_assigned_at: http=400 ok=False err={'code': '42703', 'details': None, 'hint': 'Perhaps you meant to reference the column "user_project_assignments.assigned_by".', 'message': 'column user_project_assignments.assigned_at does not exist'}
+  [PASS] app_query.upa_order_created_at_fallback: http=200 payload_type=list
+  [PASS] upa.insert_role_target: app must write project_role
+  [PASS] rpc.login_identifier_is_registered: http=200 body=False
+  [PASS] rpc.login_identifier_requires_p_identifier: http=404 (must reject bare 'identifier')
+  [PASS] rls.anon_companies_blocked: http=200 leaked=False
+  [PASS] rls.anon_users_blocked: http=200 leaked=False
+  [PASS] rls.anon_projects_blocked: http=200 leaked=False
+  [PASS] rls.anon_tasks_blocked: http=200 leaked=False
+  [PASS] rls.anon_task_activities_blocked: http=200 leaked=False
+  [PASS] rls.anon_task_read_status_blocked: http=200 leaked=False
+  [PASS] rls.anon_project_locations_blocked: http=200 leaked=False
+  [PASS] rls.anon_company_subscriptions_blocked: http=200 leaked=False
+  [PASS] rls.anon_company_entitlements_blocked: http=200 leaked=False
+  [PASS] rls.anon_billing_webhook_events_blocked: http=200 leaked=False
+  [PASS] rls.anon_core7_all_blocked: tables=companies,users,projects,tasks,task_activities,task_read_status,project_locations
+  [PASS] rls.anon_billing_sample_blocked: tables=company_subscriptions,company_entitlements,billing_webhook_events
+  [PASS] edge.start-signup-checkout: http=400 body={'error': 'invalid_payload'}
+  [PASS] edge.signup-checkout-status: http=400 body={'error': 'invalid_session_id'}
+  [PASS] path.member_assignments_readable: user=john.managera@test.com assignments=17 http=200
+  [PASS] path.member_assignment_order_dual: assigned_at_http=400 created_at_http=200
+  [PASS] path.member_project_readable: project=3c2da5c9-d8ee-4377-afc7-a01f88304038 http=200
+
+--- PROD ---
+  [PASS] users.admin_column: role=False system_permission=True
+  [PASS] upa.role_column: category=False project_role=True
+  [PASS] upa.timestamp_column: assigned_at=False created_at=True
+  [PASS] projects.core: ['budget', 'client_info', 'company_id', 'created_at', 'created_by', 'description', 'end_date', 'id', 'location', 'name', 'start_date', 'status', 'updated_at']
+  [PASS] tasks.status_surface: status=True current_status=False
+  [WARN] app_query.upa_order_assigned_at: http=400 ok=False err={'code': '42703', 'details': None, 'hint': 'Perhaps you meant to reference the column "user_project_assignments.assigned_by".', 'message': 'column user_project_assignments.assigned_at does not exist'}
+  [PASS] app_query.upa_order_created_at_fallback: http=200 payload_type=list
+  [PASS] upa.insert_role_target: app must write project_role
+  [PASS] rpc.login_identifier_is_registered: http=200 body=False
+  [PASS] rpc.login_identifier_requires_p_identifier: http=404 (must reject bare 'identifier')
+  [PASS] rls.anon_companies_blocked: http=401 leaked=False
+  [PASS] rls.anon_users_blocked: http=401 leaked=False
+  [PASS] rls.anon_projects_blocked: http=401 leaked=False
+  [PASS] rls.anon_tasks_blocked: http=401 leaked=False
+  [PASS] rls.anon_task_activities_blocked: http=401 leaked=False
+  [PASS] rls.anon_task_read_status_blocked: http=401 leaked=False
+  [PASS] rls.anon_project_locations_blocked: http=401 leaked=False
+  [PASS] rls.anon_company_subscriptions_blocked: http=401 leaked=False
+  [PASS] rls.anon_company_entitlements_blocked: http=401 leaked=False
+  [PASS] rls.anon_billing_webhook_events_blocked: http=401 leaked=False
+  [PASS] rls.anon_core7_all_blocked: tables=companies,users,projects,tasks,task_activities,task_read_status,project_locations
+  [PASS] rls.anon_billing_sample_blocked: tables=company_subscriptions,company_entitlements,billing_webhook_events
+  [PASS] edge.start-signup-checkout: http=400 body={'error': 'invalid_payload'}
+  [PASS] edge.signup-checkout-status: http=400 body={'error': 'invalid_session_id'}
+  [PASS] path.member_assignments_readable: user=joe@insitetest.com assignments=15 http=200
+  [PASS] path.member_assignment_order_dual: assigned_at_http=400 created_at_http=200
+  [PASS] path.member_project_readable: project=d8cc4d7d-2525-445c-82cd-6a408c06ef34 http=200
+
+--- DEV↔PROD ---
+  [PASS] drift.users admin ACL column: DEV role=False/system_permission=True | PROD role=False/system_permission=True
+  [PASS] drift.UPA role column: DEV category=False/project_role=True | PROD category=False/project_role=True
+  [PASS] drift.UPA timestamp: DEV assigned_at=False/created_at=True | PROD assigned_at=False/created_at=True
+  [PASS] parity.rpc.login_identifier_is_registered: DEV ok=True (http=200 body=False) | PROD ok=True (http=200 body=False)
+  [PASS] parity.edge.start-signup-checkout: DEV ok=True (http=400 body={'error': 'invalid_payload'}) | PROD ok=True (http=400 body={'error': 'invalid_payload'})
+  [PASS] parity.edge.signup-checkout-status: DEV ok=True (http=400 body={'error': 'invalid_session_id'}) | PROD ok=True (http=400 body={'error': 'invalid_session_id'})
+  [PASS] parity.app_query.upa_order_created_at_fallback: DEV ok=True (http=200 payload_type=list) | PROD ok=True (http=200 payload_type=list)
+  [PASS] parity.rls.anon_core7_all_blocked: DEV ok=True (tables=companies,users,projects,tasks,task_activities,task_read_status,project_locations) | PROD ok=True (tables=companies,users,projects,tasks,task_activities,task_read_status,project_locations)
+  [PASS] parity.rls.anon_billing_sample_blocked: DEV ok=True (tables=company_subscriptions,company_entitlements,billing_webhook_events) | PROD ok=True (tables=company_subscriptions,company_entitlements,billing_webhook_events)
+
+summary: fails=0 warns=2
+GO: critical API surfaces OK on DEV and PROD (drift documented).

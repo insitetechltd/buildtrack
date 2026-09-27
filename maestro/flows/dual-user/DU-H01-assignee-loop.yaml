@@ -128,7 +128,7 @@ tags:
       - tapOn:
           id: "report-reply-composer__input"
       - inputText: "Dual-user gate assignee update with photo at 100%."
-      - runFlow: ../_dismiss-keyboard.yaml
+      - runFlow: ../_shared/_dismiss-keyboard.yaml
       - takeScreenshot: "du-h01-08-alice-updated"
       - tapOn:
           id: "report-reply-composer__send"

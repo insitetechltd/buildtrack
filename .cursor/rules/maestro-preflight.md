@@ -51,7 +51,7 @@ Do NOT search `/`, `$HOME`, or repo-wide `.maestro/` for screenshots; findings t
 ### Gate 7 — DASHBOARD RETURN / HARD RESET
 From DevSettings or any non-root screen back to Dashboard home, prefer resume (`clearState: false`) when session is valid.
 
-**M-DATA-04:** Never `clearState: true` or `stopApp: true` while a live Supabase session is open. Run `maestro/flows/_logout.yaml` first so Realtime channels close cleanly, then hard-reset if needed:
+**M-DATA-04:** Never `clearState: true` or `stopApp: true` while a live Supabase session is open. Run `maestro/flows/_shared/_logout.yaml` first so Realtime channels close cleanly, then hard-reset if needed:
 ```yaml
 - runFlow: _logout.yaml
 - launchApp:

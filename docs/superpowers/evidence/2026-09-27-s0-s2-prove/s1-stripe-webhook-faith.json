@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "plane": "DEV",
+  "projectRef": "zusulknbhaumougqckec",
+  "appSha": "7d65e97",
+  "eventId": "evt_s1_faith_1126dd71c1fd",
+  "cases": [
+    {
+      "case": "invalid_signature",
+      "ok": true,
+      "http": 400,
+      "body": {
+        "error": "No signatures found matching the expected signature for payload. Are you passing the raw request body you received from Stripe? \n If a webhook request is being forwarded by a third-party tool, ensure that the exact request body, including JSON formatting and new line style, is preserved.\n\nLearn more about webhook signing and explore webhook integration examples for various frameworks at https://docs.stripe.com/webhooks/signature\n"
+      }
+    },
+    {
+      "case": "first_delivery",
+      "ok": true,
+      "http": 200,
+      "body": {
+        "received": true
+      }
+    },
+    {
+      "case": "duplicate",
+      "ok": true,
+      "http": 200,
+      "body": {
+        "received": true,
+        "duplicate": true
+      }
+    }
+  ]
+}

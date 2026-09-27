@@ -327,20 +327,78 @@ def run_env_probes(env: EnvProbe) -> None:
         f"http={code_bad} (must reject bare 'identifier')",
     )
 
-    # --- Anon blocked on users ---
-    code, payload = env.rest("users?select=id&limit=1", key=env.anon_key)
-    anon_blocked = code in (401, 403) or (
-        isinstance(payload, dict)
-        and (
+    # --- Anon blocked: M-SUPABASE-02a seven tables + key billing (S3) ---
+    def anon_denied(code: int, payload: Any) -> bool:
+        if code in (401, 403):
+            return True
+        if isinstance(payload, dict) and (
             "permission" in str(payload).lower()
             or "jwt" in str(payload).lower()
             or payload.get("code") in ("42501", "PGRST301")
-        )
+        ):
+            return True
+        # Empty list with 200 = RLS filtered all (no leak)
+        if code == 200 and payload == []:
+            return True
+        return False
+
+    anon_core_tables = (
+        "companies",
+        "users",
+        "projects",
+        "tasks",
+        "task_activities",
+        "task_read_status",
+        "project_locations",
     )
-    # Empty list with 200 can also mean RLS filtered all — treat as ok if no rows leaked
-    if code == 200 and payload == []:
-        anon_blocked = True
-    env.add("rls.anon_users_blocked", anon_blocked, f"http={code}")
+    anon_billing_tables = (
+        "company_subscriptions",
+        "company_entitlements",
+        "billing_webhook_events",
+    )
+    anon_core_ok = True
+    for tbl in anon_core_tables:
+        # select=* — some tables (e.g. task_read_status) have no `id` column;
+        # a 42703 on select=id must not be mistaken for an anon allow.
+        code, payload = env.rest(f"{tbl}?select=*&limit=1", key=env.anon_key)
+        ok = anon_denied(code, payload)
+        leaked = (
+            code == 200
+            and isinstance(payload, list)
+            and len(payload) > 0
+        )
+        env.add(
+            f"rls.anon_{tbl}_blocked",
+            ok and not leaked,
+            f"http={code} leaked={leaked}",
+        )
+        anon_core_ok = anon_core_ok and ok and not leaked
+
+    anon_billing_ok = True
+    for tbl in anon_billing_tables:
+        code, payload = env.rest(f"{tbl}?select=*&limit=1", key=env.anon_key)
+        ok = anon_denied(code, payload)
+        leaked = (
+            code == 200
+            and isinstance(payload, list)
+            and len(payload) > 0
+        )
+        env.add(
+            f"rls.anon_{tbl}_blocked",
+            ok and not leaked,
+            f"http={code} leaked={leaked}",
+        )
+        anon_billing_ok = anon_billing_ok and ok and not leaked
+    env.add(
+        "rls.anon_core7_all_blocked",
+        anon_core_ok,
+        f"tables={','.join(anon_core_tables)}",
+    )
+    env.add(
+        "rls.anon_billing_sample_blocked",
+        anon_billing_ok,
+        f"tables={','.join(anon_billing_tables)}",
+    )
 
     # --- Signup edges (public) ---
     code, payload = env.edge("start-signup-checkout", {})
@@ -475,6 +533,8 @@ def compare_envs(dev: EnvProbe, prod: EnvProbe) -> list[CheckResult]:
         "edge.start-signup-checkout",
         "edge.signup-checkout-status",
         "app_query.upa_order_created_at_fallback",
+        "rls.anon_core7_all_blocked",
+        "rls.anon_billing_sample_blocked",
     ):
         d = next((r for r in dev.results if r.name == prefix), None)
         p = next((r for r in prod.results if r.name == prefix), None)

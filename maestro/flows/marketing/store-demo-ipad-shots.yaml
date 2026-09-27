@@ -1,0 +1,197 @@
+# ASC store shots — iPad 13" from DEV Store Demo — Amoy Fit-Out (John PM).
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- tapOn:
+    text: "Not Now"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- runFlow:
+    when:
+      visible: "Loading from Metro..."
+    commands:
+      - extendedWaitUntil:
+          notVisible: "Loading from Metro..."
+          timeout: 180000
+- runFlow:
+    when:
+      notVisible:
+        id: "login-submit"
+    commands:
+      - runFlow: ../_shared/_logout.yaml
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 90000
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "admin-overview-hero"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 60000
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "profile-menu-profile_settings"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    id: "profile-menu-language"
+- waitForAnimationToEnd:
+    timeout: 2500
+- runFlow:
+    when:
+      visible:
+        id: "profile-language:en"
+    commands:
+      - tapOn:
+          id: "profile-language:en"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible: "Reload Now"
+    commands:
+      - tapOn: "Reload Now"
+- runFlow:
+    when:
+      visible:
+        id: "profile-language__close"
+    commands:
+      - tapOn:
+          id: "profile-language__close"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "app-screen-header__back"
+    optional: true
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "project-picker__row-1a790ed9-f3fb-4857-a9e6-40327cfb86e1"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "project-picker__row-1a790ed9-f3fb-4857-a9e6-40327cfb86e1"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 60000
+- swipe:
+    start: "50%, 26%"
+    end: "50%, 78%"
+    duration: 1000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "ipad-store-01-activity"
+# Tasks list + hero thread (unicode-safe title match)
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 2000
+# Signed thumbs race — settle before ASC shot (top cards otherwise grey)
+- swipe:
+    start: "50%, 55%"
+    end: "50%, 45%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 8000
+- swipe:
+    start: "50%, 45%"
+    end: "50%, 55%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "ipad-store-03-tasks"
+- scrollUntilVisible:
+    element:
+      text: ".*scaffold.*"
+    direction: DOWN
+    timeout: 15000
+- tapOn: ".*scaffold.*"
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 25000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: "ipad-store-04-task-thread"
+- tapOn:
+    id: "app-screen-header__back"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+# Slot 02 = Tasks FAB create speed dial (honest create entry; sim viewfinder is black)
+- tapOn:
+    id: "root-tab__tasks_pressable"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-create-speed-dial__assign"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: "ipad-store-02-camera-chrome"
+- tapOn:
+    id: "tasks-create-speed-dial__assign"
+    optional: true
+- tapOn:
+    id: "capture-session__cancel"
+    optional: true

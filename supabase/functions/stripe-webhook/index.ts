@@ -207,6 +207,29 @@ async function promoteFoundingAdminProfile(
     patch.role = "admin";
   }
 
+  // Auth createUser may not have a public.users row (missing on_auth_user_created
+  // trigger after restore). UPDATE-only left orphan companies with no profile —
+  // signup-checkout-status then stays pending forever. Upsert closes that gap.
+  const { data: existing, error: lookupError } = await admin
+    .from("users")
+    .select("id")
+    .eq("id", params.userId)
+    .maybeSingle();
+  if (lookupError) {
+    throw new Error(lookupError.message || "founder_profile_lookup_failed");
+  }
+
+  if (!existing?.id) {
+    const { error: insertError } = await admin.from("users").insert({
+      id: params.userId,
+      ...patch,
+    });
+    if (insertError) {
+      throw new Error(insertError.message || "founder_profile_insert_failed");
+    }
+    return;
+  }
+
   const { error } = await admin.from("users").update(patch).eq("id", params.userId);
   if (error) {
     throw new Error(error.message || "founder_profile_update_failed");

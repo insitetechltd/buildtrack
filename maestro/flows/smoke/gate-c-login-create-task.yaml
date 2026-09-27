@@ -1,0 +1,104 @@
+# S9 Gate C — Login + Create Task TextField chrome / keyboard / submit reachability.
+# Prove: tap field chrome → type; with keyboard open, dismiss safely; primary submit reachable.
+# Container: C-MAESTRO-SMOKE · Plane: DEV-MAESTRO
+appId: com.buildtrack.app.local
+tags:
+  - gate-c
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "login-submit"
+    commands:
+      - runFlow: ../_shared/_logout.yaml
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 45000
+# --- Login chrome ---
+# Reuse ordinary John boot (password seed + landing contract).
+- runFlow: ../create-task-photo/_boot.yaml
+- takeScreenshot: "gate-c-01-login-landed-dashboard"
+# Re-prove Login TextField chrome via logout → focused type → submit visible
+- runFlow: ../_shared/_logout.yaml
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 45000
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "john.managera@test.com"
+- takeScreenshot: "gate-c-02-login-email-focused"
+- runFlow: ../_shared/_dismiss-keyboard.yaml
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- assertVisible:
+    id: "login-submit"
+- takeScreenshot: "gate-c-03-login-password-submit-visible"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "admin-overview-hero"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- runFlow: ../create-task-photo/_ensure-project.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
+# Capture-first → library → form (same as field create path).
+- runFlow: ../create-task-photo/_open-library.yaml
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+- evalScript: ${output.gateCTitle = "GateC " + Date.now()}
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.gateCTitle}
+- takeScreenshot: "gate-c-04-create-title-focused"
+# Gate C: primary Assign must remain reachable with keyboard open (dock).
+- assertVisible:
+    id: "create-task__submit"
+- takeScreenshot: "gate-c-05-create-submit-reachable-keyboard-open"
+- runFlow: ../_shared/_dismiss-keyboard.yaml
+- assertVisible:
+    id: "create-task__continuous_form"
+- assertVisible:
+    id: "create-task__submit"
+- takeScreenshot: "gate-c-06-create-submit-after-dismiss"
+# Do not submit — Gate C is chrome/keyboard only (avoids task residue).
+- tapOn:
+    id: "create-task__close"
+    optional: true
+- tapOn:
+    text: "Cancel"
+    optional: true

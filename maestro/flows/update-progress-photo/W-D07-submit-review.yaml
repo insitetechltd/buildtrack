@@ -19,9 +19,9 @@ tags:
 - tapOn:
     id: "update-progress__description"
 - inputText: "Completed assigned checks for W-D07 submit-for-review."
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - tapOn: "Photos & Files"
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
     element:

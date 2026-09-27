@@ -15,7 +15,7 @@ appId: com.buildtrack.app.local
     id: "createTask-description"
 - inputText: "Maestro create-task photo suite attachment coverage."
 # Dismiss keyboard while title row is still centered (50%,22% hits location row if scrolled down).
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 # Location on site is optional for create (required only for Report intent).
 # Project A may have zero seeded locations after DEV restore — skip the sheet.
 - scrollUntilVisible:

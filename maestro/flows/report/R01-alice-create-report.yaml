@@ -7,7 +7,7 @@ tags:
   - report
 ---
 - runFlow: ../dual-user/_boot-alice.yaml
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - tapOn:
     id: "root-tab__camera_icon_surface"
 - waitForAnimationToEnd:
@@ -86,7 +86,7 @@ tags:
     id: "createTask-title"
 - inputText: ${DU_TASK_TITLE}
 - pressKey: Enter
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - waitForAnimationToEnd:
     timeout: 800
 - scrollUntilVisible:
@@ -99,7 +99,7 @@ tags:
 - tapOn:
     id: "createTask-description"
 - inputText: "Stage E Report Maestro Alice reports for Carol triage."
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - waitForAnimationToEnd:
     timeout: 800
 - assertVisible: ".*Stage E Report Maestro.*"
@@ -159,4 +159,4 @@ tags:
 - runFlow: ../create-task-photo/_assert-no-logbox.yaml
 # M-DATA-04: close Realtime / auth session before leaving Alice sim idle
 # (Carol runs next on the other UDID; open JWT+Realtime stacks usage).
-- runFlow: ../_logout.yaml
+- runFlow: ../_shared/_logout.yaml

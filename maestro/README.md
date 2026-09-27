@@ -18,27 +18,37 @@ This foundation is intentionally narrow:
 - it covers launch smoke plus the deterministic Sprint 7 bootstrap entry points
 - it does not claim live Supabase-backed workflow correctness
 
-## Files
+## Layout (logical containers)
 
-- `flows/launch-smoke.yaml`: launches the installed dev client, attaches Maestro, and confirms the authenticated app shell is visible
-- `flows/sprint7-open-developer-settings.yaml`: opens `Profile -> Developer Settings`
-- `flows/sprint7-initialize-sandbox.yaml`: triggers the canonical Sprint 7 sandbox initializer through the in-app action
-- `flows/bootstrap-live-manager-a.yaml`: logs the seeded manager into the authenticated dashboard
-- `flows/bootstrap-live-worker-a1.yaml`: logs the seeded worker into the authenticated dashboard
-- `flows/qa01-scenario-a-rejection-loop.yaml`: M-QA-01 Scenario A — Rejection Loop (Herman → Tristan decline → Herman return view) with 4 screenshots
-- `flows/qa01-scenario-b-overdue-crunch.yaml`: M-QA-01 Scenario B — Overdue Crunch Preset B with dashboard + tasks overdue + project-card screenshots
-- `flows/qa01-scenario-c-isolation-wall.yaml`: M-QA-01 Scenario C — Isolation Wall, Herman-only visible projects/tasks screenshots
-- `flows/qa01-scenario-d-iphone17-viewport.yaml`: M-QA-01 iPhone 17 Viewport Audit, 8 screenshots across Dashboard + Tasks + Dev Settings safeareas and anchored regions
-- `flows/task-core-live-create.yaml`: creates a live Supabase-backed task from the manager path
-- `flows/task-core-live-assign.yaml`: validates live assignment from the manager path
-- `flows/task-core-live-progress.yaml`: validates worker progress updates on a live task
-- `flows/task-core-live-completion.yaml`: validates worker completion handoff into review-ready state
-- `flows/task-core-live-photo-upload.yaml`: validates worker photo selection and progress update submission
-- `flows/pick-first-image.yaml`: selects the first iOS photo-library image during live upload validation
-- `flows/create-task-photo/*.yaml`: Create Task in-app library / Select Photos / draw / dedupe permutations (see `../docs/superpowers/plans/2026-08-16-maestro-create-task-photo-permutations.md`)
-- `flows/assets/icon.png`: repo-local media fixture used by the live photo-upload flow
-- `../scripts/maestro/run-local.sh`: repo-local wrapper that runs Maestro against a repo-owned local home and supports `MAESTRO_BIN` overrides
-- `../scripts/maestro/run-create-task-photo-suite.sh`: stop-on-fail runner for Create Task photo permutations
+**Law:** [`documentation/TEST_TAXONOMY.md`](../documentation/TEST_TAXONOMY.md) — every flow lives under exactly one container folder. Do **not** add YAML at `flows/` root. Registry: `tests/registry.yaml` · `npm run test:taxonomy`.
+
+| Folder | Container | Role |
+|---|---|---|
+| `flows/_shared/` | helpers | `_logout`, `_hard-reset-launch`, bootstrap-live-*, `pick-first-image` |
+| `flows/smoke/` | `C-MAESTRO-SMOKE` | `launch-smoke`, `sprint7-*` |
+| `flows/journeys/` | `C-MAESTRO-FIELD` | `journey-*` |
+| `flows/qa01/` | `C-MAESTRO-QA01` | `qa01-scenario-*` (sandbox rubric — not live RLS) |
+| `flows/task-core/` | `C-MAESTRO-FIELD` | `task-core-live-*` |
+| `flows/create-task-photo/` | `C-MAESTRO-FIELD` | `P##` / photo create permutations |
+| `flows/update-progress-photo/` | `C-MAESTRO-FIELD` | `U##` |
+| `flows/dual-user/` | `C-MAESTRO-FIELD` | dual-sim gate |
+| `flows/org/` | `C-MAESTRO-ORG` | company-admin |
+| `flows/report/` | `C-MAESTRO-REPORT` | report journey |
+| `flows/destination/` | `C-DEST` | `metro-prod-headed-*` |
+| `flows/marketing/` | `C-MAESTRO-MARKETING` | store-demo / ASC shots (**not** RC gate) |
+| `flows/perf/` | `C-MAESTRO-FIELD` | perf budgets |
+| `flows/assets/` | fixtures | media used by upload flows |
+
+### Key entry flows
+
+- `flows/smoke/launch-smoke.yaml` — authenticated shell attach
+- `flows/smoke/sprint7-open-developer-settings.yaml` / `sprint7-initialize-sandbox.yaml`
+- `flows/_shared/bootstrap-live-manager-a.yaml` / `bootstrap-live-worker-a1.yaml`
+- `flows/qa01/qa01-scenario-{a,b,c,d}-*.yaml` — M-QA-01 rubric (Maestro executes, Human approves PNGs)
+- `flows/task-core/task-core-live-{create,assign,progress,completion,photo-upload}.yaml`
+- `flows/destination/metro-prod-headed-smoke.yaml` — Metro→PROD headed
+- `../scripts/maestro/run-local.sh` — wrapper (`MAESTRO_BIN`, project-local home)
+- `../scripts/maestro/run-create-task-photo-suite.sh` — Create Task photo suite
 
 ## Preconditions
 
@@ -64,8 +74,8 @@ npm run test:e2e:maestro:smoke
 Run the other `M-QA-02` foundation flows directly through the wrapper:
 
 ```bash
-bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml
-bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-initialize-sandbox.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/smoke/sprint7-open-developer-settings.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/smoke/sprint7-initialize-sandbox.yaml
 ```
 
 Run the `M-QA-03` live Task Core bundle:
@@ -108,10 +118,10 @@ npm run test:e2e:maestro:qa01
 Or directly via the wrapper for a single scenario (output screenshots land next to the flow YAML, or in the directory specified by your Maestro output flag):
 
 ```bash
-bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-a-rejection-loop.yaml
-bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-b-overdue-crunch.yaml
-bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-c-isolation-wall.yaml
-bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-d-iphone17-viewport.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01/qa01-scenario-a-rejection-loop.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01/qa01-scenario-b-overdue-crunch.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01/qa01-scenario-c-isolation-wall.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01/qa01-scenario-d-iphone17-viewport.yaml
 ```
 
 Evidence convention:

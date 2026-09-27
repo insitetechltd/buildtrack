@@ -5,7 +5,7 @@ tags:
   - permutation-02
 ---
 - evalScript: ${output.permutation = "02-draw-then-upload"}
-- runFlow: ../bootstrap-live-manager-a.yaml
+- runFlow: ../_shared/bootstrap-live-manager-a.yaml
 - runFlow:
     when:
       visible: "Select a project to view the active project summary and queue overview."

@@ -2,7 +2,7 @@
 # If already there, avoid extra picker hops and just refresh in place.
 appId: com.buildtrack.app.local
 ---
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - tapOn:
     id: "root-tab__activity"
     optional: true

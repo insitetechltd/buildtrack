@@ -23,6 +23,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Read-only ASC auth probe (no writes)
 
+### ios asc_build_status
+
+```sh
+[bundle exec] fastlane ios asc_build_status
+```
+
+Read-only: list recent iOS builds and whether 280 is VALID
+
 ### ios asc_select_build
 
 ```sh
@@ -38,6 +46,14 @@ Attach CFBundleVersion to the editable App Store version
 ```
 
 Upload listing metadata + screenshots (no binary, no Submit for Review)
+
+### ios asc_review_blockers
+
+```sh
+[bundle exec] fastlane ios asc_review_blockers
+```
+
+Read-only: dump open review submissions and resolution threads
 
 ### ios asc_submit
 

@@ -20,7 +20,7 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "report-reply-composer__input"
 - inputText: ${output.progressNote}
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - tapOn:
     id: "report-reply-composer__send"
 - waitForAnimationToEnd:

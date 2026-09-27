@@ -10,13 +10,13 @@ window.INSITE_SIGNUP_SUPABASE = {
   plans: {
     growth: {
       planTierSlug: "growth",
-      planPriceId: "07520414-ecb5-43e9-a566-2744046380a7",
+      planPriceId: "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
       label: "Starter",
       amountLabel: "HK$160 / month",
     },
     unlimited: {
       planTierSlug: "unlimited",
-      planPriceId: "12fc9850-4996-496a-860a-7e2ab3551562",
+      planPriceId: "a77bcdd9-2399-4adf-b4d9-70582c259821",
       label: "Pro",
       amountLabel: "HK$400 / month",
     },

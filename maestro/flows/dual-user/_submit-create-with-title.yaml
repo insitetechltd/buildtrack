@@ -12,7 +12,7 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "createTask-description"
 - inputText: "Dual-user Maestro gate — assigner creates and assigns Alice."
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
     visibilityPercentage: 40

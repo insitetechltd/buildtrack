@@ -53,4 +53,4 @@ tags:
 - takeScreenshot: "R01-carol-resolved-detail"
 - runFlow: ../create-task-photo/_assert-no-logbox.yaml
 # M-DATA-04: sign out so Realtime channels drop before journey teardown.
-- runFlow: ../_logout.yaml
+- runFlow: ../_shared/_logout.yaml

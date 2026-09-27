@@ -107,6 +107,17 @@ fi
 [ -f .cursor/skills/insite-dev/SKILL.md ] && ok "insite-dev skill present" || warn "insite-dev skill missing"
 [ -d .trae ] && warn ".trae/ still present (legacy — Cursor rules are SoT)"
 
+# Test taxonomy (containers + no Maestro root orphans)
+if [ -f scripts/dev/assert-test-taxonomy.mjs ] && [ -f documentation/TEST_TAXONOMY.md ]; then
+  if node ./scripts/dev/assert-test-taxonomy.mjs >/dev/null 2>&1; then
+    ok "test taxonomy (npm run test:taxonomy)"
+  else
+    bad "test taxonomy stale/orphans — run: npm run test:taxonomy -- --write (see documentation/TEST_TAXONOMY.md)"
+  fi
+else
+  warn "test taxonomy files missing"
+fi
+
 # Stale pre-rename folder path in docs (`Insite App` → `InsiteApp`, 2026-07-09).
 # Historical FROM paths are allowed only in the path-migration plan.
 if command -v rg >/dev/null 2>&1; then

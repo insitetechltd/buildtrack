@@ -3,7 +3,7 @@
 # when John already has Harbor Tower / another LPM selected (U01 row invisible after search).
 appId: com.buildtrack.app.local
 ---
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - tapOn:
     id: "root-tab__activity"
     optional: true

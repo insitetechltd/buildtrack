@@ -95,6 +95,7 @@ These constraints apply across the agent pack unless a role narrows them further
 - Backend integration root: `src/api/supabase.ts`.
 - Build and release sources of truth: `package.json`, `app.json`, `eas.json`, `patches/`, root build scripts, `documentation/`.
 - **Quality loop (2026-08-30):** Intake → Spec → Implement → Prove → Judge. Close = Judge GO, not Reviewer alone. User is not required to fill a kickoff template.
+- **Test taxonomy (2026-09-27):** `documentation/TEST_TAXONOMY.md` is SoT for logical containers (`C-UNIT`…`C-ARCHIVED`) and naming. Registry: `tests/registry.yaml`. Assert: `npm run test:taxonomy`. New tests must follow it; Maestro flows live under `maestro/flows/{container}/` only.
 - Shared safety rules:
   - Never revert unrelated user changes.
   - Prefer small, targeted edits over broad rewrites.

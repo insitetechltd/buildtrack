@@ -16,7 +16,7 @@ appId: com.buildtrack.app.local
     id: "text-field:tasks-search__input"
 - eraseText
 - inputText: ${UP_SEED_TITLE}
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - extendedWaitUntil:
     visible: ${".*" + UP_SEED_TITLE + ".*NEW"}
     timeout: 20000

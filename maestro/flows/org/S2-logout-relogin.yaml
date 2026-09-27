@@ -3,7 +3,7 @@
 appId: com.buildtrack.app.local
 ---
 - runFlow: O1-ca-shell.yaml
-- runFlow: ../_logout.yaml
+- runFlow: ../_shared/_logout.yaml
 - extendedWaitUntil:
     visible:
       id: "login-submit"

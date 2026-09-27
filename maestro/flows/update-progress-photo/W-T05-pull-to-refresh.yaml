@@ -7,7 +7,7 @@ tags:
 ---
 - runFlow: ../create-task-photo/_boot.yaml
 - runFlow: ../create-task-photo/_ensure-project.yaml
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 
 - tapOn:
     id: "root-tab__tasks_pressable"

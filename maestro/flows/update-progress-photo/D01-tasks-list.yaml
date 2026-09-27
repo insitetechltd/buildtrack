@@ -1,7 +1,7 @@
 # D1 — Tasks list visible (W-T01)
 appId: com.buildtrack.app.local
 ---
-- runFlow: ../bootstrap-live-worker-a1.yaml
+- runFlow: ../_shared/bootstrap-live-worker-a1.yaml
 - tapOn:
     id: "root-tab__tasks_pressable"
 - extendedWaitUntil:

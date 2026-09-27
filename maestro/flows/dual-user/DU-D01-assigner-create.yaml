@@ -8,7 +8,7 @@ tags:
 ---
 - runFlow: _resume-john.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - tapOn:
     id: "root-tab__camera_icon_surface"
 - waitForAnimationToEnd:

@@ -21,7 +21,7 @@ appId: com.buildtrack.app.local
 # Blur title so React state commits before Save draft reads formData.title.
 - tapOn:
     id: "createTask-description"
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
     element:

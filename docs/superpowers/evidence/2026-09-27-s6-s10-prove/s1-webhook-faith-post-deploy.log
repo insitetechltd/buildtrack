@@ -1,0 +1,9 @@
+
+> template-app-53@1.0.0 test:edge:stripe-webhook-faith
+> python3 scripts/stripe/probe-webhook-faith.py
+
+[PASS] invalid_signature http=400
+[PASS] first_delivery http=200 body={'received': True}
+[PASS] duplicate http=200 body={'received': True, 'duplicate': True}
+artifact: /Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-27-s0-s2-prove/s1-stripe-webhook-faith.json
+GO: stripe-webhook faith (bad sig + claim + duplicate)

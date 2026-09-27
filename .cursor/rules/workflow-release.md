@@ -48,7 +48,8 @@ Native simulator run for rubric scenarios. Figma cross-check if WS-UX/M-UX-01 re
 Final status: READY / BLOCKED / CONDITIONALLY READY with explicit blockers list.
 
 Hard safety:
-- NEVER mark "released to public" after ASC submit-only step. Only ASC human ticks Public checkbox. Correct phrase: "Submitted to ASC, awaiting manual public release".
+- NEVER mark "released to public" after ASC Submit for Review. Public stays off unless the user explicitly enables store visibility in ASC. Correct phrase: "Submitted for App Review" or "Uploaded to ASC/TF" — not "released".
+- Listing metadata/screenshots/submitForReview: automate via `npm run asc:paste` / `ASC_SUBMIT=1 npm run asc:submit` (Fastlane Deliver) when the user asked for CBP+ASC or ASC paste/submit — not a standing human-paste gate.
 - Version bumps / build#s: only if release task explicitly scoped, and user approved.
 - gh-cli for milestone/tag/PR sync if scoped.
 

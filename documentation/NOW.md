@@ -4,7 +4,29 @@
 
 ---
 
-**This session — CBP TF 279 submitted (2026-09-23):** Stage E tip `b399f64` (critical-surface A–E + Report journey). Local `./build-local.sh ios production` → IPA **v1.1.3 (279)** `.eas/artifacts/build-1790165157483.ipa` (CFBundleVersion 279; bundle `com.buildtrack.app.local`; S4 PASS sha256 `1de6a1ef…`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/8229ead4-b224-4458-8fd7-5ad729eac5d4 (✔ Uploaded ASC ~26m; Apple processing). Evidence: `docs/superpowers/evidence/2026-09-23-stage-e/cbp-{build-local,s4-assert,eas-submit}.log`. ASC Public / Submit for Review untouched. **Next (Human):** wait 279 VALID → TF dogfood → PROD signup + live Checkout → ASC paste + Submit for Review (Public unticked). Do not Submit for Review until those gates pass.
+**This session — CBP 280 IN PROGRESS (2026-09-27):** User-ordered CBP of intended 280 tree (evidence H + Option A Activity + seat labels + assignee timeout + ASC deliver + store shots). Gate 0: no open Metro→PROD FAIL; last headed PASS Stage C; TF 279 dogfood + live Checkout PASS; evidence H Jest-proven (58/58 + tsc rc=0). Residual: this SHA not re-headed on PROD. Do **not** submit 279; Public off; no `ASC_SUBMIT`. **Next:** local `ios production` → S4 → TF submit → record.
+
+**This session — evidence H fail-closed (2026-09-27):** Pre-CBP 280 slice. Update/dock abort if any chosen photo fails (draft kept). Create Task rolls back via `deleteTaskById` if photo upload fails after insert. Create normalize is fail-closed (no silent drop of chosen photos). Jest: evidencePhotoSubmit 4/4 · UpdateProgress 7/7 · useCreateTaskViewAdapter 23/23 · TaskDetail sticky-layout 24/24 (dock abort). `tsc --noEmit` rc=0. **Superseded next:** CBP 280 in progress above.
+
+**This session — hold for human code pass → TF 280 → ASC submit (2026-09-27):** User running final operational-smoothness pass. **Superseded next:** evidence H fail-closed above.
+
+**This session — ASC Fastlane Deliver live paste PASS (2026-09-27):** Integrated Fastlane Deliver (`npm run asc:paste` / `asc:submit`). Auth key **57D87U9MQ2** App Manager — metadata EN+zh-Hant + review notes + 8 screenshots×2 locales uploaded; build **279** selected on version **1.1.3**. Log: `docs/superpowers/evidence/2026-09-27-asc-deliver/asc-paste.log`. CBP policy rewritten: automation sequence (not human gate); `ASC_SUBMIT=1` for submitForReview; Public still never auto. **Next (Human):** ASC completeness review → then `ASC_SUBMIT=1 npm run asc:submit`.
+
+**This session — ASC store set regenerated (2026-09-26):** Full iPhone 6.7" + iPad 13" slots re-shot from DEV Store Demo (John) after Option A Activity UI. Maestro `2026-09-26_214525` / `_214527`; assets in `docs/taskr/assets/store/{iphone-67,ipad-13}/`. **Next (Human):** upload store set → ASC paste 279 → Submit (Public unticked).
+
+**This session — Store screenshots recaptured (2026-09-26):** iPhone 6.7" **1320×2868** + iPad 13" **2064×2752** from DEV **Store Demo — Amoy Fit-Out**. **Superseded next:** equal-height + re-shot above.
+
+**This session — Store demo seed on DEV (2026-09-25):** Photogenic ASC shot corpus — project **Store Demo — Amoy Fit-Out** · 8 tasks · 9 JPEGs (`docs/taskr/assets/store/demo-photos/` + `scripts/maestro/seed-store-demo-photos.cjs`). Actors: Carol CA / John PM / Alice Worker. **Superseded next:** store screenshots recaptured above.
+
+**This session — ASC paste pack 279 ready (2026-09-25):** Human paste SoT `docs/superpowers/evidence/2026-09-25-asc-paste-pack-279.md` (EN + zh-HK + Review Notes; build **279**; Public unticked). Checklist updated `docs/superpowers/plans/2026-09-01-asc-listing-paste.md`. Preflight URLs all HTTP 200. **Superseded next:** upload refreshed store screenshots then Submit.
+
+**This session — PROD signup + live Checkout PASS (2026-09-25):** Human gate **PASS** — production signup + Stripe **live** Checkout completed. Complements TF **279** dogfood PASS. **Superseded next:** ASC paste pack 279 ready above.
+
+**This session — TF 279 dogfood PASS (2026-09-25):** Human dogfood **PASS** on Internal TF **279**. Non-blocking follow-ups (uncommitted tip): signup Plan prices (Pages), Create Project CA/PM/Worker seat labels, Create Task assignee roster timeout/cache-first, billing open-URL rec (no code). **Superseded next:** PROD signup + live Checkout PASS above.
+
+**This session — PROD internal complimentary plan B (2026-09-24):** Hidden Stripe **HK$0** Price `taskr_internal_complimentary_hkd_monthly` (`price_1UJCZ0…`) + DB tier `internal_complimentary` / `plan_prices.is_sellable=false`. Insite Test Ltd. attached to real sub `sub_1UJCZ5…` (was `sub_manual_…`). Prove: Sara `billing-subscription-status` http=200 · plan **Internal complimentary** · `canCancel=true`. Script: `scripts/stripe/provision-internal-complimentary.py` (dry-run default; `--apply`). **C (HQ entitlement override) deferred.** Signup catalog unchanged (Starter/Pro only) until Pages publish of tip signup.html.
+
+**This session — CBP TF 279 submitted (2026-09-23):** Stage E tip `b399f64` (critical-surface A–E + Report journey). Local `./build-local.sh ios production` → IPA **v1.1.3 (279)** `.eas/artifacts/build-1790165157483.ipa` (CFBundleVersion 279; bundle `com.buildtrack.app.local`; S4 PASS sha256 `1de6a1ef…`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/8229ead4-b224-4458-8fd7-5ad729eac5d4 (✔ Uploaded ASC ~26m; Apple processing). Evidence: `docs/superpowers/evidence/2026-09-23-stage-e/cbp-{build-local,s4-assert,eas-submit}.log`. ASC Public / Submit for Review untouched. **Superseded next:** TF 279 dogfood PASS above.
 
 **This session — M-REPORT-01 booked (2026-09-23):** ROADMAP Pipeline `WS-FIELD / M-REPORT-01` (Order 15.0577) — Report resolve-**with-reply** must leave durable audit trail (`resolved` + `issue_resolved` + timeline-visible reply body/photos). Stage E label **E3c OPEN** (distinct from E3 without-reply Closed + E3b promote OPEN). Idle Gate A; must not jump App Store spine. **Superseded next:** CBP TF 279 above.
 

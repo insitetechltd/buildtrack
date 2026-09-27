@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { fireEvent, render, waitFor, act } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../TaskDetailScreen";
+import { uploadFileWithVerification } from "../../api/fileUploadService";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
 
 jest.mock("../../ui/viewAdapters/useTaskDetailViewAdapter", () => ({
@@ -147,6 +148,7 @@ describe("TaskDetailScreen sticky layout", () => {
     mockDispatch.mockReset();
     mockAddListener.mockImplementation(() => jest.fn());
     alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+    (uploadFileWithVerification as jest.Mock).mockReset();
   });
 
   afterEach(() => {
@@ -554,6 +556,54 @@ describe("TaskDetailScreen sticky layout", () => {
 
     expect(screen.getByTestId("report-reply-composer__photo_0")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__photos")).toBeTruthy();
+  });
+
+  it("does not persist dock progress when a chosen photo fails to upload", async () => {
+    (uploadFileWithVerification as jest.Mock).mockResolvedValue({
+      success: false,
+      error: "Photo upload failed",
+    });
+    const submitDockProgress = jest.fn().mockResolvedValue(undefined);
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: {
+        ...createAdapterActions(),
+        submitDockProgress,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={jest.fn()}
+        inboundSelectedPhotos={[
+          { uri: "file://swipe.jpg", fileName: "swipe.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "Tied rebar at grid B",
+    );
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Photos did not upload",
+        expect.stringContaining("still here"),
+      );
+    });
+    expect(submitDockProgress).not.toHaveBeenCalled();
+    expect(screen.getByTestId("report-reply-composer__photo_0")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__input").props.value).toBe(
+      "Tied rebar at grid B",
+    );
   });
 
   it("shows progress dock green submit affordance at 100% and posts via submitDockProgress", async () => {

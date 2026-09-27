@@ -64,14 +64,14 @@
                 <input type="radio" name="plan" value="growth" checked />
                 <span>
                   <strong>Starter</strong>
-                  <span class="signup-plan-meta" id="plan-meta-growth">Monthly subscription</span>
+                  <span class="signup-plan-meta" id="plan-meta-growth">HK$160 / month</span>
                 </span>
               </label>
               <label class="signup-plan-option">
                 <input type="radio" name="plan" value="unlimited" />
                 <span>
                   <strong>Pro</strong>
-                  <span class="signup-plan-meta" id="plan-meta-unlimited">Monthly subscription</span>
+                  <span class="signup-plan-meta" id="plan-meta-unlimited">HK$400 / month</span>
                 </span>
               </label>
             </fieldset>
@@ -120,29 +120,38 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
   <script>
     (function () {
+      function applyPlanPrices() {
+        var cfg = window.INSITE_SIGNUP_SUPABASE;
+        if (!cfg || !cfg.plans) return;
+        var g = document.getElementById("plan-meta-growth");
+        var u = document.getElementById("plan-meta-unlimited");
+        if (g && cfg.plans.growth && cfg.plans.growth.amountLabel) {
+          g.textContent = cfg.plans.growth.amountLabel;
+        }
+        if (u && cfg.plans.unlimited && cfg.plans.unlimited.amountLabel) {
+          u.textContent = cfg.plans.unlimited.amountLabel;
+        }
+      }
       var params = new URLSearchParams(window.location.search);
       var env = (params.get("env") || "").toLowerCase();
       var src =
         env === "sandbox"
-          ? "assets/signup/supabase-config.sandbox.js?v=2"
-          : "assets/signup/supabase-config.js?v=3";
-      document.write('<script src="' + src + '"><\\/script>');
+          ? "assets/signup/supabase-config.sandbox.js?v=4"
+          : "assets/signup/supabase-config.js?v=4";
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = function () {
+        applyPlanPrices();
+        var b = document.createElement("script");
+        b.src = "assets/signup/signup.js?v=7";
+        document.body.appendChild(b);
+      };
+      s.onerror = function () {
+        // HTML fallbacks (HK$160 / HK$400) stay visible.
+        console.error("Failed to load signup Supabase config");
+      };
+      document.body.appendChild(s);
     })();
   </script>
-  <script>
-    (function () {
-      var cfg = window.INSITE_SIGNUP_SUPABASE;
-      if (!cfg || !cfg.plans) return;
-      var g = document.getElementById("plan-meta-growth");
-      var u = document.getElementById("plan-meta-unlimited");
-      if (g && cfg.plans.growth && cfg.plans.growth.amountLabel) {
-        g.textContent = cfg.plans.growth.amountLabel;
-      }
-      if (u && cfg.plans.unlimited && cfg.plans.unlimited.amountLabel) {
-        u.textContent = cfg.plans.unlimited.amountLabel;
-      }
-    })();
-  </script>
-  <script src="assets/signup/signup.js?v=6"></script>
 </body>
 </html>

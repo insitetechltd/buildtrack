@@ -5,6 +5,7 @@ import { useCreateTaskViewAdapter } from "../useCreateTaskViewAdapter";
 const mockCreateTask = jest.fn();
 const mockCreateSubTask = jest.fn();
 const mockUpdateTask = jest.fn();
+const mockDeleteTaskById = jest.fn();
 const mockFetchTaskById = jest.fn();
 const mockFetchProjectLocations = jest.fn();
 const mockEnsureProjectLocation = jest.fn();
@@ -129,6 +130,7 @@ describe("useCreateTaskViewAdapter", () => {
     mockCreateTask.mockResolvedValue("task-1");
     mockCreateSubTask.mockResolvedValue("subtask-1");
     mockUpdateTask.mockResolvedValue(undefined);
+    mockDeleteTaskById.mockResolvedValue(undefined);
     mockUploadFileWithVerification.mockResolvedValue({
       success: true,
       file: {
@@ -152,6 +154,7 @@ describe("useCreateTaskViewAdapter", () => {
       createTask: mockCreateTask,
       createSubTask: mockCreateSubTask,
       updateTask: mockUpdateTask,
+      deleteTaskById: mockDeleteTaskById,
       fetchProjectLocations: mockFetchProjectLocations,
       ensureProjectLocation: mockEnsureProjectLocation,
     });
@@ -901,9 +904,8 @@ describe("useCreateTaskViewAdapter", () => {
       ]);
     });
 
-    await act(async () => {
-      await result.current.actions.submit();
-    });
+    const submitResult = await result.current.actions.submit();
+    expect(submitResult).toBe(true);
 
     expect(mockCreateTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -928,6 +930,39 @@ describe("useCreateTaskViewAdapter", () => {
         attachments: ["https://cdn.example.com/company-1/tasks/task-1/uploaded-photo.jpg"],
       }),
     );
+    expect(mockDeleteTaskById).not.toHaveBeenCalled();
+  });
+
+  it("rolls back the created task when a chosen photo fails to upload", async () => {
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: false,
+      error: "Photo upload failed",
+    });
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    act(() => {
+      result.current.actions.updateField("title", "Photo task");
+      result.current.actions.updateField("description", "Install tagged item");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("assignedTo", ["user-2"]);
+      result.current.actions.updateField("attachments", [
+        {
+          uri: "file:///draft-photo.jpg",
+          fileName: "draft-photo.jpg",
+          isAnnotated: false,
+        },
+      ]);
+    });
+
+    const submitResult = await result.current.actions.submit();
+
+    expect(submitResult).toBe(false);
+    expect(mockCreateTask).toHaveBeenCalled();
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+    expect(mockDeleteTaskById).toHaveBeenCalledWith("task-1", "user-1");
+    expect(result.current.output.formData.title).toBe("Photo task");
+    expect(result.current.output.formData.attachments).toHaveLength(1);
   });
 
   it("persists a new location immediately when saved from the picker and keeps it in the options list", async () => {

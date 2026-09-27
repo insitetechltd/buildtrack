@@ -93,15 +93,24 @@ jest.mock('../../utils/useTranslation', () => ({
   }),
 }));
 
+const mockUploadFileWithVerification = jest.fn().mockResolvedValue({
+  success: true,
+  file: { public_url: 'https://example.com/photo.jpg' },
+});
+
 jest.mock('../../api/fileUploadService', () => ({
-  uploadFileWithVerification: jest.fn().mockResolvedValue({
-    success: true,
-    file: { public_url: 'https://example.com/photo.jpg' },
-  }),
+  uploadFileWithVerification: (...args: unknown[]) =>
+    mockUploadFileWithVerification(...args),
 }));
 
+jest.mock('../../utils/ensureCappedLocalPhoto', () => ({
+  ensureCappedLocalPhoto: jest.fn(async (photo: { uri: string }) => photo.uri),
+}));
+
+const mockReturnToTaskDetail = jest.fn();
 jest.mock('../../navigation/photoFlowNavigation', () => ({
-  returnToTaskDetailAfterUpdateProgress: jest.fn(),
+  returnToTaskDetailAfterUpdateProgress: (...args: unknown[]) =>
+    mockReturnToTaskDetail(...args),
 }));
 
 describe('useUpdateProgressViewAdapter', () => {
@@ -119,6 +128,12 @@ describe('useUpdateProgressViewAdapter', () => {
     mockAddTaskUpdate.mockClear();
     mockAddAssignerComment.mockClear();
     mockFetchTaskById.mockClear();
+    mockUploadFileWithVerification.mockReset();
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: true,
+      file: { public_url: 'https://example.com/photo.jpg' },
+    });
+    mockReturnToTaskDetail.mockClear();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -254,5 +269,39 @@ describe('useUpdateProgressViewAdapter', () => {
 
     expect(mockAddAssignerComment).toHaveBeenCalled();
     expect(mockAddTaskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('does not save an update when a chosen photo fails to upload', async () => {
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: false,
+      error: 'Photo upload failed',
+    });
+
+    const { result } = renderHook(
+      (props: { selectedPhotos: Array<{ uri: string; fileName: string }> }) =>
+        useUpdateProgressViewAdapter(props),
+      {
+        initialProps: {
+          selectedPhotos: [{ uri: 'file:///site.jpg', fileName: 'site.jpg' }],
+        },
+      },
+    );
+
+    act(() => {
+      result.current.actions.setDescription('Slab pour complete');
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmitUpdate();
+    });
+
+    expect(mockAddTaskUpdate).not.toHaveBeenCalled();
+    expect(mockReturnToTaskDetail).not.toHaveBeenCalled();
+    expect(result.current.output.form.description).toBe('Slab pour complete');
+    expect(result.current.output.photos).toHaveLength(1);
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Photos did not upload',
+      expect.stringContaining('still here'),
+    );
   });
 });

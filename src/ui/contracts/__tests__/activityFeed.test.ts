@@ -3,6 +3,7 @@ import {
   buildActivityFeedRows,
   countUnreadActivityFeedRows,
   formatActivityTabBadgeCount,
+  formatTimestampLabel,
   groupActivityFeedRows,
   RECENT_ACTIVITY_MAX_ITEMS,
   RECENT_ACTIVITY_WINDOW_MS,
@@ -12,6 +13,16 @@ import {
 
 describe("activityFeed", () => {
   const now = new Date("2026-07-04T09:00:00.000Z").getTime();
+
+  it("formats activity timestamps as dd/mm/yy", () => {
+    expect(formatTimestampLabel("2026-09-25T10:00:00.000Z")).toMatch(
+      /^\d{2}\/\d{2}\/\d{2}$/,
+    );
+    const label = formatTimestampLabel("2026-09-25T12:00:00.000Z");
+    // Local calendar day may shift near UTC midnight; shape is the contract.
+    expect(label.split("/")).toHaveLength(3);
+    expect(label.endsWith("/26")).toBe(true);
+  });
 
   it("builds recent task updates within the five-day window", () => {
     const recentTimestamp = new Date(now - RECENT_ACTIVITY_WINDOW_MS + 60_000).toISOString();

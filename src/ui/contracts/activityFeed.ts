@@ -63,13 +63,16 @@ export function formatActivityHeadline(status: string): string {
   return formatLocalizedActivityHeadline(status);
 }
 
-function formatTimestampLabel(isoTimestamp: string): string {
-  return new Date(isoTimestamp).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+/** Recent Activity event stamp: short day/month/year (dd/mm/yy). */
+export function formatTimestampLabel(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
 }
 
 /**

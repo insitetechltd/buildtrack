@@ -1,28 +1,22 @@
 # App Store 6.7" screenshots (iPhone)
 
-Apple size: **1320 × 2868** JPEG. Upload in this order to the **1.1.3** version (prefer build **256**; ASC already has a 4-shot set from the 243/244 pass).
+Apple size: **1320 × 2868** JPEG. Recaptured **2026-09-26 21:45** on iPhone 17 Pro Max sim (`B7B2640C-4738-4F8A-AEEE-5DF3D21D2533`) from DEV **Store Demo — Amoy Fit-Out** (John PM). Maestro `2026-09-26_214525` · Option A Recent Activity (compact evidence strip).
 
 | File | Slot | Honest? |
 |------|------|---------|
-| `01-activity.jpg` | Activity / this week’s work | Yes — Joe on Insite Office |
-| `02-camera.jpg` | Capture | **Composite** — real camera chrome + site scaffolding photo (sim viewfinder is black) |
-| `03-tasks.jpg` | Task list with photos | Yes — upscaled from the same 6.7" crop |
-| `04-task-thread.jpg` | Task thread with proof | Yes — scaffolding thread |
+| `01-activity.jpg` | Activity / recent work | Yes — Store Demo · Option A strip |
+| `02-camera.jpg` | Create entry (FAB speed dial) | Yes — Tasks “+” → Report up / Assign work |
+| `03-tasks.jpg` | Task list with photos | Yes — 8 catalog tasks + photo thumbs |
+| `04-task-thread.jpg` | Task thread with proof | Yes — scaffold hero T01 with progress photo |
 
-**Do not upload** `.dbg/marketing-joe/mkt-05-company.png` — Joe is a worker; that frame was taken while the role was temporarily company_admin.
-
-**Still missing (Human):**
-
-- Physical 6.1" set (iPhone 12 Pro is fine)
-- iPad screenshots (`app.json` still has `supportsTablet: true`)
-- Honest Company / invite frame as a company admin (Sara), not Joe
-- Live camera viewfinder if you reject the composite
+**Login for re-capture:** `john.managera@test.com` / Store Demo — Amoy Fit-Out  
+**Flows:** `maestro/flows/store-demo-iphone-shots.yaml` · seed `scripts/maestro/seed-store-demo-photos.cjs`
 
 Captions (optional overlay in ASC; files themselves have none):
 
 | EN | zh-HK |
 |---|---|
-| This week’s critical work, on one project | 本週急件，一個地盤睇晒 |
-| Snap it. Assign it. | 影張相，派出去 |
+| This week’s site work, on one project | 本週地盤工作，一個項目睇晒 |
+| Report up or assign work | 上報問題或指派工作 |
 | Proof before you approve | 有相先批 |
 | Approve or send back | 批准定打回頭 |

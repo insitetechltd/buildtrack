@@ -21,19 +21,38 @@ export type CreateProjectRosterCandidate = {
   canBeProjectAdmin: boolean;
 };
 
-/** Build same-company roster rows for Create Project (ACL labels only). */
+/** Company seat class for Create Project roster (CA / PM / Worker). */
+export function companySeatLabelForCreateProject(user: User): "CA" | "PM" | "Worker" {
+  const permission = String(
+    user.systemPermission || user.role || "",
+  ).toLowerCase();
+  if (permission === "admin" || permission === "company_admin") {
+    return "CA";
+  }
+  if (
+    permission === "manager" ||
+    permission === "supervisor" ||
+    user.deployableSeat === "pm"
+  ) {
+    return "PM";
+  }
+  return "Worker";
+}
+
+/** Build same-company roster rows for Create Project (seat + PA eligibility). */
 export function buildCreateProjectRosterCandidates(
   users: User[],
   companyId: string | undefined,
 ): CreateProjectRosterCandidate[] {
   return companyUsersEligibleForProjectAdd(users, companyId, []).map((user) => {
     const canBeProjectAdmin = isEligibleProjectAdminCandidate(user);
+    const seat = companySeatLabelForCreateProject(user);
     return {
       userId: user.id,
       name: user.name || user.email || "User",
       subtitle: canBeProjectAdmin
-        ? `${getProjectRoleLabel(PROJECT_ADMIN_GRANT_CATEGORY)} eligible`
-        : getProjectRoleLabel(MEMBER_GRANT_CATEGORY),
+        ? `${seat} · ${getProjectRoleLabel(PROJECT_ADMIN_GRANT_CATEGORY)} eligible`
+        : seat,
       canBeProjectAdmin,
     };
   });

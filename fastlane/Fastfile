@@ -1,0 +1,148 @@
+# frozen_string_literal: true
+
+default_platform(:ios)
+
+ASC_APP_ID = "6754898737"
+DEFAULT_KEY_ID = "57D87U9MQ2"
+DEFAULT_ISSUER_ID = "169799ef-c185-49f3-8c48-7d82e7ba7683"
+DEFAULT_KEY_PATH = File.expand_path(
+  ENV.fetch(
+    "EXPO_ASC_API_KEY_PATH",
+    "#{Dir.home}/.appstoreconnect/private_keys/AuthKey_#{DEFAULT_KEY_ID}.p8"
+  )
+)
+
+platform :ios do
+  desc "Read-only ASC auth probe (no writes)"
+  lane :asc_auth_probe do
+    api_key = asc_api_key
+    app = Spaceship::ConnectAPI::App.find("com.buildtrack.app.local")
+    UI.success("ASC auth OK — #{app.name} (#{app.id})")
+  end
+
+  desc "Attach CFBundleVersion to the editable App Store version"
+  lane :asc_select_build do |options|
+    api_key = asc_api_key
+    build_number = (options[:build_number] || ENV["ASC_BUILD_NUMBER"] || "279").to_s
+    app = Spaceship::ConnectAPI::App.find("com.buildtrack.app.local")
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("No editable App Store version") unless version
+
+    builds = Spaceship::ConnectAPI::Build.all(
+      app_id: app.id,
+      processing_states: "VALID",
+      platform: Spaceship::ConnectAPI::Platform::IOS
+    )
+    build = Array(builds).find { |b| b.version.to_s == build_number }
+    unless build
+      sample_nums = Array(builds).first(12).map { |b| b.version.to_s }
+      UI.user_error!("No VALID iOS build #{build_number} on ASC (sample: #{sample_nums.join(', ')})")
+    end
+
+    version.select_build(build_id: build.id)
+    UI.success("Selected build #{build.version} (#{build.id}) on version #{version.version_string}")
+  end
+
+  desc "Resolve App Store Connect API key (App Manager)"
+  private_lane :asc_api_key do
+    key_id = ENV.fetch("EXPO_ASC_KEY_ID", DEFAULT_KEY_ID)
+    issuer_id = ENV.fetch("EXPO_ASC_ISSUER_ID", DEFAULT_ISSUER_ID)
+    key_filepath = DEFAULT_KEY_PATH
+    UI.user_error!("ASC API key missing at #{key_filepath}") unless File.exist?(key_filepath)
+
+    app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_filepath: key_filepath,
+      duration: 1200,
+      in_house: false
+    )
+  end
+
+  desc "Upload listing metadata + screenshots (no binary, no Submit for Review)"
+  lane :asc_paste do |options|
+    api_key = asc_api_key
+    build_number = (options[:build_number] || ENV["ASC_BUILD_NUMBER"] || "279").to_s
+    screenshots_path = options[:screenshots_path] || ENV.fetch(
+      "ASC_SCREENSHOTS_PATH",
+      File.expand_path("../.cache/asc-deliver/screenshots", __dir__)
+    )
+    skip_screenshots = options[:skip_screenshots] == true ||
+                       ENV["ASC_SKIP_SCREENSHOTS"] == "1" ||
+                       !Dir.exist?(screenshots_path)
+
+    deliver(
+      api_key: api_key,
+      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      app_version: options[:app_version] || ENV.fetch("ASC_APP_VERSION", "1.1.3"),
+      build_number: build_number,
+      skip_binary_upload: true,
+      skip_app_version_update: false,
+      skip_metadata: false,
+      skip_screenshots: skip_screenshots,
+      overwrite_screenshots: !skip_screenshots,
+      screenshots_path: screenshots_path,
+      metadata_path: File.expand_path("./metadata", __dir__),
+      # review notes live under fastlane/review_information (Deliver default)
+      submit_for_review: false,
+      automatic_release: false,
+      phased_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      run_precheck_before_submit: false,
+      reject_if_possible: false
+    )
+
+    # Deliver skips binary; explicitly attach the TF build to the version.
+    asc_select_build(build_number: build_number)
+    UI.success("ASC paste complete (build #{build_number}). Submit for Review NOT sent.")
+  end
+
+  desc "Submit version for App Review (metadata already on ASC). Public stays off."
+  lane :asc_submit do |options|
+    api_key = asc_api_key
+    build_number = (options[:build_number] || ENV["ASC_BUILD_NUMBER"] || "279").to_s
+
+    unless ENV["ASC_SUBMIT"] == "1" || options[:confirm] == true
+      UI.user_error!(
+        "Refusing submitForReview without ASC_SUBMIT=1 (or confirm:true). " \
+        "Public release is never automatic."
+      )
+    end
+
+    deliver(
+      api_key: api_key,
+      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      app_version: options[:app_version] || ENV.fetch("ASC_APP_VERSION", "1.1.3"),
+      build_number: build_number,
+      skip_binary_upload: true,
+      skip_metadata: !(options[:skip_metadata] == false || ENV["ASC_RESUBMIT_METADATA"] == "1"),
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      phased_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      run_precheck_before_submit: ENV["ASC_RUN_PRECHECK"] == "1",
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: true,
+        export_compliance_is_exempt: true,
+        content_rights_contains_third_party_content: false,
+        content_rights_has_rights: true
+      }
+    )
+
+    UI.success("ASC Submit for Review sent (build #{build_number}). Public NOT enabled.")
+  end
+
+  desc "Metadata + screenshots, then Submit for Review when ASC_SUBMIT=1"
+  lane :asc_deliver do |options|
+    asc_paste(options)
+    if ENV["ASC_SUBMIT"] == "1" || options[:submit] == true
+      asc_submit(options.merge(confirm: true, skip_metadata: true))
+    else
+      UI.message("ASC_SUBMIT not set — stopped after paste. Set ASC_SUBMIT=1 to submitForReview.")
+    end
+  end
+end

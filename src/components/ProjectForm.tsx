@@ -579,7 +579,7 @@ export default function ProjectForm({
             </Text>
             <Text className="text-sm text-gray-500 mb-4">
               Add people from your company and choose Member or Project Admin.
-              Leave empty if this project should stay in Company management only
+              Labels show each person’s company seat (CA / PM / Worker). Leave empty if this project should stay in Company management only
               for now. Project Admin can only be a company admin or PM.
             </Text>
 

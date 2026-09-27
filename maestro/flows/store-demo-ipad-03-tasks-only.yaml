@@ -1,0 +1,47 @@
+# Resume: recapture iPad Tasks list only (John on Store Demo).
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow:
+    when:
+      visible: "Loading from Metro..."
+    commands:
+      - extendedWaitUntil:
+          notVisible: "Loading from Metro..."
+          timeout: 180000
+- runFlow:
+    when:
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__tasks_pressable"
+    timeout: 90000
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    start: "50%, 60%"
+    end: "50%, 35%"
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 8000
+- swipe:
+    start: "50%, 35%"
+    end: "50%, 70%"
+    duration: 700
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: "ipad-store-03-tasks"

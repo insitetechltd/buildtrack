@@ -421,6 +421,11 @@ export default function TasksScreen(props: TasksScreenProps) {
                       metaLabel={row.latestUpdateLabel ?? "Task activity"}
                       badgeLabel={row.statusLabel}
                       imageUri={row.primaryPhotoUri}
+                      imageUris={
+                        [row.primaryPhotoUri, ...(row.attachmentUris ?? [])].filter(
+                          (uri): uri is string => Boolean(uri),
+                        )
+                      }
                       topLeftMarker={
                         row.isOverdue ? (
                           <View

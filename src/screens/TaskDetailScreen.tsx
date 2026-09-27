@@ -38,6 +38,10 @@ import type { SelectedPhoto } from "@/utils/usePhotoSelection";
 import { useAuthStore } from "@/state/authStore";
 import { uploadFileWithVerification } from "@/api/fileUploadService";
 import { ensureCappedLocalPhoto } from "@/utils/ensureCappedLocalPhoto";
+import {
+  chosenPhotosAllUploaded,
+  evidencePhotosFailedMessage,
+} from "@/utils/evidencePhotoSubmit";
 import { useTranslation } from "@/utils/useTranslation";
 import { navigateToAddPhotosCaptureSession } from "@/navigation/captureFirstCameraFlow";
 import { mergeUniqueAttachments } from "@/utils/mergeTaskAttachments";
@@ -317,12 +321,12 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       let photoUrls: string[] = [];
       if (replyPhotos.length > 0) {
         photoUrls = await uploadReplyPhotos(replyPhotos);
-        if (photoUrls.length < replyPhotos.length) {
-          const failedCount = replyPhotos.length - photoUrls.length;
+        if (!chosenPhotosAllUploaded(replyPhotos.length, photoUrls.length)) {
           Alert.alert(
-            "Upload Warning",
-            `${photoUrls.length} of ${replyPhotos.length} photo(s) uploaded. ${failedCount} failed. Reply will send with the successful photos.`,
+            "Photos did not upload",
+            evidencePhotosFailedMessage(photoUrls.length, replyPhotos.length),
           );
+          return;
         }
       }
       if (detailDock.mode === "progress") {

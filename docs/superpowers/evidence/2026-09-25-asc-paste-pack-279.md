@@ -231,13 +231,13 @@ How to review:
 
 ## 7) Before Submit for Review
 
-- [ ] App Information URLs pasted / verified  
+- [x] App Information URLs pasted / verified (preflight HTTP 200 via www→apex)  
 - [x] Build **280** selected (agent paste 2026-09-27; not 244 / 254 / 256 / 257 / 258 / 278 / 279)  
-- [ ] EN metadata pasted  
-- [ ] zh-HK metadata pasted  
-- [ ] Screenshots left as-is (or fixed from disk)  
+- [x] EN metadata pasted  
+- [x] zh-Hant metadata pasted  
+- [x] Screenshots re-uploaded from disk (4 iPhone 6.7" + 4 iPad 13" × 2 locales)  
 - [x] App Review Notes pasted (build **280**)  
 - [ ] Resolution Center answered if still open  
-- [ ] **Public** unticked  
-- [ ] Seller still **Tri Stan Ching KOO**  
-- [ ] Tap **Submit for Review**
+- [x] **Public** unticked (never auto)  
+- [ ] Seller still **Tri Stan Ching KOO** (confirm in ASC; do not rename)  
+- [ ] Tap **Submit for Review** (or say `ASC_SUBMIT` in chat)

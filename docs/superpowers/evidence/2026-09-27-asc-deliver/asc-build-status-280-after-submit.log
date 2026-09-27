@@ -1,0 +1,38 @@
+[18:58:05]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[18:58:05]: ------------------------------
+[18:58:05]: --- Step: default_platform ---
+[18:58:05]: ------------------------------
+[18:58:05]: Driving the lane 'ios asc_build_status' 🚀
+[18:58:05]: --------------------------------------------
+[18:58:05]: --- Step: Switch to ios asc_api_key lane ---
+[18:58:05]: --------------------------------------------
+[18:58:05]: Cruising over to lane 'ios asc_api_key' 🚖
+[18:58:05]: ---------------------------------------
+[18:58:05]: --- Step: app_store_connect_api_key ---
+[18:58:05]: ---------------------------------------
+[18:58:05]: Cruising back to lane 'ios asc_build_status' 🚘
+[18:58:07]: Version 1.1.3 state=WAITING_FOR_REVIEW build=280
+[18:58:07]: Version 1.0 state=READY_FOR_DISTRIBUTION build=127
+[18:58:07]: ReviewSubmission 731376ca-1398-4138-8ab3-083c42079c0e state=WAITING_FOR_REVIEW platform=IOS
+[18:58:07]: ReviewSubmission 1cff3759-7589-4d90-88d9-96d7df49393c state=COMPLETE platform=IOS
+[18:58:08]: Editable version: 1.1.3 state=WAITING_FOR_REVIEW
+[18:58:08]: Currently selected build: 280 (e8dd1413-c83f-43ef-9cc0-8ed35716f99e)
+[18:58:19]: VALID: 280:VALID, 279:VALID, 278:VALID, 277:VALID, 276:VALID, 275:VALID, 274:VALID, 273:VALID, 272:VALID, 271:VALID, 270:VALID, 269:VALID, 268:VALID, 267:VALID, 266:VALID
+[18:58:19]: PROCESSING: (none)
+[18:58:20]: FAILED: (none)
+[18:58:21]: INVALID: (none)
+[18:58:31]: Build 280 is VALID (e8dd1413-c83f-43ef-9cc0-8ed35716f99e)
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[18:58:31]: fastlane.tools finished successfully 🎉

@@ -26,6 +26,23 @@ platform :ios do
     want = (options[:build_number] || ENV["ASC_BUILD_NUMBER"] || "280").to_s
     app = Spaceship::ConnectAPI::App.find("com.buildtrack.app.local")
     UI.user_error!("App not found") unless app
+    versions = app.get_app_store_versions(
+      filter: { platform: Spaceship::ConnectAPI::Platform::IOS },
+      includes: "build",
+      limit: 15
+    )
+    Array(versions).each do |v|
+      UI.message(
+        "Version #{v.version_string} state=#{v.app_version_state || v.app_store_state} " \
+        "build=#{v.build&.version || '(none)'}"
+      )
+    end
+    submissions = app.get_review_submissions(
+      includes: "items,appStoreVersionForReview"
+    )
+    Array(submissions).first(8).each do |s|
+      UI.message("ReviewSubmission #{s.id} state=#{s.state} platform=#{s.platform}")
+    end
     version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
     UI.message("Editable version: #{version&.version_string || '(none)'} state=#{version&.app_store_state}")
     if version&.build
@@ -136,6 +153,35 @@ platform :ios do
     UI.success("ASC paste complete (build #{build_number}). Submit for Review NOT sent.")
   end
 
+  desc "Read-only: dump open review submissions and resolution threads"
+  lane :asc_review_blockers do
+    api_key = asc_api_key
+    app = Spaceship::ConnectAPI::App.find("com.buildtrack.app.local")
+    Array(app.get_review_submissions(includes: "items,appStoreVersionForReview")).each do |s|
+      UI.message("submission #{s.id} state=#{s.state} version=#{s.app_store_version_for_review&.version_string}")
+      items = Spaceship::ConnectAPI::ReviewSubmissionItem.all(
+        review_submission_id: s.id,
+        includes: "appStoreVersion"
+      )
+      Array(items).each do |item|
+        UI.message("  item #{item.id} state=#{item.state} version=#{item.app_store_version&.version_string}")
+      end
+      begin
+        threads = s.fetch_resolution_center_threads
+        Array(threads).each do |thread|
+          UI.message("  thread #{thread.id} state=#{thread.state rescue thread.inspect}")
+          msgs = thread.fetch_messages rescue []
+          Array(msgs).first(6).each do |m|
+            body = (m.body || m.inspect).to_s.gsub(/\s+/, " ")[0, 240]
+            UI.message("    msg: #{body}")
+          end
+        end
+      rescue => e
+        UI.important("  resolution threads: #{e.class}: #{e.message}")
+      end
+    end
+  end
+
   desc "Submit version for App Review (metadata already on ASC). Public stays off."
   lane :asc_submit do |options|
     api_key = asc_api_key
@@ -148,30 +194,57 @@ platform :ios do
       )
     end
 
-    deliver(
-      api_key: api_key,
-      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
-      app_version: options[:app_version] || ENV.fetch("ASC_APP_VERSION", "1.1.3"),
-      build_number: build_number,
-      skip_binary_upload: true,
-      skip_metadata: !(options[:skip_metadata] == false || ENV["ASC_RESUBMIT_METADATA"] == "1"),
-      skip_screenshots: true,
-      submit_for_review: true,
-      automatic_release: false,
-      phased_release: false,
-      force: true,
-      precheck_include_in_app_purchases: false,
-      run_precheck_before_submit: ENV["ASC_RUN_PRECHECK"] == "1",
-      submission_information: {
-        add_id_info_uses_idfa: false,
-        export_compliance_uses_encryption: true,
-        export_compliance_is_exempt: true,
-        content_rights_contains_third_party_content: false,
-        content_rights_has_rights: true
-      }
-    )
+    app_version = options[:app_version] || ENV.fetch("ASC_APP_VERSION", "1.1.3")
+    platform = Spaceship::ConnectAPI::Platform::IOS
+    app = Spaceship::ConnectAPI::App.find("com.buildtrack.app.local")
+    UI.user_error!("App not found") unless app
 
-    UI.success("ASC Submit for Review sent (build #{build_number}). Public NOT enabled.")
+    version = Array(
+      app.get_app_store_versions(filter: { platform: platform }, includes: "build")
+    ).find { |candidate| candidate.version_string == app_version }
+    UI.user_error!("No App Store version #{app_version}") unless version
+    selected = version.build&.version.to_s
+    UI.message("#{app_version} state=#{version.app_version_state} selected_build=#{selected}")
+    UI.user_error!("#{app_version} is on build #{selected}, expected #{build_number}") unless selected == build_number
+
+    in_progress = app.get_in_progress_review_submission(platform: platform)
+    if in_progress && %w[WAITING_FOR_REVIEW IN_REVIEW].include?(in_progress.state)
+      UI.success("Already in Apple review (#{in_progress.state}). Public NOT enabled.")
+      next
+    end
+    if %w[WAITING_FOR_REVIEW IN_REVIEW].include?(version.app_version_state)
+      UI.success("Version already #{version.app_version_state}. Public NOT enabled.")
+      next
+    end
+
+    submission = in_progress ||
+                 app.get_ready_review_submission(platform: platform, includes: "items") ||
+                 app.create_review_submission(platform: platform)
+
+    items = Spaceship::ConnectAPI::ReviewSubmissionItem.all(
+      review_submission_id: submission.id,
+      includes: "appStoreVersion"
+    )
+    unless Array(items).any? { |item| item.app_store_version&.id == version.id }
+      submission.add_app_store_version_to_review_items(app_store_version_id: version.id)
+    end
+
+    begin
+      result = submission.submit_for_review
+    rescue => error
+      UI.important("Submit on #{submission.state} submission failed: #{error.message}")
+      UI.user_error!(error.message) unless submission.state == "UNRESOLVED_ISSUES"
+      UI.message("Canceling leftover UNRESOLVED_ISSUES submission, then creating a fresh one")
+      submission.cancel_submission
+      fresh = app.create_review_submission(platform: platform)
+      fresh.add_app_store_version_to_review_items(app_store_version_id: version.id)
+      result = fresh.submit_for_review
+    end
+
+    UI.success(
+      "ASC Submit for Review sent (build #{build_number}, " \
+      "submission #{result.id} state=#{result.state}). Public NOT enabled."
+    )
   end
 
   desc "Metadata + screenshots, then Submit for Review when ASC_SUBMIT=1"

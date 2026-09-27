@@ -240,4 +240,4 @@ How to review:
 - [ ] Resolution Center answered if still open  
 - [x] **Public** unticked (never auto)  
 - [ ] Seller still **Tri Stan Ching KOO** (confirm in ASC; do not rename)  
-- [ ] Tap **Submit for Review** (or say `ASC_SUBMIT` in chat)
+- [x] Submit for Review sent 2026-09-27 (`WAITING_FOR_REVIEW`, build 280)

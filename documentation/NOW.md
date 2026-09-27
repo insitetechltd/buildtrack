@@ -4,7 +4,9 @@
 
 ---
 
-**This session — ASC paste 280 PASS (2026-09-27):** Fastlane Deliver attached **280** on version **1.1.3** (`PREPARE_FOR_SUBMISSION`). Selected build `e8dd1413-c83f-43ef-9cc0-8ed35716f99e`. Re-uploaded EN+zh-Hant metadata, review notes (“Please review build 280”), 8 screenshots×2 locales. Submit for Review **not** sent. Public off. Seller **Tri Stan Ching KOO**. Logs: `docs/superpowers/evidence/2026-09-27-asc-deliver/asc-paste-280.log`. **Next (Human):** ASC completeness review (demo account, App Privacy, age rating, pricing) → then say `ASC_SUBMIT` or run `ASC_SUBMIT=1 ASC_BUILD_NUMBER=280 npm run asc:submit`. Do **not** tick Public unless asked.
+**This session — ASC Submit for Review 280 PASS (2026-09-27):** User-ordered `ASC_SUBMIT`. Version **1.1.3** is **WAITING_FOR_REVIEW** with build **280**. ReviewSubmission `731376ca-1398-4138-8ab3-083c42079c0e`. Deliver’s first try failed (`ensure_version!` on READY_FOR_REVIEW); Spaceship `submit_for_review` on the existing submission succeeded. **Public off.** Seller **Tri Stan Ching KOO**. Logs: `docs/superpowers/evidence/2026-09-27-asc-deliver/asc-submit-280-retry.log`. **Next (Human):** wait for Apple; reply if rejected. Do **not** tick Public unless asked.
+
+**This session — ASC paste 280 PASS (2026-09-27):** Fastlane Deliver attached **280** on version **1.1.3**. **Superseded next:** Submit for Review 280 PASS above.
 
 **This session — CBP TF 280 submitted (2026-09-27):** User-ordered CBP of `fff978f`. IPA **v1.1.3 (280)** S4 PASS sha256 `00854f85…`. EAS submit `5c50300e-2931-494b-8d4d-7538de03ded4`. **Superseded next:** ASC paste 280 PASS above.
 

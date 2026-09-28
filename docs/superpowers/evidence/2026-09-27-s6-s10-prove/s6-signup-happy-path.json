@@ -2,7 +2,7 @@
   "ok": true,
   "plane": "DEV",
   "projectRef": "zusulknbhaumougqckec",
-  "appSha": "e55c685",
+  "appSha": "a550d1d",
   "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
   "cases": {
     "fresh_signup": {
@@ -10,15 +10,15 @@
       "case": "fresh_signup",
       "plane": "DEV",
       "projectRef": "zusulknbhaumougqckec",
-      "appSha": "e55c685",
-      "email": "s6.signup.c76a27798e@example.com",
+      "appSha": "a550d1d",
+      "email": "s6.signup.82fa4ead30@example.com",
       "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
       "steps": [
         {
           "step": "start_signup_checkout",
           "ok": true,
           "http": 200,
-          "sessionId": "cs_test_b1cnB0rDOSJo9aEpwcFAEggd1vMz4jTScjEekwiMgbTNvOJmWmmZoheDgP",
+          "sessionId": "cs_test_b1vXaN5R9BNqpMIxHSCOPYGkU02JL9y4puyuQuffdIcadYEZam0G9FJ7jp",
           "error": null
         },
         {
@@ -27,7 +27,7 @@
           "http": 200,
           "sessionStatus": "complete",
           "paymentStatus": "paid",
-          "subscription": "sub_1UKIkuDDDvw16uUvOH2UM8n5"
+          "subscription": "sub_1UKKhyDDDvw16uUvdF76Ionq"
         },
         {
           "step": "forward_checkout_completed",
@@ -36,17 +36,17 @@
           "body": {
             "received": true
           },
-          "eventId": "evt_s6_probe_c76a27798e"
+          "eventId": "evt_s6_probe_82fa4ead30"
         },
         {
           "step": "signup_checkout_status_ready",
           "ok": true,
           "status": {
             "status": "ready",
-            "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=70eb6300469ee66879ceed9d2f9bef31b98393064e9bd414f380154f&open=1",
-            "email": "s6.signup.c76a27798e@example.com",
+            "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=45500c4ba7c28cae9e51439ea3b8296011a8d72c9009dff66d3ddf99&open=1",
+            "email": "s6.signup.82fa4ead30@example.com",
             "mustSetPassword": true,
-            "companyId": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404"
+            "companyId": "62e63452-2f66-4d4d-ba81-574e943e23b6"
           }
         },
         {
@@ -54,10 +54,10 @@
           "ok": true,
           "user": [
             {
-              "id": "09f23fdc-6fa3-4e78-8de6-48894c50f8ad",
-              "email": "s6.signup.c76a27798e@example.com",
-              "company_id": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404",
-              "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=70eb6300469ee66879ceed9d2f9bef31b98393064e9bd414f380154f",
+              "id": "5f7ac445-d28e-4fa3-9bb9-bd5081a7db20",
+              "email": "s6.signup.82fa4ead30@example.com",
+              "company_id": "62e63452-2f66-4d4d-ba81-574e943e23b6",
+              "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=45500c4ba7c28cae9e51439ea3b8296011a8d72c9009dff66d3ddf99",
               "system_permission": "admin"
             }
           ]
@@ -67,30 +67,30 @@
           "ok": true,
           "company": [
             {
-              "id": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404",
-              "name": "S6 Signup c76a27798e"
+              "id": "62e63452-2f66-4d4d-ba81-574e943e23b6",
+              "name": "S6 Signup 82fa4ead30"
             }
           ]
         }
       ],
-      "companyId": "92b31bc2-ba3e-4b59-90d1-f0cd40f70404",
+      "companyId": "62e63452-2f66-4d4d-ba81-574e943e23b6",
       "inviteLinkPresent": true,
-      "userId": "09f23fdc-6fa3-4e78-8de6-48894c50f8ad"
+      "userId": "5f7ac445-d28e-4fa3-9bb9-bd5081a7db20"
     },
     "insert_if_missing": {
       "ok": true,
       "case": "insert_if_missing",
       "plane": "DEV",
       "projectRef": "zusulknbhaumougqckec",
-      "appSha": "e55c685",
-      "email": "s6.insert.a25f341f50@example.com",
+      "appSha": "a550d1d",
+      "email": "s6.insert.3069f9e66b@example.com",
       "planPriceId": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc",
       "steps": [
         {
           "step": "precreate_auth_orphan_profile",
           "ok": true,
           "http": 200,
-          "authUserId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8",
+          "authUserId": "d0f3f19c-b6d0-484c-850a-6c88218db124",
           "deleteHttp": 204,
           "profileAbsent": true
         },
@@ -98,7 +98,7 @@
           "step": "start_signup_checkout",
           "ok": true,
           "http": 200,
-          "sessionId": "cs_test_b1RJ5RBe4CrePqtfZHr2bcYFVBPOwiDwc5qbNQO4KAStBfgprofmBaT50G",
+          "sessionId": "cs_test_b16WSYpI5sSwgGYPjj01BgTIjWvHGyX4SqqZAjXrcmRm2KR6TZLeKwHbsh",
           "error": null
         },
         {
@@ -107,26 +107,17 @@
           "http": 200,
           "sessionStatus": "complete",
           "paymentStatus": "paid",
-          "subscription": "sub_1UKIlFDDDvw16uUvcXBlelHa"
-        },
-        {
-          "step": "forward_checkout_completed",
-          "ok": true,
-          "http": 200,
-          "body": {
-            "received": true
-          },
-          "eventId": "evt_s6_insert_a25f341f50"
+          "subscription": "sub_1UKKiJDDDvw16uUvSQ64whcB"
         },
         {
           "step": "signup_checkout_status_ready",
           "ok": true,
           "status": {
             "status": "ready",
-            "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=de57f512de83ba195325468af018963cabacf7e3b95e41923ad2300f&open=1",
-            "email": "s6.insert.a25f341f50@example.com",
+            "inviteLink": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=b63bb55de0642da172463e6b6b28b6b85aad9a5afb120a5e8c29323c&open=1",
+            "email": "s6.insert.3069f9e66b@example.com",
             "mustSetPassword": true,
-            "companyId": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad"
+            "companyId": "4a96c6aa-49fb-4356-a739-61e128f30d58"
           }
         },
         {
@@ -134,10 +125,10 @@
           "ok": true,
           "user": [
             {
-              "id": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8",
-              "email": "s6.insert.a25f341f50@example.com",
-              "company_id": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad",
-              "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=de57f512de83ba195325468af018963cabacf7e3b95e41923ad2300f",
+              "id": "d0f3f19c-b6d0-484c-850a-6c88218db124",
+              "email": "s6.insert.3069f9e66b@example.com",
+              "company_id": "4a96c6aa-49fb-4356-a739-61e128f30d58",
+              "invite_sign_in_link": "https://zusulknbhaumougqckec.supabase.co/functions/v1/invite-open?token_hash=b63bb55de0642da172463e6b6b28b6b85aad9a5afb120a5e8c29323c",
               "system_permission": "admin"
             }
           ]
@@ -147,21 +138,21 @@
           "ok": true,
           "company": [
             {
-              "id": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad",
-              "name": "S6 Insert a25f341f50"
+              "id": "4a96c6aa-49fb-4356-a739-61e128f30d58",
+              "name": "S6 Insert 3069f9e66b"
             }
           ]
         },
         {
           "step": "auth_id_reused_on_insert",
           "ok": true,
-          "authUserId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8",
-          "profileUserId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8"
+          "authUserId": "d0f3f19c-b6d0-484c-850a-6c88218db124",
+          "profileUserId": "d0f3f19c-b6d0-484c-850a-6c88218db124"
         }
       ],
-      "companyId": "86ab63ce-a0d5-41e5-9859-981fa8aa73ad",
+      "companyId": "4a96c6aa-49fb-4356-a739-61e128f30d58",
       "inviteLinkPresent": true,
-      "userId": "16463c26-3afb-48cb-b3b8-1acc96c7d3a8"
+      "userId": "d0f3f19c-b6d0-484c-850a-6c88218db124"
     }
   }
 }

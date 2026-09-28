@@ -2,8 +2,8 @@
   "ok": true,
   "plane": "DEV",
   "projectRef": "zusulknbhaumougqckec",
-  "appSha": "d3ddbe2",
-  "eventId": "evt_s1_faith_e644065e4dc4",
+  "appSha": "a550d1d",
+  "eventId": "evt_s1_faith_54f9d5afa002",
   "cases": [
     {
       "case": "invalid_signature",

@@ -4,13 +4,13 @@
   "dev_runner": "psql",
   "prod_runner": "psql",
   "columns_match": true,
-  "dev_column_count": 252,
-  "prod_column_count": 252,
+  "dev_column_count": 260,
+  "prod_column_count": 260,
   "only_dev": [],
   "only_prod": [],
   "checks_match": true,
-  "dev_check_count": 30,
-  "prod_check_count": 30,
+  "dev_check_count": 31,
+  "prod_check_count": 31,
   "only_dev_checks": [],
   "only_prod_checks": [],
   "prefer": {
@@ -22,15 +22,15 @@
       "only_prod": []
     },
     "defaults": {
-      "dev_count": 104,
-      "prod_count": 104,
+      "dev_count": 108,
+      "prod_count": 108,
       "match": true,
       "only_dev": [],
       "only_prod": []
     },
     "triggers": {
-      "dev_count": 20,
-      "prod_count": 20,
+      "dev_count": 23,
+      "prod_count": 23,
       "match": true,
       "only_dev": [],
       "only_prod": []
@@ -45,15 +45,30 @@
     "subset_ok": true,
     "prod_check_def": "CHECK ((status = ANY (ARRAY['reported'::text, 'resolved'::text, 'new'::text, 'not_started'::text, 'assigned'::text, 'received'::text, 'declined'::text, 'accepted'::text, 'in_progress'::text, 'wip'::text, 'submitted_for_review'::text, 'reviewing'::text, 'approved'::text, 'completed'::text, 'done'::text, 'rejected'::text, 'cancelled'::text, 'dismissed'::text])))"
   },
-  "dev_tables": 26,
-  "prod_tables": 26,
-  "dev_funcs": 19,
-  "prod_funcs": 19,
-  "dev_policies": 67,
-  "prod_policies": 67,
+  "dev_tables": 27,
+  "prod_tables": 27,
+  "dev_funcs": 20,
+  "prod_funcs": 20,
+  "dev_policies": 68,
+  "prod_policies": 68,
   "funcs_match": true,
   "policies_match": true,
   "tables_match": true,
   "prefer_match": true,
-  "ok": true
+  "ok": true,
+  "dp05_webhook_migs": {
+    "tip_note": "DP-05 re-prove after migs 20260928000100 (last_webhook_event_created_at) + 20260928000200 (billing_webhook_claims). Read-only; no DDL from this run.",
+    "objects": {
+      "billing_webhook_claims": {
+        "dev": true,
+        "prod": true
+      },
+      "company_subscriptions.last_webhook_event_created_at": {
+        "dev": true,
+        "prod": true
+      }
+    },
+    "proven_at": "2026-09-28",
+    "appSha": "b5bccc3"
+  }
 }

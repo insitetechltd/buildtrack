@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "emails": [
+    "sara@insitetest.com",
+    "john@insitetest.com",
+    "joe@insitetest.com"
+  ],
+  "notes": [
+    "ASC App Review Information demo logins for Insite Test Ltd (Taskr).",
+    "Two Guideline 2.1 rejects (password drift / invalid_credentials) when Auth Admin password PUTs ran from p-matrix mint_qa_jwt / Metro QA / one-off .cache scripts.",
+    "Do not Auth Admin updateUser password for these emails from normal CI, Maestro seed, dual-env probes, or Gate scripts.",
+    "Break-glass only: ASC_DEMO_PASSWORD_BREAK_GLASS=1 (and update ASC Review Information in the same change if the password actually changes).",
+    "Password values are NOT stored in git — only in ASC Review Information fields."
+  ]
+}

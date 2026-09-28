@@ -65,6 +65,7 @@
     "test:dual-env:critical": "python3 scripts/supabase/probe-critical-paths-dual-env.py",
     "test:dual-env:p-matrix": "python3 scripts/supabase/probe-p01-p10-dual-target.py",
     "test:edge:stripe-webhook-faith": "python3 scripts/stripe/probe-webhook-faith.py",
+    "test:edge:stripe-webhook-deleted-seats": "python3 scripts/stripe/probe-webhook-deleted-seats.py",
     "test:edge:update-company-addons-faith": "python3 scripts/stripe/probe-update-company-addons-faith.py",
     "test:edge:signup-happy-path": "python3 scripts/stripe/probe-signup-happy-path.py",
     "test:schema-parity": "python3 scripts/supabase/assert-schema-parity-dev-prod.py",

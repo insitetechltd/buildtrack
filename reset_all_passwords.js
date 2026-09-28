@@ -20,6 +20,9 @@
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
+const {
+  assertMayRotateAscDemoPassword,
+} = require('./scripts/lib/ascReviewDemoGuard.cjs');
 
 // Get credentials from environment variables
 // Uses existing EXPO_PUBLIC_SUPABASE_URL from .env
@@ -83,7 +86,13 @@ async function resetAllPasswords() {
     for (const user of users) {
       try {
         console.log(`\n🔄 Updating password for user: ${user.email || user.phone || user.id}`);
-        
+        const gate = assertMayRotateAscDemoPassword(user.email);
+        if (!gate.ok) {
+          console.warn(`⏭️  SKIP ASC-locked demo: ${user.email}`);
+          console.warn(`   ${gate.reason}`);
+          continue;
+        }
+
         const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
           user.id,
           {

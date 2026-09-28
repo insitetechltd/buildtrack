@@ -5,6 +5,10 @@
  * Auth users may be created if missing. Always resets known Maestro passwords
  * to password123 (p-matrix mint_qa_jwt otherwise leaves them mangled).
  *
+ * Never points at ASC Review demos (sara/john/joe@insitetest.com). Password
+ * Admin updates for those emails are blocked by scripts/lib/ascReviewDemoGuard
+ * unless ASC_DEMO_PASSWORD_BREAK_GLASS=1 — see documentation/ASC_REVIEW_DEMO_CREDENTIALS.md.
+ *
  * Actors:
  *   Carol  — Company Admin (org Maestro O1–O3 / S2–S3)
  *   Dave   — spare admin (keeps admin_count≥2 so O4 / demotions cannot orphan Carol)
@@ -18,6 +22,9 @@
 const fs = require("fs");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
+const {
+  assertMayRotateAscDemoPasswordOrThrow,
+} = require("../lib/ascReviewDemoGuard.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const PROJECT_NAME =
@@ -122,6 +129,8 @@ async function ensureAuthUser(sb, authByEmail, actor) {
   const emailKey = actor.email.toLowerCase();
   let auth = authByEmail.get(emailKey);
   if (auth) {
+    // Refuse ASC Review demo emails even if env overrides point seed at them.
+    assertMayRotateAscDemoPasswordOrThrow(actor.email);
     const { error } = await sb.auth.admin.updateUserById(auth.id, {
       password: MAESTRO_PASSWORD,
       email_confirm: true,
@@ -137,6 +146,7 @@ async function ensureAuthUser(sb, authByEmail, actor) {
     console.error(`FAIL: auth user missing for ${actor.email}`);
     process.exit(4);
   }
+  assertMayRotateAscDemoPasswordOrThrow(actor.email);
   const { data, error } = await sb.auth.admin.createUser({
     email: actor.email,
     password: MAESTRO_PASSWORD,

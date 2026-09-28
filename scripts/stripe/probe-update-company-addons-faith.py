@@ -25,6 +25,12 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+from ascReviewDemoGuard import (  # noqa: E402
+    AscDemoPasswordLockedError,
+    assert_may_rotate_asc_demo_password,
+)
+
 DEV_REF = os.environ.get("DEV_PROJECT_REF", "zusulknbhaumougqckec")
 OUT_DIR = ROOT / "docs" / "superpowers" / "evidence" / "2026-09-27-s3-s5-prove"
 
@@ -125,7 +131,15 @@ def edge(
             return e.code, {"message": text}
 
 
-def auth_admin_set_password(url: str, service: str, user_id: str, password: str) -> int:
+def auth_admin_set_password(
+    url: str,
+    service: str,
+    user_id: str,
+    password: str,
+    *,
+    email: str | None = None,
+) -> int:
+    assert_may_rotate_asc_demo_password(email)
     data = json.dumps({"password": password}).encode()
     req = urllib.request.Request(
         f"{url}/auth/v1/admin/users/{user_id}",
@@ -262,12 +276,22 @@ def main() -> int:
     worker_jwt = None
     if ca:
         pwd = f"S4-{uuid.uuid4().hex[:12]}!"
-        if auth_admin_set_password(url, service, ca["id"], pwd) in (200, 201):
-            ca_jwt = auth_password_grant(url, anon, ca["email"], pwd)
+        try:
+            if auth_admin_set_password(
+                url, service, ca["id"], pwd, email=ca.get("email")
+            ) in (200, 201):
+                ca_jwt = auth_password_grant(url, anon, ca["email"], pwd)
+        except AscDemoPasswordLockedError as exc:
+            print(f"WARN: {exc}", file=sys.stderr)
     if worker:
         pwd = f"S4-{uuid.uuid4().hex[:12]}!"
-        if auth_admin_set_password(url, service, worker["id"], pwd) in (200, 201):
-            worker_jwt = auth_password_grant(url, anon, worker["email"], pwd)
+        try:
+            if auth_admin_set_password(
+                url, service, worker["id"], pwd, email=worker.get("email")
+            ) in (200, 201):
+                worker_jwt = auth_password_grant(url, anon, worker["email"], pwd)
+        except AscDemoPasswordLockedError as exc:
+            print(f"WARN: {exc}", file=sys.stderr)
 
     if ca_jwt and ca:
         code, body = edge(

@@ -34,6 +34,14 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+from ascReviewDemoGuard import (  # noqa: E402
+    AscDemoPasswordLockedError,
+    assert_may_rotate_asc_demo_password,
+    is_asc_locked_demo_email,
+    known_demo_password_candidates,
+)
+
 DEV_REF = "zusulknbhaumougqckec"
 PROD_REF = "jcnzjigxgkzhjsaekoqz"
 OUT_DIR = ROOT / ".cache" / "prod-new-sot-20260915"
@@ -227,7 +235,15 @@ def classify_write_fail(env: EnvCtx, payload: Any) -> str:
     return "Fixture/data"
 
 
-def auth_admin_set_password(env: EnvCtx, user_id: str, password: str) -> tuple[int, Any]:
+def auth_admin_set_password(
+    env: EnvCtx,
+    user_id: str,
+    password: str,
+    *,
+    email: str | None = None,
+) -> tuple[int, Any]:
+    # ASC Review demo emails must never be rotated by this probe (Guideline 2.1).
+    assert_may_rotate_asc_demo_password(email)
     data = json.dumps({"password": password}).encode()
     headers = {
         "apikey": env.service_key,
@@ -340,12 +356,35 @@ def auth_password_grant(
 
 
 def mint_qa_jwt(env: EnvCtx, user: dict[str, Any]) -> str | None:
+    """Mint a JWT for JWT-* matrix cases.
+
+    ASC-locked App Review demo emails: password-grant only (never Auth Admin
+    password PUT). A temporary Probe-* password here previously drifted ASC
+    Review Information and caused Guideline 2.1 invalid_credentials rejects.
+    """
     email = user.get("email")
     uid = user.get("id")
     if not email or not uid:
         return None
+
+    if is_asc_locked_demo_email(email):
+        for pwd in known_demo_password_candidates():
+            code, tok = auth_password_grant(env, email, pwd)
+            if code == 200 and isinstance(tok, dict) and tok.get("access_token"):
+                return tok.get("access_token")
+        print(
+            f"WARN: ASC-locked demo {email}: password grant failed; "
+            "refusing Auth Admin password rotation (Guideline 2.1)",
+            file=sys.stderr,
+        )
+        return None
+
     pwd = f"Probe-{uuid.uuid4().hex[:14]}!"
-    code, _ = auth_admin_set_password(env, uid, pwd)
+    try:
+        code, _ = auth_admin_set_password(env, uid, pwd, email=email)
+    except AscDemoPasswordLockedError as exc:
+        print(f"WARN: {exc}", file=sys.stderr)
+        return None
     if code not in (200, 201):
         return None
     code, tok = auth_password_grant(env, email, pwd)

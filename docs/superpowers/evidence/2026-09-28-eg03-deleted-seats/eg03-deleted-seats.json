@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "plane": "DEV",
+  "projectRef": "zusulknbhaumougqckec",
+  "appSha": "b5bccc3",
+  "eventId": "evt_eg03_deleted_3111df29724d",
+  "subscriptionId": "sub_eg03_probe_3111df29724d",
+  "companyId": "2783a76f-6df2-4326-8134-40be2d555e7f",
+  "webhook": {
+    "http": 200,
+    "body": {
+      "received": true
+    }
+  },
+  "entitlements_after": {
+    "pm_seat_limit": 0,
+    "worker_seat_limit": 0,
+    "project_limit": 3,
+    "subscription_status": "canceled",
+    "entitlements_snapshot": {
+      "meters": {
+        "pm_seats": 0,
+        "projects": 3,
+        "worker_seats": 0,
+        "storage_bytes": 10737418240,
+        "entries_monthly": 300
+      },
+      "billing_phase": "active",
+      "locked_plan_price_id": "8e0bc5d8-b874-44b7-ba45-0c25910f28dc"
+    }
+  },
+  "assert": {
+    "webhook_received": true,
+    "seats_zeroed_and_status_canceled": true
+  }
+}

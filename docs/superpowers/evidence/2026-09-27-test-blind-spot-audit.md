@@ -49,7 +49,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | EG-01 | `stripe-webhook` signature reject | Edge/Stripe | Stripe/attacker | Forged events | MONEY | `test:edge:stripe-webhook-faith` | DEV-PROBE | STRONG | s1-stripe-webhook-faith.json bad sig 400 | 2026-09-27 @ 7d65e97 | PROVEN (DEV) |
 | EG-02 | `stripe-webhook` replay / idempotency | Edge/Stripe | Stripe retry | Double seat grant | MONEY | `test:edge:stripe-webhook-faith` | DEV-PROBE | STRONG | first claim + `duplicate:true` | 2026-09-27 @ 7d65e97 | PROVEN (DEV; ignored event type — claim path only) |
-| EG-03 | `stripe-webhook` out-of-order / state matrix | Edge/Stripe | Stripe | Wrong entitlement | MONEY | — | NONE | NONE | — | — | NO-PLANE |
+| EG-03 | `stripe-webhook` deleted → seat meters 0 (+ unit out-of-order guards) | Edge/Stripe | Stripe | Wrong entitlement / invite still open after cancel | MONEY | `test:edge:stripe-webhook-deleted-seats` + `webhookMetersGuard` Jest | DEV-PROBE (+ J-MOCK stale/order) | STRONG | eg03-deleted-seats.json seats→0; Jest metersAfterSubscriptionCanceled | 2026-09-28 @ tip | PROVEN (DEV deleted seats); PROD webhook fire HUMAN GATE |
 | EG-04 | `create-checkout-session` | Edge/Stripe | CA JWT | Wrong company charged | MONEY | `createCheckoutSession.test.ts` | J-MOCK | WEAK | invoke args only | tip | PARTIAL |
 | EG-05 | `cancel-subscription` | Edge/Stripe | CA JWT | Cancel fail / wrong co | MONEY | p-matrix anon/malformed | DEV-PROBE/PROD-DEST | WEAK | Structural only; no happy cancel | 2026-09-23 | PARTIAL |
 | EG-06 | `billing-subscription-status` | Edge/Stripe | CA JWT | Stale UI / leak | MONEY | p-matrix P10a anon 401 | PROD-DEST | WEAK | Anon deny; JWT “no sub” accepted | 2026-09-23 | PARTIAL |
@@ -77,7 +77,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | UI-10 | Focus / keyboard / submit Gate C | Mobile | field | Dead fields | UX | `maestro/flows/smoke/gate-c-login-create-task.yaml` | DEV-MAESTRO | STRONG | s6-s10-prove/gate-c PNGs | 2026-09-27 | PROVEN |
 | UI-11 | Offline / kill mid-upload | Mobile | field | Lost draft | DATA-LOSS | drafts in OPS-02 Jest (partial) | J-MOCK | WEAK | No Maestro poor-network | — | UNPROVEN |
 | UI-12 | Activity feed row / evidence strip | Mobile | field | Broken thumbs / layout | UX | `ActivityStyleRowCard.test.tsx` | J-MOCK | WEAK | Jest-only; no Maestro/device frame | tip | PARTIAL |
-| HY-01 | Maestro path hygiene (scripts/package.json/runFlow) | Hygiene | ops | Suite calls missing YAML | UX | `test:taxonomy` path-resolve assert | J-MOCK | STRONG | assert-test-taxonomy.mjs + e55c685/d2e3200 path fixes | 2026-09-27 | PROVEN |
+| HY-01 | Maestro path hygiene (scripts/package.json/runFlow) + registry completeness | Hygiene | ops | Suite calls missing YAML / unregistered suites | UX | `test:taxonomy` path-resolve + `--write` registry | J-MOCK | STRONG | registry picks recompute/subscriptionMetersMerge/ascReviewDemoGuard (2026-09-28) | 2026-09-28 @ tip | PROVEN |
 
 ‖ Maestro faith still requires Gate 0–8 + PNG read; `rc=0` alone is WEAK.  
 ¶ Report without-reply has DB oracle; resolve-**with**-reply (E3c) OPEN.
@@ -120,7 +120,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | DP-02 | Critical paths PROD | PROD-DEST | same | **PROVEN** 2026-09-27 @ 7d65e97 |
 | DP-03 | P-matrix DEV | DEV-PROBE | `test:dual-env:p-matrix` (+prep) | **PROVEN** 2026-09-27 @ 7d65e97 (incl. F7) |
 | DP-04 | P-matrix PROD | PROD-DEST | same (F6+**F7** in promote gate) | **PROVEN** 2026-09-27 @ 7d65e97 |
-| DP-05 | Schema parity | PROD-DEST | `test:schema-parity` | UNKNOWN tip |
+| DP-05 | Schema parity (+ `billing_webhook_claims`, `company_subscriptions.last_webhook_event_created_at`) | PROD-DEST | `test:schema-parity` | **PROVEN** 2026-09-28 @ tip — cols 260/260 tables 27/27; both planes have migs `20260928000100`/`20260928000200` (read-only; no repair DDL needed). Evidence `assert-schema-parity.json` + `dp05_webhook_migs` |
 | DP-06 | Headed JWT PROD | PROD-DEST | `test:headed-prod:jwt` | PARTIAL — Stage E era |
 | DP-07 | Headed Maestro PROD | PROD-DEST | `test:headed-prod:maestro` | PARTIAL — Stage C/E era |
 | DP-08 | IPA bake PROD ref | Hygiene | `assert:ipa-prod-bake` | PARTIAL — used in CBP 280 |

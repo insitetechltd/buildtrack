@@ -1,0 +1,7 @@
+plane=DEV ref=zusulknbhaumougqckec file=20260927000100_last_admin_demote_guard.sql
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+REVOKE
+GRANT
+psql:/Volumes/KooDrive/InsiteApp/supabase/migrations/20260927000100_last_admin_demote_guard.sql:86: NOTICE:  trigger "users_guard_last_admin" for relation "public.users" does not exist, skipping

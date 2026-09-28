@@ -9,6 +9,10 @@ import { TaskStatus } from "../../types/buildtrack";
 import { uploadFileWithVerification } from "../../api/fileUploadService";
 import { ensureCappedLocalPhoto } from "../../utils/ensureCappedLocalPhoto";
 import { mergeUniqueAttachments } from "../../utils/mergeTaskAttachments";
+import {
+  chosenPhotosAllUploaded,
+  evidencePhotosFailedMessage,
+} from "../../utils/evidencePhotoSubmit";
 import { returnToTaskDetailAfterUpdateProgress } from "../../navigation/photoFlowNavigation";
 import { navigateToAddPhotosCaptureSession } from "../../navigation/captureFirstCameraFlow";
 import type { 
@@ -218,9 +222,12 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       if (photoObjects.length > 0) {
         uploadedPhotoUrls = await uploadPhotoObjects(photoObjects, task.id);
         
-        if (uploadedPhotoUrls.length < photoObjects.length) {
-          const failedCount = photoObjects.length - uploadedPhotoUrls.length;
-          Alert.alert("Upload Warning", `${uploadedPhotoUrls.length} of ${photoObjects.length} photo(s) uploaded successfully. ${failedCount} photo(s) failed to upload. The update will be saved with the successfully uploaded photos.`);
+        if (!chosenPhotosAllUploaded(photoObjects.length, uploadedPhotoUrls.length)) {
+          Alert.alert(
+            "Photos did not upload",
+            evidencePhotosFailedMessage(uploadedPhotoUrls.length, photoObjects.length),
+          );
+          return;
         }
       }
 

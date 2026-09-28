@@ -1,5 +1,6 @@
 import { pinDraftMedia } from "../../utils/draftMediaCache";
-import { mapSessionSelectionToSelectedPhotos } from "./mapToSelectedPhotos";
+import { resumePhotokitLibraryAfterAccept } from "@/modules/mediaLibrary/PhotokitThumbView";
+import { mapSessionSelectionWithPreviews } from "./mapToSelectedPhotos";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 import type { CaptureSessionResult } from "./types";
 
@@ -79,10 +80,19 @@ export async function prepareCaptureSessionAccept(): Promise<
 > {
   const { failedCount } = await flushCameraDraftPins();
   const photos = useCaptureSessionStore.getState().photos;
-  return {
-    photos: mapSessionSelectionToSelectedPhotos(photos),
-    failedCount,
-  };
+  try {
+    const mapped = await mapSessionSelectionWithPreviews(photos);
+    if (mapped.length === 0) {
+      resumePhotokitLibraryAfterAccept();
+    }
+    return {
+      photos: mapped,
+      failedCount,
+    };
+  } catch (error) {
+    resumePhotokitLibraryAfterAccept();
+    throw error;
+  }
 }
 
 /** Test helper — not used in production UI. */

@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
+import { insertTaskFile } from '../state/schemaDualPath';
 
 /** Storage bucket for task evidence (private after M-SUPABASE-03c). */
 export const BUILDTRACK_FILES_BUCKET = 'buildtrack-files';
@@ -434,7 +435,6 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       supabase
     ) {
       try {
-        const { insertTaskFile } = await import("../state/schemaDualPath");
         const fileInsert = await insertTaskFile(supabase, {
           task_id: entityId,
           storage_path: storagePath,

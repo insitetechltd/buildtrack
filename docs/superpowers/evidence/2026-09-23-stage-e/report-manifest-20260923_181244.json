@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "runId": "20260923_181244",
+  "appSha": "89a9aa3261cd3571a49d341132f37742b03e4a2a",
+  "dirty": true,
+  "diffStat": " 4 files changed, 86 insertions(+), 44 deletions(-)",
+  "title": "R01-1790158366",
+  "taskId": "b09a0c6f-1404-419f-88cd-213afa6f04e3",
+  "udidCarol": "B7B2640C-4738-4F8A-AEEE-5DF3D21D2533",
+  "udidAlice": "F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA",
+  "flows": [
+    "R01-alice-create-report",
+    "R01-carol-resolve"
+  ],
+  "pngRequired": [
+    "R01-chooser-report",
+    "R01-alice-form",
+    "R01-alice-reported",
+    "R01-carol-resolve-confirm",
+    "R01-carol-resolved-detail"
+  ],
+  "artifacts": "/Volumes/KooDrive/InsiteApp/.cache/maestro-artifacts/report-20260923_181244",
+  "notes": "Alice worker Report \u2192 Carol admin Resolve; E3b promote OPEN"
+}

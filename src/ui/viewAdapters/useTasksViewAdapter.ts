@@ -795,6 +795,24 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
   void signedUrlEpoch;
 
+  // Prefetch signed thumbs so Tasks cards don't paint empty grey while minting.
+  useEffect(() => {
+    const refs = tasks.flatMap((task) => {
+      const activityPhotos =
+        task.activities?.flatMap((activity) => {
+          const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+          return Array.isArray(photos) ? photos : [];
+        }) ?? [];
+      const updatePhotos =
+        task.updates?.flatMap((update) => update.photos ?? []) ?? [];
+      return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos];
+    });
+    if (refs.length === 0) {
+      return;
+    }
+    void prefetchSignedUrls(refs);
+  }, [tasks]);
+
   useEffect(() => {
     if (!tasksLaunchPreset) {
       return;

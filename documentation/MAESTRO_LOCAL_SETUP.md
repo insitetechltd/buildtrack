@@ -111,7 +111,7 @@ If `npm run maestro:test:smoke` does not pass:
     ```bash
     MAESTRO_0CLICK_DISABLE=1 bash ./scripts/maestro/run-local.sh \
       --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 \
-      test maestro/flows/launch-smoke.yaml
+      test maestro/flows/smoke/launch-smoke.yaml
     ```
 5.  **Check `MAESTRO_LOCAL_HOME` is writable**: the wrapper prints the resolved
     path in its launch line (`Phase: maestro-launch MAESTRO_LOCAL_HOME=...`).

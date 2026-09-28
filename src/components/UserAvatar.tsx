@@ -1,6 +1,12 @@
 import React from "react";
 import { Image as ExpoImage } from "expo-image";
-import { Text, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  Text,
+  View,
+  type ImageStyle,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
 import { cn } from "@/utils/cn";
 import {
@@ -65,7 +71,7 @@ export function UserAvatar({
             height: size,
             borderRadius: size / 2,
           },
-          style,
+          style as StyleProp<ImageStyle>,
         ]}
         className={className}
         contentFit="cover"

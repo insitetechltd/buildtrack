@@ -1,5 +1,6 @@
-# Archived Tests
+# Archived Tests (`C-ARCHIVED`)
 
+Taxonomy container: **`C-ARCHIVED`** — see `documentation/TEST_TAXONOMY.md`.  
 This folder stores deprecated test suites that are intentionally kept out of Jest discovery.
 
 ## Why These Tests Were Archived

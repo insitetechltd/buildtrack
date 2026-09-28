@@ -327,20 +327,78 @@ def run_env_probes(env: EnvProbe) -> None:
         f"http={code_bad} (must reject bare 'identifier')",
     )
 
-    # --- Anon blocked on users ---
-    code, payload = env.rest("users?select=id&limit=1", key=env.anon_key)
-    anon_blocked = code in (401, 403) or (
-        isinstance(payload, dict)
-        and (
+    # --- Anon blocked: M-SUPABASE-02a seven tables + key billing (S3) ---
+    def anon_denied(code: int, payload: Any) -> bool:
+        if code in (401, 403):
+            return True
+        if isinstance(payload, dict) and (
             "permission" in str(payload).lower()
             or "jwt" in str(payload).lower()
             or payload.get("code") in ("42501", "PGRST301")
-        )
+        ):
+            return True
+        # Empty list with 200 = RLS filtered all (no leak)
+        if code == 200 and payload == []:
+            return True
+        return False
+
+    anon_core_tables = (
+        "companies",
+        "users",
+        "projects",
+        "tasks",
+        "task_activities",
+        "task_read_status",
+        "project_locations",
     )
-    # Empty list with 200 can also mean RLS filtered all — treat as ok if no rows leaked
-    if code == 200 and payload == []:
-        anon_blocked = True
-    env.add("rls.anon_users_blocked", anon_blocked, f"http={code}")
+    anon_billing_tables = (
+        "company_subscriptions",
+        "company_entitlements",
+        "billing_webhook_events",
+    )
+    anon_core_ok = True
+    for tbl in anon_core_tables:
+        # select=* — some tables (e.g. task_read_status) have no `id` column;
+        # a 42703 on select=id must not be mistaken for an anon allow.
+        code, payload = env.rest(f"{tbl}?select=*&limit=1", key=env.anon_key)
+        ok = anon_denied(code, payload)
+        leaked = (
+            code == 200
+            and isinstance(payload, list)
+            and len(payload) > 0
+        )
+        env.add(
+            f"rls.anon_{tbl}_blocked",
+            ok and not leaked,
+            f"http={code} leaked={leaked}",
+        )
+        anon_core_ok = anon_core_ok and ok and not leaked
+
+    anon_billing_ok = True
+    for tbl in anon_billing_tables:
+        code, payload = env.rest(f"{tbl}?select=*&limit=1", key=env.anon_key)
+        ok = anon_denied(code, payload)
+        leaked = (
+            code == 200
+            and isinstance(payload, list)
+            and len(payload) > 0
+        )
+        env.add(
+            f"rls.anon_{tbl}_blocked",
+            ok and not leaked,
+            f"http={code} leaked={leaked}",
+        )
+        anon_billing_ok = anon_billing_ok and ok and not leaked
+    env.add(
+        "rls.anon_core7_all_blocked",
+        anon_core_ok,
+        f"tables={','.join(anon_core_tables)}",
+    )
+    env.add(
+        "rls.anon_billing_sample_blocked",
+        anon_billing_ok,
+        f"tables={','.join(anon_billing_tables)}",
+    )
 
     # --- Signup edges (public) ---
     code, payload = env.edge("start-signup-checkout", {})
@@ -359,11 +417,16 @@ def run_env_probes(env: EnvProbe) -> None:
     )
 
     # --- Membership access helper for a known worker if present ---
-    # Prefer PROD joe@insitetest.com / DEV joe@insite.com
+    # Prefer PROD joe@insitetest.com / DEV seed:dev-qa actors (+ legacy dogfood emails)
     email_candidates = (
         ["joe@insitetest.com", "sara@insitetest.com"]
         if env.ref == PROD_REF
-        else ["joe@insite.com", "sara@insite.com"]
+        else [
+            "john.managera@test.com",
+            "alice.workera1@test.com",
+            "joe@insite.com",
+            "sara@insite.com",
+        ]
     )
     found_user = None
     for email in email_candidates:
@@ -470,6 +533,8 @@ def compare_envs(dev: EnvProbe, prod: EnvProbe) -> list[CheckResult]:
         "edge.start-signup-checkout",
         "edge.signup-checkout-status",
         "app_query.upa_order_created_at_fallback",
+        "rls.anon_core7_all_blocked",
+        "rls.anon_billing_sample_blocked",
     ):
         d = next((r for r in dev.results if r.name == prefix), None)
         p = next((r for r in prod.results if r.name == prefix), None)
@@ -497,38 +562,50 @@ def compare_envs(dev: EnvProbe, prod: EnvProbe) -> list[CheckResult]:
 
 def main() -> int:
     env = load_dotenv(ROOT / ".env")
+    prod_env = load_dotenv(
+        ROOT / ".cache" / "env-cutover" / "insite-prod.env.local"
+    )
     token = env.get("SUPABASE_ACCESS_TOKEN")
-    if not token:
-        print("FAIL: SUPABASE_ACCESS_TOKEN missing in .env", file=sys.stderr)
-        return 1
+
+    import base64
+
+    def jwt_ref(k: str) -> str | None:
+        try:
+            part = k.split(".")[1]
+            part += "=" * ((4 - len(part) % 4) % 4)
+            return json.loads(base64.urlsafe_b64decode(part)).get("ref")
+        except Exception:
+            return None
+
+    def resolve_keys(plane: str, ref: str, local: dict[str, str]) -> tuple[str, str]:
+        sr = local.get("SUPABASE_SERVICE_ROLE_KEY") or ""
+        anon = (
+            local.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
+            or local.get("SUPABASE_ANON_KEY")
+            or ""
+        )
+        if sr and jwt_ref(sr) == ref and anon and jwt_ref(anon) == ref:
+            print(f"{plane} keys: local (ref={ref})")
+            return sr, anon
+        if not token:
+            raise RuntimeError(
+                f"{plane}: no matching local keys and SUPABASE_ACCESS_TOKEN missing"
+            )
+        print(f"{plane} keys: management API (ref={ref})")
+        return management_service_role(token, ref), management_anon(token, ref)
 
     # DEV credentials: prefer .env URL if it is DEV, else Management API
     dev_url = env.get("EXPO_PUBLIC_SUPABASE_URL", f"https://{DEV_REF}.supabase.co").rstrip("/")
     if DEV_REF not in dev_url:
         dev_url = f"https://{DEV_REF}.supabase.co"
     try:
-        dev_sr = env.get("SUPABASE_SERVICE_ROLE_KEY") or management_service_role(token, DEV_REF)
-        # If .env service role is for a different project, prefer Management API
-        import base64
-
-        def jwt_ref(k: str) -> str | None:
-            try:
-                part = k.split(".")[1]
-                part += "=" * ((4 - len(part) % 4) % 4)
-                return json.loads(base64.urlsafe_b64decode(part)).get("ref")
-            except Exception:
-                return None
-
-        if jwt_ref(dev_sr) != DEV_REF:
-            dev_sr = management_service_role(token, DEV_REF)
-        dev_anon = management_anon(token, DEV_REF)
+        dev_sr, dev_anon = resolve_keys("DEV", DEV_REF, env)
     except Exception as e:
         print(f"FAIL: DEV keys: {e}", file=sys.stderr)
         return 1
 
     try:
-        prod_sr = management_service_role(token, PROD_REF)
-        prod_anon = management_anon(token, PROD_REF)
+        prod_sr, prod_anon = resolve_keys("PROD", PROD_REF, prod_env)
     except Exception as e:
         print(f"FAIL: PROD keys: {e}", file=sys.stderr)
         return 1

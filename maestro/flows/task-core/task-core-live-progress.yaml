@@ -1,0 +1,67 @@
+appId: com.buildtrack.app.local
+---
+- runFlow: ../_shared/bootstrap-live-worker-a1.yaml
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__task_list"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+          delay: 3000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- tapOn:
+    id: "text-field:tasks-search__input"
+- inputText: "Safety Equipment Check"
+- runFlow: ../_shared/_dismiss-keyboard.yaml
+- assertVisible: ".*Safety Equipment Check.*"
+- tapOn: ".*Safety Equipment Check My Queue.*IN PROGRESS"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-accept_task"
+    commands:
+      - tapOn:
+          id: "task-detail__quick-action-accept_task"
+- assertVisible:
+    id: "root-tab__camera_button"
+- tapOn:
+    id: "root-tab__camera_button"
+- assertVisible: "Progress Update"
+- tapOn:
+    id: "update-progress__description"
+- inputText: "Completed the site safety walkthrough and staged PPE for the next shift."
+- assertVisible: ".*Completed the site safety walkthrough.*"
+- runFlow: ../_shared/_dismiss-keyboard.yaml
+- tapOn: "Photos & Files"
+- tapOn:
+    id: "update-progress__completion-value"
+- runFlow: ../_shared/_dismiss-keyboard.yaml
+- tapOn:
+    id: "update-progress__screen_title"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__submit"
+    direction: DOWN
+- tapOn:
+    id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+    delay: 1500
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+      - assertVisible:
+          id: "update-progress__submit"
+      - tapOn:
+          id: "update-progress__submit"
+- assertVisible: ".*Progress update added successfully!.*"
+- tapOn: "OK"
+- assertVisible:
+    id: "task-detail__header_title"

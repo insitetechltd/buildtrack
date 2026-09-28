@@ -3,7 +3,7 @@
 # screen, do nothing; otherwise refresh once in place and open by row testID.
 appId: com.buildtrack.app.local
 ---
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - runFlow:
     when:
       notVisible:

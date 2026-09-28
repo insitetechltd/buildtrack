@@ -612,6 +612,9 @@ export interface SelectablePhotoModel extends PrimitiveReadyItemBase {
   fileName: string;
   isAnnotated: boolean;
   caption?: string;
+  mediaLibraryAssetId?: string;
+  /** Fast Accept JPEG so Select Photos tiles paint without ph://. */
+  previewUri?: string;
 }
 
 export type PhotoSelectionSaveIntent = "attach_task" | "project_unattached";
@@ -675,6 +678,8 @@ export interface LoginScreenViewAdapterOutput {
   password: string;
   isPasswordVisible: boolean;
   buildIdentifierLabel: string;
+  /** Active Supabase project ref (hostname slug) for Metro→PROD headed asserts. */
+  activeSupabaseProjectRef: string | null;
   validationErrors: LoginScreenValidationErrors;
   isLoading: boolean;
   /** Password stays locked until identifier is a registered account. */
@@ -1022,6 +1027,13 @@ export interface UserManagementUserCard extends PrimitiveReadyItemBase {
   positionLabel: string;
   /** Company seat for assignments line: "CA" | "PM" | "Worker". */
   companySeatLabel: string;
+  /**
+   * Deployable seat for non-CA members (invite + promote). Null for CA / pending.
+   * Drives Worker↔PM chips when canChangeSeat.
+   */
+  deployableSeatType: "pm" | "worker" | null;
+  /** CA may change Worker↔PM on active non-CA members. */
+  canChangeSeat: boolean;
   isAdmin: boolean;
   isProtected: boolean;
   isPending: boolean;

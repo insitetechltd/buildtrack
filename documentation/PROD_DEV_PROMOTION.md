@@ -77,11 +77,35 @@ Maestro / CI: **DEV only** — never clearState against PROD.
 
 ---
 
-## PROD NEW SoT + dual-plane proof (wave-1 law)
+## Standard promote-up law (locked 2026-09-15)
 
-**Schema direction:** Finish **NEW** on PROD (July greenfield). Do **not** re-add OLD columns to “make Metro work.” Prefer app/Edge cutover; DDL only for a citation-proven NEW gap (Human Gate).
+**Correction:** Last month’s “empty divergent PROD + evolved DEV” was the wrong model.  
+**Now:** DEV is a **disposable clone of PROD schema**. Daily proof on DEV is destination-shaped. Plane difference for the app is **keys/secrets** (and Stripe test vs live)—not product dialect.
 
-**Done bar:** PROD critical paths P01–P08 PASS on a named app SHA with hard project-ref assert (`jcnzjigxgkzhjsaekoqz`). DEV is control only.
+| Rule | Detail |
+|---|---|
+| DEV data | **Non-essential.** May be nuked anytime. |
+| Schema SoT | Live **PROD** public schema; rebuild DEV from PROD dump when drift appears. |
+| Promote | Same migration / Edge SHA: **DEV first → prove → PROD**. No dashboard SQL. |
+| Tenant rows | **Never** copy DEV→PROD. Never require full PROD customer clone onto DEV. |
+| Stripe | DEV `sk_test` / PROD `sk_live` only. |
+| Drift gate | `npm run test:schema-parity` must PASS before claiming “DEV proves PROD.” |
+| Hotfix | No PROD-only patch. Same-day reverse-port to DEV or the model is dead. |
+
+**Rebuild DEV from PROD (operator):**
+
+```bash
+# 1) dump PROD public schema (needs PROD DB URL; dockerless pg_dump OK)
+# 2) restore onto DEV (Management API; refuses PROD writes):
+python3 scripts/supabase/restore-dev-schema-from-prod-dump.py \
+  --dump .cache/schema-parity-YYYYMMDD/prod-public.schema.sql
+# 3) seed Maestro QA (auth users kept; public rows recreated):
+node scripts/supabase/seed-dev-qa-after-parity.cjs
+# 4) assert:
+npm run test:schema-parity
+```
+
+Plan + evidence: `docs/superpowers/plans/2026-09-15-dev-prod-schema-parity-promote-up.md`.
 
 ### Hardened promote cycle
 
@@ -89,32 +113,22 @@ This is the Insite instance of portable SOP **§13** (`develop → debug → sta
 
 | Stage | Insite meaning | Not the same as |
 |---|---|---|
-| **develop** | Edit + Jest/Maestro on **DEV** | Ship-ready |
-| **debug** | Destination-shaped proof: dual-env probes + Metro→PROD QA tenant | Destructive Maestro on PROD |
-| **stable** | Last app SHA that passed PROD P01–P08 + P10 with ref assert | “DEV TF felt fine” |
+| **develop** | Edit + Jest/Maestro on **DEV** (schema ≡ PROD) | Ship binary |
+| **debug** | Destination-shaped proof **on DEV** + `test:schema-parity` | Metro→PROD as the default loop |
+| **stable** | Last app SHA that passed DEV Maestro critical + parity gate | “Felt fine on an old DEV dialect” |
 | **destination** | Promote that SHA (app + Edge + Human-Gated SQL) → PROD | A newer unproven SHA |
-| **→ working** | Every PROD fail becomes a DEV regression; new class amends SOP §13 | Document-and-ship WARN |
+| **→ working** | Every PROD fail becomes a DEV regression; amend SOP if new class | Document-and-ship WARN |
 
 ```text
-baseline = last PROD-passing app SHA
-  → develop: branch / edit (verify on DEV)
-  → debug: Metro dual-target DEV control + PROD QA critical paths
-       (every run logs {plane, projectRef, appSha}; refuse mismatch)
-  → stable: freeze that SHA
-  → DEV TF (DEV DB) optional
-  → destination: promote Edge (same git SHA) + any Human-Gated SQL
-       + PROD binary / Metro→PROD re-run P01–P08
-  → only then “PROD live OK”
-  → working: add DEV coverage for any new destination fail class
+baseline = last promoted SHA
+  → develop/debug on DEV (keys=DEV, schema≡PROD, Maestro H01, etc.)
+  → npm run test:schema-parity   # FAIL ⇒ stop; rebuild DEV from PROD
+  → stable: freeze SHA
+  → destination: apply same migrations/Edge to PROD + production bake
+  → working: feed PROD fails back into DEV tests
 ```
 
-### Metro dual-target procedure
-
-1. Confirm git SHA (`git rev-parse HEAD`).
-2. Target **DEV**: local `.env` / Metro with `EXPO_PUBLIC_SUPABASE_URL` containing `zusulknbhaumougqckec`. Assert ref before writes.
-3. Target **PROD**: temporary Metro env (or Dev Admin custom endpoint in `__DEV__` only) pointing at `jcnzjigxgkzhjsaekoqz`. Show/confirm a **PROD** banner. Assert ref before any write. Use dedicated **PROD QA company** + disposable users — never founding CA as primary victim.
-4. Never copy tenant rows DEV→PROD. Stripe stays test↔DEV, live↔PROD.
-5. Scripted matrix: `python3 scripts/supabase/probe-p01-p10-dual-target.py` (also `npm run test:dual-env:p-matrix`). App-shaped `42703`/`PGRST204` on PROD critical writes = **FAIL**.
+Metro→PROD headed remains optional dogfood / emergency, **not** the daily prove path.
 
 ### Standing probes
 

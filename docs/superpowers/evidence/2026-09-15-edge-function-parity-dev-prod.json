@@ -1,0 +1,164 @@
+{
+  "generated_at": "2026-09-15T15:42:57.879Z",
+  "DEV": {
+    "invite-user": {
+      "status": "ACTIVE",
+      "version": 32,
+      "updated_at": 1789437561271,
+      "verify_jwt": true
+    },
+    "invite-open": {
+      "status": "ACTIVE",
+      "version": 31,
+      "updated_at": 1789437564216,
+      "verify_jwt": false
+    },
+    "stripe-webhook": {
+      "status": "ACTIVE",
+      "version": 29,
+      "updated_at": 1789437557924,
+      "verify_jwt": false
+    },
+    "create-checkout-session": {
+      "status": "ACTIVE",
+      "version": 21,
+      "updated_at": 1789437553636,
+      "verify_jwt": true
+    },
+    "update-company-addons": {
+      "status": "ACTIVE",
+      "version": 15,
+      "updated_at": 1789437575696,
+      "verify_jwt": true
+    },
+    "owner-kpi-snapshot": {
+      "status": "ACTIVE",
+      "version": 6,
+      "updated_at": 1788071194259,
+      "verify_jwt": true
+    },
+    "owner-tenant-read": {
+      "status": "ACTIVE",
+      "version": 17,
+      "updated_at": 1788231224395,
+      "verify_jwt": true
+    },
+    "owner-economics-snapshot": {
+      "status": "ACTIVE",
+      "version": 4,
+      "updated_at": 1788071201658,
+      "verify_jwt": true
+    },
+    "owner-tenant-write": {
+      "status": "ACTIVE",
+      "version": 4,
+      "updated_at": 1788071205030,
+      "verify_jwt": true
+    },
+    "owner-ops-read": {
+      "status": "ACTIVE",
+      "version": 4,
+      "updated_at": 1788076526568,
+      "verify_jwt": true
+    },
+    "start-signup-checkout": {
+      "status": "ACTIVE",
+      "version": 8,
+      "updated_at": 1789437591669,
+      "verify_jwt": false
+    },
+    "signup-checkout-status": {
+      "status": "ACTIVE",
+      "version": 7,
+      "updated_at": 1789437594913,
+      "verify_jwt": false
+    },
+    "cancel-subscription": {
+      "status": "ACTIVE",
+      "version": 7,
+      "updated_at": 1789437568135,
+      "verify_jwt": true
+    },
+    "billing-subscription-status": {
+      "status": "ACTIVE",
+      "version": 7,
+      "updated_at": 1789437571041,
+      "verify_jwt": true
+    }
+  },
+  "PROD": {
+    "create-checkout-session": {
+      "status": "ACTIVE",
+      "version": 9,
+      "updated_at": 1789437526499,
+      "verify_jwt": true
+    },
+    "stripe-webhook": {
+      "status": "ACTIVE",
+      "version": 11,
+      "updated_at": 1789437531548,
+      "verify_jwt": false
+    },
+    "invite-user": {
+      "status": "ACTIVE",
+      "version": 10,
+      "updated_at": 1789437534592,
+      "verify_jwt": true
+    },
+    "invite-open": {
+      "status": "ACTIVE",
+      "version": 11,
+      "updated_at": 1789437537359,
+      "verify_jwt": false
+    },
+    "update-company-addons": {
+      "status": "ACTIVE",
+      "version": 8,
+      "updated_at": 1789437547674,
+      "verify_jwt": true
+    },
+    "start-signup-checkout": {
+      "status": "ACTIVE",
+      "version": 4,
+      "updated_at": 1789437585290,
+      "verify_jwt": false
+    },
+    "signup-checkout-status": {
+      "status": "ACTIVE",
+      "version": 4,
+      "updated_at": 1789437589307,
+      "verify_jwt": false
+    },
+    "cancel-subscription": {
+      "status": "ACTIVE",
+      "version": 6,
+      "updated_at": 1789437540188,
+      "verify_jwt": true
+    },
+    "billing-subscription-status": {
+      "status": "ACTIVE",
+      "version": 6,
+      "updated_at": 1789437543178,
+      "verify_jwt": true
+    }
+  },
+  "only_dev": [
+    "owner-economics-snapshot",
+    "owner-kpi-snapshot",
+    "owner-ops-read",
+    "owner-tenant-read",
+    "owner-tenant-write"
+  ],
+  "only_prod": [],
+  "shared": [
+    "billing-subscription-status",
+    "cancel-subscription",
+    "create-checkout-session",
+    "invite-open",
+    "invite-user",
+    "signup-checkout-status",
+    "start-signup-checkout",
+    "stripe-webhook",
+    "update-company-addons"
+  ]
+}

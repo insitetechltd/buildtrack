@@ -770,14 +770,14 @@ This sliced approach means usable value lands after **M-WEB-01 + M-DMS-01** (rou
 - Zepth — *Streamlining Submittals and RFIs with Digital Document Management* (Dec 2025) — submittal and RFI workflow automation patterns
 
 ### Internal documents
-- [ROADMAP.md](file:///Volumes/KooDrive/InsiteApp/documentation/ROADMAP.md) — WS/M/S status ledger
-- [AGENTS.md](file:///Volumes/KooDrive/InsiteApp/AGENTS.md) — current closed milestones and agent inventory
-- [role-permission-matrix.md](file:///Volumes/KooDrive/InsiteApp/documentation/role-permission-matrix.md) — SystemPermission vs ProjectRole source of truth
-- [2026-07-15-insiteapp-web-desktop-control-shell-design.md](file:///Volumes/KooDrive/InsiteApp/docs/superpowers/specs/2026-07-15-insiteapp-web-desktop-control-shell-design.md) — approved web shell layout (sidebar + top bar + canvas)
-- [buildtrack.ts](file:///Volumes/KooDrive/InsiteApp/src/types/buildtrack.ts) — types for User, SystemPermission, ProjectRole, Task, Project
-- [authStore.supabase.ts](file:///Volumes/KooDrive/InsiteApp/src/state/authStore.supabase.ts) — current auth hydration
-- [fileUploadService.ts](file:///Volumes/KooDrive/InsiteApp/src/api/fileUploadService.ts) — existing FileAttachment model (Phase 1 task evidence uploads)
-- [UserManagementScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/UserManagementScreen.tsx) — current mobile user admin UX to match for parity
+- [ROADMAP.md](../../../documentation/ROADMAP.md) — WS/M/S status ledger
+- [AGENTS.md](../../../AGENTS.md) — current closed milestones and agent inventory
+- [role-permission-matrix.md](../../../documentation/role-permission-matrix.md) — SystemPermission vs ProjectRole source of truth
+- [2026-07-15-insiteapp-web-desktop-control-shell-design.md](./2026-07-15-insiteapp-web-desktop-control-shell-design.md) — approved web shell layout (sidebar + top bar + canvas)
+- [buildtrack.ts](../../../src/types/buildtrack.ts) — types for User, SystemPermission, ProjectRole, Task, Project
+- [authStore.supabase.ts](../../../src/state/authStore.supabase.ts) — current auth hydration
+- [fileUploadService.ts](../../../src/api/fileUploadService.ts) — existing FileAttachment model (Phase 1 task evidence uploads)
+- [UserManagementScreen.tsx](../../../src/screens/UserManagementScreen.tsx) — current mobile user admin UX to match for parity
 
 ### Standards
 - **BS ISO 19650-1:2018** and **ISO 19650-2:2018** — Organization and digitization of information about buildings and civil engineering works, including Common Data Environment (CDE) workflows for naming, status, approval

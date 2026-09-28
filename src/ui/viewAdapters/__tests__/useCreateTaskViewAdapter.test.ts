@@ -5,6 +5,7 @@ import { useCreateTaskViewAdapter } from "../useCreateTaskViewAdapter";
 const mockCreateTask = jest.fn();
 const mockCreateSubTask = jest.fn();
 const mockUpdateTask = jest.fn();
+const mockDeleteTaskById = jest.fn();
 const mockFetchTaskById = jest.fn();
 const mockFetchProjectLocations = jest.fn();
 const mockEnsureProjectLocation = jest.fn();
@@ -38,6 +39,8 @@ jest.mock("../../../state/userStore.supabase", () => ({
   useUserStoreWithInit: () => ({
     getUsersByRole: jest.fn().mockReturnValue([]),
     getAllUsers: mockGetAllUsers,
+    fetchUsers: jest.fn().mockResolvedValue(undefined),
+    fetchUsersByCompany: jest.fn().mockResolvedValue(undefined),
   }),
 }));
 
@@ -127,6 +130,7 @@ describe("useCreateTaskViewAdapter", () => {
     mockCreateTask.mockResolvedValue("task-1");
     mockCreateSubTask.mockResolvedValue("subtask-1");
     mockUpdateTask.mockResolvedValue(undefined);
+    mockDeleteTaskById.mockResolvedValue(undefined);
     mockUploadFileWithVerification.mockResolvedValue({
       success: true,
       file: {
@@ -150,6 +154,7 @@ describe("useCreateTaskViewAdapter", () => {
       createTask: mockCreateTask,
       createSubTask: mockCreateSubTask,
       updateTask: mockUpdateTask,
+      deleteTaskById: mockDeleteTaskById,
       fetchProjectLocations: mockFetchProjectLocations,
       ensureProjectLocation: mockEnsureProjectLocation,
     });
@@ -434,6 +439,60 @@ describe("useCreateTaskViewAdapter", () => {
     expect(result.current.output.assigneePicker.filteredUsers.map((user) => user.id)).toEqual([
       "user-3",
     ]);
+  });
+
+  it("refreshes the assignee picker after project roster fetch returns teammates", async () => {
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "project-1", name: "App Review Site", location: "Site" },
+    ]);
+    mockUseProjectFilterStore.mockReturnValue({
+      selectedProjectId: "project-1",
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
+    });
+    mockGetAllUsers.mockReturnValue([
+      { id: "user-1", name: "Joe", email: "joe@example.com", role: "worker" },
+    ]);
+    mockGetProjectUserAssignments.mockReturnValue([
+      { userId: "user-1", projectId: "project-1", isActive: true },
+    ]);
+
+    const { result, rerender } = renderHook(() =>
+      useCreateTaskViewAdapter({ intent: "create" }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.output.context.activeProjectName).toBe("App Review Site");
+    });
+    expect(result.current.output.assigneePicker.availableUsers.map((user) => user.id)).toEqual([
+      "user-1",
+    ]);
+
+    mockGetAllUsers.mockReturnValue([
+      { id: "user-1", name: "Joe", email: "joe@example.com", role: "worker" },
+      {
+        id: "user-2",
+        name: "Sara",
+        email: "sara@example.com",
+        role: "admin",
+        systemPermission: "admin",
+      },
+      { id: "user-3", name: "Crew", email: "crew@example.com", role: "worker" },
+    ]);
+    mockGetProjectUserAssignments.mockReturnValue([
+      { userId: "user-1", projectId: "project-1", isActive: true },
+      { userId: "user-2", projectId: "project-1", isActive: true },
+      { userId: "user-3", projectId: "project-1", isActive: true },
+    ]);
+
+    rerender({});
+
+    await waitFor(() => {
+      expect(result.current.output.assigneePicker.availableUsers.map((user) => user.id)).toEqual([
+        "user-1",
+        "user-2",
+        "user-3",
+      ]);
+    });
   });
 
   it("hydrates edit mode fields and locks assignees from status-derived context", async () => {
@@ -845,9 +904,8 @@ describe("useCreateTaskViewAdapter", () => {
       ]);
     });
 
-    await act(async () => {
-      await result.current.actions.submit();
-    });
+    const submitResult = await result.current.actions.submit();
+    expect(submitResult).toBe(true);
 
     expect(mockCreateTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -872,6 +930,39 @@ describe("useCreateTaskViewAdapter", () => {
         attachments: ["https://cdn.example.com/company-1/tasks/task-1/uploaded-photo.jpg"],
       }),
     );
+    expect(mockDeleteTaskById).not.toHaveBeenCalled();
+  });
+
+  it("rolls back the created task when a chosen photo fails to upload", async () => {
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: false,
+      error: "Photo upload failed",
+    });
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    act(() => {
+      result.current.actions.updateField("title", "Photo task");
+      result.current.actions.updateField("description", "Install tagged item");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("assignedTo", ["user-2"]);
+      result.current.actions.updateField("attachments", [
+        {
+          uri: "file:///draft-photo.jpg",
+          fileName: "draft-photo.jpg",
+          isAnnotated: false,
+        },
+      ]);
+    });
+
+    const submitResult = await result.current.actions.submit();
+
+    expect(submitResult).toBe(false);
+    expect(mockCreateTask).toHaveBeenCalled();
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+    expect(mockDeleteTaskById).toHaveBeenCalledWith("task-1", "user-1");
+    expect(result.current.output.formData.title).toBe("Photo task");
+    expect(result.current.output.formData.attachments).toHaveLength(1);
   });
 
   it("persists a new location immediately when saved from the picker and keeps it in the options list", async () => {

@@ -19,7 +19,7 @@ import { getSessionScopedSupabase } from '../api/supabaseSessionGate';
  * Usage: Add <DataRefreshManager /> to your AppNavigator
  */
 
-let refreshInterval: NodeJS.Timeout | null = null;
+let refreshInterval: ReturnType<typeof setInterval> | null = null;
 let lastDataHash: string = '';
 
 // Generate a hash of current data state to detect changes

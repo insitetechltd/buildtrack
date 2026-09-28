@@ -1,0 +1,33 @@
+
+> template-app-53@1.0.0 asc:submit
+> bash ./scripts/asc/deliver.sh submit
+
+[18:57:50]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[18:57:51]: ------------------------------
+[18:57:51]: --- Step: default_platform ---
+[18:57:51]: ------------------------------
+[18:57:51]: Driving the lane 'ios asc_submit' 🚀
+[18:57:51]: --------------------------------------------
+[18:57:51]: --- Step: Switch to ios asc_api_key lane ---
+[18:57:51]: --------------------------------------------
+[18:57:51]: Cruising over to lane 'ios asc_api_key' 🚖
+[18:57:51]: ---------------------------------------
+[18:57:51]: --- Step: app_store_connect_api_key ---
+[18:57:51]: ---------------------------------------
+[18:57:51]: Cruising back to lane 'ios asc_submit' 🚘
+[18:57:52]: 1.1.3 state=READY_FOR_REVIEW selected_build=280
+[18:57:57]: ASC Submit for Review sent (build 280, submission 731376ca-1398-4138-8ab3-083c42079c0e state=WAITING_FOR_REVIEW). Public NOT enabled.
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[18:57:57]: fastlane.tools finished successfully 🎉

@@ -23,7 +23,7 @@ describe("greenfield / evolved task column compat", () => {
     ).toBe("assigned_to");
   });
 
-  it("bulk-strips evolved columns including accepted and assigned_to", () => {
+  it("bulk-strips OLD columns only; keeps NEW deferred cols", () => {
     const stripped = stripOptionalEvolvedTaskColumns({
       title: "t",
       accepted: false,
@@ -31,8 +31,16 @@ describe("greenfield / evolved task column compat", () => {
       current_status: "new",
       attachments: [],
       status: "new",
+      primary_assignee_id: "u1",
+      tags: ["a"],
     });
-    expect(stripped).toEqual({ title: "t", status: "new" });
+    expect(stripped).toEqual({
+      title: "t",
+      status: "new",
+      primary_assignee_id: "u1",
+      tags: ["a"],
+    });
     expect(isOptionalEvolvedTaskColumn("accepted")).toBe(true);
+    expect(isOptionalEvolvedTaskColumn("primary_assignee_id")).toBe(false);
   });
 });

@@ -120,3 +120,10 @@ src/__tests__/parity/matrix/golden-old/.run-*
 .cache/asc-venv/
 .cache/asc-api/
 .cache/owner-asc-app.json
+
+# Fastlane local run report (machine scratch — never commit)
+fastlane/report.xml
+
+# Python bytecode from probe scripts
+scripts/**/__pycache__/
+**/__pycache__/

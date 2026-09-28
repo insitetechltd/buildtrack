@@ -1,7 +1,12 @@
 import React, { useCallback } from "react";
 import { View, StyleSheet } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { CaptureSessionModule } from "../modules/captureSession";
+import {
+  pausePhotokitLibraryForAccept,
+  resumePhotokitLibraryAfterAccept,
+} from "../modules/mediaLibrary/PhotokitThumbView";
 import type { SelectedPhoto } from "../navigation/navigationTypes";
 
 type CaptureSessionFlowScreenProps = {
@@ -21,6 +26,15 @@ export default function CaptureSessionFlowScreen({
       onComplete(result.photos);
     },
     [onComplete],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      resumePhotokitLibraryAfterAccept();
+      return () => {
+        pausePhotokitLibraryForAccept();
+      };
+    }, []),
   );
 
   return (

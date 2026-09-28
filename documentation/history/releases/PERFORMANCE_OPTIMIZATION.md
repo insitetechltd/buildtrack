@@ -4,7 +4,7 @@ Tips for optimal development performance, especially when dealing with cloud syn
 
 ## Current Project Stats
 
-- **Location:** `/Volumes/KooDrive/Insite App` (External Drive)
+- **Location:** `/Volumes/KooDrive/InsiteApp` (External Drive)
 - **Size Breakdown:**
   - `node_modules/`: ~632 MB
   - `ios/`: ~180 MB
@@ -48,7 +48,7 @@ These characteristics cause cloud sync services to:
 
 2. **External SSD** (Good) ✅ *You are here*
    ```bash
-   /Volumes/KooDrive/Insite App
+   /Volumes/KooDrive/InsiteApp
    ```
    - Good performance if USB 3.0+
    - Keep drive connected while working
@@ -102,8 +102,8 @@ npx expo start --clear
 **Exclude from Spotlight/Time Machine:**
 ```bash
 # Add to System Settings > Spotlight > Privacy
-/Volumes/KooDrive/Insite App/node_modules
-/Volumes/KooDrive/Insite App/ios
+/Volumes/KooDrive/InsiteApp/node_modules
+/Volumes/KooDrive/InsiteApp/ios
 ```
 
 ### 4. Monitor Disk Activity
@@ -209,7 +209,7 @@ killall cloudd
 
 ```bash
 # Run this now for instant cleanup
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 rm -f *.ipa *.apk *.aab
 rm -rf ios/build/
 ```
@@ -262,7 +262,7 @@ sudo fs_usage | grep "/Volumes/KooDrive"
 diskutil info /Volumes/KooDrive | grep "Protocol"
 
 # 3. Test with local copy
-cp -r "/Volumes/KooDrive/Insite App" ~/Desktop/BuildTrack-Test
+cp -r "/Volumes/KooDrive/InsiteApp" ~/Desktop/BuildTrack-Test
 cd ~/Desktop/BuildTrack-Test
 npm start
 # If faster, drive is the bottleneck

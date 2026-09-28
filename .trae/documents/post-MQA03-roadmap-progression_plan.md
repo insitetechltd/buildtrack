@@ -6,7 +6,7 @@
 
 **Architecture:** Four independent roadmap-order phases with strict dependency ordering. Each Phase is executed as a full SOLO 8-agent cycle, with commit-gate and roadmap/AGENTS text edits at Phase end. NO cross-phase file edits before the prior Phase passes D7 QA.
 
-**Dependency order enforced (exact roadmap `Depends` col from [ROADMAP.md](file:///Volumes/KooDrive/InsiteApp/documentation/ROADMAP.md)):**
+**Dependency order enforced (exact roadmap `Depends` col from [ROADMAP.md](../../documentation/ROADMAP.md)):**
 ```
 Phase 1 — S-UX-01H (Batch-first capture review) ──┐
   Depends: S-UX-01G = Closed ✅                       ▼
@@ -28,27 +28,27 @@ Phase 1 — S-UX-01H (Batch-first capture review) ──┐
 
 ### Current concrete state confirmed by file-system inspection:
 
-1. **S-UX-01H current code:** Photo capture-review entry surface currently is `PhotoSelectionScreen` ([PhotoSelectionScreen.tsx:1](file:///Volumes/KooDrive/InsiteApp/src/screens/PhotoSelectionScreen.tsx#L1-L35)) which supports:
+1. **S-UX-01H current code:** Photo capture-review entry surface currently is `PhotoSelectionScreen` ([PhotoSelectionScreen.tsx:1](../../src/screens/PhotoSelectionScreen.tsx#L1-L35)) which supports:
    - `uploadImmediately` true (UpdateProgress legacy) vs false (CreateTask attach)
    - `entityType: 'task' | 'task-update' | 'project' | 'user'` file upload path
    - Single enlarged photo viewer with annotate + delete
    - Header counter `Select Photos (N)` but NO project-first / batch-save controls
-   - Camera tab routes → `CreateTaskMain` post-capture routing sheet currently *explicitly disables* the "Add to Existing Task" choice with the copy `"Existing-task attach flow is not part of this slice yet"` at [CreateTaskScreen.tsx:730](file:///Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx#L727-L731)
-   - `postCaptureRoutingChoice` shell is already in-place at [CreateTaskScreen.tsx:663-733](file:///Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx#L663-L733) (S-UX-01F/01G delivery), so this is the hook 01H fills in.
+   - Camera tab routes → `CreateTaskMain` post-capture routing sheet currently *explicitly disables* the "Add to Existing Task" choice with the copy `"Existing-task attach flow is not part of this slice yet"` at [CreateTaskScreen.tsx:730](../../src/screens/CreateTaskScreen.tsx#L727-L731)
+   - `postCaptureRoutingChoice` shell is already in-place at [CreateTaskScreen.tsx:663-733](../../src/screens/CreateTaskScreen.tsx#L663-L733) (S-UX-01F/01G delivery), so this is the hook 01H fills in.
 
 2. **S-UX-01I current testID coverage:** Full grep of screens `testID=` revealed:
    - **Good:** Dashboard, Tasks list (row wrapper + swipeable + archive/update/left-swipe actions per taskId, empty state, filters, chips, search count, header reset), Task Detail header/scroll/bottom bar, CreateTask full form, ProfileMenu `profile-menu-project_picker`, ProjectPicker `projectPicker-scroll` + `projectPicker-project-${projectId}`, Login, Register all have established testIDs.
    - **Pattern in use (from grep):** `<domain>-<screen|surface>__<element>[_<identifier>]` e.g. `tasks-screen__row_${taskId}`, `create-task__submit-success-confirm`, `profile-menu-project_picker`, `dashboard-screen__activity_${item.id}`.
-   - **Exact 18 P0/P1 gaps still open:** catalogued in [TESTID_GAPS_TODO.md](file:///Volumes/KooDrive/InsiteApp/maestro/TESTID_GAPS_TODO.md#L9-L29). After S-UX-01H locks the batch-review save semantics, S-UX-01I applies these as the FINAL regression-hardening pass — before 01H closes, applying the `photo-picker__*` and `project-picker__row-*` and dashboard empty-state testIDs is premature because 01H will re-split those wrappers.
+   - **Exact 18 P0/P1 gaps still open:** catalogued in [TESTID_GAPS_TODO.md](../../maestro/TESTID_GAPS_TODO.md#L9-L29). After S-UX-01H locks the batch-review save semantics, S-UX-01I applies these as the FINAL regression-hardening pass — before 01H closes, applying the `photo-picker__*` and `project-picker__row-*` and dashboard empty-state testIDs is premature because 01H will re-split those wrappers.
 
-3. **Legacy task compatibility (S-UX-01I scope item):** Current fallback code paths — `taskStore.supabase.ts` already drops + retries with compatibility payload on schema-missing `primary_assignee_id`/`delegated_user_ids` errors at [taskStore.supabase.ts:1551](file:///Volumes/KooDrive/InsiteApp/src/state/taskStore.supabase.ts#L1549-L1553) (create) and [taskStore.supabase.ts:1947](file:///Volumes/KooDrive/InsiteApp/src/state/taskStore.supabase.ts#L1945-L1949) (update). Legacy statuses, accepted-flag clears, worker→member role aliases kept in [buildtrack.ts:74](file:///Volumes/KooDrive/InsiteApp/src/types/buildtrack.ts#L74), [buildtrack.ts:694](file:///Volumes/KooDrive/InsiteApp/src/types/buildtrack.ts#L694). S-UX-01I audits these paths + writes Jest parity tests so there is no 2-code-path render wrapper split.
+3. **Legacy task compatibility (S-UX-01I scope item):** Current fallback code paths — `taskStore.supabase.ts` already drops + retries with compatibility payload on schema-missing `primary_assignee_id`/`delegated_user_ids` errors at [taskStore.supabase.ts:1551](../../src/state/taskStore.supabase.ts#L1549-L1553) (create) and [taskStore.supabase.ts:1947](../../src/state/taskStore.supabase.ts#L1945-L1949) (update). Legacy statuses, accepted-flag clears, worker→member role aliases kept in [buildtrack.ts:74](../../src/types/buildtrack.ts#L74), [buildtrack.ts:694](../../src/types/buildtrack.ts#L694). S-UX-01I audits these paths + writes Jest parity tests so there is no 2-code-path render wrapper split.
 
 4. **M-QA-03 current state (Phase 3 start state):**
-   - L1/L2: D6 PASS L1 (tsc + journeys 5/5) + L2 (regression 35/151, components 7/32). Artifacts: [`.cache/test-engineering/d6-20260806_232101/summary.txt`](file:///Volumes/KooDrive/InsiteApp/.cache/test-engineering/d6-20260806_232101/summary.txt).
+   - L1/L2: D6 PASS L1 (tsc + journeys 5/5) + L2 (regression 35/151, components 7/32). Artifacts: [`.cache/test-engineering/d6-20260806_232101/summary.txt`](../../.cache/test-engineering/d6-20260806_232101/summary.txt).
    - L3: 2 Maestro YAMLs authored. 3/5 PASS (M-QA-02 foundation cross). 2/5 flow FAIL at last D7 run due to text-regex/i18n/text-node-boundary selectors; exactly the 18 entries TESTID_GAPS_TODO. Final failing artifact from `.cache/maestro-artifacts/d7-qa-20260806_234727/summary.txt` was `PASS=3 FAIL=2`.
    - Phase 3 = 0 new code outside the Maestro YAMLs + roadmap/AGENTS docs. Because every Phase-1/Phase-2 added testID follows the EXACT same naming convention already written into the TODO catalog rows (proposal col), the swap is a mechanical regex→id rename (18 rows × 2 YAMLs, verify).
 
-5. **WS-SUPABASE-01 (Phase 4):** Inspection-only milestone (no destructive schema changes). Source plan at [2026-07-01-ws-supabase-01-deep-dive-inspection.md](file:///Volumes/KooDrive/InsiteApp/docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md#L1-L88) is already authorative; lists 4 domains (auth/users, core domain tables, app coupling at src/api + src/state/*Store.supabase.ts, runtime safety), deliverables = inspection report + system map + prioritized findings backlog, uses pooler psql via `SUPABASE_SQL_ACCESS.md` + `WS_SUPABASE_01_READONLY_AUDIT.sql` (if those files exist), 0 schema mutation. This Phase is strictly docs + findings output.
+5. **WS-SUPABASE-01 (Phase 4):** Inspection-only milestone (no destructive schema changes). Source plan at [2026-07-01-ws-supabase-01-deep-dive-inspection.md](../../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md#L1-L88) is already authorative; lists 4 domains (auth/users, core domain tables, app coupling at src/api + src/state/*Store.supabase.ts, runtime safety), deliverables = inspection report + system map + prioritized findings backlog, uses pooler psql via `SUPABASE_SQL_ACCESS.md` + `WS_SUPABASE_01_READONLY_AUDIT.sql` (if those files exist), 0 schema mutation. This Phase is strictly docs + findings output.
 
 ### Hard non-negotiable gates (from AGENTS.md/ROADMAP.md):
 - **S-UX-01I = LAST allowed place for `src/screens/*.tsx` testID additions BEFORE M-UX-01 is declared Closed.** No testID insertions in Phase 3 (M-QA-03 close); only YAML selector swap.
@@ -61,13 +61,13 @@ Phase 1 — S-UX-01H (Batch-first capture review) ──┐
 
 ### Phase 1 — S-UX-01H Batch-first capture review
 **Modified:**
-- [src/screens/PhotoSelectionScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/PhotoSelectionScreen.tsx) — add project-first save header, task-attachment picker, save-first/organize-later button row.
-- [src/ui/viewAdapters/usePhotoSelectionViewAdapter.ts](file:///Volumes/KooDrive/InsiteApp/src/ui/viewAdapters/usePhotoSelectionViewAdapter.ts) — new project-first save, optional task attachment params, batch log intent.
-- [src/screens/CreateTaskScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx#L663-L733) — enable the "Add to Existing Task" routing choice, remove or replace the guard copy at line 730.
-- [src/navigation/AppNavigator.tsx](file:///Volumes/KooDrive/InsiteApp/src/navigation/AppNavigator.tsx) — Camera stack params for project-first batch save (entityType:'project' branch).
-- [src/navigation/navigationTypes.ts](file:///Volumes/KooDrive/InsiteApp/src/navigation/navigationTypes.ts) — add new param types for PhotoSelection project-first mode.
-- [src/api/fileUploadService.ts](file:///Volumes/KooDrive/InsiteApp/src/api/fileUploadService.ts) — batch-upload for N-photos with activity log on project.
-- [src/ui/viewAdapters/useDashboardViewAdapter.ts](file:///Volumes/KooDrive/InsiteApp/src/ui/viewAdapters/useDashboardViewAdapter.ts) — capture-related activity logging entry.
+- [src/screens/PhotoSelectionScreen.tsx](../../src/screens/PhotoSelectionScreen.tsx) — add project-first save header, task-attachment picker, save-first/organize-later button row.
+- [src/ui/viewAdapters/usePhotoSelectionViewAdapter.ts](../../src/ui/viewAdapters/usePhotoSelectionViewAdapter.ts) — new project-first save, optional task attachment params, batch log intent.
+- [src/screens/CreateTaskScreen.tsx](../../src/screens/CreateTaskScreen.tsx#L663-L733) — enable the "Add to Existing Task" routing choice, remove or replace the guard copy at line 730.
+- [src/navigation/AppNavigator.tsx](../../src/navigation/AppNavigator.tsx) — Camera stack params for project-first batch save (entityType:'project' branch).
+- [src/navigation/navigationTypes.ts](../../src/navigation/navigationTypes.ts) — add new param types for PhotoSelection project-first mode.
+- [src/api/fileUploadService.ts](../../src/api/fileUploadService.ts) — batch-upload for N-photos with activity log on project.
+- [src/ui/viewAdapters/useDashboardViewAdapter.ts](../../src/ui/viewAdapters/useDashboardViewAdapter.ts) — capture-related activity logging entry.
 - **Jest tests added:**
   - `src/ui/viewAdapters/__tests__/usePhotoSelectionViewAdapter.test.ts` (new)
   - `src/__tests__/integration/PhotoSelectionScreen.batch-review.test.tsx` (new)
@@ -76,41 +76,41 @@ Phase 1 — S-UX-01H (Batch-first capture review) ──┐
 ### Phase 2 — S-UX-01I Migration hardening + testIDs
 **Modified:**
 - Audit + unified render wrappers + testID additions for the 18 TESTID_GAPS_TODO entries (P0 first, P1 second). Exact files per row of catalog:
-  - Dashboard empty state: [DashboardScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/DashboardScreen.tsx) (P1)
-  - ProfileMenu Change Project Pressable: already at [ProfileMenu.tsx:112](file:///Volumes/KooDrive/InsiteApp/src/components/ProfileMenu.tsx#L110-L120) — verify + lock name in Jest const (P0)
-  - ProjectPicker rows: [ProjectPickerScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/ProjectPickerScreen.tsx#L72-L110) — wrap the 2-Text siblings into a single Pressable wrapper with the row testID (P0 × 3)
-  - CreateTask form title preview: [CreateTaskScreen.tsx](file:///Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx) title stack (P1)
-  - TasksList row tap Pressable: [TasksScreen.tsx:336-378](file:///Volumes/KooDrive/InsiteApp/src/screens/TasksScreen.tsx#L336-L378) — verify Pressable carries `tasks-list__row-${taskId}` id directly, not wrapper-only (P0)
-  - TaskDetail header title: [TaskDetailScreen.tsx:304-321](file:///Volumes/KooDrive/InsiteApp/src/screens/TaskDetailScreen.tsx#L304-L321) add title text testID (P1)
+  - Dashboard empty state: [DashboardScreen.tsx](../../src/screens/DashboardScreen.tsx) (P1)
+  - ProfileMenu Change Project Pressable: already at [ProfileMenu.tsx:112](../../src/components/ProfileMenu.tsx#L110-L120) — verify + lock name in Jest const (P0)
+  - ProjectPicker rows: [ProjectPickerScreen.tsx](../../src/screens/ProjectPickerScreen.tsx#L72-L110) — wrap the 2-Text siblings into a single Pressable wrapper with the row testID (P0 × 3)
+  - CreateTask form title preview: [CreateTaskScreen.tsx](../../src/screens/CreateTaskScreen.tsx) title stack (P1)
+  - TasksList row tap Pressable: [TasksScreen.tsx:336-378](../../src/screens/TasksScreen.tsx#L336-L378) — verify Pressable carries `tasks-list__row-${taskId}` id directly, not wrapper-only (P0)
+  - TaskDetail header title: [TaskDetailScreen.tsx:304-321](../../src/screens/TaskDetailScreen.tsx#L304-L321) add title text testID (P1)
   - UpdateProgress screen title + preview + photo sheet + success toast + OK: locate + update UpdateProgress screen (P0 + P1 × 5)
-  - CreateTask alternate success modal confirm (alias): [CreateTaskScreen.tsx:1076-1082](file:///Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx#L1076-L1082) alias check id (P1)
-- Legacy task paths hardened: [src/state/taskStore.supabase.ts](file:///Volumes/KooDrive/InsiteApp/src/state/taskStore.supabase.ts) (create/update compatibility paths), [src/types/buildtrack.ts](file:///Volumes/KooDrive/InsiteApp/src/types/buildtrack.ts) backward-compat section.
+  - CreateTask alternate success modal confirm (alias): [CreateTaskScreen.tsx:1076-1082](../../src/screens/CreateTaskScreen.tsx#L1076-L1082) alias check id (P1)
+- Legacy task paths hardened: [src/state/taskStore.supabase.ts](../../src/state/taskStore.supabase.ts) (create/update compatibility paths), [src/types/buildtrack.ts](../../src/types/buildtrack.ts) backward-compat section.
 - **Jest tests added:**
   - `src/__tests__/parity/tasksLegacyCompat.test.ts` (new) — legacy statuses + missing redesign fields render through the same wrappers as modern tasks; verifies 1 code path = 1 testID set.
   - Extend: `src/screens/__tests__/TasksScreen.test.tsx`, `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`, `src/state/__tests__/taskStore.supabase.unit.test.ts` (already covers primary_assignee_id/delegated_user_ids fallback at lines 439-451, extend with a parity case).
 - **After D7 QA passes, edits to:**
-  - M-UX-01 overall status line in [ROADMAP.md](file:///Volumes/KooDrive/InsiteApp/documentation/ROADMAP.md) if S-UX-01I was the last open slice of M-UX-01 (verify S-UX-01H and S-UX-01I close status first — if 01I is last open, flip M-UX-01 to Closed).
-  - [AGENTS.md Current Delivery Status](file:///Volumes/KooDrive/InsiteApp/AGENTS.md#L31-L38) update accordingly.
+  - M-UX-01 overall status line in [ROADMAP.md](../../documentation/ROADMAP.md) if S-UX-01I was the last open slice of M-UX-01 (verify S-UX-01H and S-UX-01I close status first — if 01I is last open, flip M-UX-01 to Closed).
+  - [AGENTS.md Current Delivery Status](../../AGENTS.md#L31-L38) update accordingly.
 
 ### Phase 3 — M-QA-03 L3 Full Close
 **Modified:**
-- [maestro/flows/journey-login-switch-projects.yaml](file:///Volumes/KooDrive/InsiteApp/maestro/flows/journey-login-switch-projects.yaml) — 18 row entries → convert all `text:` / `text regex:` selectors into their `id:` equivalents from the TESTID_GAPS_TODO proposal col. Remove `scrollUntilVisible` hacks where id-selector removes that need (keep where long ScrollView truly needs it, per D7).
-- [maestro/flows/journey-projectswitch-create-taskdetail-update.yaml](file:///Volumes/KooDrive/InsiteApp/maestro/flows/journey-projectswitch-create-taskdetail-update.yaml) — identical treatment.
-- Delete/archive: [maestro/TESTID_GAPS_TODO.md](file:///Volumes/KooDrive/InsiteApp/maestro/TESTID_GAPS_TODO.md) once applied (or convert entries into `DONE: applied in commit <sha>` audit trail, whichever matches existing style).
+- [maestro/flows/journey-login-switch-projects.yaml](../../maestro/flows/journey-login-switch-projects.yaml) — 18 row entries → convert all `text:` / `text regex:` selectors into their `id:` equivalents from the TESTID_GAPS_TODO proposal col. Remove `scrollUntilVisible` hacks where id-selector removes that need (keep where long ScrollView truly needs it, per D7).
+- [maestro/flows/journey-projectswitch-create-taskdetail-update.yaml](../../maestro/flows/journey-projectswitch-create-taskdetail-update.yaml) — identical treatment.
+- Delete/archive: [maestro/TESTID_GAPS_TODO.md](../../maestro/TESTID_GAPS_TODO.md) once applied (or convert entries into `DONE: applied in commit <sha>` audit trail, whichever matches existing style).
 - **Jest (L1/L2):** No new tests — only L3 Maestro 5/5 PASS required. L6 TE re-runs L1/L2 to confirm no YAML-only regressions.
 - **D8 delivery edits:**
-  - Flip M-QA-03 row in [ROADMAP.md](file:///Volumes/KooDrive/InsiteApp/documentation/ROADMAP.md) → Closed with evidence.
-  - Update [AGENTS.md](file:///Volumes/KooDrive/InsiteApp/AGENTS.md#L31-L38) delivery status lines accordingly.
+  - Flip M-QA-03 row in [ROADMAP.md](../../documentation/ROADMAP.md) → Closed with evidence.
+  - Update [AGENTS.md](../../AGENTS.md#L31-L38) delivery status lines accordingly.
 
 ### Phase 4 — WS-SUPABASE-01 Full Deep-dive Inspection
 **All outputs are docs/read-only, NO schema mutations.** Files written:
-- `documentation/SUPABASE_INSPECTION_REPORT_2026-08.md` (new): full 4-domain report per [ws-supabase-01-deep-dive-inspection.md §23-57](file:///Volumes/KooDrive/InsiteApp/docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md#L23-L57).
+- `documentation/SUPABASE_INSPECTION_REPORT_2026-08.md` (new): full 4-domain report per [ws-supabase-01-deep-dive-inspection.md §23-57](../../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md#L23-L57).
 - `documentation/SUPABASE_APP_SYSTEM_MAP.md` (new): coupling map app→Supabase for: authStore, userStore, projectStore, taskStore, uploads service, comments/review. Tabular mapping: method/function → supabase table + column + policy + optimistic vs realtime.
 - `documentation/SUPABASE_FINDINGS_BACKLOG.md` (new): prioritized remediation backlog (P0/P1/P2), each with title, affected domain, recommended follow-on WS/M/S id placeholder, short rational.
 - **Read-only (NOT committed):** If credentials allow, run `WS_SUPABASE_01_READONLY_AUDIT.sql` (referenced in §78) against pooler; capture output as `.cache/supabase-audit-<ts>/` directory. If no credentials or env vars missing → explicitly document that gate as "live db read skipped, findings from code-path surface only" instead of fabricating data.
 - **D8 delivery edits:**
-  - Flip WS-SUPABASE / M-SUPABASE-01 in [ROADMAP.md](file:///Volumes/KooDrive/InsiteApp/documentation/ROADMAP.md) → Closed with evidence (reports + backlog; note whether live-sql audit was possible).
-  - Update [AGENTS.md](file:///Volumes/KooDrive/InsiteApp/AGENTS.md#L31-L38) Current Delivery Status accordingly.
+  - Flip WS-SUPABASE / M-SUPABASE-01 in [ROADMAP.md](../../documentation/ROADMAP.md) → Closed with evidence (reports + backlog; note whether live-sql audit was possible).
+  - Update [AGENTS.md](../../AGENTS.md#L31-L38) Current Delivery Status accordingly.
 
 ---
 
@@ -125,7 +125,7 @@ Each Phase below IS a full SOLO 8-agent cycle. Implementation must not skip betw
 **Boundary rule:** This phase touches ONLY the PhotoSelection + CreateTask routing surface. No testID additions in this phase (they belong to S-UX-01I AFTER wrappers stabilize). No Task Detail / Activity home / migration work here.
 
 - [ ] **Step 1.1: SOLO D1 Milestone Gate + D2 Planner**
-  Re-read [ROADMAP.md S-UX-01H](file:///Volumes/KooDrive/InsiteApp/documentation/ROADMAP.md#L67), [S-UX-01 slice list with 01H detail](file:///Volumes/KooDrive/InsiteApp/docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md#L429-L441), TESTING_STRATEGY.md L1-L4. Planner outputs: scope, 01H-specific file list, acceptance, open questions.
+  Re-read [ROADMAP.md S-UX-01H](../../documentation/ROADMAP.md#L67), [S-UX-01 slice list with 01H detail](../../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md#L429-L441), TESTING_STRATEGY.md L1-L4. Planner outputs: scope, 01H-specific file list, acceptance, open questions.
 
 - [ ] **Step 1.2: SOLO D3 Builder — build the 4 in-scope deliverables from S-UX-01H plan**
   (a) multi-photo review: keep 3-col grid, add caption + reorder (no drag required; arrow controls OK) controls on enlarged-photo header OR add a new bottom batch-control bar (choose the minimal approach that preserves current enlarged layout).
@@ -216,7 +216,7 @@ Each Phase below IS a full SOLO 8-agent cycle. Implementation must not skip betw
 
 ### Phase 4. WS-SUPABASE-01: Full Supabase Deep-Dive Inspection (SOLO cycle #4)
 
-**Boundary rule:** Inspection-only per [ws-supabase-01 plan](file:///Volumes/KooDrive/InsiteApp/docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md#L17-L22). NO destructive commands. NO commits with secrets, passwords, connection strings, anon/service keys pasted.
+**Boundary rule:** Inspection-only per [ws-supabase-01 plan](../../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md#L17-L22). NO destructive commands. NO commits with secrets, passwords, connection strings, anon/service keys pasted.
 
 - [ ] **Step 4.1: D1 Gate + D2 Planner**
   Confirm M-DATA-02 = Closed (roadmap). Re-read 4 domains + expected deliverables. Planner outputs: file list for 3 docs, plan for optional live-sql read, gates to stop if no credentials exist.

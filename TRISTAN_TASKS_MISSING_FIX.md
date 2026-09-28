@@ -68,7 +68,7 @@ const STALE_TIME = 5000; // 5 seconds (was 30000)
 
 ```bash
 # Run this to verify tasks are in database
-cd "/Volumes/KooDrive/Insite App" && node -e "
+cd "/Volumes/KooDrive/InsiteApp" && node -e "
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 

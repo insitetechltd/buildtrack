@@ -10,6 +10,9 @@
 
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const {
+  assertMayRotateAscDemoPassword,
+} = require('./scripts/lib/ascReviewDemoGuard.cjs');
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
@@ -338,16 +341,21 @@ async function rebuildAuthUsers() {
             console.log(`   ✅ Created successfully (temp password set)`);
             console.log(`   ⚠️  User will need to reset password to: testing`);
             
-            // Immediately reset password to "testing"
-            const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
-              newUser.user.id,
-              { password: 'testing' }
-            );
-            
-            if (passwordError) {
-              console.error(`   ⚠️  Password reset failed: ${passwordError.message}`);
+            // Immediately reset password to "testing" (never for ASC Review demos)
+            const pwdGate = assertMayRotateAscDemoPassword(userEmail);
+            if (!pwdGate.ok) {
+              console.warn(`   ⏭️  SKIP password set (ASC-locked): ${userEmail}`);
             } else {
-              console.log(`   ✅ Password set to "testing"`);
+              const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
+                newUser.user.id,
+                { password: 'testing' }
+              );
+
+              if (passwordError) {
+                console.error(`   ⚠️  Password reset failed: ${passwordError.message}`);
+              } else {
+                console.log(`   ✅ Password set to "testing"`);
+              }
             }
             
             results.created++;

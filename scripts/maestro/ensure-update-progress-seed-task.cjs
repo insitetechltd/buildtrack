@@ -136,7 +136,50 @@ async function main() {
     process.exit(4);
   }
 
+  // Membership wall (F6): actor must have active UPA on the seed project or
+  // Tasks soft-scope + RLS hide the row after search (U01 2026-09-22 failure mode).
+  const ensureUpa = async (memberId, role = "contractor") => {
+    const { data: existing, error: existingErr } = await supabase
+      .from("user_project_assignments")
+      .select("id, is_active, project_role")
+      .eq("project_id", project.id)
+      .eq("user_id", memberId)
+      .maybeSingle();
+    if (existingErr) {
+      console.error("FAIL: lookup UPA", existingErr.message);
+      process.exit(4);
+    }
+    if (existing?.is_active) return;
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("user_project_assignments")
+        .update({ is_active: true })
+        .eq("id", existing.id);
+      if (error) {
+        console.error("FAIL: reactivate UPA", error.message);
+        process.exit(4);
+      }
+      return;
+    }
+    const { error } = await supabase.from("user_project_assignments").insert({
+      user_id: memberId,
+      project_id: project.id,
+      project_role: role,
+      assigned_by: creator.id,
+      is_active: true,
+    });
+    if (error) {
+      console.error("FAIL: insert UPA", error.message);
+      process.exit(4);
+    }
+  };
+  await ensureUpa(user.id, "contractor");
+  if (creator.id !== user.id) {
+    await ensureUpa(creator.id, "lead_project_manager");
+  }
+
   const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  // NEW schema only (DEV≡PROD): no assigned_to / current_status / attachments / accepted.
   const payload = {
     project_id: project.id,
     title,
@@ -146,16 +189,13 @@ async function main() {
     priority: "medium",
     category: "general",
     due_date: due,
-    current_status: SEED_CURRENT_STATUS,
+    status: SEED_CURRENT_STATUS,
     completion_percentage: SEED_IS_APPROVED ? 100 : 0,
-    assigned_to: [user.id],
     primary_assignee_id: user.id,
     delegated_user_ids: [],
     assigned_by: creator.id,
     tags: [],
     location_on_site: null,
-    attachments: [],
-    accepted: SEED_IS_APPROVED || SEED_IS_ACCEPTED,
     accepted_by: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? user.id : null,
     accepted_at: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? new Date().toISOString() : null,
   };
@@ -166,28 +206,20 @@ async function main() {
     .select("id, title")
     .single();
 
-  if (insertErr) {
-    // Compatibility retry without redesign columns if tenant lag
-    const slim = { ...payload };
-    for (const k of [
-      "primary_assignee_id",
-      "delegated_user_ids",
-      "container_id",
-      "sub_container_id",
-      "tags",
-      "location_on_site",
-    ]) {
-      delete slim[k];
-    }
-    ({ data: task, error: insertErr } = await supabase
-      .from("tasks")
-      .insert(slim)
-      .select("id, title")
-      .single());
-  }
-
   if (insertErr || !task?.id) {
     console.error("FAIL: insert task", insertErr?.message || insertErr);
+    process.exit(5);
+  }
+
+  const { error: assignErr } = await supabase.from("task_assignments").insert({
+    task_id: task.id,
+    user_id: user.id,
+    assignment_kind: "primary",
+    is_active: true,
+    created_by: creator.id,
+  });
+  if (assignErr) {
+    console.error("FAIL: task_assignments", assignErr.message || assignErr);
     process.exit(5);
   }
 

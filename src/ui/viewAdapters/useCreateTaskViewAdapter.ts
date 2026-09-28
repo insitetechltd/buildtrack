@@ -31,6 +31,7 @@ import {
   canEditTaskDelegation,
   canSelectUserAsAssignee,
   filterSelectableAssigneeUsers,
+  resolveAssigneeCandidateRoleFromUser,
   resolveAssigneeRoleFromUser,
 } from '../contracts/taskDelegationPermissions';
 import {
@@ -39,13 +40,17 @@ import {
   type ProjectContainerRecord,
 } from '../contracts/taskContainers';
 import { Priority, TaskCategory, BillingStatus, TaskStatus, isManagerOrAdmin } from '../../types/buildtrack';
-import { getSessionScopedSupabase } from '../../api/supabaseSessionGate';
+import { waitForSessionScopedSupabase } from '../../api/supabaseSessionGate';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { resolveWorkspaceProjectId } from '../contracts/workspaceProject';
 import { useTranslation, getNestedTranslation } from '../../utils/useTranslation';
 import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
 import { taskRequiresAssignees } from '../../utils/taskUpdateValidation';
 import { resolveInitialTaskCreateStatus } from '../../utils/taskCreateValidation';
+import {
+  chosenPhotosAllUploaded,
+  evidencePhotosFailedMessage,
+} from '../../utils/evidencePhotoSubmit';
 import {
   deleteLocalTaskDraft,
   deserializeCreateTaskForm,
@@ -231,6 +236,7 @@ export function useCreateTaskViewAdapter({
     createTask,
     createSubTask,
     updateTask,
+    deleteTaskById,
     triageTask,
     fetchProjectLocations = NOOP_FETCH_PROJECT_LOCATIONS,
     ensureProjectLocation = NOOP_ENSURE_PROJECT_LOCATION,
@@ -423,10 +429,9 @@ export function useCreateTaskViewAdapter({
     if (!activeProjectId) newErrors.projectId = 'Project is required';
 
     const isReportIntent = formData.intentMode === 'report_issue';
-    const isMyTaskIntent = formData.intentMode === 'my_task';
 
     if (!editTaskId) {
-      if (!isReportIntent && !isMyTaskIntent) {
+      if (!isReportIntent) {
         const { assignedTo } = buildRedesignMetadataPayload(formData);
         if (assignedTo.length === 0) {
           newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
@@ -455,22 +460,24 @@ export function useCreateTaskViewAdapter({
     () => resolveAssigneeRoleFromUser(user),
     [user],
   );
+  const rosterUsers = getAllUsers();
+  const rosterAssignments = getProjectUserAssignments(activeProjectId);
   const allAssignableUsers = useMemo(() => {
     const projectMembers = getAssignableProjectUsers({
       projectId: activeProjectId,
-      assignments: getProjectUserAssignments(activeProjectId),
-      users: getAllUsers(),
+      assignments: rosterAssignments,
+      users: rosterUsers,
     });
     return filterSelectableAssigneeUsers(projectMembers, {
       actorRole: actorAssigneeRole,
       actorUserId: user?.id,
-      resolveRole: resolveAssigneeRoleFromUser,
+      resolveRole: resolveAssigneeCandidateRoleFromUser,
     });
   }, [
     activeProjectId,
     actorAssigneeRole,
-    getAllUsers,
-    getProjectUserAssignments,
+    rosterAssignments,
+    rosterUsers,
     user?.id,
   ]);
   const filteredAssignableUsers = useMemo(() => {
@@ -580,7 +587,7 @@ export function useCreateTaskViewAdapter({
           assignableUserIds: assignableIds,
           actorRole: actorAssigneeRole,
           actorUserId: user?.id,
-          candidateRole: resolveAssigneeRoleFromUser(candidate),
+          candidateRole: resolveAssigneeCandidateRoleFromUser(candidate),
         })
       ) {
         return;
@@ -773,37 +780,55 @@ export function useCreateTaskViewAdapter({
     }
 
     let cancelled = false;
-    setIsLoadingUsers(true);
+    // Prefer cached roster so Assign To is usable while a refresh runs.
+    const cachedAssignable = getAssignableProjectUsers({
+      projectId: activeProjectId,
+      assignments: getProjectUserAssignments(activeProjectId),
+      users: getAllUsers(),
+    });
+    setIsLoadingUsers(cachedAssignable.length === 0);
 
-    const waitForSession = async (timeoutMs = 20000) => {
-      const started = Date.now();
-      while (!cancelled && Date.now() - started < timeoutMs) {
-        const sessionClient = await getSessionScopedSupabase();
-        if (sessionClient) {
-          return sessionClient;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-      return null;
-    };
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${ms}ms`));
+        }, ms);
+        promise.then(
+          (value) => {
+            clearTimeout(timer);
+            resolve(value);
+          },
+          (err) => {
+            clearTimeout(timer);
+            reject(err);
+          },
+        );
+      });
 
     void (async () => {
       try {
-        const sessionClient = await waitForSession();
+        // Shared gate (8s) — avoid a local 20s poll that stacks with slow fetches.
+        const sessionClient = await waitForSessionScopedSupabase(8000, 200);
         if (!sessionClient || cancelled) {
           return;
         }
 
         // Assignee picker = local join(project assignments ∩ company users).
-        // Both must be fetched under JWT after login — service-role ensure scripts
-        // do not populate in-memory Zustand stores.
+        // Cap total wait so the field cannot spin for a minute+ on a hung request.
+        // Soft refresh (force=false) reuses single-flight TTL when already warm.
         const userFetch = user?.companyId
           ? fetchUsersByCompany(user.companyId)
           : fetchUsers();
-        await Promise.all([
-          userFetch,
-          fetchProjectUserAssignments(activeProjectId, true),
-        ]);
+        await withTimeout(
+          Promise.all([
+            userFetch,
+            fetchProjectUserAssignments(activeProjectId, false),
+          ]),
+          15000,
+          "Assignee roster fetch",
+        );
+      } catch (error) {
+        console.warn("[CreateTask] assignee roster load failed", error);
       } finally {
         if (!cancelled) {
           setIsLoadingUsers(false);
@@ -819,6 +844,8 @@ export function useCreateTaskViewAdapter({
     fetchProjectUserAssignments,
     fetchUsers,
     fetchUsersByCompany,
+    getAllUsers,
+    getProjectUserAssignments,
     user?.companyId,
   ]);
 
@@ -991,11 +1018,15 @@ export function useCreateTaskViewAdapter({
     );
     const localPhotos = attachments.filter(isSelectedPhotoAttachment);
 
-    if (!entityId || localPhotos.length === 0 || !user?.companyId || !user?.id) {
+    if (localPhotos.length === 0) {
       return {
         baseAttachments: durableAttachments,
         uploadedAttachments: [] as string[],
       };
+    }
+
+    if (!entityId || !user?.companyId || !user?.id) {
+      throw new Error(evidencePhotosFailedMessage(0, localPhotos.length));
     }
 
     const uploadedAttachments: string[] = [];
@@ -1019,6 +1050,12 @@ export function useCreateTaskViewAdapter({
       }
 
       uploadedAttachments.push(result.file.public_url);
+    }
+
+    if (!chosenPhotosAllUploaded(localPhotos.length, uploadedAttachments.length)) {
+      throw new Error(
+        evidencePhotosFailedMessage(uploadedAttachments.length, localPhotos.length),
+      );
     }
 
     return {
@@ -1062,6 +1099,8 @@ export function useCreateTaskViewAdapter({
   const submit = async (options?: { editReason?: string }) => {
     if (!validateForm()) return false;
     setIsSubmitting(true);
+    let createdEntityId: string | undefined;
+    const hadLocalPhotos = formData.attachments.some(isSelectedPhotoAttachment);
     try {
       const submitProjectId = activeProjectId;
       const trimmedLocationOnSite = formData.locationOnSite.trim() || undefined;
@@ -1136,7 +1175,7 @@ export function useCreateTaskViewAdapter({
           } as Partial<any>);
         }
       } else if (parentTaskId) {
-        const createdSubTaskId = await createSubTask(parentTaskId, {
+        createdEntityId = await createSubTask(parentTaskId, {
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
@@ -1152,10 +1191,10 @@ export function useCreateTaskViewAdapter({
         });
         const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
           formData.attachments,
-          createdSubTaskId,
+          createdEntityId,
         );
         if (uploadedAttachments.length > 0) {
-          await updateTask(createdSubTaskId, {
+          await updateTask(createdEntityId, {
             attachments: [...baseAttachments, ...uploadedAttachments],
           } as Partial<any>);
         }
@@ -1163,18 +1202,16 @@ export function useCreateTaskViewAdapter({
         const isReportIntent =
           formData.intentMode === 'report_issue' && redesignMetadata.assignedTo.length === 0;
         const isMyTaskIntent = formData.intentMode === 'my_task';
-        const submitAssignedTo = isReportIntent
-          ? []
-          : isMyTaskIntent
-            ? [user?.id || '']
-            : redesignMetadata.assignedTo;
+        const submitAssignedTo = isReportIntent ? [] : redesignMetadata.assignedTo;
         const submitStatus: TaskStatus = isReportIntent
           ? 'reported'
-          : isMyTaskIntent
-            ? 'in_progress'
-            : resolveInitialTaskCreateStatus(user?.id || '', submitAssignedTo);
+          : resolveInitialTaskCreateStatus(
+              user?.id || '',
+              submitAssignedTo,
+              isMyTaskIntent ? 'my_task' : formData.intentMode,
+            );
 
-        const createdTaskId = await createTask({
+        createdEntityId = await createTask({
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
@@ -1192,10 +1229,10 @@ export function useCreateTaskViewAdapter({
         } as Parameters<typeof createTask>[0]);
         const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
           formData.attachments,
-          createdTaskId,
+          createdEntityId,
         );
         if (uploadedAttachments.length > 0) {
-          await updateTask(createdTaskId, {
+          await updateTask(createdEntityId, {
             attachments: [...baseAttachments, ...uploadedAttachments],
           } as Partial<any>);
         }
@@ -1212,6 +1249,13 @@ export function useCreateTaskViewAdapter({
       }
       return true;
     } catch (e) {
+      if (createdEntityId && hadLocalPhotos && user?.id && deleteTaskById) {
+        try {
+          await deleteTaskById(createdEntityId, user.id);
+        } catch (rollbackError) {
+          console.warn("[CreateTask] failed to roll back task after photo upload error", rollbackError);
+        }
+      }
       console.error(e);
       const message =
         e instanceof Error && e.message

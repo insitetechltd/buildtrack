@@ -48,6 +48,7 @@ jest.mock("@/utils/libraryWarmPrefetch", () => ({
 
 jest.mock("../PhotokitThumbView", () => ({
   isPhotokitLibraryIndexAvailable: () => true,
+  isPhotokitLibrary2bAvailable: () => false,
   previewPhotokitNewestIds: (...args: unknown[]) =>
     mockPreviewNewestIds(...args),
 }));

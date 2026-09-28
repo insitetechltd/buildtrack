@@ -103,7 +103,7 @@ To verify the fix works:
 
 ```bash
 # Check tasks in Buildtrack App project
-cd "/Volumes/KooDrive/Insite App" && node -e "
+cd "/Volumes/KooDrive/InsiteApp" && node -e "
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 

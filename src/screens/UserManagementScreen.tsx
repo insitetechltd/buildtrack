@@ -118,6 +118,7 @@ function UserCard({
   onRemoveAssignment,
   onCopyInviteLink,
   onDeactivate,
+  onChangeSeat,
 }: {
   card: UserManagementUserCard;
   isCopyingInvite: boolean;
@@ -127,6 +128,7 @@ function UserCard({
   onRemoveAssignment: (userId: string, projectId: string) => void;
   onCopyInviteLink: (userId: string) => void;
   onDeactivate: (userId: string) => void;
+  onChangeSeat: (userId: string, seatType: "pm" | "worker") => void;
 }) {
   const contactLine = formatContactLine(card.phone, card.email);
   const visibleAssignments = card.assignmentRows.slice(0, MAX_VISIBLE_ASSIGNMENTS);
@@ -163,6 +165,58 @@ function UserCard({
         <Text className="mt-1 text-base text-gray-500" numberOfLines={1} ellipsizeMode="tail">
           {contactLine}
         </Text>
+      ) : null}
+
+      {card.canChangeSeat && card.deployableSeatType ? (
+        <View className="mt-3">
+          <Text className="mb-2 text-sm font-medium text-gray-700">Seat</Text>
+          <View className="flex-row gap-2">
+            <Pressable
+              testID={`user-management__seat-worker-${card.userId}`}
+              onPress={() => onChangeSeat(card.userId, "worker")}
+              accessibilityRole="button"
+              accessibilityState={{ selected: card.deployableSeatType === "worker" }}
+              accessibilityLabel="Set seat to Worker"
+              className={cn(
+                "flex-1 items-center rounded-lg border px-3 py-2",
+                card.deployableSeatType === "worker"
+                  ? "border-[#08576E] bg-[#08576E]"
+                  : "border-gray-300 bg-white",
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-base font-semibold",
+                  card.deployableSeatType === "worker" ? "text-white" : "text-gray-700",
+                )}
+              >
+                Worker
+              </Text>
+            </Pressable>
+            <Pressable
+              testID={`user-management__seat-pm-${card.userId}`}
+              onPress={() => onChangeSeat(card.userId, "pm")}
+              accessibilityRole="button"
+              accessibilityState={{ selected: card.deployableSeatType === "pm" }}
+              accessibilityLabel="Set seat to PM"
+              className={cn(
+                "flex-1 items-center rounded-lg border px-3 py-2",
+                card.deployableSeatType === "pm"
+                  ? "border-[#08576E] bg-[#08576E]"
+                  : "border-gray-300 bg-white",
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-base font-semibold",
+                  card.deployableSeatType === "pm" ? "text-white" : "text-gray-700",
+                )}
+              >
+                PM
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       ) : null}
 
       {card.isPending ? (
@@ -343,12 +397,14 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         onRemoveAssignment={actions.requestRemoveAssignment}
         onCopyInviteLink={actions.copyInviteLink}
         onDeactivate={actions.requestDeactivateUser}
+        onChangeSeat={actions.requestChangeSeat}
       />
     ),
     [
       actions.copyInviteLink,
       actions.requestApproveUser,
       actions.requestAssignUser,
+      actions.requestChangeSeat,
       actions.requestDeactivateUser,
       actions.requestRejectUser,
       actions.requestRemoveAssignment,
@@ -731,6 +787,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
             <View className="flex-row mb-4">
               <Pressable
                 testID="invite-seat-worker"
+                accessibilityState={{ selected: output.inviteForm.seatType === "worker" }}
                 onPress={() => actions.setInviteSeatType("worker")}
                 className={`flex-1 py-3 rounded-lg mr-2 items-center ${
                   output.inviteForm.seatType === "worker" ? "bg-blue-600" : "bg-gray-100"
@@ -748,6 +805,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
               </Pressable>
               <Pressable
                 testID="invite-seat-pm"
+                accessibilityState={{ selected: output.inviteForm.seatType === "pm" }}
                 onPress={() => actions.setInviteSeatType("pm")}
                 className={`flex-1 py-3 rounded-lg items-center ${
                   output.inviteForm.seatType === "pm" ? "bg-blue-600" : "bg-gray-100"

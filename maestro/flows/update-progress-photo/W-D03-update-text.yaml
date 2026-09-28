@@ -15,9 +15,9 @@ tags:
 - tapOn:
     id: "update-progress__description"
 - inputText: ${output.progressNote}
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - tapOn: "Photos & Files"
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
     element:

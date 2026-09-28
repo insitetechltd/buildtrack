@@ -1,6 +1,6 @@
 # Solo Section E ordinary boot — bob.workera2@test.com.
 # No clearState. Resume if already Bob; login only if on Login.
-# If this sim must switch away from another user, call ../_logout.yaml first.
+# If this sim must switch away from another user, call ../_shared/_logout.yaml first.
 appId: com.buildtrack.app.local
 ---
 - launchApp:
@@ -10,7 +10,7 @@ appId: com.buildtrack.app.local
       medialibrary: allow
       camera: allow
       notifications: deny
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - runFlow:
     when:
       visible:

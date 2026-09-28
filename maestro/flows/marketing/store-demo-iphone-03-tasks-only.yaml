@@ -1,0 +1,97 @@
+# Resume: recapture Tasks list only (John already on Store Demo).
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow:
+    when:
+      visible: "Loading from Metro..."
+    commands:
+      - extendedWaitUntil:
+          notVisible: "Loading from Metro..."
+          timeout: 180000
+- runFlow:
+    when:
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - eraseText
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - eraseText
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+      - runFlow:
+          when:
+            visible: "Save Password?"
+          commands:
+            - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__tasks_pressable"
+    timeout: 90000
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+# Prefer Store Demo project if picker needed
+- runFlow:
+    when:
+      notVisible: "Store Demo"
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - extendedWaitUntil:
+          visible:
+            id: "projectPicker-scroll"
+          timeout: 15000
+      - scrollUntilVisible:
+          element:
+            id: "project-picker__row-1a790ed9-f3fb-4857-a9e6-40327cfb86e1"
+          direction: DOWN
+          timeout: 20000
+      - tapOn:
+          id: "project-picker__row-1a790ed9-f3fb-4857-a9e6-40327cfb86e1"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+      - extendedWaitUntil:
+          visible:
+            id: "tasks-screen__root"
+          timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    start: "50%, 55%"
+    end: "50%, 45%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 10000
+- swipe:
+    start: "50%, 45%"
+    end: "50%, 55%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: "store-03-tasks"

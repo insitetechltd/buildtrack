@@ -1,4 +1,6 @@
 # DU-D01 phase 4 — John sees declined task (no Accept for assignee path).
+# Progress chips accordion is often collapsed (a11y hides "Declined · …");
+# Reassign CTA is the durable assigner signal after decline.
 appId: com.buildtrack.app.local
 tags:
   - dual-user
@@ -8,5 +10,20 @@ tags:
 - runFlow: _open-task-by-title.yaml
 - assertNotVisible:
     id: "task-detail__quick-action-accept_task"
-- assertVisible: ".*Declined.*"
+- assertVisible:
+    id: "task-detail__reassign"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__status_chips__toggle"
+    commands:
+      - tapOn:
+          id: "task-detail__status_chips__toggle"
+      - waitForAnimationToEnd:
+          timeout: 800
+- runFlow:
+    when:
+      visible: "Declined"
+    commands:
+      - takeScreenshot: "du-d01-04-john-status-declined"
 - takeScreenshot: "du-d01-04-john-sees-declined"

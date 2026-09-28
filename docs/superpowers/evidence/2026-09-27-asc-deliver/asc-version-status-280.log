@@ -1,0 +1,38 @@
+[18:56:34]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[18:56:35]: ------------------------------
+[18:56:35]: --- Step: default_platform ---
+[18:56:35]: ------------------------------
+[18:56:35]: Driving the lane 'ios asc_build_status' 🚀
+[18:56:35]: --------------------------------------------
+[18:56:35]: --- Step: Switch to ios asc_api_key lane ---
+[18:56:35]: --------------------------------------------
+[18:56:35]: Cruising over to lane 'ios asc_api_key' 🚖
+[18:56:35]: ---------------------------------------
+[18:56:35]: --- Step: app_store_connect_api_key ---
+[18:56:35]: ---------------------------------------
+[18:56:35]: Cruising back to lane 'ios asc_build_status' 🚘
+[18:56:36]: Version 1.1.3 state=READY_FOR_REVIEW build=280
+[18:56:36]: Version 1.0 state=READY_FOR_DISTRIBUTION build=127
+[18:56:37]: ReviewSubmission 731376ca-1398-4138-8ab3-083c42079c0e state=UNRESOLVED_ISSUES platform=IOS
+[18:56:37]: ReviewSubmission 1cff3759-7589-4d90-88d9-96d7df49393c state=COMPLETE platform=IOS
+[18:56:38]: Editable version: (none) state=
+[18:56:38]: Currently selected build: (none)
+[18:56:49]: VALID: 280:VALID, 279:VALID, 278:VALID, 277:VALID, 276:VALID, 275:VALID, 274:VALID, 273:VALID, 272:VALID, 271:VALID, 270:VALID, 269:VALID, 268:VALID, 267:VALID, 266:VALID
+[18:56:49]: PROCESSING: (none)
+[18:56:50]: FAILED: (none)
+[18:56:51]: INVALID: (none)
+[18:57:01]: Build 280 is VALID (e8dd1413-c83f-43ef-9cc0-8ed35716f99e)
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[18:57:01]: fastlane.tools finished successfully 🎉

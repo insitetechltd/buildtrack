@@ -16,7 +16,7 @@ This design does not:
 
 ## Definitions
 
-- **Root worktree:** `/Volumes/KooDrive/Insite App` (the repository root).
+- **Root worktree:** `/Volumes/KooDrive/InsiteApp` (the repository root).
 - **Slice worktree:** a worktree created under `.worktrees/<slice-id>`.
 - **Slice id:** a taxonomy identifier like `WS-UX/S-UX-01I` (or a file-system-safe equivalent).
 

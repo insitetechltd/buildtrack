@@ -1,0 +1,34 @@
+[12:31:26]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[12:31:26]: ------------------------------
+[12:31:26]: --- Step: default_platform ---
+[12:31:26]: ------------------------------
+[12:31:26]: Driving the lane 'ios asc_build_status' 🚀
+[12:31:26]: --------------------------------------------
+[12:31:26]: --- Step: Switch to ios asc_api_key lane ---
+[12:31:26]: --------------------------------------------
+[12:31:26]: Cruising over to lane 'ios asc_api_key' 🚖
+[12:31:26]: ---------------------------------------
+[12:31:26]: --- Step: app_store_connect_api_key ---
+[12:31:26]: ---------------------------------------
+[12:31:26]: Cruising back to lane 'ios asc_build_status' 🚘
+[12:31:28]: Editable version: 1.1.3 state=PREPARE_FOR_SUBMISSION
+[12:31:28]: Currently selected build: 279 (bd7f4ad8-dd86-4ade-9246-509f138bb108)
+[12:31:39]: VALID: 280:VALID, 279:VALID, 278:VALID, 277:VALID, 276:VALID, 275:VALID, 274:VALID, 273:VALID, 272:VALID, 271:VALID, 270:VALID, 269:VALID, 268:VALID, 267:VALID, 266:VALID
+[12:31:39]: PROCESSING: (none)
+[12:31:40]: FAILED: (none)
+[12:31:40]: INVALID: (none)
+[12:31:52]: Build 280 is VALID (e8dd1413-c83f-43ef-9cc0-8ed35716f99e)
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[12:31:52]: fastlane.tools finished successfully 🎉

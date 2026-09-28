@@ -107,6 +107,36 @@ fi
 [ -f .cursor/skills/insite-dev/SKILL.md ] && ok "insite-dev skill present" || warn "insite-dev skill missing"
 [ -d .trae ] && warn ".trae/ still present (legacy — Cursor rules are SoT)"
 
+# Test taxonomy (containers + no Maestro root orphans)
+if [ -f scripts/dev/assert-test-taxonomy.mjs ] && [ -f documentation/TEST_TAXONOMY.md ]; then
+  if node ./scripts/dev/assert-test-taxonomy.mjs >/dev/null 2>&1; then
+    ok "test taxonomy (npm run test:taxonomy)"
+  else
+    bad "test taxonomy stale/orphans — run: npm run test:taxonomy -- --write (see documentation/TEST_TAXONOMY.md)"
+  fi
+else
+  warn "test taxonomy files missing"
+fi
+
+# Stale pre-rename folder path in docs (`Insite App` → `InsiteApp`, 2026-07-09).
+# Historical FROM paths are allowed only in the path-migration plan.
+if command -v rg >/dev/null 2>&1; then
+  STALE_DOCS="$(rg -n --hidden \
+    -g '*.md' -g '*.mdc' \
+    -g '!node_modules/**' -g '!.git/**' -g '!.cache/**' -g '!ios/**' -g '!android/**' -g '!.eas/**' \
+    -g '!docs/superpowers/plans/2026-07-09-insiteapp-path-migration-and-eas-workflow.md' \
+    'Insite%20App|/Volumes/KooDrive/Insite App|\]\([^)]*Insite App/|/KooDrive/Insite App' \
+    "$ROOT" 2>/dev/null || true)"
+  if [ -n "$STALE_DOCS" ]; then
+    bad "stale Insite App folder path in docs — use repo-relative links (root is InsiteApp)"
+    printf '%s\n' "$STALE_DOCS" | head -n 20
+  else
+    ok "no stale Insite App folder paths in docs"
+  fi
+else
+  warn "rg missing — skipped stale-docs-path check"
+fi
+
 echo
 echo "=== summary ==="
 echo "pass=$PASS warn=$WARN fail=$FAIL"

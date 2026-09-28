@@ -1,0 +1,637 @@
+=== Stage D org-ca preflight ===
+UDID=B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+STAGE_D_O2_NAME=StageD-O2-20260922_231641
+LOCKED B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 (iPhone 17 Pro Max) purpose=stage-d-org-ca owner=tristan@tristans-mini
+LOCKED user:carol.admina purpose=stage-d-org-ca owner=tristan@tristans-mini
+
+=== FLOW O1: O1-ca-shell.yaml ===
+[23:16:41 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home
+[23:16:41 run-local.sh]   args: test --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 -e MAESTRO_STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e MAESTRO_STAGE_D_RUN_ID=20260922_231641 -e STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e STAGE_D_RUN_ID=20260922_231641 /Volumes/KooDrive/InsiteApp/maestro/flows/org/O1-ca-shell.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow O1-ca-shell
+Run _boot-carol.yaml...
+  Launch app "com.buildtrack.app.local"... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[23:16:51 run-local.sh]   ALIVE pid=5605  elapsed=10s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when id: login-submit is not visible...
+    Run ../_logout.yaml...
+      Run _dismiss-blocking-overlays.yaml...
+        Run flow when "Save Password?" is visible...
+[23:17:02 run-local.sh]   ALIVE pid=5605  elapsed=21s  (heartbeat every 10s)
+        Run flow when "Save Password?" is visible... SKIPPED
+        Run flow when "Save Password" is visible...
+        Run flow when "Save Password" is visible... SKIPPED
+        Run flow when "Choose how you want to add photos" is visible...
+        Run flow when "Choose how you want to add photos" is visible... SKIPPED
+        Run flow when "Allow Full Access" is visible...
+        Run flow when "Allow Full Access" is visible... SKIPPED
+        Run flow when "Allow Access to All Photos" is visible...
+        Run flow when "Allow Access to All Photos" is visible... SKIPPED
+        Run flow when "Allow.*Photos.*" is visible...
+        Run flow when "Allow.*Photos.*" is visible... SKIPPED
+        Repeat 3 times...
+          Tap on (Optional) "Dismiss"... WARNED
+        Repeat 3 times... COMPLETED
+        Run flow when "OK" is visible...
+        Run flow when "OK" is visible... SKIPPED
+        Wait for animation to end within 1000 ms... COMPLETED
+      Run _dismiss-blocking-overlays.yaml... COMPLETED
+      Run flow when "Are you sure you want to logout?" is visible...
+[23:17:11 run-local.sh]   ALIVE pid=5605  elapsed=30s  (heartbeat every 10s)
+      Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+      Run flow when id: login-submit is not visible...
+        Tap on id: app-screen-header__profile-trigger... COMPLETED
+        Assert that id: profile-menu-logout is visible... COMPLETED
+        Tap on id: profile-menu-logout... COMPLETED
+        Assert that "Are you sure you want to logout?" is visible... COMPLETED
+        Tap on "Logout", Index: 1...[23:17:21 run-local.sh]   ALIVE pid=5605  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+        Run flow when "Are you sure you want to logout?" is visible...
+        Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+        Assert that id: login-submit is visible... COMPLETED
+        Wait for animation to end within 2000 ms... COMPLETED
+      Run flow when id: login-submit is not visible... COMPLETED
+    Run ../_logout.yaml... COMPLETED
+  Run flow when id: login-submit is not visible... COMPLETED
+  Assert that id: login-submit is visible... COMPLETED
+  Tap on id: ^login-emailOrPhone$... COMPLETED
+  Erase text...[23:17:31 run-local.sh]   ALIVE pid=5605  elapsed=50s  (heartbeat every 10s)
+ COMPLETED
+  Input text carol.admina@test.com... COMPLETED
+  Tap on id: ^login-password$... COMPLETED
+  Erase text... COMPLETED
+  Input text password123... COMPLETED
+  Tap on id: login-submit... COMPLETED
+  Run flow when "Save Password?" is visible...
+[23:17:41 run-local.sh]   ALIVE pid=5605  elapsed=60s  (heartbeat every 10s)
+  Run flow when "Save Password?" is visible... SKIPPED
+  Tap on (Optional) "Not Now"... WARNED
+  Run flow when id: admin-overview-hero is visible...
+  Run flow when id: admin-overview-hero is visible... SKIPPED
+  Assert that id: dashboard-screen__root is visible... COMPLETED
+  Take screenshot O1-carol-boot-home... COMPLETED
+Run _boot-carol.yaml... COMPLETED
+Tap on id: app-screen-header__profile-trigger... COMPLETED
+Assert that id: profile-menu-company_admin is visible... COMPLETED
+Take screenshot O1-profile-menu-ca... COMPLETED
+Tap on id: profile-menu-company_admin...[23:17:51 run-local.sh]   ALIVE pid=5605  elapsed=70s  (heartbeat every 10s)
+ COMPLETED
+Wait for animation to end within 4000 ms... COMPLETED
+Assert that id: admin-stat-section-team is visible... COMPLETED
+Assert that id: admin-stat-section-projects is visible... COMPLETED
+Take screenshot O1-admin-dashboard... COMPLETED
+[23:17:56 run-local.sh]   FINISHED pid=5605  elapsed=75s  rc=0  (PASS)
+generated /Volumes/KooDrive/InsiteApp/.cache/maestro-org-generated/O2-create-project-member.yaml name StageD-O2-20260922_231641
+=== FLOW O2: generated /Volumes/KooDrive/InsiteApp/.cache/maestro-org-generated/O2-create-project-member.yaml ===
+[23:17:56 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home
+[23:17:56 run-local.sh]   args: test --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 -e MAESTRO_STAGE_D_O2_NAME=StageD-O2-20260922_231641 /Volumes/KooDrive/InsiteApp/.cache/maestro-org-generated/O2-create-project-member.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow O2-create-project-member
+Run /Volumes/KooDrive/InsiteApp/maestro/flows/org/O1-ca-shell.yaml...
+  Run _boot-carol.yaml...
+    Launch app "com.buildtrack.app.local"... COMPLETED
+    Run ../_dismiss-blocking-overlays.yaml...
+      Run flow when "Save Password?" is visible...
+[23:18:06 run-local.sh]   ALIVE pid=7009  elapsed=10s  (heartbeat every 10s)
+      Run flow when "Save Password?" is visible... SKIPPED
+      Run flow when "Save Password" is visible...
+      Run flow when "Save Password" is visible... SKIPPED
+      Run flow when "Choose how you want to add photos" is visible...
+      Run flow when "Choose how you want to add photos" is visible... SKIPPED
+      Run flow when "Allow Full Access" is visible...
+      Run flow when "Allow Full Access" is visible... SKIPPED
+      Run flow when "Allow Access to All Photos" is visible...
+      Run flow when "Allow Access to All Photos" is visible... SKIPPED
+      Run flow when "Allow.*Photos.*" is visible...
+      Run flow when "Allow.*Photos.*" is visible... SKIPPED
+      Repeat 3 times...
+        Tap on (Optional) "Dismiss"... WARNED
+      Repeat 3 times... COMPLETED
+      Run flow when "OK" is visible...
+      Run flow when "OK" is visible... SKIPPED
+      Wait for animation to end within 1000 ms... COMPLETED
+    Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+    Run flow when id: login-submit is not visible...
+[23:18:16 run-local.sh]   ALIVE pid=7009  elapsed=20s  (heartbeat every 10s)
+      Run ../_logout.yaml...
+        Run _dismiss-blocking-overlays.yaml...
+          Run flow when "Save Password?" is visible...
+          Run flow when "Save Password?" is visible... SKIPPED
+          Run flow when "Save Password" is visible...
+          Run flow when "Save Password" is visible... SKIPPED
+          Run flow when "Choose how you want to add photos" is visible...
+          Run flow when "Choose how you want to add photos" is visible... SKIPPED
+          Run flow when "Allow Full Access" is visible...
+          Run flow when "Allow Full Access" is visible... SKIPPED
+          Run flow when "Allow Access to All Photos" is visible...
+          Run flow when "Allow Access to All Photos" is visible... SKIPPED
+          Run flow when "Allow.*Photos.*" is visible...
+          Run flow when "Allow.*Photos.*" is visible... SKIPPED
+          Repeat 3 times...
+            Tap on (Optional) "Dismiss"...[23:18:26 run-local.sh]   ALIVE pid=7009  elapsed=30s  (heartbeat every 10s)
+ WARNED
+          Repeat 3 times... COMPLETED
+          Run flow when "OK" is visible...
+          Run flow when "OK" is visible... SKIPPED
+          Wait for animation to end within 1000 ms... COMPLETED
+        Run _dismiss-blocking-overlays.yaml... COMPLETED
+        Run flow when "Are you sure you want to logout?" is visible...
+        Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+        Run flow when id: login-submit is not visible...
+          Tap on id: app-screen-header__profile-trigger...[23:18:36 run-local.sh]   ALIVE pid=7009  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+          Assert that id: profile-menu-logout is visible... COMPLETED
+          Tap on id: profile-menu-logout... COMPLETED
+          Assert that "Are you sure you want to logout?" is visible... COMPLETED
+          Tap on "Logout", Index: 1... COMPLETED
+          Run flow when "Are you sure you want to logout?" is visible...
+[23:18:46 run-local.sh]   ALIVE pid=7009  elapsed=50s  (heartbeat every 10s)
+          Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+          Assert that id: login-submit is visible... COMPLETED
+          Wait for animation to end within 2000 ms... COMPLETED
+        Run flow when id: login-submit is not visible... COMPLETED
+      Run ../_logout.yaml... COMPLETED
+    Run flow when id: login-submit is not visible... COMPLETED
+    Assert that id: login-submit is visible... COMPLETED
+    Tap on id: ^login-emailOrPhone$... COMPLETED
+    Erase text... COMPLETED
+    Input text carol.admina@test.com... COMPLETED
+    Tap on id: ^login-password$... COMPLETED
+    Erase text...[23:18:56 run-local.sh]   ALIVE pid=7009  elapsed=60s  (heartbeat every 10s)
+ COMPLETED
+    Input text password123... COMPLETED
+    Tap on id: login-submit... COMPLETED
+    Run flow when "Save Password?" is visible...
+[23:19:06 run-local.sh]   ALIVE pid=7009  elapsed=70s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Tap on (Optional) "Not Now"... WARNED
+    Run flow when id: admin-overview-hero is visible...
+    Run flow when id: admin-overview-hero is visible... SKIPPED
+    Assert that id: dashboard-screen__root is visible... COMPLETED
+    Take screenshot O1-carol-boot-home... COMPLETED
+  Run _boot-carol.yaml... COMPLETED
+  Tap on id: app-screen-header__profile-trigger... COMPLETED
+  Assert that id: profile-menu-company_admin is visible... COMPLETED
+  Take screenshot O1-profile-menu-ca... COMPLETED
+  Tap on id: profile-menu-company_admin... COMPLETED
+  Wait for animation to end within 4000 ms... COMPLETED
+  Assert that id: admin-stat-section-team is visible... COMPLETED
+  Assert that id: admin-stat-section-projects is visible... COMPLETED
+  Take screenshot O1-admin-dashboard... COMPLETED
+Run /Volumes/KooDrive/InsiteApp/maestro/flows/org/O1-ca-shell.yaml... COMPLETED
+Tap on id: admin-stat-projects... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Assert that id: projects-create-action is visible... COMPLETED
+Tap on id: projects-create-action... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Assert that id: project-form-clientName is visible... COMPLETED
+Take screenshot O2-create-form...[23:19:16 run-local.sh]   ALIVE pid=7009  elapsed=80s  (heartbeat every 10s)
+ COMPLETED
+Tap on id: project-form-clientName... COMPLETED
+Input text Stage D Client... COMPLETED
+Assert that "Stage D Client" is visible... COMPLETED
+Tap on id: project-form-name... COMPLETED
+Input text StageD-O2-20260922_231641... COMPLETED
+Assert that "StageD-O2-20260922_231641" is visible... COMPLETED
+Tap on id: project-form-description... COMPLETED
+Input text Stage D O2 create+member proof... COMPLETED
+Assert that "Stage D O2 create+member proof" is visible... COMPLETED
+Tap on point (50%, 11%)...[23:19:26 run-local.sh]   ALIVE pid=7009  elapsed=90s  (heartbeat every 10s)
+ COMPLETED
+Wait for animation to end within 1200 ms... COMPLETED
+Scrolling DOWN until id: project-form-location is visible with speed 40, visibility percentage 100%, timeout 15000 ms, with centering enabled... COMPLETED
+Tap on id: project-form-location... COMPLETED
+Input text Jobsite A... COMPLETED
+Assert that "Jobsite A" is visible... COMPLETED
+Assert that "Stage D O2 create+member proof" is visible... COMPLETED
+Tap on point (50%, 11%)... COMPLETED
+Wait for animation to end within 1200 ms...[23:19:36 run-local.sh]   ALIVE pid=7009  elapsed=100s  (heartbeat every 10s)
+ COMPLETED
+Scrolling DOWN until id: project-form-team-card is visible with speed 40, visibility percentage 100%, timeout 15000 ms, with centering enabled... COMPLETED
+Assert that "Include Alice Worker A1 on this project" is visible... COMPLETED
+Tap on "Include Alice Worker A1 on this project"... COMPLETED
+Tap on point (50%, 11%)... COMPLETED
+Wait for animation to end within 1200 ms... COMPLETED
+Swipe from (50%, 55%) to (50%, 85%) in 500 ms... COMPLETED
+Wait for animation to end within 1200 ms... COMPLETED
+Scrolling DOWN until id: create-project__submit is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled...[23:19:46 run-local.sh]   ALIVE pid=7009  elapsed=110s  (heartbeat every 10s)
+[23:19:56 run-local.sh]   ALIVE pid=7009  elapsed=120s  (heartbeat every 10s)
+ COMPLETED
+Take screenshot O2-before-submit... COMPLETED
+Tap on id: create-project__submit... COMPLETED
+Tap on id: create-project__submit... COMPLETED
+Take screenshot O2-after-submit... COMPLETED
+Run flow when "Missing required fields" is visible...
+Run flow when "Missing required fields" is visible... SKIPPED
+Run flow when "OK" is visible...
+[23:20:06 run-local.sh]   ALIVE pid=7009  elapsed=130s  (heartbeat every 10s)
+Run flow when "OK" is visible... SKIPPED
+Run flow when "Error" is visible...
+Run flow when "Error" is visible... SKIPPED
+Assert that id: projects-create-action is visible... COMPLETED
+Tap on "Search projects..."... COMPLETED
+Input text StageD-O2-20260922_231641... COMPLETED
+Assert that "StageD-O2-20260922_231641" is visible... COMPLETED
+Assert that "StageD-O2-20260922_231641" is visible... COMPLETED
+Take screenshot O2-project-created... COMPLETED
+[23:20:14 run-local.sh]   FINISHED pid=7009  elapsed=138s  rc=0  (PASS)
+=== O2 DB readback ===
+{"ok":true,"projectId":"b0e76b9e-88d8-4e5b-bbfb-35b063029003","companyId":"2f13d7d6-5c26-439b-90c0-b39bd839e66b","aliceUpa":{"id":"77e0d20a-29a3-4fec-81c3-f61cbad225ad","is_active":true,"project_role":"worker"},"name":"StageD-O2-20260922_231641"}
+
+=== FLOW O3: O3-invite-validation.yaml ===
+[23:20:15 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home
+[23:20:15 run-local.sh]   args: test --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 -e MAESTRO_STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e MAESTRO_STAGE_D_RUN_ID=20260922_231641 -e STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e STAGE_D_RUN_ID=20260922_231641 /Volumes/KooDrive/InsiteApp/maestro/flows/org/O3-invite-validation.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow O3-invite-validation
+Run O1-ca-shell.yaml...
+  Run _boot-carol.yaml...
+    Launch app "com.buildtrack.app.local"... COMPLETED
+    Run ../_dismiss-blocking-overlays.yaml...
+      Run flow when "Save Password?" is visible...
+[23:20:25 run-local.sh]   ALIVE pid=9383  elapsed=10s  (heartbeat every 10s)
+      Run flow when "Save Password?" is visible... SKIPPED
+      Run flow when "Save Password" is visible...
+      Run flow when "Save Password" is visible... SKIPPED
+      Run flow when "Choose how you want to add photos" is visible...
+      Run flow when "Choose how you want to add photos" is visible... SKIPPED
+      Run flow when "Allow Full Access" is visible...
+      Run flow when "Allow Full Access" is visible... SKIPPED
+      Run flow when "Allow Access to All Photos" is visible...
+      Run flow when "Allow Access to All Photos" is visible... SKIPPED
+      Run flow when "Allow.*Photos.*" is visible...
+      Run flow when "Allow.*Photos.*" is visible... SKIPPED
+      Repeat 3 times...
+        Tap on (Optional) "Dismiss"... WARNED
+      Repeat 3 times... COMPLETED
+      Run flow when "OK" is visible...
+      Run flow when "OK" is visible... SKIPPED
+      Wait for animation to end within 1000 ms... COMPLETED
+    Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+    Run flow when id: login-submit is not visible...
+[23:20:35 run-local.sh]   ALIVE pid=9383  elapsed=20s  (heartbeat every 10s)
+      Run ../_logout.yaml...
+        Run _dismiss-blocking-overlays.yaml...
+          Run flow when "Save Password?" is visible...
+          Run flow when "Save Password?" is visible... SKIPPED
+          Run flow when "Save Password" is visible...
+          Run flow when "Save Password" is visible... SKIPPED
+          Run flow when "Choose how you want to add photos" is visible...
+          Run flow when "Choose how you want to add photos" is visible... SKIPPED
+          Run flow when "Allow Full Access" is visible...
+          Run flow when "Allow Full Access" is visible... SKIPPED
+          Run flow when "Allow Access to All Photos" is visible...
+          Run flow when "Allow Access to All Photos" is visible... SKIPPED
+          Run flow when "Allow.*Photos.*" is visible...
+          Run flow when "Allow.*Photos.*" is visible... SKIPPED
+          Repeat 3 times...
+            Tap on (Optional) "Dismiss"... WARNED
+          Repeat 3 times... COMPLETED
+          Run flow when "OK" is visible...
+[23:20:45 run-local.sh]   ALIVE pid=9383  elapsed=30s  (heartbeat every 10s)
+          Run flow when "OK" is visible... SKIPPED
+          Wait for animation to end within 1000 ms... COMPLETED
+        Run _dismiss-blocking-overlays.yaml... COMPLETED
+        Run flow when "Are you sure you want to logout?" is visible...
+        Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+        Run flow when id: login-submit is not visible...
+          Tap on id: app-screen-header__profile-trigger... COMPLETED
+          Assert that id: profile-menu-logout is visible... COMPLETED
+          Tap on id: profile-menu-logout...[23:20:55 run-local.sh]   ALIVE pid=9383  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+          Assert that "Are you sure you want to logout?" is visible... COMPLETED
+          Tap on "Logout", Index: 1... COMPLETED
+          Run flow when "Are you sure you want to logout?" is visible...
+          Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+          Assert that id: login-submit is visible... COMPLETED
+          Wait for animation to end within 2000 ms...[23:21:05 run-local.sh]   ALIVE pid=9383  elapsed=50s  (heartbeat every 10s)
+ COMPLETED
+        Run flow when id: login-submit is not visible... COMPLETED
+      Run ../_logout.yaml... COMPLETED
+    Run flow when id: login-submit is not visible... COMPLETED
+    Assert that id: login-submit is visible... COMPLETED
+    Tap on id: ^login-emailOrPhone$... COMPLETED
+    Erase text... COMPLETED
+    Input text carol.admina@test.com... COMPLETED
+    Tap on id: ^login-password$... COMPLETED
+    Erase text...[23:21:15 run-local.sh]   ALIVE pid=9383  elapsed=60s  (heartbeat every 10s)
+ COMPLETED
+    Input text password123... COMPLETED
+    Tap on id: login-submit... COMPLETED
+    Run flow when "Save Password?" is visible...
+[23:21:25 run-local.sh]   ALIVE pid=9383  elapsed=70s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Tap on (Optional) "Not Now"... WARNED
+    Run flow when id: admin-overview-hero is visible...
+    Run flow when id: admin-overview-hero is visible... SKIPPED
+    Assert that id: dashboard-screen__root is visible... COMPLETED
+    Take screenshot O1-carol-boot-home... COMPLETED
+  Run _boot-carol.yaml... COMPLETED
+  Tap on id: app-screen-header__profile-trigger... COMPLETED
+  Assert that id: profile-menu-company_admin is visible... COMPLETED
+  Take screenshot O1-profile-menu-ca... COMPLETED
+  Tap on id: profile-menu-company_admin... COMPLETED
+  Wait for animation to end within 4000 ms... COMPLETED
+  Assert that id: admin-stat-section-team is visible... COMPLETED
+  Assert that id: admin-stat-section-projects is visible... COMPLETED
+  Take screenshot O1-admin-dashboard... COMPLETED
+Run O1-ca-shell.yaml... COMPLETED
+Tap on id: admin-stat-team... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Assert that id: user-management__add-user_button is visible... COMPLETED
+Tap on id: user-management__add-user_button... COMPLETED
+Assert that id: invite-modal-title is visible... COMPLETED
+Assert that id: invite-seat-worker is visible... COMPLETED
+Take screenshot O3-invite-modal... COMPLETED
+Tap on id: invite-submit...[23:21:35 run-local.sh]   ALIVE pid=9383  elapsed=80s  (heartbeat every 10s)
+ COMPLETED
+Assert that "Name and email are required" is visible... COMPLETED
+Assert that id: invite-error is visible... COMPLETED
+Take screenshot O3-empty-required... COMPLETED
+Tap on id: invite-name... COMPLETED
+Input text Probe Invalid... COMPLETED
+Tap on id: invite-email... COMPLETED
+Input text stage-d-o3-${MAESTRO_STAGE_D_RUN_ID}@example.invalid... COMPLETED
+Tap on id: invite-seat-worker... COMPLETED
+Tap on id: invite-submit... COMPLETED
+Assert that id: invite-error is visible... COMPLETED
+Assert that "unknown_error" is not visible...[23:21:45 run-local.sh]   ALIVE pid=9383  elapsed=90s  (heartbeat every 10s)
+ COMPLETED
+Take screenshot O3-structured-fail... COMPLETED
+[23:21:49 run-local.sh]   FINISHED pid=9383  elapsed=94s  rc=0  (PASS)
+
+=== FLOW S2: S2-logout-relogin.yaml ===
+[23:21:49 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home
+[23:21:49 run-local.sh]   args: test --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 -e MAESTRO_STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e MAESTRO_STAGE_D_RUN_ID=20260922_231641 -e STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e STAGE_D_RUN_ID=20260922_231641 /Volumes/KooDrive/InsiteApp/maestro/flows/org/S2-logout-relogin.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow S2-logout-relogin
+Run O1-ca-shell.yaml...
+  Run _boot-carol.yaml...
+    Launch app "com.buildtrack.app.local"... COMPLETED
+    Run ../_dismiss-blocking-overlays.yaml...
+      Run flow when "Save Password?" is visible...
+[23:21:59 run-local.sh]   ALIVE pid=11095  elapsed=10s  (heartbeat every 10s)
+      Run flow when "Save Password?" is visible... SKIPPED
+      Run flow when "Save Password" is visible...
+      Run flow when "Save Password" is visible... SKIPPED
+      Run flow when "Choose how you want to add photos" is visible...
+      Run flow when "Choose how you want to add photos" is visible... SKIPPED
+      Run flow when "Allow Full Access" is visible...
+      Run flow when "Allow Full Access" is visible... SKIPPED
+      Run flow when "Allow Access to All Photos" is visible...
+      Run flow when "Allow Access to All Photos" is visible... SKIPPED
+      Run flow when "Allow.*Photos.*" is visible...
+      Run flow when "Allow.*Photos.*" is visible... SKIPPED
+      Repeat 3 times...
+        Tap on (Optional) "Dismiss"... WARNED
+      Repeat 3 times... COMPLETED
+      Run flow when "OK" is visible...
+      Run flow when "OK" is visible... SKIPPED
+      Wait for animation to end within 1000 ms... COMPLETED
+    Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+    Run flow when id: login-submit is not visible...
+[23:22:09 run-local.sh]   ALIVE pid=11095  elapsed=20s  (heartbeat every 10s)
+      Run ../_logout.yaml...
+        Run _dismiss-blocking-overlays.yaml...
+          Run flow when "Save Password?" is visible...
+          Run flow when "Save Password?" is visible... SKIPPED
+          Run flow when "Save Password" is visible...
+          Run flow when "Save Password" is visible... SKIPPED
+          Run flow when "Choose how you want to add photos" is visible...
+          Run flow when "Choose how you want to add photos" is visible... SKIPPED
+          Run flow when "Allow Full Access" is visible...
+          Run flow when "Allow Full Access" is visible... SKIPPED
+          Run flow when "Allow Access to All Photos" is visible...
+          Run flow when "Allow Access to All Photos" is visible... SKIPPED
+          Run flow when "Allow.*Photos.*" is visible...
+          Run flow when "Allow.*Photos.*" is visible... SKIPPED
+          Repeat 3 times...
+            Tap on (Optional) "Dismiss"...[23:22:19 run-local.sh]   ALIVE pid=11095  elapsed=30s  (heartbeat every 10s)
+ WARNED
+          Repeat 3 times... COMPLETED
+          Run flow when "OK" is visible...
+          Run flow when "OK" is visible... SKIPPED
+          Wait for animation to end within 1000 ms... COMPLETED
+        Run _dismiss-blocking-overlays.yaml... COMPLETED
+        Run flow when "Are you sure you want to logout?" is visible...
+        Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+        Run flow when id: login-submit is not visible...
+          Tap on id: app-screen-header__profile-trigger...[23:22:29 run-local.sh]   ALIVE pid=11095  elapsed=40s  (heartbeat every 10s)
+ COMPLETED
+          Assert that id: profile-menu-logout is visible... COMPLETED
+          Tap on id: profile-menu-logout... COMPLETED
+          Assert that "Are you sure you want to logout?" is visible... COMPLETED
+          Tap on "Logout", Index: 1... COMPLETED
+          Run flow when "Are you sure you want to logout?" is visible...
+[23:22:39 run-local.sh]   ALIVE pid=11095  elapsed=50s  (heartbeat every 10s)
+          Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+          Assert that id: login-submit is visible... COMPLETED
+          Wait for animation to end within 2000 ms... COMPLETED
+        Run flow when id: login-submit is not visible... COMPLETED
+      Run ../_logout.yaml... COMPLETED
+    Run flow when id: login-submit is not visible... COMPLETED
+    Assert that id: login-submit is visible... COMPLETED
+    Tap on id: ^login-emailOrPhone$... COMPLETED
+    Erase text... COMPLETED
+    Input text carol.admina@test.com... COMPLETED
+    Tap on id: ^login-password$... COMPLETED
+    Erase text...[23:22:49 run-local.sh]   ALIVE pid=11095  elapsed=60s  (heartbeat every 10s)
+ COMPLETED
+    Input text password123... COMPLETED
+    Tap on id: login-submit... COMPLETED
+    Run flow when "Save Password?" is visible...
+[23:22:59 run-local.sh]   ALIVE pid=11095  elapsed=70s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Tap on (Optional) "Not Now"... WARNED
+    Run flow when id: admin-overview-hero is visible...
+    Run flow when id: admin-overview-hero is visible... SKIPPED
+    Assert that id: dashboard-screen__root is visible... COMPLETED
+    Take screenshot O1-carol-boot-home... COMPLETED
+  Run _boot-carol.yaml... COMPLETED
+  Tap on id: app-screen-header__profile-trigger... COMPLETED
+  Assert that id: profile-menu-company_admin is visible... COMPLETED
+  Take screenshot O1-profile-menu-ca... COMPLETED
+  Tap on id: profile-menu-company_admin... COMPLETED
+  Wait for animation to end within 4000 ms... COMPLETED
+  Assert that id: admin-stat-section-team is visible... COMPLETED
+  Assert that id: admin-stat-section-projects is visible... COMPLETED
+  Take screenshot O1-admin-dashboard... COMPLETED
+Run O1-ca-shell.yaml... COMPLETED
+Run ../_logout.yaml...
+  Run _dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[23:23:09 run-local.sh]   ALIVE pid=11095  elapsed=80s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run _dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when "Are you sure you want to logout?" is visible...
+[23:23:20 run-local.sh]   ALIVE pid=11095  elapsed=90s  (heartbeat every 10s)
+  Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+  Run flow when id: login-submit is not visible...
+    Tap on id: app-screen-header__profile-trigger... COMPLETED
+    Assert that id: profile-menu-logout is visible... COMPLETED
+    Tap on id: profile-menu-logout... COMPLETED
+    Assert that "Are you sure you want to logout?" is visible... COMPLETED
+    Tap on "Logout", Index: 1... COMPLETED
+    Run flow when "Are you sure you want to logout?" is visible...
+[23:23:29 run-local.sh]   ALIVE pid=11095  elapsed=100s  (heartbeat every 10s)
+    Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+    Assert that id: login-submit is visible... COMPLETED
+    Wait for animation to end within 2000 ms... COMPLETED
+  Run flow when id: login-submit is not visible... COMPLETED
+Run ../_logout.yaml... COMPLETED
+Assert that id: login-submit is visible... COMPLETED
+Take screenshot S2-logged-out... COMPLETED
+Tap on id: ^login-emailOrPhone$... COMPLETED
+Erase text...[23:23:39 run-local.sh]   ALIVE pid=11095  elapsed=110s  (heartbeat every 10s)
+ COMPLETED
+Input text john.managera@test.com... COMPLETED
+Tap on id: ^login-password$... COMPLETED
+Erase text... COMPLETED
+Input text password123... COMPLETED
+Tap on id: login-submit... COMPLETED
+Run flow when "Save Password?" is visible...
+[23:23:49 run-local.sh]   ALIVE pid=11095  elapsed=120s  (heartbeat every 10s)
+Run flow when "Save Password?" is visible... SKIPPED
+Tap on (Optional) "Not Now"... WARNED
+Assert that id: dashboard-screen__root is visible... COMPLETED
+Take screenshot S2-john-field-shell... COMPLETED
+Tap on id: app-screen-header__profile-trigger... COMPLETED
+Assert that id: profile-menu-logout is visible... COMPLETED
+Assert that id: profile-menu-company_admin is not visible... COMPLETED
+Take screenshot S2-john-no-ca-menu... COMPLETED
+[23:23:59 run-local.sh]   ALIVE pid=11095  elapsed=130s  (heartbeat every 10s)
+[23:24:00 run-local.sh]   FINISHED pid=11095  elapsed=131s  rc=0  (PASS)
+=== S3 mint invite link ===
+{"ok":true,"email":"erin.invitee@test.com","out":"/Volumes/KooDrive/InsiteApp/.cache/stage-d-s3-link.txt","must_set_password":true,"linkPrefix":"taskr://auth/invite/1e7525bfdcb6b046d0dc506176dd"}
+Opening invite link on sim B7B2640C-4738-4F8A-AEEE-5DF3D21D2533…
+
+=== FLOW S3: S3-set-password.yaml ===
+[23:24:11 run-local.sh] Phase: maestro-launch  MAESTRO_BIN=/Volumes/KooDrive/Users/tristan/.maestro/bin/maestro  MAESTRO_LOCAL_HOME=/Volumes/KooDrive/InsiteApp/.cache/maestro-home
+[23:24:11 run-local.sh]   args: test --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 -e MAESTRO_STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e MAESTRO_STAGE_D_RUN_ID=20260922_231641 -e STAGE_D_O2_NAME=StageD-O2-20260922_231641 -e STAGE_D_RUN_ID=20260922_231641 /Volumes/KooDrive/InsiteApp/maestro/flows/org/S3-set-password.yaml
+Running on iPhone 17 Pro Max - iOS 26.0 - B7B2640C-4738-4F8A-AEEE-5DF3D21D2533
+ > Flow S3-set-password
+Run ../_dismiss-blocking-overlays.yaml...
+  Run flow when "Save Password?" is visible...
+[23:24:21 run-local.sh]   ALIVE pid=13514  elapsed=10s  (heartbeat every 10s)
+  Run flow when "Save Password?" is visible... SKIPPED
+  Run flow when "Save Password" is visible...
+  Run flow when "Save Password" is visible... SKIPPED
+  Run flow when "Choose how you want to add photos" is visible...
+  Run flow when "Choose how you want to add photos" is visible... SKIPPED
+  Run flow when "Allow Full Access" is visible...
+  Run flow when "Allow Full Access" is visible... SKIPPED
+  Run flow when "Allow Access to All Photos" is visible...
+  Run flow when "Allow Access to All Photos" is visible... SKIPPED
+  Run flow when "Allow.*Photos.*" is visible...
+  Run flow when "Allow.*Photos.*" is visible... SKIPPED
+  Repeat 3 times...
+    Tap on (Optional) "Dismiss"... WARNED
+  Repeat 3 times... COMPLETED
+  Run flow when "OK" is visible...
+  Run flow when "OK" is visible... SKIPPED
+  Wait for animation to end within 1000 ms... COMPLETED
+Run ../_dismiss-blocking-overlays.yaml... COMPLETED
+Assert that id: set-password-screen is visible... COMPLETED
+Take screenshot S3-set-password-screen... COMPLETED
+Tap on id: set-password-password... COMPLETED
+Input text password123...[23:24:31 run-local.sh]   ALIVE pid=13514  elapsed=20s  (heartbeat every 10s)
+ COMPLETED
+Tap on id: set-password-confirm... COMPLETED
+Input text password123... COMPLETED
+Tap on id: set-password-submit... COMPLETED
+Assert that id: set-password-screen is not visible... COMPLETED
+Take screenshot S3-after-set-password... COMPLETED
+Run ../_logout.yaml...
+  Run _dismiss-blocking-overlays.yaml...
+    Run flow when "Save Password?" is visible...
+[23:24:41 run-local.sh]   ALIVE pid=13514  elapsed=30s  (heartbeat every 10s)
+    Run flow when "Save Password?" is visible... SKIPPED
+    Run flow when "Save Password" is visible...
+    Run flow when "Save Password" is visible... SKIPPED
+    Run flow when "Choose how you want to add photos" is visible...
+    Run flow when "Choose how you want to add photos" is visible... SKIPPED
+    Run flow when "Allow Full Access" is visible...
+    Run flow when "Allow Full Access" is visible... SKIPPED
+    Run flow when "Allow Access to All Photos" is visible...
+    Run flow when "Allow Access to All Photos" is visible... SKIPPED
+    Run flow when "Allow.*Photos.*" is visible...
+    Run flow when "Allow.*Photos.*" is visible... SKIPPED
+    Repeat 3 times...
+      Tap on (Optional) "Dismiss"... WARNED
+    Repeat 3 times... COMPLETED
+    Run flow when "OK" is visible...
+    Run flow when "OK" is visible... SKIPPED
+    Wait for animation to end within 1000 ms... COMPLETED
+  Run _dismiss-blocking-overlays.yaml... COMPLETED
+  Run flow when "Are you sure you want to logout?" is visible...
+  Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+  Run flow when id: login-submit is not visible...
+[23:24:51 run-local.sh]   ALIVE pid=13514  elapsed=40s  (heartbeat every 10s)
+    Tap on id: app-screen-header__profile-trigger... COMPLETED
+    Assert that id: profile-menu-logout is visible... COMPLETED
+    Tap on id: profile-menu-logout... COMPLETED
+    Assert that "Are you sure you want to logout?" is visible... COMPLETED
+    Tap on "Logout", Index: 1... COMPLETED
+    Run flow when "Are you sure you want to logout?" is visible...
+[23:25:01 run-local.sh]   ALIVE pid=13514  elapsed=50s  (heartbeat every 10s)
+    Run flow when "Are you sure you want to logout?" is visible... SKIPPED
+    Assert that id: login-submit is visible... COMPLETED
+    Wait for animation to end within 2000 ms... COMPLETED
+  Run flow when id: login-submit is not visible... COMPLETED
+Run ../_logout.yaml... COMPLETED
+Assert that id: login-submit is visible... COMPLETED
+Tap on id: ^login-emailOrPhone$... COMPLETED
+Erase text... COMPLETED
+Input text erin.invitee@test.com... COMPLETED
+Tap on id: ^login-password$... COMPLETED
+Erase text...[23:25:11 run-local.sh]   ALIVE pid=13514  elapsed=60s  (heartbeat every 10s)
+ COMPLETED
+Input text password123... COMPLETED
+Tap on id: login-submit... COMPLETED
+Run flow when "Save Password?" is visible...
+[23:25:21 run-local.sh]   ALIVE pid=13514  elapsed=70s  (heartbeat every 10s)
+Run flow when "Save Password?" is visible... SKIPPED
+Tap on (Optional) "Not Now"... WARNED
+Assert that "Select a Project" is visible... COMPLETED
+Assert that "No projects available" is visible... COMPLETED
+Take screenshot S3-relogin-ok... COMPLETED
+[23:25:26 run-local.sh]   FINISHED pid=13514  elapsed=75s  rc=0  (PASS)
+MANIFEST /Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/org-ca-manifest-20260922_231641.json
+=== Stage D org-ca PASS ===
+Read PNGs before claiming rc=0 (Gate 0–8). Manifest: /Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-22-stage-d/org-ca-manifest-20260922_231641.json
+RELEASED user:carol.admina
+RELEASED B7B2640C-4738-4F8A-AEEE-5DF3D21D2533

@@ -314,9 +314,11 @@ describe("DashboardScreen", () => {
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__weather_tile")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:layout-photo-hero")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-1:hero-actor-label")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:actor-avatar")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:hero-actor-label")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:post-footer")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:post-header")).toBeNull();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:evidence-strip")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:hero-image")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:overlay-title")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-2:layout-compact")).toBeTruthy();
@@ -458,12 +460,19 @@ describe("DashboardScreen", () => {
     fireEvent(screen.getByTestId("dashboard-screen__activity_activity-1:hero-image"), "error");
 
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:layout-compact")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:evidence-strip")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:hero")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:thumbnail")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:thumbnail-placeholder")).toBeNull();
-    expect(screen.getByText("Photo-backed activity")).toBeTruthy();
-    expect(screen.getByText("Has a preview image")).toBeTruthy();
-    expect(screen.getByText("Alex Chen")).toBeTruthy();
+    // Post remap: subtitle (task name) leads; title (change) is secondary.
+    expect(
+      screen.getByTestId("dashboard-screen__activity_activity-1:title"),
+    ).toHaveTextContent("Has a preview image");
+    expect(
+      screen.getByTestId("dashboard-screen__activity_activity-1:subtitle"),
+    ).toHaveTextContent("Photo-backed activity");
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:actor-avatar")).toBeTruthy();
+    expect(screen.queryByText("Alex Chen")).toBeNull();
   });
 
   it("shows swipe-left delete on draft rows and confirms before deleting", () => {

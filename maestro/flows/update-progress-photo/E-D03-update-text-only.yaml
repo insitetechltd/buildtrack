@@ -15,12 +15,12 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "update-progress__description"
 - inputText: ${output.progressNote}
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 
 # Keyboard is stubborn on this form. Tap a non-description area
 # to guarantee the software keyboard collapses before submitting.
 - tapOn: "Photos & Files"
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 
 # Submit
 - scrollUntilVisible:

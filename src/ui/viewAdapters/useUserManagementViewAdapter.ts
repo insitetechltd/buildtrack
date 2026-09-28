@@ -36,6 +36,7 @@ import {
   getUserSystemPermission,
   isAdmin,
   type Project,
+  type SystemPermission,
   type User,
 } from "@/types/buildtrack";
 import {
@@ -67,6 +68,40 @@ function getCompanySeatLabel(user: User): string {
     return "PM";
   }
   return "Worker";
+}
+
+/** Deployable seat for non-CA members (matches invite Worker/PM chips). */
+export function getMemberDeployableSeatType(
+  user: Pick<User, "role" | "systemPermission">,
+): "pm" | "worker" | null {
+  if (isAdmin(user as User)) {
+    return null;
+  }
+  return getUserSystemPermission(user as User) === "manager" ? "pm" : "worker";
+}
+
+export function seatChangeUpdatesForMember(
+  seatType: InviteSeatType,
+): {
+  systemPermission: SystemPermission;
+  role: User["role"];
+  position: string;
+  deployableSeat: InviteSeatType;
+} {
+  if (seatType === "pm") {
+    return {
+      systemPermission: "manager",
+      role: "manager",
+      position: "Project Manager",
+      deployableSeat: "pm",
+    };
+  }
+  return {
+    systemPermission: "member",
+    role: "worker",
+    position: "Worker",
+    deployableSeat: "worker",
+  };
 }
 
 function getSelectedUserSummary(user: User | null): UserManagementSelectedUserSummary | null {
@@ -133,6 +168,7 @@ export interface UserManagementViewAdapterHookResult {
     confirmRemoveAssignment: () => Promise<void>;
     copyInviteLink: (userId: string) => Promise<void>;
     requestDeactivateUser: (userId: string) => void;
+    requestChangeSeat: (userId: string, seatType: InviteSeatType) => void;
   };
 }
 
@@ -163,6 +199,8 @@ export function useUserManagementViewAdapter(
     approveUser,
     rejectUser,
     deactivateUserSeat,
+    updateUser,
+    canAssignCompanySeatRole,
   } = userStore;
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -767,6 +805,107 @@ export function useUserManagementViewAdapter(
     ],
   );
 
+  const requestChangeSeat = useCallback(
+    (userId: string, seatType: InviteSeatType) => {
+      if (!currentUser || !isAdmin(currentUser)) {
+        return;
+      }
+      const target = companyUsers.find((candidate) => candidate.id === userId);
+      if (!target || isAdmin(target) || target.isPending) {
+        return;
+      }
+      const currentSeat = getMemberDeployableSeatType(target);
+      if (currentSeat === seatType) {
+        return;
+      }
+
+      const nextLabel = seatType === "pm" ? "PM" : "Worker";
+      Alert.alert(
+        `Change seat to ${nextLabel}?`,
+        `${target.name} will use a ${nextLabel} seat for assignments and field authority.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: `Make ${nextLabel}`,
+            onPress: () => {
+              void (async () => {
+                try {
+                  const { usage, limits } = await refreshSeatUsage();
+                  if (!limits) {
+                    Alert.alert(
+                      "Billing unavailable",
+                      "Could not load seat limits. Open Company Plan, then try again.",
+                    );
+                    return;
+                  }
+
+                  const nextRole = seatType === "pm" ? "manager" : "member";
+                  const gate = canAssignCompanySeatRole(
+                    userId,
+                    nextRole,
+                    limits,
+                    true,
+                    seatType,
+                  );
+                  if (!gate.canChange) {
+                    if (gate.seatType) {
+                      offerSeatUpsell(
+                        gate.seatType,
+                        gate.reason ||
+                          `${formatSeatUsageSummary(usage, limits)}. Add seats to continue.`,
+                      );
+                      return;
+                    }
+                    Alert.alert("Not allowed", gate.reason || "Cannot change this seat.");
+                    return;
+                  }
+
+                  const updates = seatChangeUpdatesForMember(seatType);
+                  const ok = await updateUser(userId, updates);
+                  if (!ok) {
+                    // Prefer fresh entitlement upsell when DB seat trigger rejects.
+                    const { limits: freshLimits, usage: freshUsage } = await refreshSeatUsage();
+                    if (
+                      freshLimits &&
+                      seatLimitReached(seatType, freshUsage, freshLimits)
+                    ) {
+                      offerSeatUpsell(
+                        seatType,
+                        `${formatSeatUsageSummary(freshUsage, freshLimits)}. Add seats to continue.`,
+                      );
+                      return;
+                    }
+                    Alert.alert(
+                      "Error",
+                      "Could not change this seat. Please try again.",
+                    );
+                    return;
+                  }
+
+                  notifyDataMutation("user");
+                  await refreshSeatUsage();
+                  setSuccessMessage(`${target.name} is now a ${nextLabel}.`);
+                  setActiveModal("success");
+                } catch (error) {
+                  console.error("UserManagementScreen: Error changing seat", error);
+                  Alert.alert("Error", "Could not change this seat. Please try again.");
+                }
+              })();
+            },
+          },
+        ],
+      );
+    },
+    [
+      canAssignCompanySeatRole,
+      companyUsers,
+      currentUser,
+      offerSeatUpsell,
+      refreshSeatUsage,
+      updateUser,
+    ],
+  );
+
   const confirmRemoveAssignment = useCallback(async () => {
     if (!pendingRemoval) {
       return;
@@ -883,6 +1022,13 @@ export function useUserManagementViewAdapter(
           !isProtected &&
           !isPending &&
           companyUser.isActive !== false;
+        const deployableSeatType = getMemberDeployableSeatType(companyUser);
+        const canChangeSeat =
+          Boolean(currentUser && isAdmin(currentUser)) &&
+          !isPending &&
+          !isAdmin(companyUser) &&
+          companyUser.isActive !== false &&
+          deployableSeatType !== null;
 
         return {
           id: `user-card:${companyUser.id}`,
@@ -894,6 +1040,8 @@ export function useUserManagementViewAdapter(
           /** Kept for contract; seat class for assignments is companySeatLabel. */
           positionLabel: getCompanySeatLabel(companyUser),
           companySeatLabel: getCompanySeatLabel(companyUser),
+          deployableSeatType,
+          canChangeSeat,
           isAdmin: isAdmin(companyUser),
           isProtected,
           isPending,
@@ -1054,6 +1202,7 @@ export function useUserManagementViewAdapter(
       confirmRemoveAssignment,
       copyInviteLink,
       requestDeactivateUser,
+      requestChangeSeat,
     },
   };
 }

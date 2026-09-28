@@ -7,7 +7,7 @@
 Run the single-user password reset script:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 node reset_single_user_password.js admin@buildtrack.com
 ```
 

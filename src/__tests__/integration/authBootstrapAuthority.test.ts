@@ -65,8 +65,16 @@ describe("auth bootstrap authority", () => {
       },
     }));
 
+    jest.doMock("../../state/projectFilterStore", () => ({
+      useProjectFilterStore: {
+        setState: jest.fn(),
+        getState: () => ({}),
+      },
+    }));
+
     jest.doMock("../../state/projectStore.supabase", () => ({
       useProjectStore: {
+        setState: jest.fn(),
         getState: () => ({
           fetchProjects,
           fetchUserProjectAssignments,
@@ -76,6 +84,7 @@ describe("auth bootstrap authority", () => {
 
     jest.doMock("../../state/taskStore.supabase", () => ({
       useTaskStore: {
+        setState: jest.fn(),
         getState: () => ({
           fetchTasks,
         }),

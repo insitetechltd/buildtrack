@@ -1,0 +1,48 @@
+# D3 — Invite validation (required fields + structured fail).
+# Asserts error *text*, not mere invite-error visibility.
+appId: com.buildtrack.app.local
+---
+- runFlow: O1-ca-shell.yaml
+- tapOn:
+    id: "admin-stat-team"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "user-management__add-user_button"
+    timeout: 20000
+- tapOn:
+    id: "user-management__add-user_button"
+- extendedWaitUntil:
+    visible:
+      id: "invite-modal-title"
+    timeout: 10000
+- assertVisible:
+    id: "invite-seat-worker"
+- takeScreenshot: "O3-invite-modal"
+# (a) empty submit → required message text
+- tapOn:
+    id: "invite-submit"
+- extendedWaitUntil:
+    visible: "Name and email are required"
+    timeout: 8000
+- assertVisible:
+    id: "invite-error"
+- takeScreenshot: "O3-empty-required"
+# (b) structured fail via invalid email domain (non-unknown_error)
+- tapOn:
+    id: "invite-name"
+- inputText: "Probe Invalid"
+- tapOn:
+    id: "invite-email"
+- inputText: "stage-d-o3-${MAESTRO_STAGE_D_RUN_ID}@example.invalid"
+- tapOn:
+    id: "invite-seat-worker"
+- tapOn:
+    id: "invite-submit"
+- extendedWaitUntil:
+    visible:
+      id: "invite-error"
+    timeout: 20000
+- assertNotVisible: "unknown_error"
+- takeScreenshot: "O3-structured-fail"

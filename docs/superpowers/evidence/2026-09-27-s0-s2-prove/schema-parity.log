@@ -1,0 +1,29 @@
+
+> template-app-53@1.0.0 test:schema-parity
+> python3 scripts/supabase/assert-schema-parity-dev-prod.py
+
+DEV query: psql pooler (ref=zusulknbhaumougqckec)
+PROD query: psql pooler (ref=jcnzjigxgkzhjsaekoqz)
+{
+  "ok": true,
+  "columns_match": true,
+  "checks_match": true,
+  "tables_match": true,
+  "funcs_match": true,
+  "policies_match": true,
+  "prefer_match": true,
+  "dev_column_count": 252,
+  "prod_column_count": 252,
+  "dev_check_count": 30,
+  "prod_check_count": 30,
+  "dev_tables": 26,
+  "prod_tables": 26,
+  "dev_funcs": 19,
+  "prod_funcs": 19,
+  "dev_policies": 67,
+  "prod_policies": 67,
+  "task_status_subset_ok": true,
+  "reported_in_ts": true,
+  "reported_in_prod_check": true
+}
+artifact: /Volumes/KooDrive/InsiteApp/.cache/schema-parity-20260915/assert-schema-parity.json

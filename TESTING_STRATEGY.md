@@ -5,8 +5,12 @@ This repository uses a 4-layer testing strategy designed to keep the developer l
 ## Canonical Testing Docs
 
 - `TESTING_STRATEGY.md` is the canonical repository-wide testing strategy and confidence-ladder reference.
+- **`documentation/TEST_TAXONOMY.md`** is the SoT for **logical containers**, **naming conventions**, and where new tests must live (`tests/registry.yaml`, `npm run test:taxonomy`).
 - `documentation/MAINTABS_UX_CHECKLIST.md` is the canonical MainTabs **function-discovery** checklist (admin vs field operator, human + Maestro IDs).
 - `maestro/README.md` is the canonical Maestro-specific runtime, operator, and troubleshooting runbook.
+- Blind-spot audit (capability map): `docs/superpowers/evidence/2026-09-27-test-blind-spot-audit.md`.
+
+**Rule:** every new test picks exactly one container ID from `TEST_TAXONOMY.md` and follows its naming pattern. Do not add loose Maestro YAML under `maestro/flows/` root.
 
 ## Dev-Cycle Rule
 
@@ -107,8 +111,8 @@ Use this layer when a change is user-visible and you need proof that the install
 - `npm run test:e2e:maestro:dual-user` — **RC required** dual-user interaction gate (John assigner + Alice assignee on two sims; fully automated conductor)
 - `npm run test:e2e:maestro:task-core`
 - `npm run test:e2e:maestro:qa01`
-- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml`
-- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-initialize-sandbox.yaml`
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/smoke/sprint7-open-developer-settings.yaml`
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/smoke/sprint7-initialize-sandbox.yaml`
 
 ### Scope
 
@@ -146,7 +150,7 @@ Use this layer on nightly and weekly schedules.
 
 ### Coverage Floor
 
-The current Jest thresholds are defined in [jest.config.js](file:///Volumes/KooDrive/Insite%20App/jest.config.js):
+The current Jest thresholds are defined in [jest.config.js](./jest.config.js):
 
 - lines: `70%`
 - statements: `70%`
@@ -246,11 +250,11 @@ Use this section when you need to answer a practical question:
     - workspace/profile trigger visibility
   - does not prove: create, assign, progress, completion, or upload workflow correctness
 
-- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml`
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/smoke/sprint7-open-developer-settings.yaml`
   - proves: the app can navigate from profile to Developer Settings in the simulator
   - does not prove: task workflows or live Supabase-backed behavior
 
-- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-initialize-sandbox.yaml`
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/smoke/sprint7-initialize-sandbox.yaml`
   - proves: Sprint 7 bootstrap can be triggered successfully from the app
   - does not prove: live production-like workflow correctness
 

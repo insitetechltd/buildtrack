@@ -67,7 +67,9 @@ export function projectTaskUpdate(
     assignedBy:
       updates.assignedBy !== undefined ? updates.assignedBy : current.assignedBy ?? "",
     assignedTo:
-      updates.assignedTo !== undefined ? updates.assignedTo : current.assignedTo,
+      updates.assignedTo !== undefined
+        ? updates.assignedTo
+        : current.assignedTo ?? [],
     status:
       updates.status !== undefined
         ? updates.status

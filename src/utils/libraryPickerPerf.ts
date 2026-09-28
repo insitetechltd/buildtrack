@@ -74,7 +74,8 @@ export const LIBRARY_THUMB_MAX_PIXELS = 320;
 
 /**
  * Native grid thumbs (PhotokitThumbEngine.maxThumbPixel).
- * TF237 delivered min(tile×scale, 256). LINEAR_SCALE 2 = 512px (4× pixels).
+ * TF237 delivered min(tile×scale, 256). LINEAR_SCALE 2 = 512px HQ (4× pixels).
+ * Swift first paint uses `fastThumbPixel` = BASE_CAP_PX (256); HQ uses this cap.
  * Keep Swift `maxThumbPixel` = BASE_CAP_PX × LINEAR_SCALE.
  */
 export const LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX = 256;
@@ -107,8 +108,8 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 
 /**
  * A/B picker fill path (M-PERF-03).
- * - `warm`: MediaLibrary warm bridge → full openLibrary
- * - `native2b`: openLibraryLimited (Recents unsorted newest-N) → first paint → expandLibraryFull (same token)
+ * - `native2b` (default, TF237): limited Recents / persisted IDs → first paint → expand on scroll
+ * - `warm`: MediaLibrary warm bridge ∥ full openLibrary — starves thumbs (HUD `1st` never)
  *
  * Override: EXPO_PUBLIC_LIBRARY_PICKER_PATH=warm|native2b
  */
@@ -147,9 +148,9 @@ function resolveLibraryPickerPath(): LibraryPickerPath {
   const raw = (
     fromTest ||
     process.env.EXPO_PUBLIC_LIBRARY_PICKER_PATH ||
-    "warm"
+    "native2b"
   ).toLowerCase();
-  return raw === "native2b" ? "native2b" : "warm";
+  return raw === "warm" ? "warm" : "native2b";
 }
 
 /** Resolved path (re-reads test override / env). */

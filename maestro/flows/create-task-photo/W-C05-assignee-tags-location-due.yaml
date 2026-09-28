@@ -5,7 +5,7 @@ tags:
 ---
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 
 - tapOn:
     id: "root-tab__camera_icon_surface"
@@ -59,7 +59,7 @@ tags:
 - tapOn:
     id: "create-task__tag_input"
 - inputText: "maestro-c05"
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 - takeScreenshot: "rc-C05-tags"
 
 # Due date

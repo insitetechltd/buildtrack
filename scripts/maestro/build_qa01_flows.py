@@ -302,10 +302,7 @@ NAV_BACK_TO_DASHBOARD = """\
           id: "profile-menu__backdrop"
       - waitForAnimationToEnd:
           timeout: 1500
-- runFlow: _logout.yaml
-- launchApp:
-    appId: "com.buildtrack.app.local"
-    clearState: true
+- runFlow: ../_shared/_hard-reset-launch.yaml
 - extendedWaitUntil:
     visible:
       id: "app-screen-header__profile-trigger"
@@ -644,7 +641,10 @@ def build_D():
 
 
 if __name__ == '__main__':
-    base_dir = '/Volumes/KooDrive/InsiteApp/maestro/flows'
+    # C-MAESTRO-QA01 home — see documentation/TEST_TAXONOMY.md
+    here = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.normpath(os.path.join(here, '../../maestro/flows/qa01'))
+    os.makedirs(base_dir, exist_ok=True)
     files = {
         'A': 'qa01-scenario-a-rejection-loop.yaml',
         'B': 'qa01-scenario-b-overdue-crunch.yaml',
@@ -657,4 +657,4 @@ if __name__ == '__main__':
         with open(os.path.join(base_dir, fname), 'w', encoding='utf-8') as fh:
             fh.write(content)
         lines = content.count('\n')
-        print(f"[write] {fname} → {lines} lines ({len(content)} bytes)")
+        print(f"[write] {os.path.join(base_dir, fname)} → {lines} lines ({len(content)} bytes)")

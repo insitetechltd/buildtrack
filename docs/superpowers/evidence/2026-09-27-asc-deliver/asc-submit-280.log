@@ -1,0 +1,141 @@
+
+> template-app-53@1.0.0 asc:submit
+> bash ./scripts/asc/deliver.sh submit
+
+[18:55:27]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[18:55:28]: ------------------------------
+[18:55:28]: --- Step: default_platform ---
+[18:55:28]: ------------------------------
+[18:55:28]: Driving the lane 'ios asc_submit' 🚀
+[18:55:28]: --------------------------------------------
+[18:55:28]: --- Step: Switch to ios asc_api_key lane ---
+[18:55:28]: --------------------------------------------
+[18:55:28]: Cruising over to lane 'ios asc_api_key' 🚖
+[18:55:28]: ---------------------------------------
+[18:55:28]: --- Step: app_store_connect_api_key ---
+[18:55:28]: ---------------------------------------
+[18:55:28]: Cruising back to lane 'ios asc_submit' 🚘
+[18:55:28]: ---------------------
+[18:55:28]: --- Step: deliver ---
+[18:55:28]: ---------------------
+[18:55:28]: Creating authorization token for App Store Connect API
+
++--------------------------------------------------------------------+
+|                      deliver 2.240.1 Summary                       |
++--------------------------------------+-----------------------------+
+| api_key                              | ********                    |
+| app_identifier                       | com.buildtrack.app.local    |
+| app_version                          | 1.1.3                       |
+| build_number                         | 280                         |
+| skip_binary_upload                   | true                        |
+| skip_metadata                        | true                        |
+| skip_screenshots                     | true                        |
+| submit_for_review                    | true                        |
+| automatic_release                    | false                       |
+| phased_release                       | false                       |
+| force                                | true                        |
+| precheck_include_in_app_purchases    | false                       |
+| run_precheck_before_submit           | false                       |
+| submission_information.add_id_info_  | false                       |
+| uses_idfa                            |                             |
+| submission_information.export_compl  | true                        |
+| iance_uses_encryption                |                             |
+| submission_information.export_compl  | true                        |
+| iance_is_exempt                      |                             |
+| submission_information.content_righ  | false                       |
+| ts_contains_third_party_content      |                             |
+| submission_information.content_righ  | true                        |
+| ts_has_rights                        |                             |
+| screenshots_path                     | ./fastlane/screenshots      |
+| metadata_path                        | ./fastlane/metadata         |
+| username                             | tristan.koo@insiteworks.com |
+| ipa                                  | build-1787135809706.ipa     |
+| platform                             | ios                         |
+| edit_live                            | false                       |
+| use_live_version                     | false                       |
+| preview_frame_time_code              | 00:00:05:00                 |
+| overwrite_preview_videos             | false                       |
+| skip_app_version_update              | false                       |
+| overwrite_screenshots                | false                       |
+| screenshot_processing_timeout        | 3600                        |
+| sync_screenshots                     | false                       |
+| verify_only                          | false                       |
+| reject_if_possible                   | false                       |
+| version_check_wait_retry_limit       | 7                           |
+| reset_ratings                        | false                       |
+| dev_portal_team_id                   | DSNR656S6Y                  |
+| precheck_default_rule_level          | warn                        |
+| ignore_language_directory_validatio  | false                       |
+| n                                    |                             |
++--------------------------------------+-----------------------------+
+
+[18:55:28]: Making sure the latest version on App Store Connect matches '1.1.3'...
++-----------------------------------+
+|           Lane Context            |
++------------------+----------------+
+| DEFAULT_PLATFORM | ios            |
+| PLATFORM_NAME    | ios            |
+| LANE_NAME        | ios asc_submit |
++------------------+----------------+
+[18:55:29]: Called from Fastfile at line 151
+[18:55:29]: ```
+[18:55:29]:     149:	    end
+[18:55:29]:     150:	
+[18:55:29]:  => 151:	    deliver(
+[18:55:29]:     152:	      api_key: api_key,
+[18:55:29]:     153:	      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+[18:55:29]: ```
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
+| 💥   | deliver                | 1           |
++------+------------------------+-------------+
+
+[18:55:29]: fastlane finished with errors
+
+Looking for related GitHub issues on fastlane/fastlane...
+
+/opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/api_client.rb:223:in 'Spaceship::ConnectAPI::APIClient#handle_response': [!] The provided entity includes a relationship with an invalid value - You cannot create a new version of the App in the current state. - /data/relationships/app (Spaceship::UnexpectedResponse)
+The provided entity includes an attribute with a value that has already been used - The version number has been previously used. - /data/attributes/versionString
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/api_client.rb:125:in 'Spaceship::ConnectAPI::APIClient#post'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/tunes/tunes.rb:950:in 'Spaceship::ConnectAPI::Tunes::API#post_app_store_version'
+	from /opt/homebrew/Cellar/ruby/4.0.7/lib/ruby/4.0.0/forwardable.rb:231:in 'Spaceship::ConnectAPI.post_app_store_version'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/models/app.rb:228:in 'Spaceship::ConnectAPI::App#ensure_version!'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/deliver/lib/deliver/runner.rb:131:in 'Deliver::Runner#verify_version'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/deliver/lib/deliver/runner.rb:59:in 'Deliver::Runner#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/actions/upload_to_app_store.rb:22:in 'Fastlane::Actions::UploadToAppStoreAction.run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:263:in 'block (2 levels) in Fastlane::Runner#execute_action'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/actions/actions_helper.rb:69:in 'Fastlane::Actions.execute_action'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:255:in 'block in Fastlane::Runner#execute_action'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:229:in 'Dir.chdir'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:229:in 'Fastlane::Runner#execute_action'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:157:in 'Fastlane::Runner#trigger_action_by_name'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/fast_file.rb:159:in 'Fastlane::FastFile#method_missing'
+	from Fastfile:151:in 'block (2 levels) in Fastlane::FastFile#parsing_binding'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/lane.rb:41:in 'Fastlane::Lane#call'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:49:in 'block in Fastlane::Runner#execute'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:45:in 'Dir.chdir'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:45:in 'Fastlane::Runner#execute'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/lane_manager.rb:46:in 'Fastlane::LaneManager.cruise_lane'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/command_line_handler.rb:34:in 'Fastlane::CommandLineHandler.handle'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/commands_generator.rb:110:in 'block (2 levels) in Fastlane::CommandsGenerator#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/command.rb:187:in 'Commander::Command#call'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/command.rb:157:in 'Commander::Command#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/runner.rb:444:in 'Commander::Runner#run_active_command'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane_core/lib/fastlane_core/ui/fastlane_runner.rb:124:in 'Commander::Runner#run!'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/delegates.rb:18:in 'Commander::Delegates#run!'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/commands_generator.rb:363:in 'Fastlane::CommandsGenerator#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/commands_generator.rb:43:in 'Fastlane::CommandsGenerator.start'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/cli_tools_distributor.rb:132:in 'Fastlane::CLIToolsDistributor.take_off'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/bin/fastlane:23:in '<top (required)>'
+	from /opt/homebrew/Cellar/ruby/4.0.7/lib/ruby/4.0.0/rubygems.rb:305:in 'Kernel#load'
+	from /opt/homebrew/Cellar/ruby/4.0.7/lib/ruby/4.0.0/rubygems.rb:305:in 'Gem.activate_and_load_bin_path'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/bin/fastlane:25:in '<main>'

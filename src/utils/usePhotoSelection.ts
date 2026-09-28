@@ -10,6 +10,8 @@ export interface SelectedPhoto {
   annotatedUri?: string;
   caption?: string;
   mediaLibraryAssetId?: string;
+  /** Fast local JPEG for Select Photos / editor paint. Keep `uri` as ph:// for upload export. */
+  previewUri?: string;
 }
 
 export interface PhotoSelectionOptions {

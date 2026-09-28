@@ -72,8 +72,11 @@ enum PhotokitThumbEngine {
       cachedRange = nil
       sessionLock.unlock()
       manager.stopCachingImagesForAllAssets()
+      dropSharpWaiters()
       for view in liveThumbViews.allObjects {
-        view.cancelPendingRequest()
+        if view.indexExplicit {
+          view.cancelPendingRequest()
+        }
       }
     }
     if Thread.isMainThread {
@@ -85,6 +88,16 @@ enum PhotokitThumbEngine {
 
   static func resumeLibraryAfterAccept() {
     pausedForAccept = false
+    let apply = {
+      for view in liveThumbViews.allObjects {
+        view.requestIfNeeded()
+      }
+    }
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.async(execute: apply)
+    }
   }
 
   static func beginOpen() -> Int {
@@ -104,11 +117,80 @@ enum PhotokitThumbEngine {
     return options
   }
 
+  /// Viewport sharpen pass. Opportunistic = degraded then final at full
+  /// `targetSize`. Do not use for first `onPainted` (stay on fastFormat).
+  static func makeSharpOptions() -> PHImageRequestOptions {
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .opportunistic
+    options.resizeMode = .fast
+    options.isNetworkAccessAllowed = false
+    options.isSynchronous = false
+    options.version = .current
+    return options
+  }
+
+  /// Cap concurrent HQ upgrades so first-screen decode cannot stall like TF 211.
+  static let sharpLimit = 3
+  static var sharpInflight = 0
+  /// Waiters that missed the 3-wide slot. Old 80×50ms retry dropped most iPad tiles.
+  static var sharpWaiters: [() -> Void] = []
+
+  static func acquireSharpSlot(run: @escaping () -> Void) {
+    let start = {
+      if sharpInflight < sharpLimit {
+        sharpInflight += 1
+        run()
+      } else {
+        sharpWaiters.append(run)
+      }
+    }
+    if Thread.isMainThread {
+      start()
+    } else {
+      DispatchQueue.main.async(execute: start)
+    }
+  }
+
+  static func releaseSharpSlot() {
+    let pump = {
+      sharpInflight = max(0, sharpInflight - 1)
+      guard !sharpWaiters.isEmpty else {
+        return
+      }
+      let next = sharpWaiters.removeFirst()
+      sharpInflight += 1
+      next()
+    }
+    if Thread.isMainThread {
+      pump()
+    } else {
+      DispatchQueue.main.async(execute: pump)
+    }
+  }
+
+  static func dropSharpWaiters() {
+    let clear = { sharpWaiters.removeAll(keepingCapacity: false) }
+    if Thread.isMainThread {
+      clear()
+    } else {
+      DispatchQueue.main.async(execute: clear)
+    }
+  }
+
   /// Keep in sync with JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LINEAR_SCALE` (TF237=256, 2× experiment=512).
   static let maxThumbPixel: CGFloat = 512
+  /// First paint (fastFormat). Matches JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX`.
+  /// iPad tiles are large; asking 512 on the fast path stalls Recents fill.
+  static let fastThumbPixel: CGFloat = 256
 
   static func targetSize(pixelSize: Double) -> CGSize {
     let n = min(max(pixelSize, 1), maxThumbPixel)
+    return CGSize(width: n, height: n)
+  }
+
+  static func fastTargetSize(pixelSize: Double) -> CGSize {
+    let requested = CGFloat(max(pixelSize, 1))
+    let n = min(requested, fastThumbPixel, maxThumbPixel)
     return CGSize(width: n, height: n)
   }
 
@@ -346,6 +428,21 @@ enum PhotokitThumbEngine {
     return session.backing.asset(atDisplay: index)
   }
 
+  static func normalizedLocalIdentifier(_ raw: String) -> String {
+    if raw.lowercased().hasPrefix("ph://") {
+      return String(raw.dropFirst(5))
+    }
+    return raw
+  }
+
+  static func asset(localIdentifier raw: String) -> PHAsset? {
+    let localId = normalizedLocalIdentifier(raw)
+    guard !localId.isEmpty else {
+      return nil
+    }
+    return PHAsset.fetchAssets(withLocalIdentifiers: [localId], options: nil).firstObject
+  }
+
   static func assets(for localIds: [String]) -> [PHAsset] {
     guard !localIds.isEmpty else {
       return []
@@ -477,6 +574,68 @@ enum PhotokitThumbEngine {
       return url.absoluteString
     } catch {
       return nil
+    }
+  }
+
+  /// Fast Select Photos tile — not the 1920 HQ evidence export.
+  /// Takes the first bitmap PhotoKit returns (degraded OK).
+  static func exportPreviewJpeg(assetId: String, maxPixel: Double) async -> String {
+    let fetched = PHAsset.fetchAssets(
+      withLocalIdentifiers: [normalizedLocalIdentifier(assetId)],
+      options: nil
+    )
+    guard let asset = fetched.firstObject else {
+      return ""
+    }
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .fastFormat
+    options.resizeMode = .fast
+    options.isNetworkAccessAllowed = false
+    options.isSynchronous = false
+    options.version = .current
+    let cap = min(max(maxPixel, 1), maxThumbPixel)
+    let target = CGSize(width: cap, height: cap)
+    return await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
+      var settled = false
+      let finish: (String) -> Void = { value in
+        guard !settled else {
+          return
+        }
+        settled = true
+        continuation.resume(returning: value)
+      }
+      PHImageManager.default().requestImage(
+        for: asset,
+        targetSize: target,
+        contentMode: .aspectFill,
+        options: options
+      ) { image, info in
+        // Recents pause can cancel in-flight work; a nil first callback is
+        // common. Wait for a bitmap or the 2s timeout — do not settle empty.
+        let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+        if cancelled {
+          return
+        }
+        guard let image, let data = image.jpegData(compressionQuality: 0.7) else {
+          return
+        }
+        guard let dir = FileManager.default.urls(
+          for: .cachesDirectory,
+          in: .userDomainMask
+        ).first else {
+          return
+        }
+        let url = dir.appendingPathComponent("insite-preview-\(UUID().uuidString).jpg")
+        do {
+          try data.write(to: url, options: .atomic)
+          finish(url.absoluteString)
+        } catch {
+          return
+        }
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        finish("")
+      }
     }
   }
 }
@@ -627,6 +786,11 @@ public final class PhotokitThumbsModule: Module {
       }
     }
 
+    /// Select Photos tiles after Accept. Fast/degraded OK — never 1920 HQ.
+    AsyncFunction("exportPreviewJpeg") { (assetId: String, maxPixel: Double) async -> String in
+      await PhotokitThumbEngine.exportPreviewJpeg(assetId: assetId, maxPixel: maxPixel)
+    }
+
     View(PhotokitThumbView.self) {
       Events("onPainted")
 
@@ -649,6 +813,10 @@ public final class PhotokitThumbsModule: Module {
       Prop("pixelSize") { (view: PhotokitThumbView, pixelSize: Double) in
         view.pixelSize = pixelSize
         view.requestIfNeeded()
+      }
+
+      Prop("contentFit") { (view: PhotokitThumbView, contentFit: String?) in
+        view.setContentFit(contentFit)
       }
     }
   }

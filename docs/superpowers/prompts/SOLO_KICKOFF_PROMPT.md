@@ -98,7 +98,7 @@ Add a task duplicate feature so a user can open an existing task and create a ne
 
 ## Related Files
 
-- [solo-orchestrator.md](file:///Volumes/KooDrive/Insite%20App/.trae/agents/solo-orchestrator.md)
-- [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
-- [AGENTS.md](file:///Volumes/KooDrive/Insite%20App/AGENTS.md)
-- [project-context.md](file:///Volumes/KooDrive/Insite%20App/.trae/rules/project-context.md)
+- [solo-orchestrator.md](../../../.trae/agents/solo-orchestrator.md)
+- [SOLO_OPERATING_PROCEDURE.md](../../../SOLO_OPERATING_PROCEDURE.md)
+- [AGENTS.md](../../../AGENTS.md)
+- [project-context.md](../../../.trae/rules/project-context.md)

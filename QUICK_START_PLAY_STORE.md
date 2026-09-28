@@ -53,7 +53,7 @@ See `ANDROID_SIGNING_SETUP.md` for detailed signing setup instructions.
 5. **Upload**: Click "Create new release" → Upload AAB
 6. **File location**: 
    ```
-   /Volumes/KooDrive/Insite App/android/app/build/outputs/bundle/release/app-release.aab
+   /Volumes/KooDrive/InsiteApp/android/app/build/outputs/bundle/release/app-release.aab
    ```
 7. **Add release notes** and publish
 

@@ -190,7 +190,7 @@ Expected result:
 
 ### Step 2: Update wave matrix doc to use repo-relative paths
 
-- [ ] In `documentation/m-fnd-04-ui-migration-wave-matrix.md`, replace all `/Volumes/KooDrive/Insite App/src/...` references with `src/...`.
+- [ ] In `documentation/m-fnd-04-ui-migration-wave-matrix.md`, replace all `/Volumes/KooDrive/InsiteApp/src/...` references with `src/...`.
 
 Expected result:
 - Document is portable across machines and CI.

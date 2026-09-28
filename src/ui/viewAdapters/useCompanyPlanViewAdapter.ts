@@ -56,7 +56,9 @@ import { useTranslation } from "@/utils/useTranslation";
 function useFocusOrMountEffect(effect: () => void | (() => void)) {
   const navigation =
     NavigationContext && typeof NavigationContext === "object"
-      ? useContext(NavigationContext)
+      ? (useContext(NavigationContext) as
+          | { addListener: (event: "focus", callback: () => void) => () => void }
+          | undefined)
       : undefined;
 
   useEffect(() => {

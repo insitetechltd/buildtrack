@@ -18,11 +18,12 @@ const PROJECT_NAME =
 const USERS = [
   {
     email: process.env.MAESTRO_DU_ASSIGNER_EMAIL || "john.managera@test.com",
-    category: "lead_project_manager",
+    // NEW dialect column (PROD SoT). Legacy `category` removed after DEV≡PROD parity.
+    project_role: "lead_project_manager",
   },
   {
     email: process.env.MAESTRO_DU_ASSIGNEE_EMAIL || "alice.workera1@test.com",
-    category: "worker",
+    project_role: "worker",
   },
 ];
 
@@ -89,7 +90,7 @@ async function main() {
   const userIds = users.map((user) => user.id);
   const { data: existingRows, error: existingErr } = await supabase
     .from("user_project_assignments")
-    .select("id, user_id, category, is_active")
+    .select("id, user_id, project_role, is_active")
     .eq("project_id", project.id)
     .in("user_id", userIds);
   if (existingErr) {
@@ -108,7 +109,7 @@ async function main() {
     inserts.push({
       user_id: user.id,
       project_id: project.id,
-      category: wanted.category,
+      project_role: wanted.project_role,
       assigned_by: userByEmail.get(USERS[0].email).id,
       is_active: true,
     });
@@ -124,9 +125,27 @@ async function main() {
     }
   }
 
-  console.log(
-    `ENSURE_DU_PROJECT_OK project=${project.name} inserted=${inserts.length} users=${emails.join(",")}`,
+  const john = userByEmail.get(USERS[0].email);
+  const alice = userByEmail.get(USERS[1].email);
+  const cacheDir = path.join(ROOT, ".cache");
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const envOut = path.join(cacheDir, "maestro-du-users.env");
+  fs.writeFileSync(
+    envOut,
+    [
+      `DU_JOHN_ID=${john.id}`,
+      `DU_ALICE_ID=${alice.id}`,
+      `DU_JOHN_EMAIL=${USERS[0].email}`,
+      `DU_ALICE_EMAIL=${USERS[1].email}`,
+      `DU_PROJECT_ID=${project.id}`,
+      "",
+    ].join("\n"),
   );
+
+  console.log(
+    `ENSURE_DU_PROJECT_OK project=${project.name} inserted=${inserts.length} users=${emails.join(",")} johnId=${john.id} aliceId=${alice.id}`,
+  );
+  console.log(`WROTE ${envOut}`);
 }
 
 main().catch((err) => {

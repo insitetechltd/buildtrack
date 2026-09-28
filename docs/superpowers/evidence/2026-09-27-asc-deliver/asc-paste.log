@@ -1,0 +1,305 @@
+
+> template-app-53@1.0.0 asc:paste
+> bash ./scripts/asc/deliver.sh paste
+
+Staged screenshots → /Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/01_iphone67_activity.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/02_iphone67_camera.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/03_iphone67_tasks.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/04_iphone67_task_thread.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/05_ipad13_activity.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/06_ipad13_camera.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/07_ipad13_tasks.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/08_ipad13_task_thread.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/01_iphone67_activity.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/02_iphone67_camera.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/03_iphone67_tasks.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/04_iphone67_task_thread.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/05_ipad13_activity.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/06_ipad13_camera.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/07_ipad13_tasks.jpg
+/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/08_ipad13_task_thread.jpg
+[09:48:00]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[09:48:01]: ------------------------------
+[09:48:01]: --- Step: default_platform ---
+[09:48:01]: ------------------------------
+[09:48:01]: Driving the lane 'ios asc_paste' 🚀
+[09:48:01]: --------------------------------------------
+[09:48:01]: --- Step: Switch to ios asc_api_key lane ---
+[09:48:01]: --------------------------------------------
+[09:48:01]: Cruising over to lane 'ios asc_api_key' 🚖
+[09:48:01]: ---------------------------------------
+[09:48:01]: --- Step: app_store_connect_api_key ---
+[09:48:01]: ---------------------------------------
+[09:48:01]: Cruising back to lane 'ios asc_paste' 🚘
+[09:48:01]: ---------------------
+[09:48:01]: --- Step: deliver ---
+[09:48:01]: ---------------------
+[09:48:01]: Creating authorization token for App Store Connect API
+
++-----------------------------------------------------------------------------+
+|                           deliver 2.240.1 Summary                           |
++--------------------------------------+--------------------------------------+
+| api_key                              | ********                             |
+| app_identifier                       | com.buildtrack.app.local             |
+| app_version                          | 1.1.3                                |
+| build_number                         | 279                                  |
+| skip_binary_upload                   | true                                 |
+| skip_app_version_update              | false                                |
+| skip_metadata                        | false                                |
+| skip_screenshots                     | false                                |
+| overwrite_screenshots                | true                                 |
+| screenshots_path                     | /Volumes/KooDrive/InsiteApp/.cache/  |
+|                                      | asc-deliver/screenshots              |
+| metadata_path                        | /Volumes/KooDrive/InsiteApp/fastlan  |
+|                                      | e/metadata                           |
+| submit_for_review                    | false                                |
+| automatic_release                    | false                                |
+| phased_release                       | false                                |
+| force                                | true                                 |
+| precheck_include_in_app_purchases    | false                                |
+| run_precheck_before_submit           | false                                |
+| reject_if_possible                   | false                                |
+| username                             | tristan.koo@insiteworks.com          |
+| ipa                                  | build-1787135809706.ipa              |
+| platform                             | ios                                  |
+| edit_live                            | false                                |
+| use_live_version                     | false                                |
+| preview_frame_time_code              | 00:00:05:00                          |
+| overwrite_preview_videos             | false                                |
+| screenshot_processing_timeout        | 3600                                 |
+| sync_screenshots                     | false                                |
+| verify_only                          | false                                |
+| version_check_wait_retry_limit       | 7                                    |
+| reset_ratings                        | false                                |
+| dev_portal_team_id                   | DSNR656S6Y                           |
+| precheck_default_rule_level          | warn                                 |
+| ignore_language_directory_validatio  | false                                |
+| n                                    |                                      |
++--------------------------------------+--------------------------------------+
+
+[09:48:02]: Making sure the latest version on App Store Connect matches '1.1.3'...
+[09:48:02]: '1.1.3' is the latest version on App Store Connect
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/description.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/keywords.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/release_notes.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/support_url.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/marketing_url.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/promotional_text.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/name.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/subtitle.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/en-US/privacy_url.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/description.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/keywords.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/release_notes.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/support_url.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/marketing_url.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/promotional_text.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/name.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/subtitle.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/zh-Hant/privacy_url.txt'...
+[09:48:02]: Loading '/Volumes/KooDrive/InsiteApp/fastlane/metadata/review_information/notes.txt'...
+[09:48:07]: Will begin uploading metadata for '1.1.3' on App Store Connect
+[09:48:07]: Uploading metadata to App Store Connect for version
+[09:48:11]: Uploading metadata to App Store Connect for localized version 'en-US'
+[09:48:11]: Uploading metadata to App Store Connect for localized version 'zh-Hant'
+[09:48:12]: Uploading metadata to App Store Connect for localized info 'en-US'
+[09:48:12]: Uploading metadata to App Store Connect for localized info 'zh-Hant'
+[09:48:17]: Uploading app review information to App Store Connect
+[09:48:20]: Will begin uploading snapshots for '1.1.3' on App Store Connect
+[09:48:20]: Starting with the upload of screenshots...
+[09:48:22]: Deleted 'en-US APP_IPAD_PRO_3GEN_129' -  (1.010423 secs)
+[09:48:22]: Deleted 'en-US APP_IPHONE_67' -  (1.06866 secs)
+[09:48:23]: Number of screenshots not deleted: 0
+[09:48:23]: Successfully deleted all screenshots
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/02_iphone67_camera.jpg'... (4.755356 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/01_iphone67_activity.jpg'... (4.81991 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/01_iphone67_activity.jpg'... (5.043922 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/03_iphone67_tasks.jpg'... (5.086081 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/08_ipad13_task_thread.jpg'... (5.08677 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/07_ipad13_tasks.jpg'... (5.130229 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/02_iphone67_camera.jpg'... (5.268423 secs)
+[09:48:31]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/05_ipad13_activity.jpg'... (5.336987 secs)
+[09:48:32]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/06_ipad13_camera.jpg'... (5.531133 secs)
+[09:48:32]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/en-US/04_iphone67_task_thread.jpg'... (5.608896 secs)
+[09:48:35]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/04_iphone67_task_thread.jpg'... (4.347828 secs)
+[09:48:36]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/03_iphone67_tasks.jpg'... (4.813138 secs)
+[09:48:36]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/05_ipad13_activity.jpg'... (4.62773 secs)
+[09:48:36]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/06_ipad13_camera.jpg'... (4.599093 secs)
+[09:48:36]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/07_ipad13_tasks.jpg'... (4.735887 secs)
+[09:48:36]: Uploaded '/Volumes/KooDrive/InsiteApp/.cache/asc-deliver/screenshots/zh-Hant/08_ipad13_task_thread.jpg'... (4.896276 secs)
+[09:48:44]: Successfully uploaded all screenshots
+[09:48:46]: Successfully uploaded screenshots to App Store Connect
+[09:48:46]: ASC paste complete (build 279). Submit for Review NOT sent.
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
+| 4    | deliver                | 44          |
++------+------------------------+-------------+
+
+[09:48:46]: fastlane.tools finished successfully 🎉
+[09:50:26]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[09:50:27]: ------------------------------
+[09:50:27]: --- Step: default_platform ---
+[09:50:27]: ------------------------------
+[09:50:27]: Driving the lane 'ios asc_select_build' 🚀
+[09:50:27]: --------------------------------------------
+[09:50:27]: --- Step: Switch to ios asc_api_key lane ---
+[09:50:27]: --------------------------------------------
+[09:50:27]: Cruising over to lane 'ios asc_api_key' 🚖
+[09:50:27]: ---------------------------------------
+[09:50:27]: --- Step: app_store_connect_api_key ---
+[09:50:27]: ---------------------------------------
+[09:50:27]: Cruising back to lane 'ios asc_select_build' 🚘
++-----------------------------------------+
+|              Lane Context               |
++------------------+----------------------+
+| DEFAULT_PLATFORM | ios                  |
+| PLATFORM_NAME    | ios                  |
+| LANE_NAME        | ios asc_select_build |
++------------------+----------------------+
+[09:50:29]: Called from Fastfile at line 37
+[09:50:29]: ```
+[09:50:29]:     35:	    )
+[09:50:29]:     36:	    build = builds&.first
+[09:50:29]:  => 37:	    UI.user_error!("No VALID build #{build_number} on ASC") unless build
+[09:50:29]:     38:	
+[09:50:29]:     39:	    version.select_build(build_id: build.id)
+[09:50:29]: ```
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[09:50:29]: fastlane finished with errors
+
+[!] No VALID build 279 on ASC
+[09:51:25]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[09:51:25]: ------------------------------
+[09:51:25]: --- Step: default_platform ---
+[09:51:25]: ------------------------------
+[09:51:25]: Driving the lane 'ios asc_select_build' 🚀
+[09:51:25]: --------------------------------------------
+[09:51:25]: --- Step: Switch to ios asc_api_key lane ---
+[09:51:25]: --------------------------------------------
+[09:51:25]: Cruising over to lane 'ios asc_api_key' 🚖
+[09:51:25]: ---------------------------------------
+[09:51:25]: --- Step: app_store_connect_api_key ---
+[09:51:25]: ---------------------------------------
+[09:51:25]: Cruising back to lane 'ios asc_select_build' 🚘
++-----------------------------------------+
+|              Lane Context               |
++------------------+----------------------+
+| DEFAULT_PLATFORM | ios                  |
+| PLATFORM_NAME    | ios                  |
+| LANE_NAME        | ios asc_select_build |
++------------------+----------------------+
+[09:51:27]: Called from Fastfile at line 31
+[09:51:27]: ```
+[09:51:27]:     29:	    UI.user_error!("No editable App Store version") unless version
+[09:51:27]:     30:	
+[09:51:27]:  => 31:	    builds = Spaceship::ConnectAPI::Build.all(
+[09:51:27]:     32:	      app_id: app.id,
+[09:51:27]:     33:	      build_number: build_number,
+[09:51:27]: ```
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[09:51:27]: fastlane finished with errors
+
+Looking for related GitHub issues on fastlane/fastlane...
+
+➡️  A parameter has an invalid value - 'UNIVERSAL' is not a valid filter value. Expected one of: IOS, MAC_OS
+    https://github.com/fastlane/fastlane/issues/29497 [closed] 49 💬
+    28 Dec 2025
+
+➡️  Having deliver/upload_to_app_store issues? Install 2.150.0.rc5
+    https://github.com/fastlane/fastlane/issues/16639 [closed] 116 💬
+    04 Sep 2020
+
+➡️  [spaceship, pilot] Getting "410 gone"
+    https://github.com/fastlane/fastlane/issues/14521 [closed] 177 💬
+    22 Jun 2019
+
+and 1 more at: https://github.com/fastlane/fastlane/search?q=A%20parameter%20has%20an%20invalid%20value%20-%20%27EXPIRED%27%20is%20not%20a%20valid%20filter%20value.%20Expected%20one%20of%3A%20PROCESSING%2C%20FAILED%2C%20INVALID%2C%20VALID&type=Issues&utf8=✓
+
+🔗  You can ⌘ + double-click on links to open them directly in your browser.
+/opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/api_client.rb:223:in 'Spaceship::ConnectAPI::APIClient#handle_response': [!] A parameter has an invalid value - 'EXPIRED' is not a valid filter value. Expected one of: PROCESSING, FAILED, INVALID, VALID (Spaceship::UnexpectedResponse)
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/api_client.rb:114:in 'Spaceship::ConnectAPI::APIClient#get'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/testflight/testflight.rb:440:in 'Spaceship::ConnectAPI::TestFlight::API#get_builds'
+	from /opt/homebrew/Cellar/ruby/4.0.7/lib/ruby/4.0.0/forwardable.rb:231:in 'Spaceship::ConnectAPI.get_builds'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/spaceship/lib/spaceship/connect_api/models/build.rb:126:in 'Spaceship::ConnectAPI::Build.all'
+	from Fastfile:31:in 'block (2 levels) in Fastlane::FastFile#parsing_binding'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/lane.rb:41:in 'Fastlane::Lane#call'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:49:in 'block in Fastlane::Runner#execute'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:45:in 'Dir.chdir'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/runner.rb:45:in 'Fastlane::Runner#execute'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/lane_manager.rb:46:in 'Fastlane::LaneManager.cruise_lane'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/command_line_handler.rb:34:in 'Fastlane::CommandLineHandler.handle'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/commands_generator.rb:110:in 'block (2 levels) in Fastlane::CommandsGenerator#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/command.rb:187:in 'Commander::Command#call'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/command.rb:157:in 'Commander::Command#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/runner.rb:444:in 'Commander::Runner#run_active_command'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane_core/lib/fastlane_core/ui/fastlane_runner.rb:124:in 'Commander::Runner#run!'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/commander-4.6.0/lib/commander/delegates.rb:18:in 'Commander::Delegates#run!'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/commands_generator.rb:363:in 'Fastlane::CommandsGenerator#run'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/commands_generator.rb:43:in 'Fastlane::CommandsGenerator.start'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/fastlane/lib/fastlane/cli_tools_distributor.rb:132:in 'Fastlane::CLIToolsDistributor.take_off'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/gems/fastlane-2.240.1/bin/fastlane:23:in '<top (required)>'
+	from /opt/homebrew/Cellar/ruby/4.0.7/lib/ruby/4.0.0/rubygems.rb:305:in 'Kernel#load'
+	from /opt/homebrew/Cellar/ruby/4.0.7/lib/ruby/4.0.0/rubygems.rb:305:in 'Gem.activate_and_load_bin_path'
+	from /opt/homebrew/Cellar/fastlane/2.240.1/libexec/bin/fastlane:25:in '<main>'
+[09:54:02]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[09:54:03]: ------------------------------
+[09:54:03]: --- Step: default_platform ---
+[09:54:03]: ------------------------------
+[09:54:03]: Driving the lane 'ios asc_select_build' 🚀
+[09:54:03]: --------------------------------------------
+[09:54:03]: --- Step: Switch to ios asc_api_key lane ---
+[09:54:03]: --------------------------------------------
+[09:54:03]: Cruising over to lane 'ios asc_api_key' 🚖
+[09:54:03]: ---------------------------------------
+[09:54:03]: --- Step: app_store_connect_api_key ---
+[09:54:03]: ---------------------------------------
+[09:54:03]: Cruising back to lane 'ios asc_select_build' 🚘
+[09:54:22]: Selected build 279 (bd7f4ad8-dd86-4ade-9246-509f138bb108) on version 1.1.3
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[09:54:22]: fastlane.tools finished successfully 🎉

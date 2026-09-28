@@ -10,8 +10,18 @@ import {
   useCaptureSessionStore,
 } from "../sessionDraftStore";
 
+const mockExportPreview = jest.fn(async (assetId: string) => `file://preview/${assetId}.jpg`);
+const mockPausePhotokit = jest.fn();
+const mockResumePhotokit = jest.fn();
+
 jest.mock("../../../utils/draftMediaCache", () => ({
   pinDraftMedia: jest.fn(),
+}));
+
+jest.mock("@/modules/mediaLibrary/PhotokitThumbView", () => ({
+  exportPhotokitPreviewJpeg: (...args: unknown[]) => mockExportPreview(...(args as [string])),
+  pausePhotokitLibraryForAccept: () => mockPausePhotokit(),
+  resumePhotokitLibraryAfterAccept: () => mockResumePhotokit(),
 }));
 
 function deferred<T>() {
@@ -137,7 +147,7 @@ describe("cameraDraftPinQueue", () => {
     expect(photos[0].uri).toBe("file://cache-b.jpg");
   });
 
-  it("prepareCaptureSessionAccept flushes camera pins and maps library ph:// without export", async () => {
+  it("prepareCaptureSessionAccept flushes camera pins and maps library ph:// with a preview file", async () => {
     const pin = deferred<string>();
     (pinDraftMedia as jest.Mock).mockReturnValue(pin.promise);
     useCaptureSessionStore.getState().addCameraPhoto({
@@ -162,6 +172,8 @@ describe("cameraDraftPinQueue", () => {
     const result = await acceptPromise;
 
     expect(result.failedCount).toBe(0);
+    expect(mockPausePhotokit).toHaveBeenCalled();
+    expect(mockExportPreview).toHaveBeenCalledWith("keep", 512);
     expect(result.photos).toEqual([
       {
         uri: "file://draft/a.jpg",
@@ -174,6 +186,7 @@ describe("cameraDraftPinQueue", () => {
         fileName: "keep.jpg",
         isAnnotated: false,
         mediaLibraryAssetId: "keep",
+        previewUri: "file://preview/keep.jpg",
       },
     ]);
   });

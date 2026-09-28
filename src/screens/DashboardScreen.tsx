@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,7 +9,9 @@ import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import QueueOverviewBoard from "@/components/dashboard/QueueOverviewBoard";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
+import { useDatabaseConfig } from "@/state/databaseConfigStore";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
+import { supabaseProjectRefFromUrl } from "@/utils/supabaseProjectRef";
 import { usePullToRefresh } from "@/utils/usePullToRefresh";
 import { useTabletCardGridLayout } from "@/utils/useTabletCardGridLayout";
 import { useTranslation } from "@/utils/useTranslation";
@@ -48,6 +50,17 @@ function DraftDeleteAction({
 
 export default function DashboardScreen(props: DashboardScreenProps) {
   const t = useTranslation();
+  const activeEnvironment = useDatabaseConfig((s) => s.activeEnvironment);
+  const environments = useDatabaseConfig((s) => s.environments);
+  const activeSupabaseProjectRef = useMemo(() => {
+    const activeName = activeEnvironment || "production";
+    const url =
+      environments[activeName]?.url ||
+      environments.production?.url ||
+      process.env.EXPO_PUBLIC_SUPABASE_URL ||
+      "";
+    return supabaseProjectRefFromUrl(url);
+  }, [activeEnvironment, environments]);
   const { isGrid, itemWidth, gap: gridGap } = useTabletCardGridLayout();
   const { output, visibility, actions } = useDashboardViewAdapter();
   const { isPullRefreshing, handlePullRefresh } = usePullToRefresh();
@@ -150,6 +163,14 @@ export default function DashboardScreen(props: DashboardScreenProps) {
       edges={["left", "right"]}
       className="flex-1 bg-canvas dark:bg-canvas-dark"
     >
+        {activeSupabaseProjectRef ? (
+          <Text
+            testID="dashboard-active-db-host"
+            className="absolute top-1 right-3 z-20 text-[10px] text-white/70 font-mono"
+          >
+            {activeSupabaseProjectRef}
+          </Text>
+        ) : null}
         <AppScreenHeader
           title="Taskr"
           titleNode={<BrandHeaderTitle subtitle={t?.activity?.siteActivity || "Site activity"} />}

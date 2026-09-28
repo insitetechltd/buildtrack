@@ -14,9 +14,9 @@
 
 Group B (“modernized body with bridge header”) is explicitly called out as a follow-up milestone in:
 
-- [2026-06-20-modern-ui-marker-and-screen-batch-design.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/specs/2026-06-20-modern-ui-marker-and-screen-batch-design.md)
-- [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md#L47-L54)
-- [2026-06-28-ws-roadmap-near-term-execution.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/plans/2026-06-28-ws-roadmap-near-term-execution.md#L219-L257)
+- [2026-06-20-modern-ui-marker-and-screen-batch-design.md](./2026-06-20-modern-ui-marker-and-screen-batch-design.md)
+- [m-fnd-04-ui-migration-wave-matrix.md](../../../documentation/m-fnd-04-ui-migration-wave-matrix.md#L47-L54)
+- [2026-06-28-ws-roadmap-near-term-execution.md](../plans/2026-06-28-ws-roadmap-near-term-execution.md#L219-L257)
 
 Current Group B screens and their bridge header usage:
 

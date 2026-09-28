@@ -38,7 +38,7 @@ If the icon still doesn't appear after processing completes:
    - Click **"App Information"** in the left sidebar
    - Scroll down to **"App Icon"** section
    - Click **"Choose File"**
-   - Upload: `/Volumes/KooDrive/Insite App/assets/icon-1024.png`
+   - Upload: `/Volumes/KooDrive/InsiteApp/assets/icon-1024.png`
    - Click **"Save"**
 
 4. **Verify Icon**

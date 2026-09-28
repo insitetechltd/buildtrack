@@ -1,97 +1,47 @@
-# ASC listing paste pack — Taskr 1.1.3 resubmit
+# ASC listing — Taskr 1.1.3 (Fastlane Deliver)
 
-**Updated:** 2026-09-12 (prefer build **258** + billing cancel URL in review notes)  
+**Updated:** 2026-09-27 (automated paste via Fastlane; CBP may chain ASC)  
 **App:** `6754898737` · https://appstoreconnect.apple.com/apps/6754898737  
 **Bundle:** `com.buildtrack.app.local`  
 **Copy SoT:** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md)  
-**Screenshots on disk:** `docs/taskr/assets/store/iphone-67/` · `docs/taskr/assets/store/ipad-13/`
+**Paste pack (human-readable):** [`2026-09-25-asc-paste-pack-279.md`](../evidence/2026-09-25-asc-paste-pack-279.md)  
+**Deliver metadata:** `fastlane/metadata/{en-US,zh-Hant}/` · notes `fastlane/review_information/notes.txt`  
+**Screenshots:** `docs/taskr/assets/store/{iphone-67,ipad-13}/`
 
-ASC API can **read**; paste / attach binary / Submit in the **web UI** (historical PATCH 403).
-
-**Do not tick Public. Do not Submit for Review until this checklist is green and you intend to.**
-
-Seller name is still **Tri Stan Ching KOO**. Do **not** convert to Insite Works Limited during this review (GTM Gate 2 OPEN).
+Seller name stays **Tri Stan Ching KOO**. Do **not** convert to Insite Works Limited mid-review (GTM Gate 2 OPEN).  
+**Public** stays unticked unless you explicitly enable store visibility in ASC.
 
 ---
 
-## Live ASC state (2026-09-12)
+## Automation (preferred)
+
+```bash
+# Metadata + screenshots + attach build (default ASC_BUILD_NUMBER=280)
+ASC_BUILD_NUMBER=280 npm run asc:paste
+
+# After you finish ASC completeness review:
+ASC_SUBMIT=1 npm run asc:submit
+```
+
+Auth: ASC API key **57D87U9MQ2** (App Manager) from `eas.json` + local `.p8`.  
+Historical “API can read / PATCH 403” is obsolete for this key+role — retry with Deliver.
+
+CBP: bare **CBP** = commit → local build → S4 → EAS TF upload.  
+**CBP+ASC** / `ASC_DELIVER=1` also runs `asc:paste`.  
+**CBP+submit** / `ASC_SUBMIT=1` also runs `asc:submit`. See `.cursor/rules/cbp-commit-build-push-tf.mdc`.
+
+---
+
+## Live ASC state
 
 | Item | State |
 |---|---|
-| **1.0** | `READY_FOR_SALE` — build **127** — listing name still **Insite Trackr**; Privacy URL still old GitHub `policy.pdf` (app-info locked while 1.0 is live) |
-| **1.1.3** | `REJECTED` — do **not** leave attached build **244** (or stale **254** / **256** / **257**) |
-| Builds ready | Prefer **258** (submitted 2026-09-11; invite handoff + `/taskr/` signup + UPA dual-path). **257** lacked invite clipboard handoff. **256** lacked membership fetch fix. **254** lacked baked `/taskr/` URLs. |
-| Screenshots already in ASC | en-US: **4×** `APP_IPHONE_67` + **4×** `APP_IPAD_PRO_3GEN_129` |
-| Rejected app-info Privacy | Already `https://www.insiteworks.co/taskr/privacy-policy.html` |
-| Rejected app-info Support / Marketing | Paste required if still empty |
-| Review notes in ASC | Paste from [`2026-09-11-asc-resubmit-review-notes.md`](../evidence/2026-09-11-asc-resubmit-review-notes.md) (build **258** + billing cancel URL) |
+| Build to attach | **280** selected 2026-09-27 (`asc:paste`) |
+| Screenshots SoT | Regenerated 2026-09-26 (Option A Activity); re-uploaded with 280 paste |
+| Human | 1.1.3 + 280 is **WAITING_FOR_REVIEW** (2026-09-27). Public still off. |
 
 ---
 
-## Human checklist (order)
+## Manual fallback (web UI)
 
-### 1) Fix App Information on the **1.1.3 / REJECTED** editable app info
-
-| Field | Paste |
-|-------|--------|
-| Privacy Policy URL | https://www.insiteworks.co/taskr/privacy-policy.html |
-| Support URL | https://www.insiteworks.co/taskr/support.html |
-| Marketing URL | https://www.insiteworks.co/taskr/ |
-
-(Company portfolio, not Taskr product: https://www.insiteworks.co/)
-
-### 2) Select binary **258** for version 1.1.3
-
-Do **not** resubmit on **244**, **254**, **256**, or **257**. Build **258** includes checkout-first web signup (`/taskr/signup.html`), invite Set Password handoff, ASC-safe plan CTAs, email-first Login, Create Project roster, and PROD-safe project membership fetch. Self-serve cancel is on `https://www.insiteworks.co/taskr/billing.html`.
-
-### 3) Paste version metadata (EN + zh-HK)
-
-From [`documentation/MARKETING.md`](../../../documentation/MARKETING.md):
-
-- English: Name, Subtitle, Promotional text, **Keywords** (replace stale `Change Variations Order` junk), Description, What’s New  
-- Traditional Chinese (Hong Kong): same fields + What’s New  
-
-### 4) Screenshots
-
-Already present in ASC (4 iPhone 6.7" + 4 iPad 13"). Re-upload from disk only if a frame looks wrong:
-
-- iPhone: `docs/taskr/assets/store/iphone-67/` (`01`…`04`)  
-- iPad: `docs/taskr/assets/store/ipad-13/` (`01`…`04`)  
-- `02-camera.jpg` is a **composite** (chrome + site photo)  
-- Do **not** upload Joe Company-management frames  
-
-Optional later: physical 6.1" set; Sara CA company frame.
-
-### 5) Replace App Review notes
-
-Paste the block in [`2026-09-11-asc-resubmit-review-notes.md`](../evidence/2026-09-11-asc-resubmit-review-notes.md) (no passwords in git — keep demo credentials only in ASC).
-
-### 6) Resolution Center
-
-Answer the prior rejection using the same notes (camera **Continue**; company signup on **web** only).
-
-### 7) Submit for Review
-
-Only when steps 1–6 are done and you intend to. Keep **Public** unticked until you want store visibility.
-
----
-
-## Preflight URLs (agent-verified 2026-09-11 — all HTTP 200)
-
-- https://www.insiteworks.co/
-- https://www.insiteworks.co/taskr/
-- https://www.insiteworks.co/taskr/privacy-policy.html
-- https://www.insiteworks.co/taskr/terms-of-service.html
-- https://www.insiteworks.co/taskr/support.html
-- https://www.insiteworks.co/taskr/signup.html
-- https://www.insiteworks.co/taskr/billing.html
-
-In-app constants: `src/legal/legalLinks.ts` (same `/taskr/…` paths).
-
----
-
-## Explicit non-goals this pass
-
-- Apple Individual → Organization rename  
-- Editing live **1.0** Privacy URL (stays locked until 1.1.3 ships / app-info becomes editable for Ready for Sale)  
-- Stripe founding-CA live Checkout smoke (extra Human GO — parallel, not blocking paste; sandbox DEV path already proven)
+Use the paste pack only if Deliver fails. Same fields: App Information URLs, EN + zh-Hant metadata, review notes, build **280**, Public unticked.

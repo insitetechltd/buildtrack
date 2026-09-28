@@ -13,37 +13,37 @@
 ## File Map
 
 **Part 1 (Workspace cleanup + local loop)**
-- Create: `/Volumes/KooDrive/Insite App/scripts/archive/`
-- Create: `/Volumes/KooDrive/Insite App/scripts/dev-loop.sh`
-- Modify: `/Volumes/KooDrive/Insite App/package.json`
-- Modify: Move stale scripts into `/Volumes/KooDrive/Insite App/scripts/archive/` (using `git mv` where possible)
+- Create: `/Volumes/KooDrive/InsiteApp/scripts/archive/`
+- Create: `/Volumes/KooDrive/InsiteApp/scripts/dev-loop.sh`
+- Modify: `/Volumes/KooDrive/InsiteApp/package.json`
+- Modify: Move stale scripts into `/Volumes/KooDrive/InsiteApp/scripts/archive/` (using `git mv` where possible)
 
 **Part 2 (Simulation suite)**
-- Create: `/Volumes/KooDrive/Insite App/src/test-utils/simulation/simDriver.ts`
-- Create: `/Volumes/KooDrive/Insite App/src/test-utils/supabaseTestHarness.ts`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioA.auth-session.test.tsx`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioB.create-task.test.tsx`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioC.project-switching.test.tsx`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioD.auth-db.test.ts`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioE.task-ledger-db.test.ts`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioF.storage-upload-db.test.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/test-utils/simulation/simDriver.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/test-utils/supabaseTestHarness.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioA.auth-session.test.tsx`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioB.create-task.test.tsx`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioC.project-switching.test.tsx`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioD.auth-db.test.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioE.task-ledger-db.test.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioF.storage-upload-db.test.ts`
 - Modify (minimal): add stable `testID` props in screens/components needed for simulation
-  - `/Volumes/KooDrive/Insite App/src/screens/LoginScreen.tsx`
-  - `/Volumes/KooDrive/Insite App/src/screens/RegisterScreen.tsx`
-  - `/Volumes/KooDrive/Insite App/src/screens/CreateTaskScreen.tsx`
-  - `/Volumes/KooDrive/Insite App/src/screens/ProjectPickerScreen.tsx`
+  - `/Volumes/KooDrive/InsiteApp/src/screens/LoginScreen.tsx`
+  - `/Volumes/KooDrive/InsiteApp/src/screens/RegisterScreen.tsx`
+  - `/Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx`
+  - `/Volumes/KooDrive/InsiteApp/src/screens/ProjectPickerScreen.tsx`
   - (and any subcomponents used for photo attach triggers)
 
 **Visual mockups**
-- Create: `/Volumes/KooDrive/Insite App/docs/simulation-mockups/index.html`
+- Create: `/Volumes/KooDrive/InsiteApp/docs/simulation-mockups/index.html`
 
 ---
 
 ## Task 1: Workspace Cleanup + Archive
 
 **Files:**
-- Create: `/Volumes/KooDrive/Insite App/scripts/archive/`
-- Modify: move stale scripts into `/Volumes/KooDrive/Insite App/scripts/archive/`
+- Create: `/Volumes/KooDrive/InsiteApp/scripts/archive/`
+- Modify: move stale scripts into `/Volumes/KooDrive/InsiteApp/scripts/archive/`
 
 - [ ] **Step 1: Read current script list**
   - Inputs:
@@ -72,8 +72,8 @@
 ## Task 2: Local Dev Loop Utility
 
 **Files:**
-- Create: `/Volumes/KooDrive/Insite App/scripts/dev-loop.sh`
-- Modify: `/Volumes/KooDrive/Insite App/package.json`
+- Create: `/Volumes/KooDrive/InsiteApp/scripts/dev-loop.sh`
+- Modify: `/Volumes/KooDrive/InsiteApp/package.json`
 
 - [ ] **Step 1: Add dev loop shell utility**
   - Must:
@@ -99,7 +99,7 @@
 ## Task 3: Supabase Sandbox Harness
 
 **Files:**
-- Create: `/Volumes/KooDrive/Insite App/src/test-utils/supabaseTestHarness.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/test-utils/supabaseTestHarness.ts`
 
 - [ ] **Step 1: Implement env gating**
   - Use:
@@ -122,7 +122,7 @@
 ## Task 4: Simulation Driver
 
 **Files:**
-- Create: `/Volumes/KooDrive/Insite App/src/test-utils/simulation/simDriver.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/test-utils/simulation/simDriver.ts`
 
 - [ ] **Step 1: Implement driver helpers**
   - Wrap testing-library primitives:
@@ -136,10 +136,10 @@
 ## Task 5: UI TestIDs (Minimal Production Code Changes)
 
 **Files:**
-- Modify: `/Volumes/KooDrive/Insite App/src/screens/LoginScreen.tsx`
-- Modify: `/Volumes/KooDrive/Insite App/src/screens/RegisterScreen.tsx`
-- Modify: `/Volumes/KooDrive/Insite App/src/screens/CreateTaskScreen.tsx`
-- Modify: `/Volumes/KooDrive/Insite App/src/screens/ProjectPickerScreen.tsx`
+- Modify: `/Volumes/KooDrive/InsiteApp/src/screens/LoginScreen.tsx`
+- Modify: `/Volumes/KooDrive/InsiteApp/src/screens/RegisterScreen.tsx`
+- Modify: `/Volumes/KooDrive/InsiteApp/src/screens/CreateTaskScreen.tsx`
+- Modify: `/Volumes/KooDrive/InsiteApp/src/screens/ProjectPickerScreen.tsx`
 
 - [ ] **Step 1: Add stable testID props**
   - Login:
@@ -158,12 +158,12 @@
 ## Task 6: Scenario Tests (A–F)
 
 **Files:**
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioA.auth-session.test.tsx`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioB.create-task.test.tsx`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioC.project-switching.test.tsx`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioD.auth-db.test.ts`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioE.task-ledger-db.test.ts`
-- Create: `/Volumes/KooDrive/Insite App/src/__tests__/simulation/scenarioF.storage-upload-db.test.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioA.auth-session.test.tsx`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioB.create-task.test.tsx`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioC.project-switching.test.tsx`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioD.auth-db.test.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioE.task-ledger-db.test.ts`
+- Create: `/Volumes/KooDrive/InsiteApp/src/__tests__/simulation/scenarioF.storage-upload-db.test.ts`
 
 - [ ] **Step 1: A – Auth & Session resiliency (UI)**
 - [ ] **Step 2: B – Create task & form persistence (UI)**
@@ -177,7 +177,7 @@
 ## Task 7: Visual Mockups (Local HTML)
 
 **Files:**
-- Create: `/Volumes/KooDrive/Insite App/docs/simulation-mockups/index.html`
+- Create: `/Volumes/KooDrive/InsiteApp/docs/simulation-mockups/index.html`
 
 - [ ] **Step 1: Add a single HTML file with flow diagrams**
 - [ ] **Step 2: Serve it locally and provide URL**

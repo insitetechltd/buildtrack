@@ -1,0 +1,33 @@
+[18:57:25]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[18:57:26]: ------------------------------
+[18:57:26]: --- Step: default_platform ---
+[18:57:26]: ------------------------------
+[18:57:26]: Driving the lane 'ios asc_review_blockers' 🚀
+[18:57:26]: --------------------------------------------
+[18:57:26]: --- Step: Switch to ios asc_api_key lane ---
+[18:57:26]: --------------------------------------------
+[18:57:26]: Cruising over to lane 'ios asc_api_key' 🚖
+[18:57:26]: ---------------------------------------
+[18:57:26]: --- Step: app_store_connect_api_key ---
+[18:57:26]: ---------------------------------------
+[18:57:26]: Cruising back to lane 'ios asc_review_blockers' 🚘
+[18:57:27]: submission 731376ca-1398-4138-8ab3-083c42079c0e state=UNRESOLVED_ISSUES version=1.1.3
+[18:57:28]:   item NzMxMzc2Y2EtMTM5OC00MTM4LThhYjMtMDgzYzQyMDc5YzBlfDZ8ODg5ODk0NzE1 state=READY_FOR_REVIEW version=1.1.3
+[18:57:29]:   resolution threads: Spaceship::UnexpectedResponse: The URL path is not valid - The resource 'v1/resolutionCenterThreads' does not exist
+[18:57:29]: submission 1cff3759-7589-4d90-88d9-96d7df49393c state=COMPLETE version=1.1.3
+[18:57:29]:   item MWNmZjM3NTktNzU4OS00ZDkwLTg4ZDktOTZkN2RmNDkzOTNjfDZ8ODg5ODk0NzE1 state=REMOVED version=1.1.3
+[18:57:30]:   resolution threads: Spaceship::UnexpectedResponse: The URL path is not valid - The resource 'v1/resolutionCenterThreads' does not exist
+
++---------------------------------------------+
+|              fastlane summary               |
++------+------------------------+-------------+
+| Step | Action                 | Time (in s) |
++------+------------------------+-------------+
+| 1    | default_platform       | 0           |
+| 2    | Switch to ios          | 0           |
+|      | asc_api_key lane       |             |
+| 3    | app_store_connect_api  | 0           |
+|      | _key                   |             |
++------+------------------------+-------------+
+
+[18:57:30]: fastlane.tools finished successfully 🎉

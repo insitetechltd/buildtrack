@@ -1,0 +1,10 @@
+
+> template-app-53@1.0.0 test:edge:update-company-addons-faith
+> python3 scripts/stripe/probe-update-company-addons-faith.py
+
+[PASS] anon_denied http=401 error='not_authenticated'
+[PASS] ca_invalid_payload http=400 error='invalid_payload'
+[PASS] ca_company_mismatch http=403 error='company_mismatch'
+[PASS] worker_denied http=403 error='not_company_admin'
+artifact: /Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-27-s3-s5-prove/s4-update-company-addons-faith.json
+GO: update-company-addons faith (dry)

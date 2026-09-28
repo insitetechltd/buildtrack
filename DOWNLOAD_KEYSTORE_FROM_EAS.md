@@ -27,7 +27,7 @@ You have two options:
 
 ```bash
 # Make sure you're in the project root
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 
 # Run the extraction script
 ./scripts/extract-keystore-from-eas.sh

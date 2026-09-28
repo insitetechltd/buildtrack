@@ -27,6 +27,8 @@ import {
   getTabNavigationDirection,
 } from "../utils/formNavigation";
 
+const LOGIN_FORM_WIDTH = 320;
+
 function isPhoneNumber(value: string) {
   const phoneRegex = /^[\d\s\-\(\)\+]+$/;
   return phoneRegex.test(value.trim());
@@ -101,7 +103,7 @@ export default function LoginScreen() {
         value: output.emailOrPhone,
         placeholder: t.login.emailOrPhonePlaceholder,
         error: output.validationErrors.emailOrPhone,
-        required: true,
+        required: false,
         testId: "login-emailOrPhone",
       }),
     [
@@ -120,7 +122,7 @@ export default function LoginScreen() {
         value: output.password,
         placeholder: t.login.passwordPlaceholder,
         error: output.validationErrors.password,
-        required: true,
+        required: false,
         disabled: !output.isPasswordEnabled,
         testId: "login-password",
       }),
@@ -137,10 +139,21 @@ export default function LoginScreen() {
     <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
       <StatusBar style="dark" />
 
-      <View className="absolute top-12 right-4 z-10">
-        <Text className="text-sm text-gray-400 font-mono">
+      <View className="absolute top-12 right-4 z-10 items-end">
+        <Text
+          testID="login-build-identity"
+          className="text-sm text-gray-400 font-mono"
+        >
           {output.buildIdentifierLabel}
         </Text>
+        {output.activeSupabaseProjectRef ? (
+          <Text
+            testID="login-active-db-host"
+            className="text-[10px] text-gray-400 font-mono mt-0.5"
+          >
+            {output.activeSupabaseProjectRef}
+          </Text>
+        ) : null}
       </View>
 
       <KeyboardAvoidingView
@@ -159,13 +172,18 @@ export default function LoginScreen() {
                 style={{ width: 80, height: 80 }}
                 className="mb-6 rounded-2xl"
               />
-              <Text className="text-4xl font-bold text-gray-900 mb-2">Taskr</Text>
-              <Text className="text-gray-600 text-center">
-                {t.login.constructionTaskManagement}
-              </Text>
+              <Text className="text-4xl font-bold text-gray-900">Taskr</Text>
             </View>
 
-            <View className="space-y-4 mb-6">
+            <View
+              testID="login-form-column"
+              className="mb-6 gap-4"
+              style={{
+                width: LOGIN_FORM_WIDTH,
+                maxWidth: "100%",
+                alignSelf: "center",
+              }}
+            >
               <TextField
                 contract={emailContract}
                 inputTestId="login-emailOrPhone"

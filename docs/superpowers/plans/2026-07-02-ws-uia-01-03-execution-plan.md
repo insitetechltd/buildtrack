@@ -315,7 +315,7 @@ In `src/ui/contracts/screenScoring.ts`, change the inventory field from repo-abs
 
 - [ ] **Step 2: Update the wave matrix doc to use repo-relative paths**
 
-In `documentation/m-fnd-04-ui-migration-wave-matrix.md`, replace `/Volumes/KooDrive/Insite App/src/screens/...` with `src/screens/...`.
+In `documentation/m-fnd-04-ui-migration-wave-matrix.md`, replace `/Volumes/KooDrive/InsiteApp/src/screens/...` with `src/screens/...`.
 
 - [ ] **Step 3: Add canonical UI architecture ownership rules**
 
@@ -351,7 +351,7 @@ Update `documentation/ROADMAP.md` status for `WS-UIA / M-UIA-02` to `Closed` and
 - [ ] **Step 1: Convert ProjectsTasks task list ScrollView to FlatList**
 
 Target hotspot reference:
-- `ScrollView` rendering `{allTasks.map(...)}` in [ProjectsTasksScreen.tsx](file:///Volumes/KooDrive/Insite%20App/src/screens/ProjectsTasksScreen.tsx#L625-L665)
+- `ScrollView` rendering `{allTasks.map(...)}` in [ProjectsTasksScreen.tsx](../../../src/screens/ProjectsTasksScreen.tsx#L625-L665)
 
 Implementation notes:
 - Replace the map-rendered list with:
@@ -363,7 +363,7 @@ Implementation notes:
 - [ ] **Step 2: Convert UserManagement user list ScrollView to FlatList**
 
 Target hotspot reference:
-- `ScrollView` rendering `{output.userCards.map(...)}` in [UserManagementScreen.tsx](file:///Volumes/KooDrive/Insite%20App/src/screens/UserManagementScreen.tsx#L305-L349)
+- `ScrollView` rendering `{output.userCards.map(...)}` in [UserManagementScreen.tsx](../../../src/screens/UserManagementScreen.tsx#L305-L349)
 
 Implementation notes:
 - Replace map-rendered list with `FlatList`

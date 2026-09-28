@@ -44,7 +44,8 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 | L4 human | QA Validator + you | accept |
 | L5 destination | `test:dual-env:p-matrix` + Metro→PROD QA | PROD contract (SOP §13) |
 
-Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.
+Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.  
+**Logical containers / naming law:** `documentation/TEST_TAXONOMY.md` · registry `tests/registry.yaml` · `npm run test:taxonomy`. New tests must pick one container ID and follow naming; no Maestro YAML at `maestro/flows/` root.
 
 ## Dual-plane prove (Insite overlay of SOP §13)
 
@@ -70,7 +71,7 @@ For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/mu
 - Tasks: `src/state/taskStore.supabase.ts`
 - Supabase client: `src/api/supabase.ts`
 - Nav: `src/navigation/AppNavigator.tsx`
-- Docs governance: `documentation/SOURCE_OF_TRUTH.md`
+- Docs governance: `documentation/SOURCE_OF_TRUTH.md` (repo-relative Markdown links only — never `file:///Volumes/KooDrive/...`)
 - Session continuity: `documentation/NOW.md`
 - Multi-company membership (post-RC): `documentation/multi-company-project-membership.md`
 - **Roadmap discussion lock (2026-08-19):** `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` — read before changing Wave 2 / AI / DMS / post-RC order

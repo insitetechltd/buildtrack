@@ -32,7 +32,7 @@ Current known values:
 - `consultant`
 - `owner`
 
-Defined in [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L58-L58).
+Defined in [buildtrack.ts](../src/types/buildtrack.ts#L58-L58).
 
 ### System Permission
 
@@ -50,7 +50,7 @@ Meaning:
 - `manager`: project and task management authority
 - `member`: limited execution-oriented access
 
-Defined in [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L42-L56) and normalized by [getUserSystemPermission()`](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L674-L692).
+Defined in [buildtrack.ts](../src/types/buildtrack.ts#L42-L56) and normalized by [getUserSystemPermission()`](../src/types/buildtrack.ts#L674-L692).
 
 ### Backward-Compatible User Role
 
@@ -68,7 +68,7 @@ Notes:
 - `worker` is a legacy value that is mapped to `member`
 - this field is explicitly deprecated in favor of `systemPermission`
 
-Defined in [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L24-L40) and [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L320-L335).
+Defined in [buildtrack.ts](../src/types/buildtrack.ts#L24-L40) and [buildtrack.ts](../src/types/buildtrack.ts#L320-L335).
 
 ### Project Role
 
@@ -90,7 +90,7 @@ Meaning:
 - this describes what the user is on a specific project
 - this is separate from system-wide authority
 
-Defined in [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L95-L139).
+Defined in [buildtrack.ts](../src/types/buildtrack.ts#L95-L139).
 
 ### Backward-Compatible Project Assignment Category
 
@@ -101,7 +101,7 @@ Notes:
 - it is deprecated in favor of `projectRole`
 - it still drives most project assignment writes and several reads
 
-Defined in [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L248-L261).
+Defined in [buildtrack.ts](../src/types/buildtrack.ts#L248-L261).
 
 ### New Role-System Entities
 
@@ -117,7 +117,7 @@ This layer is not the runtime source of truth for permissions today.
 
 It is also not fully normalized because `RoleName` still mixes system-level roles and project-level roles in one enum.
 
-Defined in [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L145-L165) and surfaced via [roleStore.ts](file:///Volumes/KooDrive/Insite%20App/src/state/roleStore.ts).
+Defined in [buildtrack.ts](../src/types/buildtrack.ts#L145-L165) and surfaced via [roleStore.ts](../src/state/roleStore.ts).
 
 ## Current Runtime Truth
 
@@ -129,16 +129,16 @@ Current intended runtime rule:
 - if missing, it should derive from `user.role`
 - `worker` should normalize to `member`
 
-That rule is implemented in [getUserSystemPermission()`](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L674-L692).
+That rule is implemented in [getUserSystemPermission()`](../src/types/buildtrack.ts#L674-L692).
 
 ### Actual Active Runtime Source
 
 The repository currently has two auth-store variants:
 
-- [authStore.ts](file:///Volumes/KooDrive/Insite%20App/src/state/authStore.ts)
-- [authStore.supabase.ts](file:///Volumes/KooDrive/Insite%20App/src/state/authStore.supabase.ts)
+- [authStore.ts](../src/state/authStore.ts)
+- [authStore.supabase.ts](../src/state/authStore.supabase.ts)
 
-The app navigator imports the non-suffixed store in [AppNavigator.tsx](file:///Volumes/KooDrive/Insite%20App/src/navigation/AppNavigator.tsx#L7-L8), which means the active runtime path is currently centered on `authStore.ts`.
+The app navigator imports the non-suffixed store in [AppNavigator.tsx](../src/navigation/AppNavigator.tsx#L7-L8), which means the active runtime path is currently centered on `authStore.ts`.
 
 Current status:
 
@@ -149,7 +149,7 @@ Current status:
 
 ### Project Role Resolution
 
-The normalized helper is [getProjectRole()`](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L721-L734).
+The normalized helper is [getProjectRole()`](../src/types/buildtrack.ts#L721-L734).
 
 Current intended rule:
 
@@ -231,7 +231,7 @@ Impact:
 
 Examples:
 
-- [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts#L145-L165)
+- [buildtrack.ts](../src/types/buildtrack.ts#L145-L165)
 
 Problems:
 
@@ -243,9 +243,9 @@ Problems:
 
 Relevant docs:
 
-- [ROLE_SYSTEM_ANALYSIS.md](file:///Volumes/KooDrive/Insite%20App/documentation/history/analysis/ROLE_SYSTEM_ANALYSIS.md)
-- [ROLE_SYSTEM_MIGRATION_COMPLETE.md](file:///Volumes/KooDrive/Insite%20App/documentation/history/analysis/ROLE_SYSTEM_MIGRATION_COMPLETE.md)
-- [ROLE_SYSTEM_SIMPLIFICATION_SUMMARY.md](file:///Volumes/KooDrive/Insite%20App/documentation/history/analysis/ROLE_SYSTEM_SIMPLIFICATION_SUMMARY.md)
+- [ROLE_SYSTEM_ANALYSIS.md](./history/analysis/ROLE_SYSTEM_ANALYSIS.md)
+- [ROLE_SYSTEM_MIGRATION_COMPLETE.md](./history/analysis/ROLE_SYSTEM_MIGRATION_COMPLETE.md)
+- [ROLE_SYSTEM_SIMPLIFICATION_SUMMARY.md](./history/analysis/ROLE_SYSTEM_SIMPLIFICATION_SUMMARY.md)
 
 Impact:
 
@@ -314,17 +314,17 @@ Until M-AUTHZ-02 ships, do not treat current admin `getAllUsers()` team pickers 
 
 If you need the best current contract source, start here:
 
-- [buildtrack.ts](file:///Volumes/KooDrive/Insite%20App/src/types/buildtrack.ts)
+- [buildtrack.ts](../src/types/buildtrack.ts)
 
 If you need to understand current user normalization, inspect:
 
-- [authStore.ts](file:///Volumes/KooDrive/Insite%20App/src/state/authStore.ts)
-- [authStore.supabase.ts](file:///Volumes/KooDrive/Insite%20App/src/state/authStore.supabase.ts)
-- [userStore.supabase.ts](file:///Volumes/KooDrive/Insite%20App/src/state/userStore.supabase.ts)
+- [authStore.ts](../src/state/authStore.ts)
+- [authStore.supabase.ts](../src/state/authStore.supabase.ts)
+- [userStore.supabase.ts](../src/state/userStore.supabase.ts)
 
 If you need to understand project-role drift, inspect:
 
-- [projectStore.supabase.ts](file:///Volumes/KooDrive/Insite%20App/src/state/projectStore.supabase.ts)
+- [projectStore.supabase.ts](../src/state/projectStore.supabase.ts)
 
 ## Summary
 

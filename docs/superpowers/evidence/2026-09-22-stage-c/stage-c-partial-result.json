@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-09-22T13:00:42.833604+00:00",
+  "stage": "C",
+  "appSha": "ed87a32c4d656af1051909849054b4559dacec61",
+  "dirtyTree": true,
+  "dirtyNote": "Stage C Builder WIP \u2014 headed Maestro still owed; buildNumber-only dirt not yet applicable",
+  "gateA": {
+    "validation": "bc-e60b6c46-e735-5a54-9553-c944022a1c75",
+    "risks": "bc-38da141a-c1c7-5d68-bb53-60fa993ddfd3",
+    "verdict": "REVISE\u2192folded"
+  },
+  "C2_S4": {
+    "verdict": "PASS",
+    "ok": true,
+    "label": "ipa",
+    "ipa": ".eas/artifacts/build-1790051685807.ipa",
+    "sha256": "5d1f06cea30993916efdd80424adbbfe27fdf0053c135ecba47e24fc1971be82",
+    "bundleId": "com.buildtrack.app.local",
+    "version": "1.1.3",
+    "buildNumber": "278",
+    "prodRef": "jcnzjigxgkzhjsaekoqz",
+    "devRefAbsent": true
+  },
+  "C1_jwt": {
+    "verdict": "PASS",
+    "label": "JWT destination (not headed UI)",
+    "appSha": "ed87a32c4d656af1051909849054b4559dacec61",
+    "artifact": ".cache/prod-new-sot-20260915/headed-prod-qa-smoke.json"
+  },
+  "C1_headed_maestro": {
+    "verdict": "OWED",
+    "reason": "No Metro :8081 and no booted sim at prove time; Gate A: JWT must not close Stage C",
+    "flow": "maestro/flows/metro-prod-headed-smoke.yaml",
+    "owedBy": "2026-09-24"
+  },
+  "C3_seat": {
+    "verdict": "PASS",
+    "jest": "taskDelegationPermissions + seatUsage asymmetry lock"
+  },
+  "stageC_close": "CLOSED via stage-c-close-result.json",
+  "supersededBy": "docs/superpowers/evidence/2026-09-22-stage-c/stage-c-close-result.json"
+}

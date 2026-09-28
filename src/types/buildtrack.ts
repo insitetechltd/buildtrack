@@ -765,10 +765,10 @@ export function getUserSystemPermission(user: User): SystemPermission {
   }
 
   // Live DB vocabulary (M-SUPABASE-03a): supervisor = PM seat; company_admin = CA
-  if (user.role === "supervisor" || user.role === "manager") {
+  if ((user.role as string) === "supervisor" || user.role === "manager") {
     return "manager";
   }
-  if (user.role === "admin" || user.role === "company_admin") {
+  if (user.role === "admin" || (user.role as string) === "company_admin") {
     return "admin";
   }
   if (user.role === "member") {

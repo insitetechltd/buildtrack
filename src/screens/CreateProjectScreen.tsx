@@ -77,9 +77,13 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
 
       <ProjectForm
         mode="create"
-        onSubmit={(formData) =>
-          output.canSubmit ? actions.submitProject(formData) : Promise.resolve()
-        }
+        onSubmit={async (formData) => {
+          if (!output.canSubmit) {
+            // Do not silent-no-op: button stays enabled when only access is denied.
+            return Promise.reject(new Error("Create project blocked: not allowed"));
+          }
+          return actions.submitProject(formData);
+        }}
         onCancel={actions.cancel}
         submitButtonText={output.submitButtonText}
         isSubmitting={output.isSubmitting}

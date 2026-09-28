@@ -8,6 +8,7 @@ import {
   getCaptureFirstReturnTab,
   handOffCaptureFirstToUpdateProgress,
   launchCaptureFirstCamera,
+  launchTaskListPhotoUpdate,
   navigateToAddPhotosCaptureSession,
   promptCaptureFirstDestination,
   promptCaptureFirstSource,
@@ -111,6 +112,39 @@ describe("captureFirstCameraFlow", () => {
         userId: "u1",
       }),
     );
+  });
+
+  it("launchTaskListPhotoUpdate opens CaptureSession for Task Detail dock hydration", () => {
+    const push = jest.fn();
+    launchTaskListPhotoUpdate(
+      { navigate: jest.fn(), push },
+      { taskId: "task-1", companyId: "c1", userId: "u1" },
+    );
+    expect(push).toHaveBeenCalledWith(
+      "CaptureSession",
+      expect.objectContaining({
+        entry: "addPhotos",
+        returnScreen: "TaskDetail",
+        taskId: "task-1",
+        sourceTaskId: "task-1",
+        companyId: "c1",
+        userId: "u1",
+        uploadImmediately: false,
+        entityType: "task-update",
+        sourceScreen: "tasks",
+      }),
+    );
+  });
+
+  it("launchTaskListPhotoUpdate no-ops without a company user", () => {
+    const push = jest.fn();
+    const navigate = jest.fn();
+    launchTaskListPhotoUpdate(
+      { navigate, push },
+      { taskId: "task-1" },
+    );
+    expect(push).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("launchCaptureFirstCamera tries multi then navigates PhotoSelection with assets", async () => {

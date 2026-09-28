@@ -28,7 +28,7 @@ const MIN_REFRESH_INTERVAL = 2000; // 2 seconds minimum between refreshes
 export function DataSyncManager() {
   const appState = useRef(AppState.currentState);
   const lastRefreshTime = useRef(Date.now());
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuthStore();
 
   const syncAllData = async () => {

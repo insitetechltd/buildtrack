@@ -27,12 +27,12 @@ tags:
 - tapOn:
     id: "update-progress__description"
 - inputText: "Completed the final site safety pass and all assigned checks are now fully complete."
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 
 - tapOn: "Photos & Files"
 - tapOn:
     id: "update-progress__completion-value"
-- runFlow: ../_dismiss-keyboard.yaml
+- runFlow: ../_shared/_dismiss-keyboard.yaml
 
 - tapOn:
     id: "update-progress__screen_title"

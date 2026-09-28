@@ -82,7 +82,7 @@ If you need to test **right now** while fixing Play Store:
 ### Build APK:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 cd android
 ./gradlew assembleRelease
 ```

@@ -211,42 +211,21 @@ async function upsertInviteProfile(
   adminClient: ReturnType<typeof createClient>,
   userId: string,
   patch: Record<string, unknown>,
-  inviteRole: string,
+  _inviteRole: string,
   inviteSystemPermission: string,
 ): Promise<void> {
-  // Live tenants use `role`; greenfield PROD uses `system_permission` only.
-  // Never write both — PostgREST PGRST204 if the column is absent.
-  const { error: roleError } = await adminClient.from("users").upsert(
-    { ...patch, id: userId, role: inviteRole },
+  // NEW SoT (DEV≡PROD): system_permission only.
+  const { error } = await adminClient.from("users").upsert(
+    { ...patch, id: userId, system_permission: inviteSystemPermission },
     { onConflict: "id" },
   );
-  if (!roleError) {
-    return;
-  }
-
-  if (isSeatLimitDbError(roleError.message)) {
-    throw Object.assign(new Error(roleError.message), {
-      code: seatLimitErrorCode(roleError.message),
+  if (!error) return;
+  if (isSeatLimitDbError(error.message)) {
+    throw Object.assign(new Error(error.message), {
+      code: seatLimitErrorCode(error.message),
     });
   }
-
-  if (isMissingColumnError(roleError)) {
-    const { error: sysError } = await adminClient.from("users").upsert(
-      { ...patch, id: userId, system_permission: inviteSystemPermission },
-      { onConflict: "id" },
-    );
-    if (sysError) {
-      if (isSeatLimitDbError(sysError.message)) {
-        throw Object.assign(new Error(sysError.message), {
-          code: seatLimitErrorCode(sysError.message),
-        });
-      }
-      throwAsError(sysError);
-    }
-    return;
-  }
-
-  throwAsError(roleError);
+  throwAsError(error);
 }
 
 function isSeatLimitDbError(message: string | undefined): boolean {
@@ -269,24 +248,7 @@ async function loadCompanyUsersForSeats(
   adminClient: ReturnType<typeof createClient>,
   companyId: string,
 ): Promise<CompanyUserRow[]> {
-  // Never SELECT role + system_permission together — PostgREST aborts if either
-  // column is missing (PROD greenfield has system_permission only).
-  const rolePath = await adminClient
-    .from("users")
-    .select("id, role, is_pending, is_active, deployable_seat")
-    .eq("company_id", companyId);
-  if (!rolePath.error) {
-    return rolePath.data || [];
-  }
-  if (isMissingColumnError(rolePath.error)) {
-    const roleOnly = await adminClient
-      .from("users")
-      .select("id, role, is_pending, is_active")
-      .eq("company_id", companyId);
-    if (!roleOnly.error) {
-      return roleOnly.data || [];
-    }
-  }
+  // NEW SoT (DEV≡PROD): system_permission only.
   const sysPath = await adminClient
     .from("users")
     .select("id, system_permission, is_pending, is_active, deployable_seat")
@@ -405,7 +367,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "invalid_email" }, 400);
     }
 
-    // Live tenants use `role`; greenfield may use `system_permission`.
+    // NEW SoT (DEV≡PROD): system_permission only.
     // Never SELECT both — PostgREST 42703 aborts the whole query if a column is missing.
     let callerProfile: {
       id: string;
@@ -445,7 +407,7 @@ Deno.serve(async (req) => {
     }
 
     const permission = (callerProfile.system_permission || "").toLowerCase();
-    const role = (callerProfile.role || "").toLowerCase();
+    const role = permission; // NEW-only alias
     const isAdmin =
       permission === "admin" ||
       role === "admin" ||

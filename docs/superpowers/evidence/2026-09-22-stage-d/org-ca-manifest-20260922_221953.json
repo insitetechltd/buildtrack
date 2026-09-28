@@ -1,0 +1,25 @@
+{
+  "ok": false,
+  "failedAt": "O2",
+  "runId": "20260922_221953",
+  "udid": "B7B2640C-4738-4F8A-AEEE-5DF3D21D2533",
+  "appSha": "ed87a32c4d656af1051909849054b4559dacec61",
+  "dirty": true,
+  "diffStat": " 31 files changed, 1701 insertions(+), 225 deletions(-)",
+  "diffHash": "e1864e8aa0795013dba73c20f489783ab99b021f1eae3c409739b672ab6ad506",
+  "stageDO2Name": "StageD-O2-20260922_221953",
+  "flows": [
+    {
+      "id": "O1",
+      "flow": "O1-ca-shell.yaml",
+      "ok": true
+    },
+    {
+      "id": "O2",
+      "flow": "O2-create-project-member.yaml",
+      "ok": false
+    }
+  ],
+  "pngFound": [],
+  "notes": "O1=reachability only; A-D01 Dashboard-only OPEN; S3=real invite handoff"
+}

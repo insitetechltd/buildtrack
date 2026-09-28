@@ -1,0 +1,12 @@
+
+> template-app-53@1.0.0 test:edge:signup-happy-path
+> python3 scripts/stripe/probe-signup-happy-path.py
+
+updated sandbox config growth=1 unlimited=1
+[PASS] start-signup-checkout http=200
+[PASS] checkout confirm page=200 session=complete
+[PASS] signup-checkout-status ready=True
+[PASS] public.users founding CA
+[PASS] companies row
+artifact: /Volumes/KooDrive/InsiteApp/docs/superpowers/evidence/2026-09-27-s6-s10-prove/s6-signup-happy-path.json
+GO: signup happy path (test-mode checkout → company + invite)

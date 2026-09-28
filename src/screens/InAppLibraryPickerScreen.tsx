@@ -16,14 +16,15 @@ import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
-  LIBRARY_GRID_COLUMNS,
   LIBRARY_GRID_GAP,
+  libraryGridColumns,
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { librarySkeletonTileCount } from "@/utils/libraryPickerPerf";
 import {
   assetToSelectionDraft,
   materializeLibrarySelections,
 } from "@/modules/mediaLibrary/materializeLibrarySave";
+import { pinLibraryPreviews } from "@/utils/libraryPreviewPin";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import type { SelectedPhoto } from "../navigation/navigationTypes";
 
@@ -85,11 +86,12 @@ export default function InAppLibraryPickerScreen({
   const { width, height } = useWindowDimensions();
 
   const skeletonTileCount = useMemo(() => {
+    const columns = libraryGridColumns(width);
     const tileSize =
-      (width - LIBRARY_GRID_GAP * (LIBRARY_GRID_COLUMNS - 1)) / LIBRARY_GRID_COLUMNS;
+      (width - LIBRARY_GRID_GAP * (columns - 1)) / columns;
     const rowHeight = tileSize + LIBRARY_GRID_GAP;
     const gridArea = Math.max(200, height - insets.top - insets.bottom - 120);
-    return librarySkeletonTileCount(gridArea, rowHeight, LIBRARY_GRID_COLUMNS);
+    return librarySkeletonTileCount(gridArea, rowHeight, columns);
   }, [height, insets.bottom, insets.top, width]);
 
   const [isPinning, setIsPinning] = useState(false);
@@ -170,7 +172,7 @@ export default function InAppLibraryPickerScreen({
         drafts,
         initiallySelectedPhotos,
       );
-      onSave(photos);
+      onSave(await pinLibraryPreviews(photos));
     } catch (error) {
       console.error("❌ [InAppLibraryPicker] pin failed:", error);
       Alert.alert("Error", "Could not prepare selected photos. Please try again.");

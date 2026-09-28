@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "stage": "E",
+  "closedAt": "2026-09-23T10:40:27.566089+00:00",
+  "appSha": "89a9aa3261cd3571a49d341132f37742b03e4a2a",
+  "dirty": true,
+  "tracks": {
+    "E0": {
+      "ok": true,
+      "inventory": "docs/superpowers/evidence/2026-09-23-stage-e/e0-e4-sha-inventory.txt"
+    },
+    "E1": {
+      "ok": true,
+      "case": "DU-H01",
+      "title": "DU-H01-1790158884",
+      "log": "e1-h01.log",
+      "artifacts": ".cache/maestro-artifacts/dual-user-20260923_181815"
+    },
+    "E2": {
+      "ok": true,
+      "case": "DU-D01",
+      "title": "DU-D01-1790159577",
+      "log": "e2-d01.log",
+      "artifacts": ".cache/maestro-artifacts/dual-user-20260923_182954"
+    },
+    "E3": {
+      "ok": true,
+      "title": "R01-1790158366",
+      "taskId": "b09a0c6f-1404-419f-88cd-213afa6f04e3",
+      "manifest": "report-manifest-20260923_181244.json",
+      "pngRead": [
+        "R01-chooser-report",
+        "R01-carol-resolve-confirm",
+        "R01-carol-resolved-detail"
+      ],
+      "productFix": "resolveReport+triageIssue use insertTaskActivityDualPath (silent issue_resolved insert fail)",
+      "uiAssert": "report-reply-composer__archive (status chip text not in a11y tree)",
+      "e3bPromote": "OPEN"
+    },
+    "E4": {
+      "ok": true,
+      "P04": "PASS DEV+PROD",
+      "P05": "PASS DEV+PROD",
+      "P06": "PASS DEV+PROD",
+      "P11": "PASS DEV+PROD",
+      "reseed": "ok password123",
+      "result": "e4-pmatrix-result.json"
+    },
+    "E5": {
+      "ok": true,
+      "note": "O2 narrative tip match waived/owed only if cited; tip 89a9aa3 \u2260 Stage D archive SHA \u2014 do not cite Stage D O2 as tip-matched"
+    }
+  },
+  "asc": "untouched"
+}

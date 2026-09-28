@@ -8,19 +8,29 @@ import {
   getRequestCacheEnvelope,
   supabase,
 } from '@/api/supabase';
-import { getSessionScopedSupabase } from '@/api/supabaseSessionGate';
+import {
+  getSessionScopedSupabase,
+  waitForSessionScopedSupabase,
+} from '@/api/supabaseSessionGate';
 import { Task, TaskCategory, TaskStatus } from '@/types/buildtrack';
+import { installNewSchemaTableFallback } from './mockSupabaseNewSchemaTables';
 
 jest.mock('@/api/supabase');
 jest.mock('@/api/supabaseSessionGate', () => ({
   getSessionScopedSupabase: jest.fn(),
+  waitForSessionScopedSupabase: jest.fn(),
 }));
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockFrom = mockSupabase.from as unknown as jest.Mock;
+installNewSchemaTableFallback(mockFrom);
 const mockGetSessionScopedSupabase = getSessionScopedSupabase as jest.MockedFunction<
   typeof getSessionScopedSupabase
 >;
+const mockWaitForSessionScopedSupabase =
+  waitForSessionScopedSupabase as jest.MockedFunction<
+    typeof waitForSessionScopedSupabase
+  >;
 
 const managerId = 'manager-123';
 const workerId = 'worker-456';
@@ -120,6 +130,7 @@ describe('taskStore.supabase unit tests', () => {
     jest.clearAllMocks();
     // Post M-SUPABASE-02a: fetchTasks no-ops without a JWT session.
     mockGetSessionScopedSupabase.mockResolvedValue(mockSupabase as any);
+    mockWaitForSessionScopedSupabase.mockResolvedValue(mockSupabase as any);
   });
 
   it('skips fetchTasks when there is no Supabase session (avoids anon 42501)', async () => {
@@ -172,19 +183,19 @@ describe('taskStore.supabase unit tests', () => {
     // M-DATA-05: list hydrates Recent Activity window (may be empty) — not full timeline.
     expect(result.current.tasks[0].activities).toHaveLength(0);
     expect(mockFrom).toHaveBeenCalledWith('task_activities');
-    expect(mockFrom).toHaveBeenCalledTimes(2);
+    expect(mockFrom).toHaveBeenCalledTimes(5);
 
     await act(async () => {
       await result.current.fetchTasks();
     });
 
-    expect(mockFrom).toHaveBeenCalledTimes(2);
+    expect(mockFrom).toHaveBeenCalledTimes(5);
 
     await act(async () => {
       await result.current.fetchTasks(true);
     });
 
-    expect(mockFrom).toHaveBeenCalledTimes(4);
+    expect(mockFrom).toHaveBeenCalledTimes(10);
 
     const firstRef = result.current.tasks[0];
     await act(async () => {
@@ -716,7 +727,6 @@ describe('taskStore.supabase unit tests', () => {
     expect(firstInsertedTaskPayload).toEqual(
       expect.objectContaining({
         status: 'new',
-        current_status: 'new',
         primary_assignee_id: workerId,
         delegated_user_ids: ['worker-789'],
         container_id: 'container-123',
@@ -725,6 +735,10 @@ describe('taskStore.supabase unit tests', () => {
         location_on_site: 'Level 3 - South Core',
       })
     );
+    expect(firstInsertedTaskPayload).not.toHaveProperty('assigned_to');
+    expect(firstInsertedTaskPayload).not.toHaveProperty('current_status');
+    expect(firstInsertedTaskPayload).not.toHaveProperty('attachments');
+    expect(firstInsertedTaskPayload).not.toHaveProperty('accepted');
     const fallbackInsertedTaskPayload = taskInsert.mock.calls[1]?.[0];
     expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'primary_assignee_id')).toBe(
       false
@@ -740,13 +754,15 @@ describe('taskStore.supabase unit tests', () => {
       expect.objectContaining({
         task_id: 'task-123',
         activity_type: 'creation',
-        status: 'new',
+        data: expect.objectContaining({
+          status: 'new',
+        }),
       })
     );
     consoleWarnSpy.mockRestore();
   });
 
-  it('retries task creation without original_assigned_by when PostgREST schema cache lacks the column', async () => {
+  it('keeps original_assigned_by out of NEW task rows when PostgREST reports the legacy column', async () => {
     const taskRow = createTaskRow();
     const creationActivity = createTaskActivityRow({
       activity_type: 'issue_reported',
@@ -829,10 +845,10 @@ describe('taskStore.supabase unit tests', () => {
     expect(taskInsert).toHaveBeenCalledTimes(2);
     expect(taskInsert.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
-        original_assigned_by: workerId,
         status: 'reported',
       }),
     );
+    expect(taskInsert.mock.calls[0]?.[0]).not.toHaveProperty('original_assigned_by');
     expect(
       Object.prototype.hasOwnProperty.call(
         taskInsert.mock.calls[1]?.[0],
@@ -969,14 +985,20 @@ describe('taskStore.supabase unit tests', () => {
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'new',
-        current_status: 'new',
-        accepted: false,
         accepted_at: null,
+        accepted_by: null,
       }),
     );
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('current_status');
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('accepted');
+    expect(result.current.tasks[0]).toMatchObject({
+      status: 'new',
+      accepted: false,
+      acceptedAt: null,
+    });
   });
 
-  it('rolls back redesign-only metadata updates when stale Supabase schema rejects them', async () => {
+  it('treats a stripped redesign-only metadata update as a compatible success', async () => {
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -1037,7 +1059,7 @@ describe('taskStore.supabase unit tests', () => {
       tags: ['critical_this_week'],
     });
     expect(result.current.tasks[0]).toMatchObject({
-      tags: [],
+      tags: ['critical_this_week'],
     });
     expect(result.current.error).toBeNull();
 
@@ -1046,7 +1068,7 @@ describe('taskStore.supabase unit tests', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('persists compatible task edits and drops deferred redesign metadata when schema is behind', async () => {
+  it('retries compatible task edits without the reported missing redesign field', async () => {
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -1117,10 +1139,12 @@ describe('taskStore.supabase unit tests', () => {
     });
     expect(updateMock.mock.calls[1]?.[0]).toEqual({
       title: 'Install HVAC Phase 2',
+      location_on_site: 'Roof plant room',
     });
     expect(result.current.tasks[0]).toMatchObject({
       title: 'Install HVAC Phase 2',
-      tags: [],
+      tags: ['critical_this_week'],
+      locationOnSite: 'Roof plant room',
     });
     expect(mockTrackTaskEdit).toHaveBeenCalled();
 
@@ -2080,6 +2104,7 @@ describe('taskStore.supabase unit tests', () => {
         return {
           select: jest.fn().mockReturnThis(),
           in: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           order: jest
             .fn()

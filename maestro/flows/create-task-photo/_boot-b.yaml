@@ -9,7 +9,7 @@ appId: com.buildtrack.app.local
       medialibrary: allow
       camera: allow
       notifications: deny
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: ../_shared/_dismiss-blocking-overlays.yaml
 - runFlow:
     when:
       visible:

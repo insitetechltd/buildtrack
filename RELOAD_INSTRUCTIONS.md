@@ -69,7 +69,7 @@ Admin
 ### Check 3: Clear Expo Cache Completely
 In terminal:
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 npx expo start --clear
 ```
 

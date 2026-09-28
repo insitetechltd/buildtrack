@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  LayoutChangeEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -94,29 +92,46 @@ const CONTENT_GAP = 14;
 export const TABLET_RAIL_CARD_HEIGHT = 176;
 const RAIL_GRID_HEIGHT = TABLET_RAIL_CARD_HEIGHT;
 
-/** Pager dots slot under the post photo (reserved even when 0–1 photos). */
+/** Pager dots slot under legacy full-bleed post photo (reserved even when 0–1). */
 export const TABLET_POST_PAGER_RESERVE = 16;
 /**
- * Recipe B stacked event rows: fixed meta column so avatars share one X axis
- * (not trailing/right-packed against variable action lengths).
+ * Option A evidence strip: fixed height for up to two 3:4 portrait thumbs.
+ * Sized by height (not full-bleed) so photo cards stay close to text-only height.
  */
-export const EVENT_META_COLUMN_WIDTH = 140;
+/** Option A strip: 88 → 132 → 198 (+50% twice). */
+export const ACTIVITY_EVIDENCE_STRIP_HEIGHT = 198;
+/** Width for a 3:4 portrait thumb at ACTIVITY_EVIDENCE_STRIP_HEIGHT. */
+export const ACTIVITY_EVIDENCE_THUMB_WIDTH = Math.round(
+  (ACTIVITY_EVIDENCE_STRIP_HEIGHT * 3) / 4,
+);
+export const ACTIVITY_EVIDENCE_STRIP_MAX_THUMBS = 2;
+export const ACTIVITY_EVIDENCE_STRIP_GAP = 8;
+/** Matches event-row `w-2.5` status dot. */
+const EVENT_ROW_DOT_SIZE = 10;
+/** Matches event-row `gap-2` between dot and avatar. */
+const EVENT_ROW_GAP = 8;
+/**
+ * Indent evidence strip so thumbs share the avatar’s left edge
+ * (after status dot + gap).
+ */
+export const ACTIVITY_EVIDENCE_STRIP_INDENT =
+  EVENT_ROW_DOT_SIZE + EVENT_ROW_GAP;
+/**
+ * Event meta (avatar + dd/mm/yy): left of the action, wide enough for full date.
+ */
+export const EVENT_META_COLUMN_WIDTH = 92;
 const EVENT_AVATAR_SIZE = 18;
 /**
- * Tablet grid post cards (Recent Activity): fixed height so wrap-row siblings
- * match whether they have 0 / 1 / N photos.
- * Chrome ≈ title + action/meta row + photo + pager (synthesis layout).
+ * Tablet grid post cards (Recent Activity) — fillHeight path only.
+ * Option A strip is shorter than the old full-bleed hero.
  */
 export const TABLET_POST_CARD_HEIGHT =
   12 + // pt-3
   66 + // title ≤3 lines
-  40 + // action+author · date row ≤2 lines
-  12 + // mt-3 before photo
-  ACTIVITY_FAMILY.photoHeight +
-  8 + // mt-2 before pager
-  TABLET_POST_PAGER_RESERVE +
+  40 + // action + avatar · date
+  12 + // mt before strip
+  ACTIVITY_EVIDENCE_STRIP_HEIGHT +
   12; // pb-3
-
 /** Latest-only emphasis: reject/decline weight (priors stay regular). */
 function isEmphasizedPostAction(
   changeLine: string,
@@ -174,8 +189,6 @@ export default function ActivityStyleRowCard({
   }, [imageUri, imageUris]);
 
   const [failedUris, setFailedUris] = useState<Record<string, true>>({});
-  const [galleryIndex, setGalleryIndex] = useState(0);
-  const [heroWidth, setHeroWidth] = useState(0);
   const [eventsExpanded, setEventsExpanded] = useState(false);
 
   const usableImageUris = useMemo(
@@ -185,14 +198,7 @@ export default function ActivityStyleRowCard({
 
   useEffect(() => {
     setFailedUris({});
-    setGalleryIndex(0);
   }, [resolvedImageUris.join("|")]);
-
-  useEffect(() => {
-    if (galleryIndex >= usableImageUris.length) {
-      setGalleryIndex(Math.max(0, usableImageUris.length - 1));
-    }
-  }, [galleryIndex, usableImageUris.length]);
 
   const resolvedMediaSize = mediaSize ?? defaultMediaSize(variant);
   const media = MEDIA[resolvedMediaSize];
@@ -252,13 +258,6 @@ export default function ActivityStyleRowCard({
 
   const markImageFailed = (uri: string) => {
     setFailedUris((current) => (current[uri] ? current : { ...current, [uri]: true }));
-  };
-
-  const onHeroLayout = (event: LayoutChangeEvent) => {
-    const nextWidth = Math.round(event.nativeEvent.layout.width);
-    if (nextWidth > 0 && nextWidth !== heroWidth) {
-      setHeroWidth(nextWidth);
-    }
   };
 
   const bottomRow =
@@ -331,11 +330,8 @@ export default function ActivityStyleRowCard({
       latestAction || changeLine,
       latestTone,
     );
-    const showPagerDots = usableImageUris.length > 1;
-    // Recipe B: no photo slot when latest has no photos (skip fillHeight spacer).
-    const showMediaBlock = stackedEvents
-      ? showPostPhoto
-      : showPostPhoto || fillHeight;
+    // Option A: compact evidence strip only when there are usable photos.
+    const showMediaBlock = showPostPhoto;
     const showMetaRow = stackedEvents
       ? Boolean(latestEvent)
       : Boolean(legacySecondaryLine) || hasActor || hasMeta;
@@ -353,7 +349,8 @@ export default function ActivityStyleRowCard({
     }) => {
       const name = (params.actorName ?? "").trim();
       const date = (params.dateLabel ?? "").trim();
-      if (!name && !date) {
+      const showAvatar = Boolean(name || params.actorId);
+      if (!showAvatar && !date) {
         // Still reserve meta column width so sibling rows keep avatar X alignment.
         return (
           <View
@@ -374,38 +371,24 @@ export default function ActivityStyleRowCard({
             style={{ width: EVENT_AVATAR_SIZE, height: EVENT_AVATAR_SIZE }}
             className="items-center justify-center"
           >
-            {name ? (
+            {showAvatar ? (
               <UserAvatar
                 testID={`${params.leafTestID}:actor-avatar`}
                 userId={params.actorId}
-                name={name}
+                name={name || "?"}
                 size={EVENT_AVATAR_SIZE}
               />
             ) : null}
           </View>
-          <View className="min-w-0 flex-1 flex-row items-center gap-1">
-            {name ? (
-              <Text
-                testID={`${params.leafTestID}:hero-actor-label`}
-                className={cn(ACTIVITY_FAMILY.metaClassName, "min-w-0 shrink")}
-                numberOfLines={1}
-              >
-                {name}
-              </Text>
-            ) : null}
-            {name && date ? (
-              <Text className={ACTIVITY_FAMILY.metaClassName}>·</Text>
-            ) : null}
-            {date ? (
-              <Text
-                testID={`${params.leafTestID}:meta`}
-                className={cn(ACTIVITY_FAMILY.metaClassName, "min-w-0 shrink")}
-                numberOfLines={1}
-              >
-                {date}
-              </Text>
-            ) : null}
-          </View>
+          {date ? (
+            <Text
+              testID={`${params.leafTestID}:meta`}
+              className={cn(ACTIVITY_FAMILY.metaClassName, "shrink-0")}
+              numberOfLines={1}
+            >
+              {date}
+            </Text>
+          ) : null}
         </View>
       );
     };
@@ -443,6 +426,12 @@ export default function ActivityStyleRowCard({
               }}
             />
           ) : null}
+          {renderActorDate({
+            leafTestID: params.leafTestID,
+            actorName: params.actorName,
+            actorId: params.actorId,
+            dateLabel: params.dateLabel,
+          })}
           {params.action ? (
             <Text
               testID={`${params.leafTestID}:subtitle`}
@@ -454,12 +443,6 @@ export default function ActivityStyleRowCard({
           ) : (
             <View className="min-w-0 flex-1" />
           )}
-          {renderActorDate({
-            leafTestID: params.leafTestID,
-            actorName: params.actorName,
-            actorId: params.actorId,
-            dateLabel: params.dateLabel,
-          })}
         </View>
       );
     };
@@ -522,6 +505,12 @@ export default function ActivityStyleRowCard({
                   testID={`${testID}:post-footer`}
                   className="mt-1.5 flex-row items-start gap-2"
                 >
+                  {renderActorDate({
+                    leafTestID: testID,
+                    actorName: resolvedActorLabel,
+                    actorId: actorUserId,
+                    dateLabel: metaLabel,
+                  })}
                   {legacySecondaryLine ? (
                     <Text
                       testID={`${testID}:subtitle`}
@@ -533,143 +522,72 @@ export default function ActivityStyleRowCard({
                   ) : (
                     <View className="min-w-0 flex-1" />
                   )}
-                  {renderActorDate({
-                    leafTestID: testID,
-                    actorName: resolvedActorLabel,
-                    actorId: actorUserId,
-                    dateLabel: metaLabel,
-                  })}
                 </View>
               ) : null}
             </Pressable>
 
             {fillHeight ? <View style={{ flex: 1 }} /> : null}
 
-            {showMediaBlock ? (
-              <View className="mx-4 mt-3">
-                {showPostPhoto ? (
-                  <View
-                    testID={`${testID}:hero`}
-                    className="overflow-hidden rounded-2xl bg-slate-100"
-                    style={{ height: ACTIVITY_FAMILY.photoHeight }}
-                    onLayout={onHeroLayout}
-                  >
-                    {usableImageUris.length > 1 && heroWidth > 0 ? (
-                      <ScrollView
-                        testID={`${testID}:hero-swipe`}
-                        horizontal
-                        pagingEnabled
-                        directionalLockEnabled
-                        nestedScrollEnabled
-                        disableIntervalMomentum
-                        decelerationRate="fast"
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ height: "100%" }}
-                        style={{ height: ACTIVITY_FAMILY.photoHeight }}
-                        onMomentumScrollEnd={(event) => {
-                          const pageWidth = Math.max(
-                            event.nativeEvent.layoutMeasurement.width,
-                            heroWidth,
-                            1,
-                          );
-                          const nextIndex = Math.round(
-                            event.nativeEvent.contentOffset.x / pageWidth,
-                          );
-                          setGalleryIndex(
-                            Math.min(
-                              Math.max(nextIndex, 0),
-                              usableImageUris.length - 1,
-                            ),
-                          );
+            {showMediaBlock && showPostPhoto ? (
+              <View
+                testID={`${testID}:evidence-strip`}
+                className="mx-4 mt-2 flex-row items-end"
+                style={{
+                  gap: ACTIVITY_EVIDENCE_STRIP_GAP,
+                  paddingLeft: ACTIVITY_EVIDENCE_STRIP_INDENT,
+                }}
+              >
+                {usableImageUris
+                  .slice(0, ACTIVITY_EVIDENCE_STRIP_MAX_THUMBS)
+                  .map((uri, photoIndex) => (
+                    <Pressable
+                      key={`${testID}:strip-thumb:${photoIndex}`}
+                      testID={
+                        photoIndex === 0
+                          ? `${testID}:hero-image-pressable`
+                          : `${testID}:hero-image-pressable-${photoIndex}`
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={`Activity photo ${photoIndex + 1} of ${usableImageUris.length}`}
+                      disabled={disabled}
+                      onPress={onPress}
+                      className="overflow-hidden rounded-xl"
+                      style={{
+                        width: ACTIVITY_EVIDENCE_THUMB_WIDTH,
+                        height: ACTIVITY_EVIDENCE_STRIP_HEIGHT,
+                      }}
+                    >
+                      <ExpoImage
+                        testID={
+                          photoIndex === 0
+                            ? `${testID}:hero-image`
+                            : `${testID}:hero-image-${photoIndex}`
+                        }
+                        source={{
+                          uri,
+                          cacheKey:
+                            extractBuildtrackStoragePath(uri) ?? uri,
                         }}
-                      >
-                        {usableImageUris.map((uri, photoIndex) => (
-                          <Pressable
-                            key={`${testID}:hero-slide:${photoIndex}`}
-                            testID={
-                              photoIndex === 0
-                                ? `${testID}:hero-image-pressable`
-                                : `${testID}:hero-image-pressable-${photoIndex}`
-                            }
-                            accessibilityRole="button"
-                            accessibilityLabel={`Activity photo ${photoIndex + 1} of ${usableImageUris.length}`}
-                            disabled={disabled}
-                            onPress={onPress}
-                            style={{
-                              width: heroWidth,
-                              height: ACTIVITY_FAMILY.photoHeight,
-                              position: "relative",
-                            }}
-                          >
-                            <ExpoImage
-                              testID={
-                                photoIndex === 0
-                                  ? `${testID}:hero-image`
-                                  : `${testID}:hero-image-${photoIndex}`
-                              }
-                              source={{
-                                uri,
-                                cacheKey:
-                                  extractBuildtrackStoragePath(uri) ?? uri,
-                              }}
-                              style={StyleSheet.absoluteFillObject}
-                              contentFit="cover"
-                              cachePolicy="memory-disk"
-                              onError={() => markImageFailed(uri)}
-                            />
-                          </Pressable>
-                        ))}
-                      </ScrollView>
-                    ) : (
-                      <Pressable
-                        testID={`${testID}:hero-image-pressable`}
-                        accessibilityRole="button"
-                        disabled={disabled}
-                        onPress={onPress}
                         style={StyleSheet.absoluteFillObject}
-                      >
-                        <ExpoImage
-                          testID={`${testID}:hero-image`}
-                          source={{
-                            uri: primaryImageUri,
-                            cacheKey:
-                              extractBuildtrackStoragePath(primaryImageUri) ??
-                              primaryImageUri,
-                          }}
-                          style={StyleSheet.absoluteFillObject}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          onError={() => markImageFailed(primaryImageUri)}
-                        />
-                      </Pressable>
-                    )}
-                  </View>
-                ) : (
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        onError={() => markImageFailed(uri)}
+                      />
+                    </Pressable>
+                  ))}
+                {usableImageUris.length >
+                ACTIVITY_EVIDENCE_STRIP_MAX_THUMBS ? (
                   <View
-                    testID={`${testID}:hero-spacer`}
-                    className="overflow-hidden rounded-2xl bg-slate-100"
-                    style={{ height: ACTIVITY_FAMILY.photoHeight }}
-                  />
-                )}
-                {fillHeight || showPagerDots ? (
-                  <View
-                    testID={`${testID}:hero-pager`}
-                    className="mt-2 flex-row items-center justify-center gap-1.5"
-                    style={{ height: TABLET_POST_PAGER_RESERVE }}
+                    testID={`${testID}:evidence-strip-more`}
+                    className="items-center justify-center rounded-xl bg-[#E7F4F8]"
+                    style={{
+                      width: ACTIVITY_EVIDENCE_THUMB_WIDTH,
+                      height: ACTIVITY_EVIDENCE_STRIP_HEIGHT,
+                    }}
                   >
-                    {showPagerDots
-                      ? usableImageUris.map((_, photoIndex) => (
-                          <View
-                            key={`${testID}:hero-dot:${photoIndex}`}
-                            className={cn(
-                              "h-2 rounded-full",
-                              photoIndex === galleryIndex
-                                ? "w-5 bg-[#08576E]"
-                                : "w-2 bg-slate-300",
-                            )}
-                          />
-                        ))
-                      : null}
+                    <Text className="text-sm font-semibold text-[#0A728F]">
+                      {`+${usableImageUris.length - ACTIVITY_EVIDENCE_STRIP_MAX_THUMBS}`}
+                    </Text>
                   </View>
                 ) : null}
               </View>

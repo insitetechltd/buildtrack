@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "plane": "DEV",
+  "projectRef": "zusulknbhaumougqckec",
+  "appSha": "7d65e97",
+  "cases": [
+    {
+      "case": "anon_denied",
+      "ok": true,
+      "http": 401,
+      "error": "not_authenticated"
+    },
+    {
+      "case": "ca_invalid_payload",
+      "ok": true,
+      "http": 400,
+      "error": "invalid_payload"
+    },
+    {
+      "case": "ca_company_mismatch",
+      "ok": true,
+      "http": 403,
+      "error": "company_mismatch"
+    },
+    {
+      "case": "worker_denied",
+      "ok": true,
+      "http": 403,
+      "error": "not_company_admin"
+    }
+  ],
+  "note": "No Stripe quantity mutation; dry ACL/payload only"
+}

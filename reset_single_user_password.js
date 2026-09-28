@@ -13,6 +13,9 @@
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
+const {
+  assertMayRotateAscDemoPasswordOrThrow,
+} = require('./scripts/lib/ascReviewDemoGuard.cjs');
 
 // Get credentials from environment variables
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -110,6 +113,9 @@ async function resetSingleUserPassword() {
     
     // Step 3: Reset password
     console.log('🔄 Step 3: Resetting password...');
+    // ASC Review demo accounts (sara/john/joe@insitetest.com) are locked —
+    // break-glass: ASC_DEMO_PASSWORD_BREAK_GLASS=1 + update ASC Review Information.
+    assertMayRotateAscDemoPasswordOrThrow(EMAIL);
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       user.id,
       {

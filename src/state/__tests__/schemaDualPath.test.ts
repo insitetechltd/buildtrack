@@ -31,11 +31,12 @@ describe("schemaDualPath.toDbSystemPermission", () => {
 });
 
 describe("schemaDualPath.coalesceAssignees", () => {
-  it("prefers assigned_to column when present", () => {
-    expect(coalesceAssignees(["a"], ["b", "c"])).toEqual(["a"]);
+  it("prefers junction (NEW SoT) when present", () => {
+    expect(coalesceAssignees(["a"], ["b", "c"])).toEqual(["b", "c"]);
   });
 
-  it("falls back to junction when column empty", () => {
+  it("falls back to column when junction empty", () => {
+    expect(coalesceAssignees(["a"], [])).toEqual(["a"]);
     expect(coalesceAssignees([], ["b", "c"])).toEqual(["b", "c"]);
   });
 });
@@ -55,24 +56,14 @@ describe("schemaDualPath.isMissingRelationError", () => {
 
 
 describe("schemaDualPath.insertTaskActivityDualPath", () => {
-  it("retries without top-level status when PROD schema rejects it", async () => {
+  it("writes status into data only (NEW SoT, no top-level status)", async () => {
     const inserts: Record<string, unknown>[] = [];
     const client = {
       from() {
         return {
           insert(rows: Record<string, unknown>) {
             inserts.push(rows);
-            const result =
-              inserts.length === 1
-                ? {
-                    data: null,
-                    error: {
-                      code: "PGRST204",
-                      message:
-                        "Could not find the 'status' column of 'task_activities' in the schema cache",
-                    },
-                  }
-                : { data: { id: "act-1" }, error: null };
+            const result = { data: { id: "act-1" }, error: null };
             return {
               select: () => ({
                 single: async () => result,
@@ -101,10 +92,9 @@ describe("schemaDualPath.insertTaskActivityDualPath", () => {
 
     expect(out.error).toBeNull();
     expect(out.strippedStatus).toBe(true);
-    expect(inserts).toHaveLength(2);
-    expect(inserts[0]).toHaveProperty("status", "in_progress");
-    expect(inserts[1]).not.toHaveProperty("status");
-    expect((inserts[1].data as any).status).toBe("in_progress");
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0]).not.toHaveProperty("status");
+    expect((inserts[0].data as any).status).toBe("in_progress");
   });
 });
 
@@ -219,7 +209,8 @@ describe("schemaDualPath.updateTaskStrippingEvolvedColumns", () => {
     expect(result.error).toBeNull();
     expect(result.finalPayload.current_status).toBeUndefined();
     expect(result.finalPayload.status).toBe("in_progress");
-    expect(calls).toBeGreaterThanOrEqual(2);
+    // NEW-first: OLD cols stripped before first UPDATE → single call.
+    expect(calls).toBe(1);
   });
 
   it("marks strippedAssignedTo when assigned_to is removed", async () => {
@@ -276,7 +267,7 @@ describe("schemaDualPath.insertTaskFile", () => {
       created_by: "u1",
     });
     expect(result.usedTable).toBe(false);
-    expect(result.error).toBeNull();
+    expect(result.error).not.toBeNull();
   });
 
   it("returns usedTable=true on success", async () => {
@@ -325,7 +316,7 @@ describe("schemaDualPath.toggleTaskStarDualPath", () => {
     expect(inserts[0]).toMatchObject({ task_id: "t1", user_id: "u1" });
   });
 
-  it("falls back to array mode when task_stars missing", async () => {
+  it("surfaces error when task_stars missing (NEW-only)", async () => {
     const client = {
       from: () => ({
         insert: () => ({
@@ -346,13 +337,13 @@ describe("schemaDualPath.toggleTaskStarDualPath", () => {
       userId: "u1",
       currentlyStarred: false,
     });
-    expect(result.error).toBeNull();
-    expect(result.mode).toBe("array");
+    expect(result.error).not.toBeNull();
+    expect(result.mode).toBe("junction");
   });
 });
 
 describe("schemaDualPath.selectUserAclSequential", () => {
-  it("retries with system_permission when both-col select fails", async () => {
+  it("reads system_permission only (NEW SoT)", async () => {
     let attempt = 0;
     const client = {
       from: () => ({
@@ -360,22 +351,11 @@ describe("schemaDualPath.selectUserAclSequential", () => {
           eq: () => ({
             single: async () => {
               attempt += 1;
-              if (cols.includes("role") && cols.includes("system_permission")) {
-                return {
-                  data: null,
-                  error: {
-                    code: "42703",
-                    message: "column users.role does not exist",
-                  },
-                };
-              }
-              if (cols.includes("system_permission")) {
-                return {
-                  data: { name: "Sara", system_permission: "admin" },
-                  error: null,
-                };
-              }
-              return { data: null, error: { message: "unexpected" } };
+              expect(cols).toBe("name, system_permission");
+              return {
+                data: { name: "Sara", system_permission: "admin" },
+                error: null,
+              };
             },
           }),
         }),
@@ -388,7 +368,7 @@ describe("schemaDualPath.selectUserAclSequential", () => {
       role: undefined,
       systemPermission: "admin",
     });
-    expect(attempt).toBeGreaterThanOrEqual(2);
+    expect(attempt).toBe(1);
   });
 });
 

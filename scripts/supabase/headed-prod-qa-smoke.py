@@ -33,12 +33,15 @@ EVIDENCE = (
 
 
 def main() -> int:
-    mod = runpy.run_path(str(ROOT / "scripts" / "supabase" / "probe-p01-p10-dual-target.py"))
+    mod = runpy.run_path(
+        str(ROOT / "scripts" / "supabase" / "probe-p01-p10-dual-target.py"),
+        run_name="probe_p01_p10",
+    )
     env_file = mod["load_dotenv"](ROOT / ".env")
+    prod_file = mod["load_dotenv"](
+        ROOT / ".cache" / "env-cutover" / "insite-prod.env.local"
+    )
     token = env_file.get("SUPABASE_ACCESS_TOKEN")
-    if not token:
-        print("FAIL: SUPABASE_ACCESS_TOKEN missing", file=sys.stderr)
-        return 1
 
     sha = mod["git_sha"]()
     EnvCtx = mod["EnvCtx"]
@@ -48,12 +51,46 @@ def main() -> int:
     simulate_app_shaped_task_create = mod["simulate_app_shaped_task_create"]
     is_missing_col = mod["is_missing_col"]
 
+    import base64
+
+    def jwt_ref(k: str) -> str | None:
+        try:
+            part = k.split(".")[1]
+            part += "=" * ((4 - len(part) % 4) % 4)
+            return json.loads(base64.urlsafe_b64decode(part)).get("ref")
+        except Exception:
+            return None
+
+    sr = prod_file.get("SUPABASE_SERVICE_ROLE_KEY") or ""
+    anon = (
+        prod_file.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
+        or prod_file.get("SUPABASE_ANON_KEY")
+        or ""
+    )
+    if sr and jwt_ref(sr) == PROD_REF and anon and jwt_ref(anon) == PROD_REF:
+        print(f"PROD keys: local insite-prod.env.local (ref={PROD_REF})")
+        service_role, anon_key = sr, anon
+    elif token:
+        print(f"PROD keys: management API (ref={PROD_REF})")
+        try:
+            service_role = management_key(token, PROD_REF, "service_role")
+            anon_key = management_key(token, PROD_REF, "anon")
+        except Exception as e:
+            print(f"FAIL: management keys: {e}", file=sys.stderr)
+            return 1
+    else:
+        print(
+            "FAIL: no PROD local keys and SUPABASE_ACCESS_TOKEN missing",
+            file=sys.stderr,
+        )
+        return 1
+
     prod = EnvCtx(
         "PROD",
         PROD_REF,
         f"https://{PROD_REF}.supabase.co",
-        management_key(token, PROD_REF, "service_role"),
-        management_key(token, PROD_REF, "anon"),
+        service_role,
+        anon_key,
         "NEW",
         sha,
     )

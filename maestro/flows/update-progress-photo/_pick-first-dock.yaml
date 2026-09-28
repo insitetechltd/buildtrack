@@ -1,0 +1,24 @@
+# Pick first Recents tile on capture-session hybrid grid → Select Photos tile_0.
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    point: "17%, 28%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- runFlow:
+    when:
+      notVisible: ".*[1-9] selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 22%"
+- extendedWaitUntil:
+    visible: ".*[1-9] selected.*"
+    timeout: 10000
+- tapOn:
+    id: "capture-session__hybrid_accept"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 25000
+- assertVisible:
+    id: "photo-selection__tile_0"

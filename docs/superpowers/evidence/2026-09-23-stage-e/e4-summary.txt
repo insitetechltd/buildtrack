@@ -1,0 +1,1 @@
+PM=0 RS=0 (gates PASS; re-seed ok; zsh PIPESTATUS empty under tee)

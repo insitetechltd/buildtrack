@@ -80,7 +80,7 @@ After inviting the service account:
 After granting permissions via Users & Permissions:
 
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 eas submit --platform android --profile production --path android/app/build/outputs/bundle/release/app-release.aab --non-interactive
 ```
 

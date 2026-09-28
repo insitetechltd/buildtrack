@@ -1,0 +1,368 @@
+{
+  "generated_at": "2026-09-27T12:57:20.555261+00:00",
+  "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+  "dev": [
+    {
+      "case_id": "P01",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "user=john.managera@test.com acl=member company=2f13d7d6-5c26-439b-90c0-b39bd839e66b"
+    },
+    {
+      "case_id": "P02",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "http=401 error='not_authenticated'"
+    },
+    {
+      "case_id": "P03",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "project=3c2da5c9-d8ee-4377-afc7-a01f88304038 upa_http=201 body=[{'id': '3f8fd8ba-9f08-4915-b54a-5f92f8bc84bb', 'user_id': 'efaf817c-4502-4fd0-a2f4-2723c82b52bd', 'project_id': '3c2da5c9-d8ee-4377-afc7-a01f88304038', 'project_role': 'lead_project_manager', 'assigned_by': 'efaf817c-4502-4fd0-a2f4-2723c82b52bd', 'is_active': True, 'created_at': '2026-09-27T12:56:39.849642+00:00', 'updated_at': '2026-09-27T12:56:39.849642+00:00'}] ts_pref=created_at"
+    },
+    {
+      "case_id": "P04",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "app-shaped rejected (400) then strip+junction OK task=a49c01f1-1eab-4b1b-951e-41f5cc62e930"
+    },
+    {
+      "case_id": "P05",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "status_http=200 task_files_http=201"
+    },
+    {
+      "case_id": "P06",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "task=a49c01f1-1eab-4b1b-951e-41f5cc62e930 submitted\u2192approved"
+    },
+    {
+      "case_id": "P07",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "primary_http=201 delegated_http=409"
+    },
+    {
+      "case_id": "P11",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "report=5ab27198-4a08-40a2-8c42-e447a28ce0b6 activity_http=201 resolve_http=200"
+    },
+    {
+      "case_id": "P08",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "acl_write_http=200"
+    },
+    {
+      "case_id": "P09",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "Human-GO-skip",
+      "detail": "SKIPPED \u2014 live Checkout requires Human GO per charge; QA company only"
+    },
+    {
+      "case_id": "P10a",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "billing-subscription-status anon http=401 error='not_authenticated'"
+    },
+    {
+      "case_id": "P10",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "cancel-subscription anon http=401 error='not_authenticated'"
+    },
+    {
+      "case_id": "P02j",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "jwt invite-user http=400 error='invalid_payload'"
+    },
+    {
+      "case_id": "P04j",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "app-shaped rejected (400) then strip+junction OK task=07406f2b-2580-45e7-b579-8b7351517c72"
+    },
+    {
+      "case_id": "P05j",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "status=200 files=201 stars=201"
+    },
+    {
+      "case_id": "P08j",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "jwt acl_write http=200"
+    },
+    {
+      "case_id": "P10j",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "jwt billing-subscription-status http=200 error=None"
+    },
+    {
+      "case_id": "F6",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "subject=alice.workera1@test.com foreign_task=a1b41190-c722-4230-abfd-5c7bdc7bd79b other=276c0714-ba27-4136-9dbc-9dc603a67c99 read_http=200 patch_http=200 insert_http=403 leaked=False"
+    },
+    {
+      "case_id": "F7",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "subject=alice.workera1@test.com sub_co=2f13d7d6-5c26-439b-90c0-b39bd839e66b foreign_co=74f2e3bf-e46a-441b-9cab-edd90eca35b2 foreign_task=96d4dd2c-49bf-4c68-b921-e6b01b3560f4 read_http=200 patch_http=200 insert_http=403 leaked=False co_wall=True"
+    },
+    {
+      "case_id": "O4",
+      "plane": "DEV",
+      "project_ref": "zusulknbhaumougqckec",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": false,
+      "classification": "RLS-open",
+      "detail": "demote_http=200 before=admin after=member unchanged=False body=[{'id': '4764c035-5ce7-4a05-a413-c2ab5002ea25', 'name': 'O4 Sole Admin', 'email': 'o4-sole-p-matrix-20260927125637-1e03541d@example.invalid', 'phone': '', 'company_id': 'cde96b90-9702-4598-80e4-f3a41e3a7e1d', 'position': '', 'system_permission': 'member', 'user_type': 'company_user', 'last_selected_project_id': None, 'is_pending': False, 'approved_by': None, 'approved_at': None, 'created_at': '2026-09-27T12:56:56.436827+00:00', 'updated_at': '2026-09-27T12:56:57.008872+00:00', 'deleted_at': None, 'invite_sign_in_link': None, 'must_set_password': False, 'is_active': True, 'deployable_seat': 'worker'}]"
+    }
+  ],
+  "prod": [
+    {
+      "case_id": "P01",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "user=sara@insitetest.com acl=admin company=27c0612d-fb8e-4444-bcf4-545228a763a8"
+    },
+    {
+      "case_id": "P02",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "http=401 error='not_authenticated'"
+    },
+    {
+      "case_id": "P03",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "project=35256f5f-cb14-4d95-8172-1f5b1c99db8d upa_http=201 body=[{'id': 'cffc813a-89ef-45c6-ba6e-16d7c0c1722b', 'user_id': '1dd31ee0-7f42-42b2-9a6b-76cea9f3579f', 'project_id': '35256f5f-cb14-4d95-8172-1f5b1c99db8d', 'project_role': 'lead_project_manager', 'assigned_by': '1dd31ee0-7f42-42b2-9a6b-76cea9f3579f', 'is_active': True, 'created_at': '2026-09-27T12:56:59.755369+00:00', 'updated_at': '2026-09-27T12:56:59.755369+00:00'}] ts_pref=created_at"
+    },
+    {
+      "case_id": "P04",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "app-shaped rejected (400) then strip+junction OK task=a8e2f91e-411c-43b2-86f0-8fcd3c46b84f"
+    },
+    {
+      "case_id": "P05",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "status_http=200 task_files_http=201"
+    },
+    {
+      "case_id": "P06",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "task=a8e2f91e-411c-43b2-86f0-8fcd3c46b84f submitted\u2192approved"
+    },
+    {
+      "case_id": "P07",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "primary_http=201 delegated_http=201"
+    },
+    {
+      "case_id": "P11",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "report=97f630b3-5aec-4c0a-860e-9a9b40086408 activity_http=201 resolve_http=200"
+    },
+    {
+      "case_id": "P08",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "acl_write_http=200"
+    },
+    {
+      "case_id": "P09",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "Human-GO-skip",
+      "detail": "SKIPPED \u2014 live Checkout requires Human GO per charge; QA company only"
+    },
+    {
+      "case_id": "P10a",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "billing-subscription-status anon http=401 error='not_authenticated'"
+    },
+    {
+      "case_id": "P10",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "cancel-subscription anon http=401 error='not_authenticated'"
+    },
+    {
+      "case_id": "P02j",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "jwt invite-user http=400 error='invalid_payload'"
+    },
+    {
+      "case_id": "P04j",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "app-shaped rejected (400) then strip+junction OK task=6dd197dc-41bb-4efc-8bb0-deca6328086d"
+    },
+    {
+      "case_id": "P05j",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "status=200 files=201 stars=201"
+    },
+    {
+      "case_id": "P08j",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "jwt acl_write http=200"
+    },
+    {
+      "case_id": "P10j",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "jwt billing-subscription-status http=200 error=None"
+    },
+    {
+      "case_id": "F6",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "subject=john@insitetest.com foreign_task=e4e8e632-c87f-4d56-a573-4927aa9e2ee0 other=4d138961-4aff-4ea9-bc3d-b6b3814256e3 read_http=200 patch_http=200 insert_http=403 leaked=False"
+    },
+    {
+      "case_id": "F7",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": true,
+      "classification": "PASS",
+      "detail": "subject=john@insitetest.com sub_co=27c0612d-fb8e-4444-bcf4-545228a763a8 foreign_co=d02f55e6-8bb2-4e16-ac9a-067f84fa54a7 foreign_task=341d844d-bcf2-4252-8250-09c4dc3b2179 read_http=200 patch_http=200 insert_http=403 leaked=False co_wall=True"
+    },
+    {
+      "case_id": "O4",
+      "plane": "PROD",
+      "project_ref": "jcnzjigxgkzhjsaekoqz",
+      "app_sha": "7d65e97d434bc97cfeaa8647f9a3f1ac155c24ed",
+      "ok": false,
+      "classification": "RLS-open",
+      "detail": "demote_http=200 before=admin after=member unchanged=False body=[{'id': '814bfa64-90eb-4b86-bbf1-4232567344db', 'name': 'O4 Sole Admin', 'email': 'o4-sole-p-matrix-20260927125657-ff14bf48@example.invalid', 'phone': '', 'company_id': '65ecc25b-966b-4156-be26-510193ab85f0', 'position': '', 'system_permission': 'member', 'user_type': 'company_user', 'last_selected_project_id': None, 'is_pending': False, 'approved_by': None, 'approved_at': None, 'created_at': '2026-09-27T12:57:18.681032+00:00', 'updated_at': '2026-09-27T12:57:19.739241+00:00', 'deleted_at': None, 'invite_sign_in_link': None, 'must_set_password': False, 'is_active': True, 'deployable_seat': 'worker'}]"
+    }
+  ]
+}

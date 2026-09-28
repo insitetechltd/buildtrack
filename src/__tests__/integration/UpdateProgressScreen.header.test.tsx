@@ -113,6 +113,11 @@ describe("UpdateProgressScreen header regression", () => {
           completionPercentage: 25,
           previousPercentage: 10,
           isSubmitting: false,
+          mode: "progress",
+          screenTitle: "Progress Update",
+          submitLabel: "Submit Update",
+          descriptionLabel: "Update Description",
+          descriptionPlaceholder: "Describe progress",
         },
       },
       actions: {

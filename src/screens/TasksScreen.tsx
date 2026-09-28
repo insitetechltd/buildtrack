@@ -28,7 +28,7 @@ import { cn } from "@/utils/cn";
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: (params?: CreateTaskParams) => void;
-  onNavigateToUpdateProgress?: (taskId: string) => void;
+  onNavigateToTaskPhotoUpdate?: (taskId: string) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
@@ -79,7 +79,10 @@ function SwipeActionButton({
   );
 }
 
-function getActiveChipClasses(chipId: "queue" | "status" | "overdueWindow", chipLabel: string) {
+function getActiveChipClasses(
+  chipId: "queue" | "status" | "overdueWindow" | "sortOrder",
+  chipLabel: string,
+) {
   if (chipId === "queue") {
     return {
       container: "border-[#07111E] bg-[#07111E]",
@@ -156,18 +159,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   const visibleTaskCount = output.scalarMetrics.totalVisibleTaskCount;
 
   const handleTaskUpdatePress = (taskId: string) => {
-    if (props.onNavigateToUpdateProgress) {
-      props.onNavigateToUpdateProgress(taskId);
-      return;
-    }
-
-    props.onNavigateToCreateTask({
-      editTaskId: taskId,
-      actionType: "update",
-      sourceScreen: "tasks",
-      clearForm: false,
-      _timestamp: Date.now(),
-    });
+    props.onNavigateToTaskPhotoUpdate?.(taskId);
   };
 
   const handleArchivePress = (taskId: string) => {
@@ -429,6 +421,11 @@ export default function TasksScreen(props: TasksScreenProps) {
                       metaLabel={row.latestUpdateLabel ?? "Task activity"}
                       badgeLabel={row.statusLabel}
                       imageUri={row.primaryPhotoUri}
+                      imageUris={
+                        [row.primaryPhotoUri, ...(row.attachmentUris ?? [])].filter(
+                          (uri): uri is string => Boolean(uri),
+                        )
+                      }
                       topLeftMarker={
                         row.isOverdue ? (
                           <View
@@ -437,7 +434,7 @@ export default function TasksScreen(props: TasksScreenProps) {
                           >
                             <Text className="text-sm font-semibold text-white">Overdue</Text>
                           </View>
-                        ) : isGrid && row.indentationLevel > 0 ? (
+                        ) : isGrid && (row.indentationLevel ?? 0) > 0 ? (
                           <View className="rounded-full bg-[#08576E]/90 px-2.5 py-1 shadow-sm">
                             <Text className="text-xs font-semibold text-white">
                               {row.indentationLevel === 2 ? "Subtask L2" : "Subtask"}

@@ -1,0 +1,97 @@
+# DU-H01 phase 5 — John archives the approved task (full field loop close).
+# PM assigns → Worker accepts → 100% + submit review → PM Accept → PM Archive.
+appId: com.buildtrack.app.local
+tags:
+  - dual-user
+  - du-h01
+---
+- runFlow: _resume-john.yaml
+- runFlow: _open-task-by-title.yaml
+- takeScreenshot: "du-h01-12-john-pre-archive"
+# Prefer bottom-dock Archive (post-approve SoT). Fallback: Other-actions chip.
+- runFlow:
+    when:
+      visible:
+        id: "report-reply-composer__archive"
+    commands:
+      - tapOn:
+          id: "report-reply-composer__archive"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-archive_task"
+    commands:
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "task-detail__quick-action-archive_task"
+          direction: DOWN
+      - tapOn:
+          id: "task-detail__quick-action-archive_task"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__archive-confirm"
+    timeout: 8000
+- takeScreenshot: "du-h01-13-john-archive-confirm"
+- tapOn:
+    id: "task-detail__archive-confirm-archive"
+- waitForAnimationToEnd:
+    timeout: 2500
+- extendedWaitUntil:
+    notVisible:
+      id: "task-detail__header_title"
+    timeout: 12000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- takeScreenshot: "du-h01-14-john-after-archive"
+- tapOn:
+    id: "tasks-screen__filters_button"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      notVisible: "Apply Filters"
+    commands:
+      - tapOn: "Filters"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- extendedWaitUntil:
+    visible: "Apply Filters"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "tasks-filters-sheet__queue_archived"
+    direction: DOWN
+- tapOn:
+    id: "tasks-filters-sheet__queue_archived"
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: "tasks-filters-sheet__apply"
+- runFlow:
+    when:
+      visible: "Apply Filters"
+    commands:
+      - tapOn: "Apply Filters"
+- extendedWaitUntil:
+    notVisible: "Apply Filters"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__chip_remove_queue"
+    timeout: 8000
+- takeScreenshot: "du-h01-15-john-archived-filter"
+- extendedWaitUntil:
+    visible:
+      id: ${"tasks-screen__row_" + DU_TASK_ID}
+    timeout: 25000
+- assertVisible:
+    id: ${"tasks-screen__row_" + DU_TASK_ID}
+- takeScreenshot: "du-h01-16-john-archived-queue"

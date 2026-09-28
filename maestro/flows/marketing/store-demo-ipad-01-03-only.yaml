@@ -1,0 +1,58 @@
+# Resume: Activity + Tasks store slots after equal-height / thumb fixes.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow:
+    when:
+      visible: "Loading from Metro..."
+    commands:
+      - extendedWaitUntil:
+          notVisible: "Loading from Metro..."
+          timeout: 180000
+- runFlow:
+    when:
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__activity"
+    timeout: 90000
+- tapOn:
+    id: "root-tab__activity"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 60000
+- swipe:
+    start: "50%, 26%"
+    end: "50%, 78%"
+    duration: 1000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: "ipad-store-01-activity"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- swipe:
+    start: "50%, 55%"
+    end: "50%, 40%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 10000
+- swipe:
+    start: "50%, 40%"
+    end: "50%, 60%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: "ipad-store-03-tasks"

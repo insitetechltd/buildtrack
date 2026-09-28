@@ -1,4 +1,7 @@
-import { companyHasPaidStripePlan } from "../companyPlanGate";
+import {
+  companyHasPaidStripePlan,
+  isFounderBillingBlockedStatus,
+} from "../companyPlanGate";
 import type { CompanyEntitlementView } from "../companyEntitlementSummary";
 
 describe("companyPlanGate", () => {
@@ -49,5 +52,19 @@ describe("companyPlanGate", () => {
         hasStripeSubscription: true,
       }),
     ).toBe(false);
+  });
+
+  it("treats null/undefined entitlement as locked (founder fail-closed)", () => {
+    expect(companyHasPaidStripePlan(null)).toBe(false);
+    expect(companyHasPaidStripePlan(undefined)).toBe(false);
+  });
+
+  it("documents founder blocked statuses for past_due/canceled/empty", () => {
+    expect(isFounderBillingBlockedStatus("active")).toBe(false);
+    expect(isFounderBillingBlockedStatus("trialing")).toBe(false);
+    expect(isFounderBillingBlockedStatus("past_due")).toBe(true);
+    expect(isFounderBillingBlockedStatus("canceled")).toBe(true);
+    expect(isFounderBillingBlockedStatus("")).toBe(true);
+    expect(isFounderBillingBlockedStatus(null)).toBe(true);
   });
 });

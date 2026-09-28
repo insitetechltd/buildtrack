@@ -67,7 +67,7 @@ GitHub Pages can take 1-5 minutes to deploy after enabling.
 
 ### Step 1: Verify Files Exist Locally
 ```bash
-cd "/Volumes/KooDrive/Insite App"
+cd "/Volumes/KooDrive/InsiteApp"
 ls -la docs/support.html
 ```
 

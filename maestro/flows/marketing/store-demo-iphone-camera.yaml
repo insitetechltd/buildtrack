@@ -1,0 +1,40 @@
+# Resume: CaptureSession for store-02 via Tasks speed dial Assign work.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__tasks_pressable"
+    timeout: 30000
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-create-speed-dial__assign"
+    timeout: 10000
+- tapOn:
+    id: "tasks-create-speed-dial__assign"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: "store-02-camera-chrome"
+- tapOn:
+    id: "capture-session__cancel"
+    optional: true

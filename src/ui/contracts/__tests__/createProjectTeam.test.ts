@@ -46,13 +46,20 @@ describe("createProjectTeam", () => {
     systemPermission: "admin",
   });
 
-  it("lists same-company users with PA eligibility flags", () => {
+  it("lists same-company users with seat class and PA eligibility", () => {
     const rows = buildCreateProjectRosterCandidates(
       [ca, pm, worker, otherCo],
       "co-1",
     );
     expect(rows.map((r) => r.userId).sort()).toEqual(["ca-1", "pm-1", "w-1"]);
+    expect(rows.find((r) => r.userId === "w-1")?.subtitle).toBe("Worker");
     expect(rows.find((r) => r.userId === "w-1")?.canBeProjectAdmin).toBe(false);
+    expect(rows.find((r) => r.userId === "ca-1")?.subtitle).toBe(
+      "CA · Project Admin eligible",
+    );
+    expect(rows.find((r) => r.userId === "pm-1")?.subtitle).toBe(
+      "PM · Project Admin eligible",
+    );
     expect(rows.find((r) => r.userId === "ca-1")?.canBeProjectAdmin).toBe(true);
   });
 

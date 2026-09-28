@@ -102,6 +102,31 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     );
   });
 
+  it("forwards Accept previewUri to Select Photos tiles", () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [
+          {
+            uri: "ph://keep",
+            fileName: "keep.jpg",
+            isAnnotated: false,
+            mediaLibraryAssetId: "keep",
+            previewUri: "file://preview/keep.jpg",
+          },
+        ],
+      } as any),
+    );
+
+    expect(result.current.output.photos[0]).toEqual(
+      expect.objectContaining({
+        uri: "ph://keep",
+        mediaLibraryAssetId: "keep",
+        previewUri: "file://preview/keep.jpg",
+      }),
+    );
+  });
+
   it("handleRotatePhoto bakes a 90° rotate into annotatedUri", async () => {
     const { result } = renderHook(() =>
       usePhotoSelectionViewAdapter({

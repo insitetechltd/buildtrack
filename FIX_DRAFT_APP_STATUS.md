@@ -120,7 +120,7 @@ Once all required sections are complete and the app is no longer in draft:
 
 1. **Retry submission**:
    ```bash
-   cd "/Volumes/KooDrive/Insite App"
+   cd "/Volumes/KooDrive/InsiteApp"
    ./submit-to-play-store.sh internal
    ```
 

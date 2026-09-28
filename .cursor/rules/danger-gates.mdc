@@ -12,8 +12,10 @@ Ask the user before:
 - Supabase schema / 6-col task metadata migrations / RLS policy applies
 - Auth, role CHECK, or permissions changes without precedent
 - `app.json` / `eas.json` version, buildNumber, bundle ID, runtimeVersion changes
-- App Store / Play / TestFlight submission or “released to users” claims
+- App Store **Public** release or “released to users” claims
 - Scope expansion beyond one bounded extension
+
+(TF upload, ASC listing paste, and Submit for Review are automation — allowed when the user invoked CBP / CBP+ASC / `ASC_SUBMIT=1`. Do not re-ask mid-sequence. See `cbp-commit-build-push-tf.mdc`.)
 
 Always:
 

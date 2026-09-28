@@ -37,6 +37,8 @@ interface TextFieldProps {
   onBlur?: () => void;
   onKeyPress?: (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => void;
   onSubmitEditing?: TextInputProps["onSubmitEditing"];
+  /** Sync native buffer → React when Maestro/IME skips onChangeText. */
+  onEndEditing?: TextInputProps["onEndEditing"];
   secureTextEntry?: boolean;
   multiline?: boolean;
   numberOfLines?: number;
@@ -80,6 +82,7 @@ export default function TextField({
   onBlur,
   onKeyPress,
   onSubmitEditing,
+  onEndEditing,
   secureTextEntry,
   multiline,
   numberOfLines,
@@ -216,6 +219,7 @@ export default function TextField({
             onBlur={onBlur}
             onKeyPress={onKeyPress}
             onSubmitEditing={onSubmitEditing}
+            onEndEditing={onEndEditing}
             secureTextEntry={secureTextEntry}
             multiline={multiline}
             numberOfLines={numberOfLines}

@@ -98,7 +98,7 @@ describe("ActivityStyleRowCard", () => {
     });
   });
 
-  it("pins post fillHeight cards to a shared tablet grid height with photo/pager reserve", () => {
+  it("pins post fillHeight cards to a shared tablet grid height", () => {
     const withPhotos = render(
       <ActivityStyleRowCard
         testID="shared-card:post-fill-photos"
@@ -108,7 +108,7 @@ describe("ActivityStyleRowCard", () => {
         title="Task Completed"
         subtitle="清理"
         actorLabel="Bob"
-        metaLabel="Task activity"
+        metaLabel="25/09/26"
         imageUris={[
           "https://example.com/a.jpg",
           "https://example.com/b.jpg",
@@ -124,7 +124,7 @@ describe("ActivityStyleRowCard", () => {
         title="Reported Task"
         subtitle="testing report up"
         actorLabel="John"
-        metaLabel="Task activity"
+        metaLabel="25/09/26"
       />,
     );
 
@@ -134,9 +134,9 @@ describe("ActivityStyleRowCard", () => {
     expect(withoutPhotos.getByTestId("shared-card:post-fill-empty")).toHaveStyle({
       height: TABLET_POST_CARD_HEIGHT,
     });
-    expect(withoutPhotos.getByTestId("shared-card:post-fill-empty:hero-spacer")).toBeTruthy();
-    expect(withoutPhotos.getByTestId("shared-card:post-fill-empty:hero-pager")).toBeTruthy();
-    expect(withPhotos.getByTestId("shared-card:post-fill-photos:hero-pager")).toBeTruthy();
+    expect(withPhotos.getByTestId("shared-card:post-fill-photos:evidence-strip")).toBeTruthy();
+    expect(withoutPhotos.queryByTestId("shared-card:post-fill-empty:evidence-strip")).toBeNull();
+    expect(withoutPhotos.queryByTestId("shared-card:post-fill-empty:hero-spacer")).toBeNull();
   });
 
   it("renders a labeled floating top-left badge when provided", () => {
@@ -230,7 +230,7 @@ describe("ActivityStyleRowCard", () => {
         title="Task Accepted"
         subtitle="Install corridor lighting"
         actorLabel="Bob Worker"
-        metaLabel="Jul 4, 9:12 AM"
+        metaLabel="04/07/26"
         badgeLabel="Accepted"
         badgeVariant="pill"
       />,
@@ -238,9 +238,9 @@ describe("ActivityStyleRowCard", () => {
 
     expect(screen.getByTestId("shared-card:compact:layout-compact")).toBeTruthy();
     expect(screen.getByTestId("shared-card:compact:post-footer")).toBeTruthy();
-    expect(screen.getByTestId("shared-card:compact:hero-actor-label")).toHaveTextContent(
-      "Bob Worker",
-    );
+    expect(screen.getByTestId("shared-card:compact:actor-avatar")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:compact:hero-actor-label")).toBeNull();
+    expect(screen.getByTestId("shared-card:compact:meta")).toHaveTextContent("04/07/26");
     expect(screen.queryByTestId("shared-card:compact:post-header")).toBeNull();
     expect(screen.queryByTestId("shared-card:compact:thumbnail")).toBeNull();
     expect(screen.queryByTestId("shared-card:compact:thumbnail-placeholder")).toBeNull();
@@ -249,7 +249,7 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByText("Install corridor lighting")).toBeTruthy();
   });
 
-  it("renders post photo layout with task name, action left, author · date on the right", () => {
+  it("renders post photo layout with task name, action left, avatar + short date on the right", () => {
     const screen = render(
       <ActivityStyleRowCard
         testID="shared-card:hero"
@@ -258,7 +258,7 @@ describe("ActivityStyleRowCard", () => {
         title="Progress photo added — fixture row B complete"
         subtitle="Install corridor lighting — Level 3"
         actorLabel="Alex Chen"
-        metaLabel="Jul 4, 9:40 AM"
+        metaLabel="04/07/26"
         badgeLabel="In Progress"
         badgeVariant="pill"
         imageUri="https://example.com/progress.jpg"
@@ -267,19 +267,20 @@ describe("ActivityStyleRowCard", () => {
 
     expect(screen.getByTestId("shared-card:hero:layout-photo-hero")).toBeTruthy();
     expect(screen.getByTestId("shared-card:hero:post-footer")).toBeTruthy();
-    expect(screen.getByTestId("shared-card:hero:hero-actor-label")).toHaveTextContent(
-      "Alex Chen",
-    );
+    expect(screen.getByTestId("shared-card:hero:actor-avatar")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:hero:hero-actor-label")).toBeNull();
+    expect(screen.queryByText("Alex Chen")).toBeNull();
     expect(screen.getByTestId("shared-card:hero:subtitle")).toHaveTextContent(
       "Progress photo added — fixture row B complete",
     );
-    expect(screen.getByTestId("shared-card:hero:meta")).toHaveTextContent("Jul 4, 9:40 AM");
+    expect(screen.getByTestId("shared-card:hero:meta")).toHaveTextContent("04/07/26");
     expect(screen.queryByTestId("shared-card:hero:post-header")).toBeNull();
     expect(screen.getByTestId("shared-card:hero:title")).toHaveTextContent(
       "Install corridor lighting — Level 3",
     );
     expect(screen.getByTestId("shared-card:hero:title").props.className).toContain("text-lg");
     expect(screen.getByTestId("shared-card:hero:subtitle").props.className).toContain("text-base");
+    expect(screen.getByTestId("shared-card:hero:evidence-strip")).toBeTruthy();
     expect(screen.getByTestId("shared-card:hero:hero-image")).toBeTruthy();
     expect(screen.queryByTestId("shared-card:hero:overlay-title")).toBeNull();
     expect(screen.queryByTestId("shared-card:hero:thumbnail-placeholder")).toBeNull();
@@ -327,13 +328,14 @@ describe("ActivityStyleRowCard", () => {
     fireEvent(screen.getByTestId("shared-card:hero-fail:hero-image"), "error");
 
     expect(screen.getByTestId("shared-card:hero-fail:layout-compact")).toBeTruthy();
-    expect(screen.queryByTestId("shared-card:hero-fail:hero")).toBeNull();
+    expect(screen.queryByTestId("shared-card:hero-fail:evidence-strip")).toBeNull();
     expect(screen.getByText("Progress photo added")).toBeTruthy();
     expect(screen.getByText("Install corridor lighting")).toBeTruthy();
-    expect(screen.getByText("Alex Chen")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:hero-fail:actor-avatar")).toBeTruthy();
+    expect(screen.queryByText("Alex Chen")).toBeNull();
   });
 
-  it("renders a swipeable multi-photo hero with pager dots", () => {
+  it("renders a compact 2-thumb evidence strip without an encapsulating frame", () => {
     const screen = render(
       <ActivityStyleRowCard
         testID="shared-card:multi"
@@ -342,23 +344,24 @@ describe("ActivityStyleRowCard", () => {
         title="Progress photos added"
         subtitle="Install corridor lighting"
         actorLabel="Alex Chen"
-        metaLabel="Jul 4, 9:40 AM"
+        metaLabel="04/07/26"
         imageUris={[
           "https://example.com/progress-1.jpg",
           "https://example.com/progress-2.jpg",
+          "https://example.com/progress-3.jpg",
         ]}
       />,
     );
 
-    const hero = screen.getByTestId("shared-card:multi:hero");
-    fireEvent(hero, "layout", {
-      nativeEvent: { layout: { width: 320, height: 240, x: 0, y: 0 } },
-    });
-
-    expect(screen.getByTestId("shared-card:multi:hero-swipe")).toBeTruthy();
-    expect(screen.getByTestId("shared-card:multi:hero-pager")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:multi:evidence-strip")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:multi:hero")).toBeNull();
+    expect(screen.queryByTestId("shared-card:multi:hero-swipe")).toBeNull();
+    expect(screen.queryByTestId("shared-card:multi:hero-pager")).toBeNull();
     expect(screen.getByTestId("shared-card:multi:hero-image")).toBeTruthy();
     expect(screen.getByTestId("shared-card:multi:hero-image-1")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:multi:evidence-strip-more")).toHaveTextContent(
+      "+1",
+    );
   });
 
   it("Recipe B: stacks priors with dots and expands +N without navigating", () => {
@@ -456,11 +459,14 @@ describe("ActivityStyleRowCard", () => {
       "+2 earlier",
     );
     expect(screen.getByTestId("shared-card:stack:meta-column").props.style).toEqual(
-      expect.objectContaining({ width: 140 }),
+      expect.objectContaining({ width: 92 }),
     );
     expect(screen.getByTestId("shared-card:stack:prior-0:meta-column").props.style).toEqual(
-      expect.objectContaining({ width: 140 }),
+      expect.objectContaining({ width: 92 }),
     );
+    expect(screen.getByTestId("shared-card:stack:actor-avatar")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:stack:hero-actor-label")).toBeNull();
+    expect(screen.queryByText("Sara CA")).toBeNull();
   });
 
   it("Recipe B: shows photos only when provided for the latest event", () => {
@@ -477,20 +483,21 @@ describe("ActivityStyleRowCard", () => {
             id: "e1",
             action: "Progress photo added",
             actorLabel: "Alex",
-            timestampLabel: "Jul 4, 9:40 AM",
+            timestampLabel: "04/07/26",
             dotTone: "caution",
           },
           {
             id: "e2",
             action: "New Task",
             actorLabel: "Tristan",
-            timestampLabel: "Jul 4, 8:00 AM",
+            timestampLabel: "04/07/26",
             dotTone: "info",
           },
         ]}
       />,
     );
-    expect(withPhotos.getByTestId("shared-card:latest-photo:hero")).toBeTruthy();
+    expect(withPhotos.getByTestId("shared-card:latest-photo:evidence-strip")).toBeTruthy();
+    expect(withPhotos.queryByTestId("shared-card:latest-photo:hero")).toBeNull();
 
     const withoutPhotos = render(
       <ActivityStyleRowCard
@@ -504,19 +511,22 @@ describe("ActivityStyleRowCard", () => {
             id: "e1",
             action: "Task accepted",
             actorLabel: "Alex",
-            timestampLabel: "Jul 4, 9:40 AM",
+            timestampLabel: "04/07/26",
             dotTone: "positive",
           },
           {
             id: "e2",
             action: "New Task",
             actorLabel: "Tristan",
-            timestampLabel: "Jul 4, 8:00 AM",
+            timestampLabel: "04/07/26",
             dotTone: "info",
           },
         ]}
       />,
     );
+    expect(
+      withoutPhotos.queryByTestId("shared-card:no-latest-photo:evidence-strip"),
+    ).toBeNull();
     expect(withoutPhotos.queryByTestId("shared-card:no-latest-photo:hero")).toBeNull();
     expect(
       withoutPhotos.queryByTestId("shared-card:no-latest-photo:hero-spacer"),

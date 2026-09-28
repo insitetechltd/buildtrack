@@ -1,0 +1,9 @@
+This is the commercial Taskr release (1.1.3).
+
+• Capture from camera or photo library
+• Turn a photo into assigned work
+• Crews update with photo proof; PMs approve or send back
+• Company plans billed in Hong Kong dollars
+• Admins invite seats — no public join-any-company signup
+
+If you used the earlier listing named Insite Trackr, this is the same app, renamed and rebuilt around site photos as proof of work.

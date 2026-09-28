@@ -1,19 +1,24 @@
 ---
-description: CBP shorthand — commit, build, push to TestFlight
+description: CBP shorthand — commit, build, push TF, optional ASC listing/submit
 alwaysApply: true
 ---
 
-# CBP (Commit → Build → Push TF)
+# CBP (Commit → Build → Push TF [→ ASC listing])
 
-When the user says **CBP** (alone or “do CBP”), run this sequence without re-asking what it means:
+When the user says **CBP** (alone or “do CBP”), run this sequence without re-asking what it means. CBP is an **automation sequence**, not a human gate — do not stop for confirmation between steps unless a hard fail or danger-gate (schema / version bump / Public) applies.
 
 **Gate 0 (hard — before any build/submit):** Destination prove must already be green for the SHA you intend to ship. For persistence / auth / task-flow / uploads: Metro→PROD (or current destination) critical headed path **PASS**, plus any required JWT/matrix. Do **not** CBP to “get a binary under test” — Metro already tests the JS bake; TF/ASC is promotion of a proven SHA, not a substitute for prove. If Metro→PROD (or destination headed) has an open FAIL, **stop**, fix, re-prove, then CBP. Lesson 2026-09-15: shipping TF 260 before composer update PASS was wrong order.
 
 1. **Commit** — only the relevant change set (conventional message); push git to the tracked remote after commit (Insite default unless they said not to).
-2. **Build** — local PROD iOS path: `./build-local.sh ios production` (auto-bumps shared build number). Use `./build-and-submit.sh ios production true` only when interactive confirm is handled / non-interactive submit follows.
-3. **Push to TF** — `npx eas submit --platform ios --path <latest .eas/artifacts/*.ipa> --profile production --non-interactive`. Confirm IPA identity (CFBundleVersion, PROD Supabase bake) before/after submit.
-4. **Record** — update `documentation/NOW.md` + ASC paste notes if this binary is the App Store candidate; commit/push that chore bump if `app.json` changed.
+2. **Build (local always)** — `./build-local.sh ios production` (or `ios dev` when user said DEV). Auto-bumps shared build number. Use `./build-and-submit.sh ios production true` only when interactive confirm is handled / non-interactive submit follows.
+3. **S4 IPA bake assert (hard — production)** — before any `eas submit`: `npm run assert:ipa-prod-bake -- <path-to-local.ipa>` (or `bash scripts/eas/assert-ipa-prod-bake.sh <ipa>`). Must exit 0: PROD ref in Hermes `main.jsbundle`, DEV ref absent, expected bundle id. `build-and-submit.sh` already gates this for `production`; manual CBP (`build-local` + direct `eas submit`) **must** run the same assert — wrong-ref IPA = stop, do not submit.
+4. **Push to TF** — `npx eas submit --platform ios --path <latest .eas/artifacts/*.ipa> --profile production --non-interactive`. Submit **only** an IPA produced by the local build in step 2 that passed S4.
+5. **Record** — update `documentation/NOW.md` + ASC paste notes if this binary is the App Store candidate; commit/push that chore bump if `app.json` changed. Include IPA sha256 + buildNumber from S4 JSON when recording.
+6. **ASC listing (automated when in scope)** — If the user said **CBP+ASC**, **CBP and paste**, or set `ASC_DELIVER=1`: after the binary is on ASC, run `ASC_BUILD_NUMBER=<CFBundleVersion> npm run asc:paste` (Fastlane Deliver → metadata + screenshots from `fastlane/metadata` + store assets). Not a human paste gate.
+7. **Submit for Review (automated when requested)** — If the user said **submit for review**, **CBP+submit**, or set `ASC_SUBMIT=1`: run `ASC_SUBMIT=1 ASC_BUILD_NUMBER=<n> npm run asc:submit` after paste (or `npm run asc:deliver`). **Public stays off** unless the user explicitly asks to release publicly (`ASC_PUBLIC=1` is not implemented — Public remains ASC console only).
+
+**Hard law — local build always:** Never run `eas build` on EAS cloud as a CBP fallback (including when local keychain/cert import fails). If local codesign identities are missing or IPA fails, **STOP** and report the keychain/Dist unlock steps. Do not start a cloud build “just to get a TF binary.”
 
 Default profile = **production** (App Store / PROD TF) unless the user says DEV / Internal (`./build-local.sh ios dev` + `--profile dev`).
 
-Do not tick Public or Submit for Review unless explicitly asked.
+**Public** is never toggled by CBP/Deliver. **Submit for Review** runs only when step 7 intent/flag is present — not on every bare “CBP”.

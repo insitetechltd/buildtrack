@@ -1,0 +1,96 @@
+# Publish only the public marketing site to GitHub Pages.
+# Does NOT publish docs/superpowers, documentation/, or other internal trees.
+#
+# Live site still uses Settings → Pages → "Deploy from a branch" (main /docs)
+# until Tristan switches Source to "GitHub Actions" (see docs/GITHUB_PAGES_SETUP.md).
+# Until that switch, this workflow can still run (artifact + deploy job) but
+# the custom domain will not use it.
+#
+# Manual run from any branch (Actions → Pages Marketing → Run workflow):
+#   useful before the workflow exists on main.
+
+name: Pages Marketing
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "docs/index.html"
+      - "docs/company.css"
+      - "docs/company.js"
+      - "docs/CNAME"
+      - "docs/.nojekyll"
+      - "docs/signup.html"
+      - "docs/privacy-policy.html"
+      - "docs/support.html"
+      - "docs/terms-of-service.html"
+      - "docs/billing.html"
+      - "docs/taskr/**"
+      - "docs/assets/**"
+      - "docs/company-assets/**"
+      - "docs/company-media/**"
+      - "docs/legal/**"
+      - "scripts/pages/stage-marketing-site.sh"
+      - ".github/workflows/pages-marketing.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-marketing
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Stage marketing artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Stage allowlisted marketing files
+        run: bash scripts/pages/stage-marketing-site.sh
+
+      - name: Assert internal docs absent from artifact
+        run: |
+          set -euo pipefail
+          SITE=".cache/pages-site"
+          test -f "$SITE/index.html"
+          test -f "$SITE/CNAME"
+          test -d "$SITE/taskr"
+          if [[ -e "$SITE/superpowers" ]]; then
+            echo "FAIL: docs/superpowers leaked into Pages artifact" >&2
+            exit 1
+          fi
+          if find "$SITE" -type f -name '*.md' | grep -q .; then
+            echo "FAIL: markdown files present in Pages artifact" >&2
+            find "$SITE" -type f -name '*.md' >&2
+            exit 1
+          fi
+          echo "Artifact top-level:"
+          ls -la "$SITE"
+          echo "OK: no superpowers / no markdown in artifact"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .cache/pages-site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -19,6 +19,7 @@ Together, these GitHub Actions workflows provide:
 | `ci-post-merge.yml` | `push` | Direct pushes to `main` and `develop` | `npm run test:auth`, `npm run test:projects`, `npm run test:regression` |
 | `ci-nightly.yml` | `schedule` | Every night at `0 2 * * *` UTC | `npm run test:all` |
 | `ci-weekly.yml` | `schedule` | Every Sunday at `0 3 * * 0` UTC | `npm run test:coverage` |
+| `pages-marketing.yml` | `workflow_dispatch`, `push` (path-filtered) | Manual any branch; auto on `main`/`master` when marketing paths change | `scripts/pages/stage-marketing-site.sh` → upload Pages artifact → deploy (marketing allowlist only; see `docs/GITHUB_PAGES_SETUP.md`) |
 
 ## Required Secrets & Environment Variables
 

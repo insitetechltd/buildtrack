@@ -287,10 +287,10 @@
 
 ## Next (definitive)
 
-1. **ASC Taskr 1.1.3 build 280** — WAITING_FOR_REVIEW. **Public off.** Human: wait for Apple; reply only if rejected. Do not tick Public unless asked.
-2. **Closed on tip (do not re-open):** blind-spot S0–S10; `stripe-webhook` redeployed DEV+PROD (`4bf51de`); Maestro path drift (`e55c685`); P04d + signup insert-if-missing (`d2e3200`); taxonomy path hygiene (`c8423c2`); S5 last-admin guard GO (O4 promote gate).
-3. **Housekeeping close-out (next ops):** close superseded PRs **#8 / #12**; decide **#10 / #7**; merge CBP branch into **main** with the **#9** `master`→`main` rename **after 280 clears review**; branch/stash cleanup; tick-or-archive `env01-phase-d` checklist + `prod-dev-supabase-split` plans.
-4. **Roadmap after housekeeping:** `M-OPS-03` (parked owner writes + Destination Contract Builder Phase A1; DDL human-gated) → **`M-AUTHZ-02`**. Do not jump.
+1. **ASC Taskr 1.1.3 build 280** — **REJECTED / UNRESOLVED_ISSUES**. **Public off.** Human: unblock required (reply to Apple / address rejection reasons). Do not tick Public unless asked.
+2. **Closed on tip (do not re-open):** blind-spot S0–S10; `stripe-webhook` redeployed DEV+PROD (`4bf51de`); Maestro path drift (`e55c685`); P04d + signup insert-if-missing (`d2e3200`); taxonomy path hygiene (`c8423c2`); S5 last-admin guard GO (O4 promote gate). **PR cleanup done** (superseded PRs closed); **Tahoe on main** (build plugin integrated); **migration history backfilled** — 38 applied DEV+PROD 2026-09-29 (mops03 excluded).
+3. **After ASC unblock:** resubmit → wait for approval → tick Public when asked.
+4. **Roadmap after ASC clear:** `M-OPS-03` (Destination Contract Builder Phase A1 ready; DDL human-gated) → **`M-AUTHZ-02`**. Do not jump.
 
 **Parked by design:** E3b; E3c / `M-REPORT-01`; web-billing seats (Gate A NO-GO); A-D01. Also parked: soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → `M-OPS-03` future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** / **voice-mic on dock** — future enhancement.
 

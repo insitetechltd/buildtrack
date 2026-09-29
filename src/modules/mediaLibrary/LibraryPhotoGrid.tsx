@@ -118,6 +118,15 @@ const LibraryGridTile = memo(function LibraryGridTile({
   const realAssetId =
     !assetId.startsWith("__idx_") && !assetId.startsWith("__sk_");
 
+  // Debug logging
+  if (useNativeThumb && bindImage && typeof console !== 'undefined') {
+    console.log(
+      `[thumb-debug-js] rendering tile: assetId=${assetId} indexMode=${indexMode} ` +
+      `token=${photokitToken} index=${photokitIndex} realAssetId=${realAssetId} ` +
+      `pixelSize=${pixelSize}`
+    );
+  }
+
   return (
     <Pressable
       testID={`${testIdPrefix}__tile_${assetId}`}
@@ -152,7 +161,10 @@ const LibraryGridTile = memo(function LibraryGridTile({
             {...(realAssetId ? { assetId } : {})}
             pixelSize={pixelSize}
             style={{ width: tileSize, height: tileSize }}
-            onPainted={() => markLibraryPickerTilePainted(assetId)}
+            onPainted={() => {
+              console.log(`[thumb-debug-js] onPainted fired for assetId=${assetId}`);
+              markLibraryPickerTilePainted(assetId);
+            }}
           />
         </View>
       ) : displayUri ? (

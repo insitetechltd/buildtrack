@@ -75,7 +75,7 @@ Construction software by the industry. Snap, assign, prove, approve. Company-own
 **Keywords (≤100, no spaces after commas):**
 
 ```text
-construction,jobsite,punch,snag,handoff,rework,evidence,contractor,inspection,defect,field,quality,PM,site
+construction,jobsite,handoff,rework,evidence,contractor,inspection,defect,field,quality,CO,VO
 ```
 
 **Description** (2026-09-02; founder intent + Gate A KEEP-INTENT-WITH-FIXES):
@@ -229,3 +229,4 @@ Construction portfolio, not Taskr. Public copy on `docs/index.html` must match *
 | 2026-09-12 | About: founder philosophy copy (love Hong Kong + in-house software). |
 | 2026-09-12 | About: founder bio (two-decade craft + technology). |
 | 2026-09-12 | Company landing contact: `tristan.koo@insiteworks.co` (Taskr keeps `support@`). |
+| 2026-09-29 | EN keywords: drop punch/snag/PM/site; add CO,VO to match ASO lock. |

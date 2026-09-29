@@ -1,1 +1,1 @@
-construction,jobsite,punch,snag,handoff,rework,evidence,contractor,inspection,defect,field,quality
+construction,jobsite,handoff,rework,evidence,contractor,inspection,defect,field,quality,CO,VO

@@ -706,22 +706,26 @@ public final class PhotokitThumbsModule: Module {
       Events("onPainted")
 
       Prop("assetId") { (view: PhotokitThumbView, assetId: String?) in
+        print("[PhotokitThumb] Prop assetId: \(assetId ?? "nil")")
         view.assetId = assetId
         view.requestIfNeeded()
       }
 
       Prop("index") { (view: PhotokitThumbView, index: Int) in
+        print("[PhotokitThumb] Prop index: \(index)")
         view.assetIndex = index
         view.indexExplicit = true
         // Don't call requestIfNeeded() - pixelSize arrives last and triggers
       }
 
       Prop("token") { (view: PhotokitThumbView, token: Int) in
+        print("[PhotokitThumb] Prop token: \(token)")
         view.libraryToken = token
         // Don't call requestIfNeeded() - pixelSize arrives last and triggers
       }
 
       Prop("pixelSize") { (view: PhotokitThumbView, pixelSize: Double) in
+        print("[PhotokitThumb] Prop pixelSize: \(pixelSize)")
         view.pixelSize = pixelSize
         view.requestIfNeeded()
       }

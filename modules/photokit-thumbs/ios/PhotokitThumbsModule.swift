@@ -41,6 +41,23 @@ struct PhotokitLibrarySession {
 }
 
 enum PhotokitThumbEngine {
+  /// Check and request PhotoKit authorization if needed.
+  /// Returns true if authorized (.authorized or .limited), false otherwise.
+  static func ensureAuthorized() async -> Bool {
+    let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    switch status {
+    case .authorized, .limited:
+      return true
+    case .notDetermined:
+      let result = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+      return result == .authorized || result == .limited
+    case .denied, .restricted:
+      return false
+    @unknown default:
+      return false
+    }
+  }
+  
   /// Grid thumbs only. The default (`true`) makes PhotoKit cache full-quality
   /// images and stalls the first screen (TF 211: ~7s after IDs).
   static let manager: PHCachingImageManager = {
@@ -108,9 +125,9 @@ enum PhotokitThumbEngine {
 
   static func makeOptions() -> PHImageRequestOptions {
     let options = PHImageRequestOptions()
-    options.deliveryMode = .fastFormat
+    options.deliveryMode = .opportunistic
     options.resizeMode = .fast
-    options.isNetworkAccessAllowed = false
+    options.isNetworkAccessAllowed = true
     options.isSynchronous = false
     options.version = .current
     return options
@@ -593,6 +610,9 @@ public final class PhotokitThumbsModule: Module {
     }
 
     AsyncFunction("openLibrary") { (albumId: String) async -> [String: Int] in
+      guard await PhotokitThumbEngine.ensureAuthorized() else {
+        return ["token": 0, "count": 0]
+      }
       let seq = PhotokitThumbEngine.beginOpen()
       return await withCheckedContinuation { (continuation: CheckedContinuation<[String: Int], Never>) in
         PhotokitThumbEngine.workQueue.async {
@@ -613,6 +633,9 @@ public final class PhotokitThumbsModule: Module {
 
     /// Option 2B: newest `limit` Recents via unsorted index-from-end (no sort).
     AsyncFunction("openLibraryLimited") { (albumId: String, limit: Int) async -> [String: Int] in
+      guard await PhotokitThumbEngine.ensureAuthorized() else {
+        return ["token": 0, "count": 0]
+      }
       let seq = PhotokitThumbEngine.beginOpen()
       return await withCheckedContinuation { (continuation: CheckedContinuation<[String: Int], Never>) in
         PhotokitThumbEngine.workQueue.async {
@@ -635,9 +658,13 @@ public final class PhotokitThumbsModule: Module {
       }
     }
 
-    /// Persisted newest-N ids — sync, not on workQueue (must not wait behind expand).
-    Function("openLibraryWithIds") { (ids: [String]) -> [String: Int] in
+    /// Persisted newest-N ids — fast path (no Recents scan).
+    AsyncFunction("openLibraryWithIds") { (ids: [String]) async -> [String: Int] in
       print("[PhotokitThumbs] openLibraryWithIds called with \(ids.count) ids")
+      guard await PhotokitThumbEngine.ensureAuthorized() else {
+        print("[PhotokitThumbs] openLibraryWithIds: authorization failed")
+        return ["token": 0, "count": 0]
+      }
       if let session = PhotokitThumbEngine.openLibraryWithIds(ids) {
         print("[PhotokitThumbs] openLibraryWithIds returned token=\(session.token), count=\(session.backing.count)")
         return [

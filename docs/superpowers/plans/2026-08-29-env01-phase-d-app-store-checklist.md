@@ -1,10 +1,12 @@
 # ENV-01 Phase D — App Store submit + Stripe live on PROD
 
-**Date:** 2026-08-29 · **Status update:** 2026-09-01  
+**Date:** 2026-08-29 · **Status update:** 2026-09-29 (Phase D live; ASC 280 REJECTED)  
 **Prereq:** M-OPS-ENV-01 Phases A–C **Closed** (`a0697e4`). PROD empty + schema + Edge; daily TF → DEV.  
 **Authority:** Human GO before any `sk_live` / live webhook / App Store submit.  
 **SoT topology:** `documentation/PROD_DEV_PROMOTION.md` · plan `2026-08-26-prod-dev-supabase-split.md` § D  
 **Listing paste:** `2026-09-01-asc-listing-paste.md`
+
+**Phase D outcome (2026-09-29):** Stripe live on PROD, webhook v14 deployed, ASC 1.1.3/280 submitted then REJECTED — unblock via Resolution Center.
 
 ---
 

@@ -38,7 +38,7 @@ CBP: bare **CBP** = commit → local build → S4 → EAS TF upload.
 |---|---|
 | Build to attach | **280** selected 2026-09-27 (`asc:paste`) |
 | Screenshots SoT | Regenerated 2026-09-26 (Option A Activity); re-uploaded with 280 paste |
-| Human | 1.1.3 + 280 is **WAITING_FOR_REVIEW** (2026-09-27). Public still off. |
+| Human | 1.1.3 + 280 **REJECTED / UNRESOLVED_ISSUES** after 2026-09-27 submit. Unblock via Resolution Center / fix / possible resubmit. Public still off. |
 
 ---
 

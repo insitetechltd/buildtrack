@@ -25,12 +25,12 @@ This document supersedes the 2026-08-06 handoff at [cursor-handoff-2026-08-06.md
 Three things are true right now on 2026-08-08:
 
 ### 1.1 master HEAD 90a2b1b clean status
-- `origin/master` HEAD commit = **90a2b1b** `docs(supabase-groom): promote placeholders + UX tails, add 3 kickoff prompts` — CURRENT master HEAD at session kickoff. The 4 prior commits on master in reverse chronological order: (2) 5f377f3 `M-SUPABASE-01 close ledger edit companion (ROADMAP + AGENTS closes)`; (3) 94c743d `M-SUPABASE-01 3 inspection deliverables commit`; (4) 5194ae8 `Previous cycle cleanup post UI unresponsive fix`.
+- `origin/main` HEAD commit = **90a2b1b** `docs(supabase-groom): promote placeholders + UX tails, add 3 kickoff prompts` — CURRENT main HEAD at session kickoff. The 4 prior commits on main in reverse chronological order: (2) 5f377f3 `M-SUPABASE-01 close ledger edit companion (ROADMAP + AGENTS closes)`; (3) 94c743d `M-SUPABASE-01 3 inspection deliverables commit`; (4) 5194ae8 `Previous cycle cleanup post UI unresponsive fix`.
 - Git status SHOULD be clean (no uncommitted files from the blocked 02a/02b attempt below, since TRAE returned BLOCKED before any Builder commit was produced). If Cursor `git status --short --branch` shows any Modified/Untracked files on first command: they are ORPHANED DRAFT from the aborted TRAE 02a/02b attempt — discard via `git checkout . && git clean -fd` UNLESS the user explicitly says they want them.
 
 ### 1.2 M-SUPABASE-02a/02b COMBINED CYCLE STATUS = BLOCKED RULE 1
 - The session on 2026-08-08 attempted to kick off M-SUPABASE-02a/02b combined P0 cycle per ROADMAP Orders 13.1 + 13.2 + groom Prompt 1 at `docs/superpowers/plans/2026-08-07-msupabase-groom-next-session-kickoffs.md § Prompt 1`.
-- RULE 1 HARD BLOCKER STATUS = ACTIVE. The cycle was RETURNED SESSION BLOCKED before any Builder code/docs commit was produced (no commit on master for 02a/02b yet).
+- RULE 1 HARD BLOCKER STATUS = ACTIVE. The cycle was RETURNED SESSION BLOCKED before any Builder code/docs commit was produced (no commit on main for 02a/02b yet).
 - Blocker text copied VERBATIM from TRAE output = `"no ~/.pgpass present AND user declined to paste dashboard outputs"`.
 - Resolution Options documented in the prior blocker output = **Option A** (drop ~/.pgpass pooler entry) OR **Option B** (paste §1..§7 redacted dashboard SQL outputs from WS_SUPABASE_01_READONLY_AUDIT.sql back into chat). Both options are re-listed VERBATIM inside §1.2.1 Cursor Unblock Options AND §8 first-step Cursor Unblock Checklist.
 - Live Gate 1 read-only SQL pass reference file = [WS_SUPABASE_01_READONLY_AUDIT.sql](./WS_SUPABASE_01_READONLY_AUDIT.sql) — 7 sections, EXACT section numbers 1..7 listed in §15 Appendix A so Cursor can run them without guessing.
@@ -63,7 +63,7 @@ cd /Volumes/KooDrive/InsiteApp && echo "=== Metro health (should be 200) ===" &&
 
 ## 2. Changes Between 2026-08-06 and 2026-08-08 (File Map table with Status columns: Closed 2026-08-06 → 2026-08-08; list commit SHAs 90a2b1b / 5f377f3 / 94c743d)
 
-### 2.1 Commit Delta (3 new commits on origin/master after the 2026-08-06 handoff)
+### 2.1 Commit Delta (3 new commits on origin/main after the 2026-08-06 handoff)
 
 | Commit SHA | Conventional Type | Description (1 line) | Milestone Closed |
 |---|---|---|---|
@@ -304,7 +304,7 @@ git rev-parse HEAD  # should output 90a2b1b (short) or 90a2b1b... (full 40-char 
 git status --short | wc -l  # expected = 0 clean
 ```
 
-Expected result: `## master...origin/master` ahead/behind 0, no Modified/Untracked rows (rc=0 clean).
+Expected result: `## main...origin/main` ahead/behind 0, no Modified/Untracked rows (rc=0 clean).
 
 If there ARE uncommitted files: TRAE BLOCKED the 02a/02b session before any Builder commit, but some draft files may have been written to disk then abandoned. Treat them as ORPHANED DRAFT. Default action: `git checkout . && git clean -fd` → discard all. Only keep them IF the user explicitly says "I want to continue the 02a/02b draft work from those files" and inspects them first.
 

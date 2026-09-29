@@ -713,12 +713,12 @@ public final class PhotokitThumbsModule: Module {
       Prop("index") { (view: PhotokitThumbView, index: Int) in
         view.assetIndex = index
         view.indexExplicit = true
-        view.requestIfNeeded()
+        // Don't call requestIfNeeded() here - pixelSize comes later in JSX
       }
 
       Prop("token") { (view: PhotokitThumbView, token: Int) in
         view.libraryToken = token
-        view.requestIfNeeded()
+        // Don't call requestIfNeeded() here - pixelSize comes later in JSX
       }
 
       Prop("pixelSize") { (view: PhotokitThumbView, pixelSize: Double) in

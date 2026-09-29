@@ -9,6 +9,14 @@ Process improvements dual-write: SOP.md + harness `templates/` + this repo’s m
 Machine readiness: `npm run dev:doctor` (`scripts/dev/doctor.sh`).
 Harness runbook: `documentation/CURSOR_DEV_HARNESS.md` (includes § Terminology — smoke / suite / RC / week-rank R# / Wave 2).
 
+## Cursor Cloud
+
+Linux Cloud Agents install with `npm ci --legacy-peer-deps` (lockfile plus the `patch-package` postinstall). Node 22 is already on the image.
+
+iOS Simulator, Xcode, and Maestro are macOS-only, so `dev:doctor` will not be fully green here. `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are optional secrets for online mode; without them the client warns and Jest runs offline.
+
+Prove the install with `npm run test:auth` and Metro: `npx expo start --port 8081`, then `curl` `http://127.0.0.1:8081/index.bundle?platform=ios&dev=true` (expect HTTP 200). The Metro HTML page does not execute the web bundle (`import.meta` loaded as a classic script). Use the iOS bundle and Jest, not the browser shell.
+
 Source of truth scanned for this inventory:
 - `.cursor/rules/*.mdc` (project constitution — **canonical**)
 - `.cursor/skills/insite-dev/SKILL.md`

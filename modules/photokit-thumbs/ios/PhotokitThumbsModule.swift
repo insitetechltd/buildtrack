@@ -280,13 +280,16 @@ enum PhotokitThumbEngine {
   /// Must not sit on `workQueue` behind expandLibraryFull (TF 235 reopen tax).
   static func openLibraryWithIds(_ ids: [String]) -> PhotokitLibrarySession? {
     let capped = ids.prefix(200).filter { !$0.isEmpty }
+    print("[PhotokitEngine] openLibraryWithIds: input=\(ids.count), capped=\(capped.count)")
     guard !capped.isEmpty else {
+      print("[PhotokitEngine] openLibraryWithIds: no ids, returning nil")
       return nil
     }
     let result = PHAsset.fetchAssets(
       withLocalIdentifiers: Array(capped),
       options: nil
     )
+    print("[PhotokitEngine] openLibraryWithIds: fetchAssets returned \(result.count) assets")
     var map: [String: PHAsset] = [:]
     map.reserveCapacity(result.count)
     result.enumerateObjects { asset, _, _ in
@@ -299,7 +302,9 @@ enum PhotokitThumbEngine {
         assets.append(asset)
       }
     }
+    print("[PhotokitEngine] openLibraryWithIds: filtered to \(assets.count) image assets")
     guard !assets.isEmpty else {
+      print("[PhotokitEngine] openLibraryWithIds: no image assets, returning nil")
       return nil
     }
     sessionLock.lock()
@@ -311,6 +316,7 @@ enum PhotokitThumbEngine {
     )
     nextToken += 1
     librarySession = session
+    print("[PhotokitEngine] openLibraryWithIds: created session token=\(session.token), count=\(assets.count)")
     return session
   }
 
@@ -334,9 +340,12 @@ enum PhotokitThumbEngine {
     sessionLock.lock()
     defer { sessionLock.unlock() }
     guard let session = librarySession, session.token == token else {
+      print("[PhotokitEngine] asset(token=\(token), index=\(index)): no matching session (current=\(librarySession?.token ?? 0))")
       return nil
     }
-    return session.backing.asset(atDisplay: index)
+    let asset = session.backing.asset(atDisplay: index)
+    print("[PhotokitEngine] asset(token=\(token), index=\(index)): \(asset != nil ? asset!.localIdentifier : "nil")")
+    return asset
   }
 
   static func normalizedLocalIdentifier(_ raw: String) -> String {
@@ -628,12 +637,15 @@ public final class PhotokitThumbsModule: Module {
 
     /// Persisted newest-N ids — sync, not on workQueue (must not wait behind expand).
     Function("openLibraryWithIds") { (ids: [String]) -> [String: Int] in
+      print("[PhotokitThumbs] openLibraryWithIds called with \(ids.count) ids")
       if let session = PhotokitThumbEngine.openLibraryWithIds(ids) {
+        print("[PhotokitThumbs] openLibraryWithIds returned token=\(session.token), count=\(session.backing.count)")
         return [
           "token": session.token,
           "count": session.backing.count,
         ]
       }
+      print("[PhotokitThumbs] openLibraryWithIds returned nil")
       return [
         "token": 0,
         "count": 0,

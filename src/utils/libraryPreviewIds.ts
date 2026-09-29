@@ -2,7 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { LIBRARY_PICKER_2B_FIRST_BATCH } from "./libraryPickerPerf";
 
-const STORAGE_KEY = "@insite/photokit-recents-preview-ids";
+/**
+ * Storage key versioned to invalidate IDs captured under the broken unsorted
+ * assumption. v2 = sorted fetch (newest first, matches Photos app).
+ */
+const STORAGE_KEY = "@insite/photokit-recents-preview-ids-v2";
 const MAX_IDS = LIBRARY_PICKER_2B_FIRST_BATCH;
 
 let memory: string[] | null = null;

@@ -52,15 +52,6 @@ public final class PhotokitThumbView: ExpoView {
       return
     }
 
-    // Require complete prop set before attempting asset resolution.
-    // Index mode needs token > 0, indexExplicit, and assetIndex >= 0.
-    // Asset-id mode needs non-empty assetId.
-    let hasIndexProps = libraryToken > 0 && indexExplicit && assetIndex >= 0
-    let hasAssetIdProp = assetId != nil && !(assetId?.isEmpty ?? true)
-    guard hasIndexProps || hasAssetIdProp else {
-      return
-    }
-
     var asset: PHAsset?
     let key: String
     if libraryToken > 0, indexExplicit, assetIndex >= 0 {

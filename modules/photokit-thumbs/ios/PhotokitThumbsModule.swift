@@ -715,13 +715,13 @@ public final class PhotokitThumbsModule: Module {
         print("[PhotokitThumb] Prop index: \(index)")
         view.assetIndex = index
         view.indexExplicit = true
-        // Don't call requestIfNeeded() - pixelSize arrives last and triggers
+        view.requestIfNeeded()
       }
 
       Prop("token") { (view: PhotokitThumbView, token: Int) in
         print("[PhotokitThumb] Prop token: \(token)")
         view.libraryToken = token
-        // Don't call requestIfNeeded() - pixelSize arrives last and triggers
+        view.requestIfNeeded()
       }
 
       Prop("pixelSize") { (view: PhotokitThumbView, pixelSize: Double) in

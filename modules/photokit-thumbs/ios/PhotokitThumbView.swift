@@ -73,7 +73,6 @@ public final class PhotokitThumbView: ExpoView {
     cancelRequest()
     requestedKey = key
     didNotifyPainted = false
-    displayedPixel = 0
     imageView.image = nil
 
     guard let asset else {

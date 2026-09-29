@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 import { insertTaskFile } from '../state/schemaDualPath';
+import { perf } from '../utils/performanceInstrumentation';
 
 /** Storage bucket for task evidence (private after M-SUPABASE-03c). */
 export const BUILDTRACK_FILES_BUCKET = 'buildtrack-files';
@@ -377,18 +378,25 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
   }
 
   const { file, entityType, entityId, companyId, userId, description, tags } = options;
+  
+  const perfKey = `upload-file-${Date.now()}`;
+  perf.start(perfKey);
 
   try {
     console.log(`📤 [File Upload] Starting upload for ${file.name}`);
 
     // 1. Read file as base64
+    perf.mark(perfKey, 'start-read-base64');
     const base64 = await FileSystem.readAsStringAsync(file.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
+    perf.mark(perfKey, 'complete-read-base64');
 
     // 2. Get file info
+    perf.mark(perfKey, 'start-get-file-info');
     const fileInfo = await FileSystem.getInfoAsync(file.uri);
     const fileSize = fileInfo.exists ? (fileInfo as any).size || 0 : 0;
+    perf.mark(perfKey, 'complete-get-file-info');
 
     console.log(`📊 [File Upload] File size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
 
@@ -403,12 +411,14 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
     console.log(`📁 [File Upload] Storage path: ${storagePath}`);
 
     // 5. Upload to Supabase Storage
+    perf.mark(perfKey, 'start-storage-upload');
     const { error: uploadError } = await supabase.storage
       .from(BUILDTRACK_FILES_BUCKET)
       .upload(storagePath, decode(base64), {
         contentType: file.type,
         upsert: false,
       });
+    perf.mark(perfKey, 'complete-storage-upload');
 
     if (uploadError) {
       console.error('❌ [File Upload] Upload error:', uploadError);
@@ -418,7 +428,9 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
     console.log(`✅ [File Upload] File uploaded successfully`);
 
     // 6. Signed URL (private bucket — getPublicUrl 403s after M-SUPABASE-03c)
+    perf.mark(perfKey, 'start-signed-url');
     const signedUrl = await createSignedFileUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
+    perf.mark(perfKey, 'complete-signed-url');
     if (!signedUrl) {
       throw new Error('Failed to create signed URL');
     }
@@ -434,6 +446,7 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       (entityType === "task" || entityType === "task-update") &&
       supabase
     ) {
+      perf.mark(perfKey, 'start-task-files-insert');
       try {
         const fileInsert = await insertTaskFile(supabase, {
           task_id: entityId,
@@ -451,6 +464,7 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       } catch (metaError) {
         console.warn("⚠️ [File Upload] task_files dual-path skipped:", metaError);
       }
+      perf.mark(perfKey, 'complete-task-files-insert');
     }
 
     const fileAttachment: FileAttachment = {
@@ -473,8 +487,11 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
 
     console.log(`🎉 [File Upload] Complete! File available at signed URL`);
 
+    perf.end(perfKey);
+    
     return fileAttachment;
   } catch (error: any) {
+    perf.cancel(perfKey);
     console.error('❌ [File Upload] Failed:', error);
     throw error;
   }

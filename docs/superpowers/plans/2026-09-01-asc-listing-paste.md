@@ -1,12 +1,14 @@
 # ASC listing — Taskr 1.1.3 (Fastlane Deliver)
 
-**Updated:** 2026-09-27 (automated paste via Fastlane; CBP may chain ASC)  
+**Updated:** 2026-09-29 (ENV-01 Phase D Closed; awaiting Apple clearance)  
 **App:** `6754898737` · https://appstoreconnect.apple.com/apps/6754898737  
 **Bundle:** `com.buildtrack.app.local`  
 **Copy SoT:** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md)  
 **Paste pack (human-readable):** [`2026-09-25-asc-paste-pack-279.md`](../evidence/2026-09-25-asc-paste-pack-279.md)  
 **Deliver metadata:** `fastlane/metadata/{en-US,zh-Hant}/` · notes `fastlane/review_information/notes.txt`  
 **Screenshots:** `docs/taskr/assets/store/{iphone-67,ipad-13}/`
+
+**Current status:** Build **280** is **REJECTED / UNRESOLVED_ISSUES** (Guideline 2.1). Resolution Center reply sent by Tristan after demo password reset. Awaiting Apple clearance.
 
 Seller name stays **Tri Stan Ching KOO**. Do **not** convert to Insite Works Limited mid-review (GTM Gate 2 OPEN).  
 **Public** stays unticked unless you explicitly enable store visibility in ASC.
@@ -36,9 +38,11 @@ CBP: bare **CBP** = commit → local build → S4 → EAS TF upload.
 
 | Item | State |
 |---|---|
-| Build to attach | **280** selected 2026-09-27 (`asc:paste`) |
-| Screenshots SoT | Regenerated 2026-09-26 (Option A Activity); re-uploaded with 280 paste |
-| Human | 1.1.3 + 280 is **WAITING_FOR_REVIEW** (2026-09-27). Public still off. |
+| Build attached | **280** (Taskr 1.1.3) |
+| Screenshots | Regenerated 2026-09-26 (Option A Activity); uploaded with 280 paste |
+| Review status | **REJECTED / UNRESOLVED_ISSUES** (Guideline 2.1 - demo credentials) |
+| Resolution | Reply sent by Tristan after demo password reset; awaiting Apple clearance |
+| Public listing | **Off** (do not enable) |
 
 ---
 

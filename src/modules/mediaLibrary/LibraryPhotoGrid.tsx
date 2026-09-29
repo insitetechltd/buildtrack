@@ -308,6 +308,9 @@ export function LibraryPhotoGrid({
     initialFillCount: indexMode ? indexInitialFill : assets.length,
   });
 
+  // Diagnostic: log paint state
+  console.log(`[paint-debug] itemCount=${indexMode ? indexCount : assets.length} maxUnlocked=${paint.maxUnlockedIndex} initialFillComplete=${paint.initialFillComplete} useNativeThumbs=${useNativeThumbs}`);
+
   const [visibleRange, setVisibleRange] = useState({ min: 0, max: -1 });
   const [bindBeyondFirstScreen, setBindBeyondFirstScreen] = useState(false);
   const leftFirstScreenRef = useRef(false);
@@ -597,7 +600,13 @@ export function LibraryPhotoGrid({
             pixelSize={pixelSize}
             selected={resolvedId ? selectedIds.has(resolvedId) : false}
             order={resolvedId ? selectionOrderByKey.get(resolvedId) : undefined}
-            bindImage={paint.shouldDecodeIndex(index)}
+            bindImage={(() => {
+              const shouldDecode = paint.shouldDecodeIndex(index);
+              if (index < 3) { // Only log first 3 tiles
+                console.log(`[bind-debug] index=${index} shouldDecode=${shouldDecode} maxUnlocked=${paint.maxUnlockedIndex}`);
+              }
+              return shouldDecode;
+            })()}
             useNativeThumb={useNativeThumbs}
             photokitToken={indexToken}
             photokitIndex={index}

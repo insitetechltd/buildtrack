@@ -46,11 +46,9 @@ public final class PhotokitThumbView: ExpoView {
     // Recents index thumbs pause while Select Photos is on top. Asset-id
     // thumbs (Select Photos tiles) must still paint.
     if PhotokitThumbEngine.pausedForAccept, indexExplicit {
-      print("[PhotokitThumb] requestIfNeeded: paused for accept")
       return
     }
     guard pixelSize >= 1 else {
-      print("[PhotokitThumb] requestIfNeeded: pixelSize < 1, got \(pixelSize)")
       return
     }
 
@@ -60,7 +58,6 @@ public final class PhotokitThumbView: ExpoView {
     let hasIndexProps = libraryToken > 0 && indexExplicit && assetIndex >= 0
     let hasAssetIdProp = assetId != nil && !(assetId?.isEmpty ?? true)
     guard hasIndexProps || hasAssetIdProp else {
-      print("[PhotokitThumb] requestIfNeeded: incomplete props - token=\(libraryToken), explicit=\(indexExplicit), index=\(assetIndex), assetId=\(assetId ?? "nil")")
       return
     }
 
@@ -72,18 +69,14 @@ public final class PhotokitThumbView: ExpoView {
         asset = PhotokitThumbEngine.asset(localIdentifier: assetId)
       }
       key = "t\(libraryToken):i\(assetIndex):\(Int(pixelSize.rounded()))"
-      print("[PhotokitThumb] requestIfNeeded: index mode - token=\(libraryToken), index=\(assetIndex), asset=\(asset?.localIdentifier ?? "nil")")
     } else if let assetId, !assetId.isEmpty {
       asset = PhotokitThumbEngine.asset(localIdentifier: assetId)
       key = "id:\(PhotokitThumbEngine.normalizedLocalIdentifier(assetId)):\(Int(pixelSize.rounded()))"
-      print("[PhotokitThumb] requestIfNeeded: assetId mode - asset=\(asset?.localIdentifier ?? "nil")")
     } else {
-      print("[PhotokitThumb] requestIfNeeded: no valid mode")
       return
     }
 
     if key == requestedKey {
-      print("[PhotokitThumb] requestIfNeeded: already requested key=\(key)")
       return
     }
     cancelRequest()
@@ -93,11 +86,9 @@ public final class PhotokitThumbView: ExpoView {
 
     guard let asset else {
       requestedKey = ""
-      print("[PhotokitThumb] requestIfNeeded: asset is nil, cannot request")
       return
     }
 
-    print("[PhotokitThumb] requestIfNeeded: calling startFastRequest for key=\(key)")
     startFastRequest(asset: asset, key: key)
   }
 
@@ -112,7 +103,6 @@ public final class PhotokitThumbView: ExpoView {
 
   private func startFastRequest(asset: PHAsset, key: String) {
     let targetSize = PhotokitThumbEngine.targetSize(pixelSize: pixelSize)
-    print("[PhotokitThumb] startFastRequest: asset=\(asset.localIdentifier), targetSize=\(targetSize), key=\(key)")
     requestId = PhotokitThumbEngine.manager.requestImage(
       for: asset,
       targetSize: targetSize,
@@ -120,13 +110,9 @@ public final class PhotokitThumbView: ExpoView {
       options: PhotokitThumbEngine.makeOptions()
     ) { [weak self] image, info in
       guard let self else {
-        print("[PhotokitThumb] callback: self is nil")
         return
       }
       let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
-      let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-      let error = info?[PHImageErrorKey]
-      print("[PhotokitThumb] callback: key=\(key), image=\(image != nil), cancelled=\(cancelled), degraded=\(degraded), error=\(error != nil)")
       if cancelled {
         return
       }
@@ -135,14 +121,12 @@ public final class PhotokitThumbView: ExpoView {
       }
       let apply = {
         guard self.requestedKey == key else {
-          print("[PhotokitThumb] callback: key mismatch, expected=\(self.requestedKey), got=\(key)")
           return
         }
         self.imageView.image = image
         if !self.didNotifyPainted {
           self.didNotifyPainted = true
           self.onPainted()
-          print("[PhotokitThumb] callback: painted key=\(key)")
         }
       }
       if Thread.isMainThread {
@@ -151,7 +135,6 @@ public final class PhotokitThumbView: ExpoView {
         DispatchQueue.main.async(execute: apply)
       }
     }
-    print("[PhotokitThumb] startFastRequest: requestId=\(requestId)")
   }
 
 

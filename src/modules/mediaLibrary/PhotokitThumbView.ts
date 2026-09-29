@@ -62,18 +62,12 @@ function loadNativeModule(): PhotokitThumbsNative | null {
   }
   if (Platform.OS !== "ios") {
     nativeModule = null;
-    console.log("[PhotokitThumbs] Platform is not iOS, native module unavailable");
     return null;
   }
   try {
     nativeModule = requireNativeModule("PhotokitThumbs") as PhotokitThumbsNative;
-    console.log("[PhotokitThumbs] Native module loaded successfully");
-  } catch (error) {
+  } catch {
     nativeModule = null;
-    console.error(
-      "[PhotokitThumbs] FAILED to load native module - thumbs will not work!",
-      error,
-    );
   }
   return nativeModule;
 }
@@ -84,45 +78,23 @@ function loadNativeView(): ComponentType<PhotokitThumbNativeProps> | null {
   }
   if (loadNativeModule() == null) {
     nativeView = null;
-    console.log(
-      "[PhotokitThumbs] Native module is null, cannot load native view",
-    );
     return null;
   }
   try {
     nativeView = requireNativeViewManager(
       "PhotokitThumbs",
     ) as ComponentType<PhotokitThumbNativeProps>;
-    console.log("[PhotokitThumbs] Native view loaded successfully");
-  } catch (error) {
+  } catch {
     nativeView = null;
-    console.error(
-      "[PhotokitThumbs] FAILED to load native view - thumbs will not render!",
-      error,
-    );
   }
   return nativeView;
 }
 
 export function isPhotokitThumbsAvailable(): boolean {
   const native = loadNativeModule();
-  const viewAvailable = loadNativeView() != null;
-  const startCachingAvailable = typeof native?.startCaching === "function";
-  const available = viewAvailable && startCachingAvailable;
-
-  if (!available) {
-    console.warn(
-      "[PhotokitThumbs] isPhotokitThumbsAvailable() = false",
-      "- hybrid library will use skeletons only!",
-      {
-        nativeModuleLoaded: native != null,
-        nativeViewLoaded: viewAvailable,
-        startCachingPresent: startCachingAvailable,
-      },
-    );
-  }
-
-  return available;
+  return (
+    loadNativeView() != null && typeof native?.startCaching === "function"
+  );
 }
 
 /** TF 213 binaries have thumbs but not the index API — must feature-detect. */

@@ -4,9 +4,9 @@ import UIKit
 
 /// Backing store for one library session. Display index 0 = newest.
 enum PhotokitLibraryBacking {
-  /// Sorted fetch (creationDate descending = newest first); reversed flag kept for compatibility but always false.
+  /// Recents: physical oldest-first; map display via reversed.
   case fetch(PHFetchResult<PHAsset>, reversed: Bool)
-  /// Newest-first array (Option 2B limited open).
+  /// Newest-first array (Option 2B limited open via reverse enum).
   case displayOrder([PHAsset])
 
   var count: Int {
@@ -72,6 +72,7 @@ enum PhotokitThumbEngine {
       cachedRange = nil
       sessionLock.unlock()
       manager.stopCachingImagesForAllAssets()
+      dropSharpWaiters()
       for view in liveThumbViews.allObjects {
         if view.indexExplicit {
           view.cancelPendingRequest()
@@ -116,19 +117,85 @@ enum PhotokitThumbEngine {
     return options
   }
 
+  /// Viewport sharpen pass. Opportunistic = degraded then final at full
+  /// `targetSize`. Do not use for first `onPainted` (stay on fastFormat).
+  static func makeSharpOptions() -> PHImageRequestOptions {
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .opportunistic
+    options.resizeMode = .fast
+    options.isNetworkAccessAllowed = false
+    options.isSynchronous = false
+    options.version = .current
+    return options
+  }
 
-  /// Keep in sync with JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LINEAR_SCALE` (512px).
-  /// Single-pass full quality — no fast/sharp split; progressive paint controls decode rate.
+  /// Cap concurrent HQ upgrades so first-screen decode cannot stall like TF 211.
+  static let sharpLimit = 3
+  static var sharpInflight = 0
+  /// Waiters that missed the 3-wide slot. Old 80×50ms retry dropped most iPad tiles.
+  static var sharpWaiters: [() -> Void] = []
+
+  static func acquireSharpSlot(run: @escaping () -> Void) {
+    let start = {
+      if sharpInflight < sharpLimit {
+        sharpInflight += 1
+        run()
+      } else {
+        sharpWaiters.append(run)
+      }
+    }
+    if Thread.isMainThread {
+      start()
+    } else {
+      DispatchQueue.main.async(execute: start)
+    }
+  }
+
+  static func releaseSharpSlot() {
+    let pump = {
+      sharpInflight = max(0, sharpInflight - 1)
+      guard !sharpWaiters.isEmpty else {
+        return
+      }
+      let next = sharpWaiters.removeFirst()
+      sharpInflight += 1
+      next()
+    }
+    if Thread.isMainThread {
+      pump()
+    } else {
+      DispatchQueue.main.async(execute: pump)
+    }
+  }
+
+  static func dropSharpWaiters() {
+    let clear = { sharpWaiters.removeAll(keepingCapacity: false) }
+    if Thread.isMainThread {
+      clear()
+    } else {
+      DispatchQueue.main.async(execute: clear)
+    }
+  }
+
+  /// Keep in sync with JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LINEAR_SCALE` (TF237=256, 2× experiment=512).
   static let maxThumbPixel: CGFloat = 512
+  /// First paint (fastFormat). Matches JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX`.
+  /// iPad tiles are large; asking 512 on the fast path stalls Recents fill.
+  static let fastThumbPixel: CGFloat = 256
 
   static func targetSize(pixelSize: Double) -> CGSize {
     let n = min(max(pixelSize, 1), maxThumbPixel)
     return CGSize(width: n, height: n)
   }
 
-  /// Always sort by creationDate descending (newest first) for predictable order.
-  /// Unsorted fetch order is undefined and can return middle slices.
-  /// Named albums and Recents both use descending sort for newest-first display.
+  static func fastTargetSize(pixelSize: Double) -> CGSize {
+    let requested = CGFloat(max(pixelSize, 1))
+    let n = min(requested, fastThumbPixel, maxThumbPixel)
+    return CGSize(width: n, height: n)
+  }
+
+  /// TF 220: `creationDate` sort (even with fetchLimit 48) still cost ~7s before
+  /// first bind. Recents: no sort + reverse display. Named albums: sort desc.
   static func fetchOptions(sorted: Bool) -> PHFetchOptions {
     let options = PHFetchOptions()
     options.predicate = NSPredicate(
@@ -145,6 +212,14 @@ enum PhotokitThumbEngine {
     return options
   }
 
+  /// TF 235: `mediaType == image` on Recents still scanned the album (~9–14s).
+  /// Camera Roll physical order is indexed; filter images while walking from the end.
+  static func recentsPhysicalOptions() -> PHFetchOptions {
+    let options = PHFetchOptions()
+    options.includeHiddenAssets = false
+    options.wantsIncrementalChangeDetails = false
+    return options
+  }
 
   static func fetchRecentsOrAll() -> (PHFetchResult<PHAsset>, reversed: Bool) {
     let recents = PHAssetCollection.fetchAssetCollections(
@@ -154,8 +229,8 @@ enum PhotokitThumbEngine {
     )
     if let collection = recents.firstObject {
       return (
-        PHAsset.fetchAssets(in: collection, options: fetchOptions(sorted: true)),
-        false
+        PHAsset.fetchAssets(in: collection, options: fetchOptions(sorted: false)),
+        true
       )
     }
     return (
@@ -199,8 +274,9 @@ enum PhotokitThumbEngine {
     return session
   }
 
-  /// Newest `limit` Recents with explicit creationDate sort descending.
-  /// Sorted fetch ensures newest photos first, matching Photos app behavior.
+  /// Newest `limit` Recents without `creationDate` sort.
+  /// TF 220 / TF 234: fetchLimit + sort still scanned the library (~7–13s).
+  /// Recents is oldest-first physically; display 0 = `object(at: count-1)`.
   static func newestRecents(limit: Int) -> [PHAsset] {
     let capped = max(1, min(limit, 200))
     let recents = PHAssetCollection.fetchAssetCollections(
@@ -211,13 +287,26 @@ enum PhotokitThumbEngine {
     guard let collection = recents.firstObject else {
       return []
     }
-    let opts = fetchOptions(sorted: true)
-    opts.fetchLimit = capped
-    let result = PHAsset.fetchAssets(in: collection, options: opts)
+    let result = PHAsset.fetchAssets(
+      in: collection,
+      options: recentsPhysicalOptions()
+    )
+    let total = result.count
+    guard total > 0 else {
+      return []
+    }
     var assets: [PHAsset] = []
-    assets.reserveCapacity(result.count)
-    result.enumerateObjects { asset, _, _ in
-      assets.append(asset)
+    assets.reserveCapacity(capped)
+    var physical = total - 1
+    let maxWalk = min(total, max(capped * 8, 200))
+    var walked = 0
+    while physical >= 0, assets.count < capped, walked < maxWalk {
+      let asset = result.object(at: physical)
+      if asset.mediaType == .image {
+        assets.append(asset)
+      }
+      physical -= 1
+      walked += 1
     }
     return assets
   }
@@ -626,7 +715,7 @@ public final class PhotokitThumbsModule: Module {
       }
     }
 
-    /// Persisted newest-N ids — fast path (no Recents scan).
+    /// Persisted newest-N ids — sync, not on workQueue (must not wait behind expand).
     Function("openLibraryWithIds") { (ids: [String]) -> [String: Int] in
       if let session = PhotokitThumbEngine.openLibraryWithIds(ids) {
         return [
@@ -706,26 +795,22 @@ public final class PhotokitThumbsModule: Module {
       Events("onPainted")
 
       Prop("assetId") { (view: PhotokitThumbView, assetId: String?) in
-        print("[PhotokitThumb] Prop assetId: \(assetId ?? "nil")")
         view.assetId = assetId
         view.requestIfNeeded()
       }
 
       Prop("index") { (view: PhotokitThumbView, index: Int) in
-        print("[PhotokitThumb] Prop index: \(index)")
         view.assetIndex = index
         view.indexExplicit = true
         view.requestIfNeeded()
       }
 
       Prop("token") { (view: PhotokitThumbView, token: Int) in
-        print("[PhotokitThumb] Prop token: \(token)")
         view.libraryToken = token
         view.requestIfNeeded()
       }
 
       Prop("pixelSize") { (view: PhotokitThumbView, pixelSize: Double) in
-        print("[PhotokitThumb] Prop pixelSize: \(pixelSize)")
         view.pixelSize = pixelSize
         view.requestIfNeeded()
       }

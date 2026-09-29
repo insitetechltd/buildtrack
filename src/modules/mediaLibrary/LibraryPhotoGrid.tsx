@@ -285,16 +285,6 @@ export function LibraryPhotoGrid({
   const indexToken = indexSession?.token ?? 0;
   const useNativeThumbs = isPhotokitThumbsAvailable();
 
-  useEffect(() => {
-    if (!useNativeThumbs) {
-      console.warn(
-        "[LibraryPhotoGrid] Native PhotoKit thumbs NOT available - tiles will remain as skeletons!",
-      );
-    } else {
-      console.log("[LibraryPhotoGrid] Native PhotoKit thumbs are available");
-    }
-  }, [useNativeThumbs]);
-
   const indexInitialFill = firstWaveItems;
 
   const paint = useProgressiveGridPaint({

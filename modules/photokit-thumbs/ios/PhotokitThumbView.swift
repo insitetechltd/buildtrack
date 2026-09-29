@@ -13,8 +13,11 @@ public final class PhotokitThumbView: ExpoView {
 
   private let imageView = UIImageView()
   private var requestId: PHImageRequestID = PHInvalidImageRequestID
+  private var sharpRequestId: PHImageRequestID = PHInvalidImageRequestID
   private var requestedKey: String = ""
   private var didNotifyPainted = false
+  private var displayedPixel: CGFloat = 0
+  private var sharpSlotHeld = false
   private var phContentMode: PHImageContentMode = .aspectFill
 
   public required init(appContext: AppContext? = nil) {
@@ -73,6 +76,7 @@ public final class PhotokitThumbView: ExpoView {
     cancelRequest()
     requestedKey = key
     didNotifyPainted = false
+    displayedPixel = 0
     imageView.image = nil
 
     guard let asset else {
@@ -93,10 +97,9 @@ public final class PhotokitThumbView: ExpoView {
   }
 
   private func startFastRequest(asset: PHAsset, key: String) {
-    let targetSize = PhotokitThumbEngine.targetSize(pixelSize: pixelSize)
     requestId = PhotokitThumbEngine.manager.requestImage(
       for: asset,
-      targetSize: targetSize,
+      targetSize: PhotokitThumbEngine.fastTargetSize(pixelSize: pixelSize),
       contentMode: phContentMode,
       options: PhotokitThumbEngine.makeOptions()
     ) { [weak self] image, info in
@@ -114,11 +117,8 @@ public final class PhotokitThumbView: ExpoView {
         guard self.requestedKey == key else {
           return
         }
-        self.imageView.image = image
-        if !self.didNotifyPainted {
-          self.didNotifyPainted = true
-          self.onPainted()
-        }
+        self.applyIfSharper(image, key: key, notifyPainted: true)
+        self.scheduleSharpUpgrade(asset: asset, key: key)
       }
       if Thread.isMainThread {
         apply()
@@ -128,11 +128,103 @@ public final class PhotokitThumbView: ExpoView {
     }
   }
 
+  private func scheduleSharpUpgrade(asset: PHAsset, key: String) {
+    let fast = PhotokitThumbEngine.fastTargetSize(pixelSize: pixelSize).width
+    let sharp = PhotokitThumbEngine.targetSize(pixelSize: pixelSize).width
+    if sharp <= fast + 0.5 {
+      return
+    }
+    PhotokitThumbEngine.acquireSharpSlot { [weak self] in
+      guard let self, self.requestedKey == key else {
+        PhotokitThumbEngine.releaseSharpSlot()
+        return
+      }
+      if self.indexExplicit, PhotokitThumbEngine.pausedForAccept {
+        PhotokitThumbEngine.releaseSharpSlot()
+        return
+      }
+      self.sharpSlotHeld = true
+      self.startSharpRequest(asset: asset, key: key)
+    }
+  }
+
+  private func startSharpRequest(asset: PHAsset, key: String) {
+    let rid = PhotokitThumbEngine.manager.requestImage(
+      for: asset,
+      targetSize: PhotokitThumbEngine.targetSize(pixelSize: pixelSize),
+      contentMode: phContentMode,
+      options: PhotokitThumbEngine.makeSharpOptions()
+    ) { [weak self] image, info in
+      let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+      let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+      let apply = {
+        guard let self else {
+          return
+        }
+        if cancelled {
+          self.releaseSharpSlot()
+          return
+        }
+        if let image {
+          self.applyIfSharper(image, key: key, notifyPainted: false)
+        }
+        // Opportunistic: degraded then final. Hold the slot until final so
+        // the 256px thumb can be replaced. Old code dropped degraded and
+        // never applied a later bitmap.
+        if !degraded {
+          self.sharpRequestId = PHInvalidImageRequestID
+          self.releaseSharpSlot()
+        }
+      }
+      if Thread.isMainThread {
+        apply()
+      } else {
+        DispatchQueue.main.async(execute: apply)
+      }
+    }
+    sharpRequestId = rid
+    DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
+      guard let self, self.sharpRequestId == rid else {
+        return
+      }
+      self.releaseSharpSlot()
+    }
+  }
+
+  /// Replace the on-screen bitmap when PhotoKit returns more pixels.
+  private func applyIfSharper(_ image: UIImage, key: String, notifyPainted: Bool) {
+    guard requestedKey == key else {
+      return
+    }
+    let incoming = max(image.size.width, image.size.height) * image.scale
+    if incoming <= displayedPixel + 0.5 {
+      return
+    }
+    imageView.image = image
+    displayedPixel = incoming
+    if notifyPainted, !didNotifyPainted {
+      didNotifyPainted = true
+      onPainted()
+    }
+  }
+
+  private func releaseSharpSlot() {
+    guard sharpSlotHeld else {
+      return
+    }
+    sharpSlotHeld = false
+    PhotokitThumbEngine.releaseSharpSlot()
+  }
 
   private func cancelRequest() {
     if requestId != PHInvalidImageRequestID {
       PhotokitThumbEngine.manager.cancelImageRequest(requestId)
       requestId = PHInvalidImageRequestID
     }
+    if sharpRequestId != PHInvalidImageRequestID {
+      PhotokitThumbEngine.manager.cancelImageRequest(sharpRequestId)
+      sharpRequestId = PHInvalidImageRequestID
+    }
+    releaseSharpSlot()
   }
 }

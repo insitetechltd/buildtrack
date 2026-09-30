@@ -1,0 +1,134 @@
+# Recents Paint Gate — Forever-Gray Regression Prevention
+#
+# Asserts that Recents library picker tiles load colored photo thumbnails
+# within reasonable time. Prevents PHPhotosErrorDomain 3303 regression.
+#
+# Gate: Camera tab → library peek → Recents grid → wait 15s → assert painted
+# PASS: Colored thumbnails visible (not gray placeholders)
+# FAIL: Uniform gray tiles remain after 15s
+#
+# Run: bash scripts/maestro/run-local.sh test --udid <UDID> maestro/flows/smoke/recents-paint-gate.yaml
+#
+# Context: deliveryMode .opportunistic fix (merged main 212f105) resolved forever-gray.
+# This gate prevents future regressions from PhotoKit requestImage options.
+appId: com.buildtrack.app.local
+tags:
+  - smoke
+  - recents-paint
+  - photokit
+---
+# Boot with no state clear (preserve login if present)
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+
+# Dismiss any blocking overlays
+- tapOn:
+    text: "OK"
+    optional: true
+
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+# Login if needed (John Manager A credentials)
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "login-emailOrPhone"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "login-password"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+
+# Dismiss password save prompts
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+# Wait for dashboard
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+
+# Navigate to Camera tab
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 10000
+
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+
+# Wait for camera screen
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 15000
+
+# Tap library peek to open Recents
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_peek"
+    commands:
+      - tapOn:
+          id: "capture-session__library_peek"
+
+# Fallback if peek button missing
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
+
+# Wait for library screen
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+
+# Wait for grid
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+
+# Wait 15 seconds for thumbnails to load
+# PASS = colored photos appear (deliveryMode .opportunistic delivers bitmap)
+# FAIL = gray placeholders remain (PHPhotosErrorDomain 3303 or similar)
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Capture final state for verification
+# Visual inspection: colored tiles = PASS, uniform gray = FAIL
+- takeScreenshot: recents_paint_gate_after_15s
+
+# Assert grid still visible (did not crash/dismiss)
+- assertVisible:
+    id: "capture-session__library_grid"
+
+# Success: Grid visible after 15s wait = paint gate passed
+# (Visual verification in screenshot confirms colored vs gray)

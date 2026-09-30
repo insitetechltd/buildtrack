@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
-import * as FileSystem from "expo-file-system";
 import {
   probePhotokitRequestOptions,
   previewPhotokitNewestIds,
@@ -46,26 +45,10 @@ export function PhotokitOptionsProbe() {
       
       setResult(probeResult);
       
-      // Log full JSON to console FIRST (primary result sink)
+      // Log full JSON to console (ONLY output - no file system)
       console.log("[Probe] ==================== RESULTS ====================");
       console.log(JSON.stringify(probeResult, null, 2));
       console.log("[Probe] ========================================================");
-
-      // Write to cache (best-effort, Expo 54 compatible)
-      let resultPath = "(not written)";
-      try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        resultPath = `${FileSystem.cacheDirectory}photokit-probe-result-${timestamp}.json`;
-        
-        await FileSystem.writeAsStringAsync(
-          resultPath,
-          JSON.stringify(probeResult, null, 2)
-        );
-        
-        console.log(`[Probe] Results written to: ${resultPath}`);
-      } catch (writeError) {
-        console.warn("[Probe] File write failed (non-fatal):", writeError);
-      }
 
       // Generate summary
       const passCount = probeResult.variants.filter(v => v.status === "PASS").length;
@@ -76,7 +59,7 @@ export function PhotokitOptionsProbe() {
         `Tested ${probeResult.variants.length} variants\n` +
         `✓ PASS: ${passCount}\n` +
         `✗ FAIL: ${failCount}\n\n` +
-        `Results: ${resultPath}`,
+        `Check Metro console for full JSON`,
         [{ text: "OK" }]
       );
 

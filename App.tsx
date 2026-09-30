@@ -14,6 +14,7 @@ import {
   parseInviteSignInUrl,
 } from "./src/auth/inviteSignInLink";
 import ThemeRoot from "./src/theme/ThemeRoot";
+import { PhotokitProbeButton } from "./src/diagnostics/PhotokitProbeButton";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.2";
@@ -212,6 +213,7 @@ export default function App() {
           <AppNavigator />
         </ThemeRoot>
       </SafeAreaProvider>
+      {__DEV__ && <PhotokitProbeButton />}
     </GestureHandlerRootView>
   );
 }

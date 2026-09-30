@@ -1,0 +1,61 @@
+# Open library picker directly from Dashboard (no capture-first).
+# Dashboard → Camera FAB → CaptureSession → Open Library fallback → in-app library.
+# Leaves caller in library picker ready to select photos.
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__camera_icon_surface"
+    commands:
+      - tapOn:
+          id: "root-tab__camera_icon_surface"
+      - waitForAnimationToEnd:
+          timeout: 2500
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 20000
+# Tap fallback "Open Library" link to go directly to in-app library
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
+# If peek is shown instead of fallback, tap it
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_peek"
+    commands:
+      - tapOn:
+          id: "capture-session__library_peek"
+# Wait for in-app library screen
+- extendedWaitUntil:
+    visible: "Select photos"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 5000

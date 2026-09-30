@@ -48,7 +48,7 @@ export default function App() {
       } catch (error) {
         console.error("Failed to initialize auth:", error);
         useAuthStore.setState({ isLoading: false });
-      } finally {
+      } finally{
         try {
           await autoBootstrapSprint7SandboxForMaestroIfNeeded();
         } catch (autoErr: any) {

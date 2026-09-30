@@ -14,7 +14,6 @@ import {
   parseInviteSignInUrl,
 } from "./src/auth/inviteSignInLink";
 import ThemeRoot from "./src/theme/ThemeRoot";
-import { PhotokitProbeButton } from "./src/diagnostics/PhotokitProbeButton";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.2";
@@ -48,7 +47,7 @@ export default function App() {
       } catch (error) {
         console.error("Failed to initialize auth:", error);
         useAuthStore.setState({ isLoading: false });
-      } finally{
+      } finally {
         try {
           await autoBootstrapSprint7SandboxForMaestroIfNeeded();
         } catch (autoErr: any) {
@@ -213,7 +212,6 @@ export default function App() {
           <AppNavigator />
         </ThemeRoot>
       </SafeAreaProvider>
-      {__DEV__ && <PhotokitProbeButton />}
     </GestureHandlerRootView>
   );
 }

@@ -35,7 +35,6 @@ type PhotokitThumbsNative = {
   resumeLibraryAfterAccept?: () => void;
   exportCappedJpeg?: (assetId: string, maxPixel: number) => string | Promise<string>;
   exportPreviewJpeg?: (assetId: string, maxPixel: number) => string | Promise<string>;
-  probeRequestOptions?: (assetId: string, maxPixel: number) => string | Promise<string>;
 };
 
 export type PhotokitLibrarySession = {
@@ -325,56 +324,5 @@ export async function exportPhotokitPreviewJpeg(
     return typeof uri === "string" && uri.startsWith("file://") ? uri : null;
   } catch {
     return null;
-  }
-}
-
-export type PhotokitProbeVariant = {
-  variant: string;
-  status: "PASS" | "FAIL" | "TIMEOUT";
-  callbackCount: number;
-  elapsedMs: number;
-  cancelled?: boolean;
-  degraded?: boolean;
-  error?: {
-    domain: string;
-    code: number;
-    description: string;
-  };
-  imageSize?: {
-    width: number;
-    height: number;
-    scale: number;
-  };
-  uri?: string;
-  imageNull?: boolean;
-  writeError?: string;
-};
-
-export type PhotokitProbeResult = {
-  variants: PhotokitProbeVariant[];
-  error?: string;
-};
-
-/** Diagnostic: test different PHImageRequestOptions combinations. */
-export async function probePhotokitRequestOptions(
-  assetId: string,
-  maxPixel: number,
-): Promise<PhotokitProbeResult> {
-  const native = loadNativeModule();
-  if (!native?.probeRequestOptions || !assetId || maxPixel < 1) {
-    return { variants: [], error: "native_unavailable" };
-  }
-  try {
-    const json = await Promise.resolve(native.probeRequestOptions(assetId, maxPixel));
-    if (typeof json !== "string") {
-      return { variants: [], error: "invalid_response_type" };
-    }
-    const parsed = JSON.parse(json) as PhotokitProbeResult;
-    return parsed;
-  } catch (err) {
-    return { 
-      variants: [], 
-      error: err instanceof Error ? err.message : "unknown_error" 
-    };
   }
 }

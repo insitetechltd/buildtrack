@@ -1,0 +1,66 @@
+# P03-library-only — Three photos all from library (no capture-first) → submit
+# For M-PERF-04 dogfood: exercises parallel upload + [PERF] instrumentation.
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p03-library-only
+---
+- evalScript: ${output.permutation = "P03-library-only"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library-direct.yaml
+
+# Pick 3 photos from library slots 0, 1, 2
+- runFlow: _pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+- runFlow: _pick-slot-1.yaml
+- extendedWaitUntil:
+    visible: ".*2 selected.*"
+    timeout: 8000
+- runFlow: _pick-slot-2.yaml
+- extendedWaitUntil:
+    visible: ".*3 selected.*"
+    timeout: 8000
+- takeScreenshot: "ct-P03-library-picker-three"
+
+# Accept library selection
+- runFlow: _accept-library.yaml
+
+# Confirm 3 attachments on photo selection screen
+- assertVisible:
+    id: "photo-selection__tile_2"
+- takeScreenshot: "ct-P03-library-selection-three"
+
+# Confirm selection → handle routing → navigate to create task form
+- tapOn:
+    id: "photo-selection__confirm"
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 25000
+- assertVisible:
+    id: "create-task__attachments_section"
+- runFlow: _assert-no-logbox.yaml
+
+# Submit create task (triggers parallel upload + PERF instrumentation)
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P03-library-done"

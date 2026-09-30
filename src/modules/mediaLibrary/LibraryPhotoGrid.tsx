@@ -118,6 +118,15 @@ const LibraryGridTile = memo(function LibraryGridTile({
   const realAssetId =
     !assetId.startsWith("__idx_") && !assetId.startsWith("__sk_");
 
+  // Debug logging
+  if (useNativeThumb && bindImage && typeof console !== 'undefined') {
+    console.log(
+      `[thumb-debug-js] rendering tile: assetId=${assetId} indexMode=${indexMode} ` +
+      `token=${photokitToken} index=${photokitIndex} realAssetId=${realAssetId} ` +
+      `pixelSize=${pixelSize}`
+    );
+  }
+
   return (
     <Pressable
       testID={`${testIdPrefix}__tile_${assetId}`}
@@ -152,7 +161,10 @@ const LibraryGridTile = memo(function LibraryGridTile({
             {...(realAssetId ? { assetId } : {})}
             pixelSize={pixelSize}
             style={{ width: tileSize, height: tileSize }}
-            onPainted={() => markLibraryPickerTilePainted(assetId)}
+            onPainted={() => {
+              console.log(`[thumb-debug-js] onPainted fired for assetId=${assetId}`);
+              markLibraryPickerTilePainted(assetId);
+            }}
           />
         </View>
       ) : displayUri ? (
@@ -295,6 +307,9 @@ export function LibraryPhotoGrid({
     columns,
     initialFillCount: indexMode ? indexInitialFill : assets.length,
   });
+
+  // Diagnostic: log paint state
+  console.log(`[paint-debug] itemCount=${indexMode ? indexCount : assets.length} maxUnlocked=${paint.maxUnlockedIndex} initialFillComplete=${paint.initialFillComplete} useNativeThumbs=${useNativeThumbs}`);
 
   const [visibleRange, setVisibleRange] = useState({ min: 0, max: -1 });
   const [bindBeyondFirstScreen, setBindBeyondFirstScreen] = useState(false);
@@ -585,7 +600,13 @@ export function LibraryPhotoGrid({
             pixelSize={pixelSize}
             selected={resolvedId ? selectedIds.has(resolvedId) : false}
             order={resolvedId ? selectionOrderByKey.get(resolvedId) : undefined}
-            bindImage={paint.shouldDecodeIndex(index)}
+            bindImage={(() => {
+              const shouldDecode = paint.shouldDecodeIndex(index);
+              if (index < 3) { // Only log first 3 tiles
+                console.log(`[bind-debug] index=${index} shouldDecode=${shouldDecode} maxUnlocked=${paint.maxUnlockedIndex}`);
+              }
+              return shouldDecode;
+            })()}
             useNativeThumb={useNativeThumbs}
             photokitToken={indexToken}
             photokitIndex={index}

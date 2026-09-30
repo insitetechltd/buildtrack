@@ -1,4 +1,5 @@
-# P03 — Three in first visit → confirm → submit
+# P03 — Three photos total → submit
+# Capture-first: _open-library already adds 1 photo, then reopen to add 2 more.
 appId: com.buildtrack.app.local
 tags:
   - create-task-photo
@@ -7,24 +8,28 @@ tags:
 - evalScript: ${output.permutation = "P03"}
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
+# After capture-first _open-library: on create-task__continuous_form with 1 attachment.
 - runFlow: _open-library.yaml
+- assertVisible:
+    id: "create-task__attachments_section"
+- takeScreenshot: "ct-P03-form-one"
 
-- runFlow: _pick-slot-0.yaml
+# Reopen library from form to add 2 more photos (slots 1 and 2).
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: _pick-slot-1.yaml
 - extendedWaitUntil:
     visible: ".*1 selected.*"
     timeout: 8000
-- runFlow: _pick-slot-1.yaml
+- runFlow: _pick-slot-2.yaml
 - extendedWaitUntil:
     visible: ".*2 selected.*"
     timeout: 8000
-- runFlow: _pick-slot-2.yaml
-- extendedWaitUntil:
-    visible: ".*3 selected.*"
-    timeout: 8000
-- takeScreenshot: "ct-P03-picker-three"
+- takeScreenshot: "ct-P03-picker-two-more"
 - runFlow: _accept-library.yaml
+# Assert 3 attachments total (1 from initial + 2 from reopen).
 - assertVisible:
     id: "photo-selection__tile_2"
 - runFlow: _confirm-selection.yaml
+- takeScreenshot: "ct-P03-form-three"
 - runFlow: _submit-create-task.yaml
 - takeScreenshot: "ct-P03-done"

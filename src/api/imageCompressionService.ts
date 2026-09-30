@@ -1,6 +1,7 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 // Use legacy API to avoid deprecation warnings
 import * as FileSystem from 'expo-file-system/legacy';
+import { perf } from '../utils/performanceInstrumentation';
 
 /**
  * Image Compression Service
@@ -47,16 +48,23 @@ export async function compressImage(
   uri: string,
   targetSizeBytes: number = MAX_FILE_SIZE
 ): Promise<CompressionResult> {
+  const perfKey = `compress-image-${Date.now()}`;
+  perf.start(perfKey);
+  
   try {
     // Get original file size
+    perf.mark(perfKey, 'start-getFileSize');
     const originalSize = await getFileSize(uri);
+    perf.mark(perfKey, 'complete-getFileSize');
     
     // If already under target size and reasonable dimensions, return as-is
     if (originalSize <= targetSizeBytes && originalSize > 0) {
+      perf.mark(perfKey, 'start-check-dimensions');
       const imageInfo = await ImageManipulator.manipulateAsync(uri, [], {
         compress: 1,
         format: ImageManipulator.SaveFormat.JPEG,
       });
+      perf.mark(perfKey, 'complete-check-dimensions');
       
       // Still check dimensions
       if (imageInfo.width <= MAX_IMAGE_WIDTH && imageInfo.height <= MAX_IMAGE_HEIGHT) {
@@ -65,6 +73,7 @@ export async function compressImage(
           dimensions: `${imageInfo.width}x${imageInfo.height}`
         });
         
+        perf.end(perfKey);
         return {
           uri,
           width: imageInfo.width,
@@ -85,10 +94,12 @@ export async function compressImage(
     let resizeActions: ImageManipulator.Action[] = [];
     
     // Get image info to check dimensions
+    perf.mark(perfKey, 'start-get-dimensions');
     const tempResult = await ImageManipulator.manipulateAsync(uri, [], {
       compress: 1,
       format: ImageManipulator.SaveFormat.JPEG,
     });
+    perf.mark(perfKey, 'complete-get-dimensions');
     
     if (tempResult.width > MAX_IMAGE_WIDTH || tempResult.height > MAX_IMAGE_HEIGHT) {
       // Calculate resize ratio
@@ -112,6 +123,7 @@ export async function compressImage(
 
     // Step 2: Apply compression with adaptive quality
     let quality = INITIAL_QUALITY;
+    perf.mark(perfKey, 'start-initial-compress');
     let compressed = await ImageManipulator.manipulateAsync(
       uri,
       resizeActions,
@@ -120,8 +132,11 @@ export async function compressImage(
         format: ImageManipulator.SaveFormat.JPEG,
       }
     );
+    perf.mark(perfKey, 'complete-initial-compress');
 
+    perf.mark(perfKey, 'start-get-compressed-size');
     let compressedSize = await getFileSize(compressed.uri);
+    perf.mark(perfKey, 'complete-get-compressed-size');
 
     // Step 3: If still too large, reduce quality iteratively
     let attempts = 0;
@@ -207,6 +222,8 @@ export async function compressImage(
       quality: `${(quality * 100).toFixed(0)}%`
     });
 
+    perf.end(perfKey);
+    
     return {
       uri: compressed.uri,
       width: compressed.width,
@@ -216,6 +233,7 @@ export async function compressImage(
       compressionRatio,
     };
   } catch (error) {
+    perf.cancel(perfKey);
     console.error('Error compressing image:', error);
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Image compression failed: ${message}`);

@@ -49,9 +49,11 @@ public final class PhotokitThumbView: ExpoView {
     // Recents index thumbs pause while Select Photos is on top. Asset-id
     // thumbs (Select Photos tiles) must still paint.
     if PhotokitThumbEngine.pausedForAccept, indexExplicit {
+      print("[thumb-debug] paused for accept, skipping request")
       return
     }
     guard pixelSize >= 1 else {
+      print("[thumb-debug] pixelSize < 1, skipping request")
       return
     }
 
@@ -63,10 +65,13 @@ public final class PhotokitThumbView: ExpoView {
         asset = PhotokitThumbEngine.asset(localIdentifier: assetId)
       }
       key = "t\(libraryToken):i\(assetIndex):\(Int(pixelSize.rounded()))"
+      print("[thumb-debug] index mode: token=\(libraryToken) index=\(assetIndex) asset=\(asset != nil ? "found" : "nil")")
     } else if let assetId, !assetId.isEmpty {
       asset = PhotokitThumbEngine.asset(localIdentifier: assetId)
       key = "id:\(PhotokitThumbEngine.normalizedLocalIdentifier(assetId)):\(Int(pixelSize.rounded()))"
+      print("[thumb-debug] asset mode: assetId=\(assetId) asset=\(asset != nil ? "found" : "nil")")
     } else {
+      print("[thumb-debug] no asset id or index, skipping request")
       return
     }
 
@@ -80,10 +85,12 @@ public final class PhotokitThumbView: ExpoView {
     imageView.image = nil
 
     guard let asset else {
+      print("[thumb-debug] asset is nil for key=\(key), aborting request")
       requestedKey = ""
       return
     }
 
+    print("[thumb-debug] starting request for key=\(key)")
     startFastRequest(asset: asset, key: key)
   }
 
@@ -97,6 +104,7 @@ public final class PhotokitThumbView: ExpoView {
   }
 
   private func startFastRequest(asset: PHAsset, key: String) {
+    print("[thumb-debug] startFastRequest key=\(key) asset=\(asset.localIdentifier)")
     requestId = PhotokitThumbEngine.manager.requestImage(
       for: asset,
       targetSize: PhotokitThumbEngine.fastTargetSize(pixelSize: pixelSize),
@@ -104,19 +112,25 @@ public final class PhotokitThumbView: ExpoView {
       options: PhotokitThumbEngine.makeOptions()
     ) { [weak self] image, info in
       guard let self else {
+        print("[thumb-debug] callback: self is nil")
         return
       }
       let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
       if cancelled {
+        print("[thumb-debug] callback: cancelled for key=\(key)")
         return
       }
       guard let image else {
+        print("[thumb-debug] callback: image is nil for key=\(key), info=\(String(describing: info))")
         return
       }
+      print("[thumb-debug] callback: received image for key=\(key) size=\(image.size)")
       let apply = {
         guard self.requestedKey == key else {
+          print("[thumb-debug] callback: key mismatch, current=\(self.requestedKey) expected=\(key)")
           return
         }
+        print("[thumb-debug] calling applyIfSharper with notifyPainted=true")
         self.applyIfSharper(image, key: key, notifyPainted: true)
         self.scheduleSharpUpgrade(asset: asset, key: key)
       }
@@ -194,16 +208,20 @@ public final class PhotokitThumbView: ExpoView {
   /// Replace the on-screen bitmap when PhotoKit returns more pixels.
   private func applyIfSharper(_ image: UIImage, key: String, notifyPainted: Bool) {
     guard requestedKey == key else {
+      print("[thumb-debug] applyIfSharper: key mismatch, current=\(requestedKey) expected=\(key)")
       return
     }
     let incoming = max(image.size.width, image.size.height) * image.scale
     if incoming <= displayedPixel + 0.5 {
+      print("[thumb-debug] applyIfSharper: incoming=\(incoming) <= displayed=\(displayedPixel), skipping")
       return
     }
+    print("[thumb-debug] applyIfSharper: applying image incoming=\(incoming) notifyPainted=\(notifyPainted) didNotify=\(didNotifyPainted)")
     imageView.image = image
     displayedPixel = incoming
     if notifyPainted, !didNotifyPainted {
       didNotifyPainted = true
+      print("[thumb-debug] applyIfSharper: FIRING onPainted() for key=\(key)")
       onPainted()
     }
   }

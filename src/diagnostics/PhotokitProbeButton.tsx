@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import {
   probePhotokitRequestOptions,
@@ -17,14 +17,22 @@ import {
 
 export function PhotokitProbeButton() {
   const [running, setRunning] = useState(false);
+  const autoRunRef = useRef(false);
 
   const runProbe = async () => {
     try {
       setRunning(true);
       console.log("[PhotokitProbe] Starting...");
+      console.log("[PhotokitProbe] Checking native module availability...");
+      
+      // Check if native module is available
+      const PhotokitThumbs = require("../modules/mediaLibrary/PhotokitThumbView");
+      console.log("[PhotokitProbe] Module loaded, checking probePhotokitRequestOptions...");
+      console.log("[PhotokitProbe] probePhotokitRequestOptions type:", typeof PhotokitThumbs.probePhotokitRequestOptions);
 
       // Get newest photo
       const ids = await previewPhotokitNewestIds(1);
+      console.log("[PhotokitProbe] previewPhotokitNewestIds returned:", ids.length, "ids");
       if (ids.length === 0) {
         console.log("[PhotokitProbe] No photos found");
         Alert.alert("No Photos", "Add photos to simulator first");
@@ -35,12 +43,20 @@ export function PhotokitProbeButton() {
       console.log(`[PhotokitProbe] Testing asset: ${assetId}`);
 
       // Run probe
+      console.log("[PhotokitProbe] Calling probePhotokitRequestOptions...");
       const result = await probePhotokitRequestOptions(assetId, 256);
+      console.log("[PhotokitProbe] Probe returned:", typeof result, result ? "truthy" : "falsy");
       
       // Log full JSON to console (ONLY output - no file system)
       console.log("[PhotokitProbe] ==================== RESULTS ====================");
       console.log(JSON.stringify(result, null, 2));
       console.log("[PhotokitProbe] ========================================================");
+      
+      // Diagnostic: log counts
+      console.log("[PhotokitProbe] Variants array length:", result?.variants?.length || 0);
+      if (result?.error) {
+        console.log("[PhotokitProbe] Error field:", result.error);
+      }
 
       // Summary
       const passCount = result.variants.filter(v => v.status === "PASS").length;
@@ -63,6 +79,16 @@ export function PhotokitProbeButton() {
       setRunning(false);
     }
   };
+
+  // Auto-run probe once if env var is set (for agent testing)
+  useEffect(() => {
+    const autoRun = process.env.EXPO_PUBLIC_AUTO_RUN_PHOTOKIT_PROBE === "1";
+    if (autoRun && !autoRunRef.current && !running) {
+      autoRunRef.current = true;
+      console.log("[PhotokitProbe] Auto-running probe (EXPO_PUBLIC_AUTO_RUN_PHOTOKIT_PROBE=1)");
+      setTimeout(() => runProbe(), 3000); // Delay 3s for app to settle
+    }
+  }, []);
 
   return (
     <View style={styles.container} pointerEvents="box-none">

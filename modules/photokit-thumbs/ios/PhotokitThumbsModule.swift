@@ -4,9 +4,10 @@ import UIKit
 
 /// Backing store for one library session. Display index 0 = newest.
 enum PhotokitLibraryBacking {
-  /// Recents: physical oldest-first; map display via reversed.
+  /// FetchResult with explicit sort (creationDate descending = newest-first).
+  /// reversed flag kept for compatibility but now always false for sorted results.
   case fetch(PHFetchResult<PHAsset>, reversed: Bool)
-  /// Newest-first array (Option 2B limited open via reverse enum).
+  /// Newest-first array (Option 2B limited open with explicit sort).
   case displayOrder([PHAsset])
 
   var count: Int {
@@ -229,8 +230,8 @@ enum PhotokitThumbEngine {
     )
     if let collection = recents.firstObject {
       return (
-        PHAsset.fetchAssets(in: collection, options: fetchOptions(sorted: false)),
-        true
+        PHAsset.fetchAssets(in: collection, options: fetchOptions(sorted: true)),
+        false
       )
     }
     return (
@@ -274,9 +275,9 @@ enum PhotokitThumbEngine {
     return session
   }
 
-  /// Newest `limit` Recents without `creationDate` sort.
-  /// TF 220 / TF 234: fetchLimit + sort still scanned the library (~7–13s).
-  /// Recents is oldest-first physically; display 0 = `object(at: count-1)`.
+  /// Newest `limit` Recents with explicit sort.
+  /// FIX TF 284: Physical order assumption was incorrect, causing oldest-first display.
+  /// Use fetchLimit + creationDate sort (newest-first) for correctness.
   static func newestRecents(limit: Int) -> [PHAsset] {
     let capped = max(1, min(limit, 200))
     let recents = PHAssetCollection.fetchAssetCollections(
@@ -287,26 +288,19 @@ enum PhotokitThumbEngine {
     guard let collection = recents.firstObject else {
       return []
     }
+    let options = fetchOptions(sorted: true)
+    options.fetchLimit = capped
     let result = PHAsset.fetchAssets(
       in: collection,
-      options: recentsPhysicalOptions()
+      options: options
     )
-    let total = result.count
-    guard total > 0 else {
+    guard result.count > 0 else {
       return []
     }
     var assets: [PHAsset] = []
-    assets.reserveCapacity(capped)
-    var physical = total - 1
-    let maxWalk = min(total, max(capped * 8, 200))
-    var walked = 0
-    while physical >= 0, assets.count < capped, walked < maxWalk {
-      let asset = result.object(at: physical)
-      if asset.mediaType == .image {
-        assets.append(asset)
-      }
-      physical -= 1
-      walked += 1
+    assets.reserveCapacity(result.count)
+    result.enumerateObjects { asset, _, _ in
+      assets.append(asset)
     }
     return assets
   }

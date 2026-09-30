@@ -45,21 +45,27 @@ export function PhotokitOptionsProbe() {
       const probeResult = await probePhotokitRequestOptions(testAssetId, 256);
       
       setResult(probeResult);
-      console.log("[Probe] Results:", JSON.stringify(probeResult, null, 2));
+      
+      // Log full JSON to console FIRST (primary result sink)
+      console.log("[Probe] ==================== RESULTS ====================");
+      console.log(JSON.stringify(probeResult, null, 2));
+      console.log("[Probe] ========================================================");
 
-      // Write to evidence directory
-      const evidenceDir = `${FileSystem.cacheDirectory}insite-perf20/sim-photokit-dig/callpath-ab/options-probe/`;
-      await FileSystem.makeDirectoryAsync(evidenceDir, { intermediates: true });
-      
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const resultPath = `${evidenceDir}probe-result-${timestamp}.json`;
-      
-      await FileSystem.writeAsStringAsync(
-        resultPath,
-        JSON.stringify(probeResult, null, 2)
-      );
-      
-      console.log(`[Probe] Results written to: ${resultPath}`);
+      // Write to cache (best-effort, Expo 54 compatible)
+      let resultPath = "(not written)";
+      try {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        resultPath = `${FileSystem.cacheDirectory}photokit-probe-result-${timestamp}.json`;
+        
+        await FileSystem.writeAsStringAsync(
+          resultPath,
+          JSON.stringify(probeResult, null, 2)
+        );
+        
+        console.log(`[Probe] Results written to: ${resultPath}`);
+      } catch (writeError) {
+        console.warn("[Probe] File write failed (non-fatal):", writeError);
+      }
 
       // Generate summary
       const passCount = probeResult.variants.filter(v => v.status === "PASS").length;

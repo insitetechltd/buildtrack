@@ -109,7 +109,7 @@ enum PhotokitThumbEngine {
 
   static func makeOptions() -> PHImageRequestOptions {
     let options = PHImageRequestOptions()
-    options.deliveryMode = .fastFormat
+    options.deliveryMode = .opportunistic
     options.resizeMode = .fast
     options.isNetworkAccessAllowed = false
     options.isSynchronous = false

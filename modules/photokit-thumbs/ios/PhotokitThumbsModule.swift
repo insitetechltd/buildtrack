@@ -638,6 +638,188 @@ enum PhotokitThumbEngine {
       }
     }
   }
+
+  /// Diagnostic: test different PHImageRequestOptions combinations.
+  /// Returns JSON with result, error, and file URI for each variant.
+  static func probeRequestOptions(assetId: String, maxPixel: Double) async -> String {
+    let fetched = PHAsset.fetchAssets(
+      withLocalIdentifiers: [normalizedLocalIdentifier(assetId)],
+      options: nil
+    )
+    guard let asset = fetched.firstObject else {
+      return "{\"error\":\"asset_not_found\"}"
+    }
+    
+    let cap = min(max(maxPixel, 1), maxThumbPixel)
+    let target = CGSize(width: cap, height: cap)
+    
+    var results: [[String: Any]] = []
+    
+    // Variant 1: Baseline (current fast/fast-single)
+    let baselineResult = await testRequestOptions(
+      asset: asset,
+      target: target,
+      deliveryMode: .fastFormat,
+      resizeMode: .fast,
+      networkAllowed: false,
+      variantName: "baseline_fast"
+    )
+    results.append(baselineResult)
+    
+    // Variant 2: Opportunistic delivery (keep resize fast)
+    let opportunisticResult = await testRequestOptions(
+      asset: asset,
+      target: target,
+      deliveryMode: .opportunistic,
+      resizeMode: .fast,
+      networkAllowed: false,
+      variantName: "opportunistic_fast"
+    )
+    results.append(opportunisticResult)
+    
+    // Variant 3: High quality format
+    let highQualityResult = await testRequestOptions(
+      asset: asset,
+      target: target,
+      deliveryMode: .highQualityFormat,
+      resizeMode: .fast,
+      networkAllowed: false,
+      variantName: "highQuality_fast"
+    )
+    results.append(highQualityResult)
+    
+    // Variant 4: Opportunistic with exact resize
+    let opportunisticExactResult = await testRequestOptions(
+      asset: asset,
+      target: target,
+      deliveryMode: .opportunistic,
+      resizeMode: .exact,
+      networkAllowed: false,
+      variantName: "opportunistic_exact"
+    )
+    results.append(opportunisticExactResult)
+    
+    // Variant 5: High quality with network allowed
+    let highQualityNetworkResult = await testRequestOptions(
+      asset: asset,
+      target: target,
+      deliveryMode: .highQualityFormat,
+      resizeMode: .fast,
+      networkAllowed: true,
+      variantName: "highQuality_network"
+    )
+    results.append(highQualityNetworkResult)
+    
+    guard let jsonData = try? JSONSerialization.data(withJSONObject: ["variants": results], options: [.prettyPrinted]),
+          let jsonString = String(data: jsonData, encoding: .utf8) else {
+      return "{\"error\":\"json_serialization_failed\"}"
+    }
+    
+    return jsonString
+  }
+  
+  private static func testRequestOptions(
+    asset: PHAsset,
+    target: CGSize,
+    deliveryMode: PHImageRequestOptionsDeliveryMode,
+    resizeMode: PHImageRequestOptionsResizeMode,
+    networkAllowed: Bool,
+    variantName: String
+  ) async -> [String: Any] {
+    let options = PHImageRequestOptions()
+    options.deliveryMode = deliveryMode
+    options.resizeMode = resizeMode
+    options.isNetworkAccessAllowed = networkAllowed
+    options.isSynchronous = false
+    options.version = .current
+    
+    return await withCheckedContinuation { (continuation: CheckedContinuation<[String: Any], Never>) in
+      var settled = false
+      var callbackCount = 0
+      
+      let finish: ([String: Any]) -> Void = { result in
+        guard !settled else {
+          return
+        }
+        settled = true
+        continuation.resume(returning: result)
+      }
+      
+      let startTime = Date()
+      PHImageManager.default().requestImage(
+        for: asset,
+        targetSize: target,
+        contentMode: .aspectFill,
+        options: options
+      ) { image, info in
+        callbackCount += 1
+        let elapsed = Date().timeIntervalSince(startTime)
+        
+        let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+        let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+        let error = info?[PHImageErrorKey] as? NSError
+        
+        var result: [String: Any] = [
+          "variant": variantName,
+          "callbackCount": callbackCount,
+          "elapsedMs": Int(elapsed * 1000),
+          "cancelled": cancelled,
+          "degraded": degraded
+        ]
+        
+        if let error {
+          result["error"] = [
+            "domain": error.domain,
+            "code": error.code,
+            "description": error.localizedDescription
+          ]
+        }
+        
+        if let image {
+          result["imageSize"] = [
+            "width": image.size.width,
+            "height": image.size.height,
+            "scale": image.scale
+          ]
+          
+          if let data = image.jpegData(compressionQuality: 0.7),
+             let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            let url = dir.appendingPathComponent("probe-\(variantName)-\(UUID().uuidString).jpg")
+            do {
+              try data.write(to: url, options: .atomic)
+              result["uri"] = url.absoluteString
+              result["status"] = "PASS"
+            } catch {
+              result["status"] = "FAIL"
+              result["writeError"] = error.localizedDescription
+            }
+          }
+        } else {
+          result["status"] = "FAIL"
+          result["imageNull"] = true
+        }
+        
+        // For opportunistic/degraded, wait for final callback
+        if deliveryMode == .opportunistic && degraded {
+          return
+        }
+        
+        // Return on first non-degraded result or error
+        if !degraded || error != nil || cancelled {
+          finish(result)
+        }
+      }
+      
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+        finish([
+          "variant": variantName,
+          "status": "TIMEOUT",
+          "callbackCount": callbackCount,
+          "elapsedMs": 3000
+        ])
+      }
+    }
+  }
 }
 
 public final class PhotokitThumbsModule: Module {
@@ -789,6 +971,11 @@ public final class PhotokitThumbsModule: Module {
     /// Select Photos tiles after Accept. Fast/degraded OK — never 1920 HQ.
     AsyncFunction("exportPreviewJpeg") { (assetId: String, maxPixel: Double) async -> String in
       await PhotokitThumbEngine.exportPreviewJpeg(assetId: assetId, maxPixel: maxPixel)
+    }
+
+    /// Diagnostic: probe different PHImageRequestOptions combinations
+    AsyncFunction("probeRequestOptions") { (assetId: String, maxPixel: Double) async -> String in
+      await PhotokitThumbEngine.probeRequestOptions(assetId: assetId, maxPixel: maxPixel)
     }
 
     View(PhotokitThumbView.self) {

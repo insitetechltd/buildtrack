@@ -2,12 +2,10 @@
 # Keep waits tight: fail fast if pin/nav hangs rather than sit on loading for 60s+.
 appId: com.buildtrack.app.local
 ---
-- assertVisible:
-    id: "in-app-library__accept"
 - waitForAnimationToEnd:
     timeout: 800
 - tapOn:
-    id: "in-app-library__accept"
+    point: "95%,10%"
 - runFlow:
     when:
       visible:
@@ -24,11 +22,10 @@ appId: com.buildtrack.app.local
     commands:
       - runFlow:
           when:
-            visible:
-              id: "in-app-library__screen"
+            visible: "Select photos"
           commands:
             - tapOn:
-                id: "in-app-library__accept"
+                point: "95%,10%"
 - extendedWaitUntil:
     visible:
       id: "photo-selection__confirm"

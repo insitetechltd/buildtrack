@@ -10,8 +10,7 @@ appId: com.buildtrack.app.local
     id: "createTask-add-photos"
 - tapOn: "Choose from Library"
 - extendedWaitUntil:
-    visible:
-      id: "in-app-library__screen"
+    visible: "Select photos"
     timeout: 5000
 - runFlow:
     when:

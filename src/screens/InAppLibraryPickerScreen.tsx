@@ -255,7 +255,7 @@ export default function InAppLibraryPickerScreen({
   }
 
   return (
-    <View testID="in-app-library__screen" style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View testID="in-app-library__screen" accessible={true} style={{ flex: 1, backgroundColor: "#fff" }}>
       <StatusBar style="dark" />
       <View
         testID="in-app-library__header"
@@ -272,6 +272,7 @@ export default function InAppLibraryPickerScreen({
       >
         <Pressable
           testID="in-app-library__cancel"
+          accessible={true}
           onPress={onCancel}
           style={{
             height: 44,
@@ -289,6 +290,7 @@ export default function InAppLibraryPickerScreen({
         </Text>
         <Pressable
           testID="in-app-library__accept"
+          accessible={true}
           onPress={handleAccept}
           disabled={selectedCount === 0 || isPinning}
           style={{

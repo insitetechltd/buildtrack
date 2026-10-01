@@ -9,7 +9,7 @@ tags:
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
 # After capture-first _open-library: on create-task__continuous_form with 1 attachment.
-- runFlow: _open-hybrid-library-no-select.yaml
+- runFlow: _open-library.yaml
 - assertVisible:
     id: "create-task__attachments_section"
 - takeScreenshot: "ct-P03-form-one"

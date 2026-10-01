@@ -16,7 +16,10 @@ import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
-import { LibraryFullscreenViewer } from "@/modules/mediaLibrary/LibraryFullscreenViewer";
+import {
+  LibraryFullscreenViewer,
+  type AssetAnnotation,
+} from "@/modules/mediaLibrary/LibraryFullscreenViewer";
 import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import {
   LIBRARY_GRID_GAP,
@@ -29,6 +32,8 @@ import {
 } from "@/modules/mediaLibrary/materializeLibrarySave";
 import { pinLibraryPreviews } from "@/utils/libraryPreviewPin";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
+import { bakeStrokesOntoPhoto } from "@/utils/bakePhotoDraw";
+import type { DrawStroke } from "@/utils/photoPreviewDraw";
 import type { SelectedPhoto } from "../navigation/navigationTypes";
 
 export type InAppLibraryPickerResult = SelectedPhoto[];
@@ -105,6 +110,9 @@ export default function InAppLibraryPickerScreen({
   const [selectionOrderByKey, setSelectionOrderByKey] = useState(() =>
     selectionMapFromPhotos(initiallySelectedPhotos),
   );
+  const [annotations, setAnnotations] = useState<Map<string, AssetAnnotation>>(
+    new Map(),
+  );
 
   const albumPicker = useLibraryAlbumPicker({
     enabled: true,
@@ -160,7 +168,37 @@ export default function InAppLibraryPickerScreen({
 
   const handleDeselectAll = useCallback(() => {
     setSelectionOrderByKey(new Map());
+    setAnnotations(new Map());
   }, []);
+
+  const handleUpdateAnnotation = useCallback(
+    (assetId: string, annotation: AssetAnnotation) => {
+      setAnnotations((prev) => {
+        const next = new Map(prev);
+        next.set(assetId, annotation);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleCommitAnnotation = useCallback(
+    async (assetId: string, strokes: DrawStroke[]): Promise<string | null> => {
+      const asset = albumPicker.assetsByIdRef.current.get(assetId);
+      if (!asset) return null;
+
+      try {
+        const sourceUri = asset.uri;
+        const annotatedUri = await bakeStrokesOntoPhoto(sourceUri, strokes);
+        return annotatedUri;
+      } catch (error) {
+        console.error("❌ [InAppLibrary] Annotation failed:", error);
+        Alert.alert("Error", "Could not apply annotations. Please try again.");
+        return null;
+      }
+    },
+    [albumPicker.assetsByIdRef],
+  );
 
   const handleAcceptAction = useCallback(async () => {
     if (selectedCount === 0) {
@@ -189,10 +227,24 @@ export default function InAppLibraryPickerScreen({
             order,
           };
         });
-      const photos = materializeLibrarySelections(
+      let photos = materializeLibrarySelections(
         drafts,
         initiallySelectedPhotos,
       );
+
+      photos = photos.map((photo) => {
+        const annotation = annotations.get(photo.mediaLibraryAssetId || "");
+        if (annotation?.annotatedUri) {
+          return {
+            ...photo,
+            uri: annotation.annotatedUri,
+            annotatedUri: annotation.annotatedUri,
+            isAnnotated: true,
+          };
+        }
+        return photo;
+      });
+
       onSave(await pinLibraryPreviews(photos));
     } catch (error) {
       console.error("❌ [InAppLibraryPicker] pin failed:", error);
@@ -416,8 +468,11 @@ export default function InAppLibraryPickerScreen({
         assets={albumPicker.assets}
         indexSession={albumPicker.indexSession}
         selectedIds={selectedIds}
+        annotations={annotations}
         onToggleSelect={toggleSelection}
         onClose={() => setViewerOpen(false)}
+        onUpdateAnnotation={handleUpdateAnnotation}
+        onCommitAnnotation={handleCommitAnnotation}
         testIdPrefix="in-app-library"
         accentColor="#2563EB"
       />

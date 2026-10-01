@@ -16,9 +16,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
-import { LibraryFullscreenViewer } from "@/modules/mediaLibrary/LibraryFullscreenViewer";
+import {
+  LibraryFullscreenViewer,
+  type AssetAnnotation,
+} from "@/modules/mediaLibrary/LibraryFullscreenViewer";
 import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
+import { bakeStrokesOntoPhoto } from "@/utils/bakePhotoDraw";
+import type { DrawStroke } from "@/utils/photoPreviewDraw";
 import {
   LIBRARY_FILL_UNTIL_COUNT,
   LIBRARY_GRID_COLUMNS,
@@ -61,6 +66,9 @@ export function HybridLibraryPickerScreen() {
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
+  const [annotations, setAnnotations] = useState<Map<string, AssetAnnotation>>(
+    new Map(),
+  );
 
   const columns = useMemo(() => libraryGridColumns(width), [width]);
   const tileSize = useMemo(
@@ -182,7 +190,43 @@ export function HybridLibraryPickerScreen() {
         toggleSelected(photo.id);
       }
     });
+    setAnnotations(new Map());
   }, [toggleSelected]);
+
+  const handleUpdateAnnotation = useCallback(
+    (assetId: string, annotation: AssetAnnotation) => {
+      setAnnotations((prev) => {
+        const next = new Map(prev);
+        next.set(assetId, annotation);
+        return next;
+      });
+
+      const store = useCaptureSessionStore.getState();
+      const photo = store.photos.find((p) => p.mediaLibraryAssetId === assetId);
+      if (photo && annotation.annotatedUri) {
+        store.updatePhotoUri(photo.id, annotation.annotatedUri);
+      }
+    },
+    [],
+  );
+
+  const handleCommitAnnotation = useCallback(
+    async (assetId: string, strokes: DrawStroke[]): Promise<string | null> => {
+      const asset = albumPicker.assetsByIdRef.current.get(assetId);
+      if (!asset) return null;
+
+      try {
+        const sourceUri = asset.uri;
+        const annotatedUri = await bakeStrokesOntoPhoto(sourceUri, strokes);
+        return annotatedUri;
+      } catch (error) {
+        console.error("❌ [HybridLibrary] Annotation failed:", error);
+        Alert.alert("Error", "Could not apply annotations. Please try again.");
+        return null;
+      }
+    },
+    [albumPicker.assetsByIdRef],
+  );
 
   const handleAccept = useCallback(async () => {
     if (acceptingRef.current) {
@@ -429,8 +473,11 @@ export function HybridLibraryPickerScreen() {
         assets={albumPicker.assets}
         indexSession={albumPicker.indexSession}
         selectedIds={selectedLibraryIds}
+        annotations={annotations}
         onToggleSelect={onPressLibraryAsset}
         onClose={() => setViewerOpen(false)}
+        onUpdateAnnotation={handleUpdateAnnotation}
+        onCommitAnnotation={handleCommitAnnotation}
         testIdPrefix="capture-session"
         accentColor="#08576E"
       />

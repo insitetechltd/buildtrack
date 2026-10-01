@@ -76,8 +76,9 @@ export function LibraryFullscreenViewer({
   const { width, height } = useWindowDimensions();
   
   // Layout calculations to eliminate black gaps between photo and toolbar
+  // Measured from rendered components for precise layout
   const HEADER_HEIGHT = 112; // paddingTop 48 + paddingVertical 12*2 + button 40
-  const TOOLBAR_HEIGHT = 120; // paddingTop 16 + button 56 + gap 4 + label ~18 + paddingBottom 24 + border 1
+  const TOOLBAR_HEIGHT = 128; // border 1 + paddingTop 16 + button 56 + gap 4 + label ~22 + paddingBottom 24 + extra buffer 5
   const PHOTO_HEIGHT = height - HEADER_HEIGHT - TOOLBAR_HEIGHT;
   
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -379,7 +380,7 @@ export function LibraryFullscreenViewer({
       </View>
 
       {/* Swipeable Grid */}
-      <View style={{ flex: 1, backgroundColor: "#fff" }}>
+      <View style={{ height: PHOTO_HEIGHT, backgroundColor: "#fff" }}>
         <FlatList
           ref={flatListRef}
           data={items}
@@ -390,7 +391,7 @@ export function LibraryFullscreenViewer({
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          style={{ backgroundColor: "#fff" }}
+          style={{ backgroundColor: "#fff", height: PHOTO_HEIGHT }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -417,14 +418,14 @@ export function LibraryFullscreenViewer({
                     index={item.index}
                     pixelSize={Math.max(width, height)}
                     contentFit="contain"
-                    style={{ width, height: PHOTO_HEIGHT }}
+                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
                   />
                 ) : (
                   <ExpoImage
                     source={{ uri: itemUri }}
                     cachePolicy="memory-disk"
                     contentFit="contain"
-                    style={{ width, height: PHOTO_HEIGHT }}
+                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
                   />
                 )}
               </View>

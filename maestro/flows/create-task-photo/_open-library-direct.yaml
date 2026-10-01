@@ -1,6 +1,6 @@
 # Open library picker directly from Dashboard (no capture-first).
-# Dashboard → Camera FAB → CaptureSession → Open Library fallback → in-app library.
-# Leaves caller in library picker ready to select photos.
+# Phase B: Dashboard → Camera FAB → CaptureSession → hybrid library grid.
+# Leaves caller on hybrid library grid ready to select photos.
 appId: com.buildtrack.app.local
 ---
 - runFlow:
@@ -30,7 +30,7 @@ appId: com.buildtrack.app.local
     visible:
       id: "capture-session__camera"
     timeout: 20000
-# Tap fallback "Open Library" link to go directly to in-app library
+# Tap fallback "Open Library" link to open hybrid library
 - runFlow:
     when:
       visible:
@@ -46,16 +46,14 @@ appId: com.buildtrack.app.local
     commands:
       - tapOn:
           id: "capture-session__library_peek"
-# Wait for in-app library screen
+# Wait for hybrid library screen
 - extendedWaitUntil:
-    visible: "Select photos"
+    visible:
+      id: "capture-session__hybrid_library"
     timeout: 15000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__loading"
-    commands:
-      - extendedWaitUntil:
-          notVisible:
-            id: "in-app-library__loading"
-          timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 1500

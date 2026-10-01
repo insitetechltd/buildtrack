@@ -388,17 +388,21 @@ export default function InAppLibraryPickerScreen({
 
       <LibrarySelectedTray
         selectedAssets={(() => {
-          const sorted = [...selectionOrderByKey.entries()]
+          const entries = [...selectionOrderByKey.entries()]
             .sort((a, b) => a[1] - b[1])
             .map(([assetId, order]) => {
               const asset = albumPicker.assetsByIdRef.current.get(assetId);
+              if (!asset) {
+                return null;
+              }
               return {
                 assetId,
-                uri: asset?.uri ?? `ph://${assetId}`,
+                uri: asset.uri,
                 order,
               };
-            });
-          return sorted;
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null);
+          return entries;
         })()}
         onRemove={toggleSelection}
         onDeselectAll={handleDeselectAll}

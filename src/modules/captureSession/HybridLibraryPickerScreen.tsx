@@ -401,17 +401,21 @@ export function HybridLibraryPickerScreen() {
 
       <LibrarySelectedTray
         selectedAssets={(() => {
-          const sorted = [...selectionOrderByKey.entries()]
+          const entries = [...selectionOrderByKey.entries()]
             .sort((a, b) => a[1] - b[1])
             .map(([assetId, order]) => {
               const photo = photos.find((p) => p.mediaLibraryAssetId === assetId);
+              if (!photo) {
+                return null;
+              }
               return {
                 assetId,
-                uri: photo?.uri ?? `ph://${assetId}`,
+                uri: photo.uri,
                 order,
               };
-            });
-          return sorted;
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null);
+          return entries;
         })()}
         onRemove={onPressLibraryAsset}
         onDeselectAll={handleDeselectAll}

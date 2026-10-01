@@ -346,7 +346,7 @@ export function CropOverlay({
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.56)" }} />
         </View>
 
-        {/* L-Bracket Corners - Overlapping on Frame */}
+        {/* L-Bracket Corners - Sitting on Frame Edges */}
         <View
           {...tl.panHandlers}
           testID="photo-selection__crop_handle_tl"
@@ -361,8 +361,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              left: -2,
-              top: -2,
+              left: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              top: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderLeftWidth: HANDLE_THICKNESS,
@@ -386,8 +386,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              right: -2,
-              top: -2,
+              right: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              top: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderRightWidth: HANDLE_THICKNESS,
@@ -411,8 +411,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              left: -2,
-              bottom: -2,
+              left: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              bottom: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderLeftWidth: HANDLE_THICKNESS,
@@ -436,8 +436,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              right: -2,
-              bottom: -2,
+              right: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              bottom: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderRightWidth: HANDLE_THICKNESS,

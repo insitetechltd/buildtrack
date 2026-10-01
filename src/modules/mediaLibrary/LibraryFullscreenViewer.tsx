@@ -74,6 +74,12 @@ export function LibraryFullscreenViewer({
   accentColor = "#2563EB",
 }: LibraryFullscreenViewerProps) {
   const { width, height } = useWindowDimensions();
+  
+  // Layout calculations to eliminate black gaps between photo and toolbar
+  const HEADER_HEIGHT = 112; // paddingTop 48 + paddingVertical 12*2 + button 40
+  const TOOLBAR_HEIGHT = 120; // paddingTop 16 + button 56 + gap 4 + label ~18 + paddingBottom 24 + border 1
+  const PHOTO_HEIGHT = height - HEADER_HEIGHT - TOOLBAR_HEIGHT;
+  
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [drawMode, setDrawMode] = useState(false);
   const [cropMode, setCropMode] = useState(false);
@@ -391,7 +397,7 @@ export function LibraryFullscreenViewer({
               <View
                 style={{
                   width,
-                  height: height - 200,
+                  height: PHOTO_HEIGHT,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: "#fff",
@@ -403,14 +409,14 @@ export function LibraryFullscreenViewer({
                     index={item.index}
                     pixelSize={Math.max(width, height)}
                     contentFit="contain"
-                    style={{ width, height: height - 200 }}
+                    style={{ width, height: PHOTO_HEIGHT }}
                   />
                 ) : (
                   <ExpoImage
                     source={{ uri: itemUri }}
                     cachePolicy="memory-disk"
                     contentFit="contain"
-                    style={{ width, height: height - 200 }}
+                    style={{ width, height: PHOTO_HEIGHT }}
                   />
                 )}
               </View>
@@ -426,14 +432,14 @@ export function LibraryFullscreenViewer({
               top: 0,
               left: 0,
               width,
-              height: height - 200,
+              height: PHOTO_HEIGHT,
             }}
             pointerEvents="box-none"
           >
             <DrawOverlay
               uri={displayUri}
               containerWidth={width}
-              containerHeight={height - 200}
+              containerHeight={PHOTO_HEIGHT}
               color={drawColor}
               strokes={activeStrokes}
               disabled={isCommitting}
@@ -450,13 +456,13 @@ export function LibraryFullscreenViewer({
               top: 0,
               left: 0,
               width,
-              height: height - 200,
+              height: PHOTO_HEIGHT,
             }}
           >
             <CropOverlay
               uri={displayUri}
               containerWidth={width}
-              containerHeight={height - 200}
+              containerHeight={PHOTO_HEIGHT}
               disabled={isCommitting}
               onCancel={handleToggleCropMode}
               onApply={handleApplyCrop}

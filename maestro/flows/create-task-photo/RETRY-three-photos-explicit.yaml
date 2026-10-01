@@ -99,7 +99,7 @@ tags:
 
 # Accept selection
 - tapOn:
-    id: "capture-session__hybrid_accept"
+    id: "capture-session__hybrid_done"
 - extendedWaitUntil:
     visible:
       id: "photo-selection__confirm"

@@ -57,7 +57,7 @@ tags:
     visible: ".*[1-9] selected.*"
     timeout: 10000
 - tapOn:
-    id: "capture-session__hybrid_accept"
+    id: "capture-session__hybrid_done"
 - extendedWaitUntil:
     visible:
       id: "photo-selection__confirm"

@@ -416,7 +416,7 @@ export function HybridLibraryPickerScreen() {
           {selectedCount > 0 ? `${selectedCount} selected` : "Select photos"}
         </Text>
         <Pressable
-          testID="capture-session__hybrid_accept"
+          testID="capture-session__hybrid_done"
           onPress={handleAccept}
           disabled={accepting}
           style={styles.headerSide}

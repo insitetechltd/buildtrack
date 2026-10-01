@@ -8,17 +8,17 @@ tags:
 - runFlow:
     when:
       visible:
-        id: "capture-session__hybrid_accept"
+        id: "capture-session__hybrid_done"
     commands:
       - tapOn:
-          id: "capture-session__hybrid_accept"
+          id: "capture-session__hybrid_done"
 - runFlow:
     when:
       visible:
-        id: "in-app-library__accept"
+        id: "in-app-library__done"
     commands:
       - tapOn:
-          id: "in-app-library__accept"
+          id: "in-app-library__done"
 # Fallback: blue checkmark top-right (accessibility)
 - runFlow:
     when:

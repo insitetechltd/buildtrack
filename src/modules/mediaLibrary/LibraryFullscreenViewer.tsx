@@ -255,7 +255,7 @@ export function LibraryFullscreenViewer({
   }, [cropMode]);
 
   const handleApplyCrop = useCallback(
-    async (crop: SourceCrop) => {
+    async (crop: SourceCrop, rotation?: number) => {
       if (!currentItem || !onCommitEdit) return;
 
       if (crop.width < 1 || crop.height < 1) {
@@ -266,18 +266,26 @@ export function LibraryFullscreenViewer({
       setIsCommitting(true);
       try {
         const sourceUri = displayUri;
+        const actions: ImageManipulator.Action[] = [];
+
+        // Apply rotation first if provided
+        if (rotation && Math.abs(rotation) > 0.1) {
+          actions.push({ rotate: rotation });
+        }
+
+        // Then crop
+        actions.push({
+          crop: {
+            originX: crop.originX,
+            originY: crop.originY,
+            width: crop.width,
+            height: crop.height,
+          },
+        });
+
         const result = await ImageManipulator.manipulateAsync(
           sourceUri,
-          [
-            {
-              crop: {
-                originX: crop.originX,
-                originY: crop.originY,
-                width: crop.width,
-                height: crop.height,
-              },
-            },
-          ],
+          actions,
           { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
         );
 
@@ -507,31 +515,6 @@ export function LibraryFullscreenViewer({
                 </Pressable>
                 <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
                   Annotate
-                </Text>
-              </View>
-
-              <View style={{ alignItems: "center", gap: 4 }}>
-                <Pressable
-                  testID={`${testIdPrefix}__rotate`}
-                  onPress={handleRotate}
-                  disabled={isCommitting}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: isCommitting ? "#d1d5db" : accentColor,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {isCommitting ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Ionicons name="refresh-outline" size={24} color="#fff" />
-                  )}
-                </Pressable>
-                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
-                  Rotate
                 </Text>
               </View>
 

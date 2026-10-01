@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import {
   defaultCropRectInImageLayout,
@@ -20,8 +21,9 @@ import {
 
 const MIN_CROP_PX = 48;
 const HANDLE_SIZE = 44; // Touch target size
-const HANDLE_THICKNESS = 3; // Line thickness
-const HANDLE_LENGTH = 24; // Length of each L-bracket arm
+const HANDLE_THICKNESS = 2; // WhatsApp-style thin lines
+const HANDLE_LENGTH = 20; // Tight L-bracket arms
+const MAX_ROTATION = 30; // degrees, -30 to +30
 
 type CropOverlayProps = {
   uri: string;
@@ -29,7 +31,7 @@ type CropOverlayProps = {
   containerHeight: number;
   disabled?: boolean;
   onCancel: () => void;
-  onApply: (crop: SourceCrop) => void;
+  onApply: (crop: SourceCrop, rotation?: number) => void;
 };
 
 type Corner = "tl" | "tr" | "bl" | "br";
@@ -44,13 +46,21 @@ export function CropOverlay({
 }: CropOverlayProps) {
   const [sourceSize, setSourceSize] = useState<{ width: number; height: number } | null>(null);
   const [crop, setCrop] = useState<Rect | null>(null);
+  const [baseRotation, setBaseRotation] = useState(0); // 90° increments from rotate button
+  const [fineRotation, setFineRotation] = useState(0); // Fine rotation angle from dial (-30 to +30)
   const [loadError, setLoadError] = useState(false);
   const cropRef = useRef<Rect | null>(null);
   const cropStartRef = useRef<Rect | null>(null);
+  const fineRotationRef = useRef(0);
+  const fineRotationStartRef = useRef(0);
 
   useEffect(() => {
     cropRef.current = crop;
   }, [crop]);
+
+  useEffect(() => {
+    fineRotationRef.current = fineRotation;
+  }, [fineRotation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +169,33 @@ export function CropOverlay({
   const bl = useMemo(() => makeCornerResponder("bl"), [makeCornerResponder]);
   const br = useMemo(() => makeCornerResponder("br"), [makeCornerResponder]);
 
+  const rotationDialResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: () => !disabled,
+        onPanResponderGrant: () => {
+          fineRotationStartRef.current = fineRotationRef.current;
+        },
+        onPanResponderMove: (_evt, gesture) => {
+          const start = fineRotationStartRef.current;
+          const dx = gesture.dx;
+          // Map horizontal gesture to rotation (-30 to +30 degrees)
+          // Assume 200pt gesture width maps to full range
+          const delta = (dx / 200) * (MAX_ROTATION * 2);
+          let next = start + delta;
+          next = Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, next));
+          setFineRotation(next);
+        },
+      }),
+    [disabled],
+  );
+
+  const handleRotate90 = useCallback(() => {
+    // Add 90° to base rotation
+    setBaseRotation((prev) => (prev + 90) % 360);
+  }, []);
+
   const handleApply = () => {
     if (!crop || !imageLayout || !sourceSize) return;
     const mapped = mapCropRectToSourcePixels(
@@ -168,7 +205,8 @@ export function CropOverlay({
       sourceSize.height,
     );
     if (!mapped) return;
-    onApply(mapped);
+    const totalRotation = baseRotation + fineRotation;
+    onApply(mapped, Math.abs(totalRotation) > 0.1 ? totalRotation : undefined);
   };
 
   if (loadError) {
@@ -216,7 +254,7 @@ export function CropOverlay({
             style={{
               width: crop.width,
               height: crop.height,
-              borderWidth: 2,
+              borderWidth: 1,
               borderColor: "#fff",
             }}
           />
@@ -287,6 +325,80 @@ export function CropOverlay({
       >
         <View style={{ position: "absolute", right: 0, bottom: 0, width: HANDLE_LENGTH, height: HANDLE_THICKNESS, backgroundColor: "#fff" }} />
         <View style={{ position: "absolute", right: 0, bottom: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
+      </View>
+
+      {/* 90° Rotate Button - Bottom Left */}
+      <View className="absolute bottom-3 left-4">
+        <Pressable
+          testID="photo-selection__rotate_90"
+          onPress={handleRotate90}
+          disabled={disabled}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: "rgba(255,255,255,0.2)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="refresh-outline" size={24} color="#fff" />
+        </Pressable>
+      </View>
+
+      {/* Rotation Dial */}
+      <View className="absolute bottom-20 left-0 right-0 px-4">
+        <View className="items-center">
+          <Text className="text-white text-xs mb-2 opacity-80">
+            {baseRotation + fineRotation === 0
+              ? "0°"
+              : `${baseRotation + fineRotation > 0 ? "+" : ""}${(baseRotation + fineRotation).toFixed(1)}°`}
+          </Text>
+          <View
+            {...rotationDialResponder.panHandlers}
+            testID="photo-selection__rotation_dial"
+            style={{
+              width: containerWidth - 80,
+              height: 50,
+              position: "relative",
+              justifyContent: "center",
+            }}
+          >
+            {/* Tick marks */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 40 }}>
+              {Array.from({ length: 13 }, (_, i) => {
+                const angle = -MAX_ROTATION + (i * (MAX_ROTATION * 2)) / 12;
+                const isCenter = Math.abs(angle) < 0.1;
+                const isMajor = angle % 10 === 0;
+                const height = isCenter ? 20 : isMajor ? 14 : 8;
+                const opacity = isCenter ? 1 : 0.5;
+                return (
+                  <View
+                    key={i}
+                    style={{
+                      width: isCenter ? 2 : 1,
+                      height,
+                      backgroundColor: "#fff",
+                      opacity,
+                    }}
+                  />
+                );
+              })}
+            </View>
+            {/* Pointer indicator */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: "50%",
+                marginLeft: ((fineRotation / MAX_ROTATION) * (containerWidth - 80)) / 2 - 1,
+                width: 2,
+                height: 24,
+                backgroundColor: "#3b82f6",
+              }}
+            />
+          </View>
+        </View>
       </View>
 
       <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-3 px-4">

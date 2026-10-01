@@ -1,4 +1,5 @@
 # Accept library selection → wait for Select Photos (multi-pin can be slow).
+# Phase B: tap Done badge on hybrid library, then wait for photo-selection confirm.
 # Keep waits tight: fail fast if pin/nav hangs rather than sit on loading for 60s+.
 appId: com.buildtrack.app.local
 ---
@@ -9,11 +10,11 @@ appId: com.buildtrack.app.local
 - runFlow:
     when:
       visible:
-        id: "in-app-library__loading"
+        id: "capture-session__library_grid"
     commands:
       - extendedWaitUntil:
           notVisible:
-            id: "in-app-library__loading"
+            id: "capture-session__library_grid"
           timeout: 12000
 # Retry accept if still on library (disabled-race / missed press)
 - runFlow:
@@ -22,7 +23,8 @@ appId: com.buildtrack.app.local
     commands:
       - runFlow:
           when:
-            visible: "Select photos"
+            visible:
+              id: "capture-session__library_grid"
           commands:
             - tapOn:
                 point: "95%,10%"

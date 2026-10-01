@@ -10,14 +10,11 @@ appId: com.buildtrack.app.local
 - tapOn: "Choose from Library"
 - extendedWaitUntil:
     visible:
-      id: "in-app-library__screen"
-    timeout: 8000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__loading"
-    commands:
-      - extendedWaitUntil:
-          notVisible:
-            id: "in-app-library__loading"
-          timeout: 5000
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 1500

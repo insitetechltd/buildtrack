@@ -1,9 +1,10 @@
 # Assert library shows exactly 3 prior selected (ledger invariant).
+# Phase B: hybrid library grid, no separate in-app-library screen.
 appId: com.buildtrack.app.local
 ---
 - extendedWaitUntil:
     visible:
-      id: "in-app-library__screen"
+      id: "capture-session__library_grid"
     timeout: 8000
 - assertVisible: ".*3 selected.*"
 - takeScreenshot: "ct-photo-ledger-3-selected"

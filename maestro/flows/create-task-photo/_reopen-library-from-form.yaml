@@ -1,4 +1,5 @@
-# From Create Task form: Add photos → Choose from Library.
+# From Create Task form: Add photos → Choose from Library → hybrid grid.
+# Phase B: opens CaptureSession hybrid library, not legacy in-app library.
 appId: com.buildtrack.app.local
 ---
 - scrollUntilVisible:
@@ -10,14 +11,12 @@ appId: com.buildtrack.app.local
     id: "createTask-add-photos"
 - tapOn: "Choose from Library"
 - extendedWaitUntil:
-    visible: "Select photos"
-    timeout: 5000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__loading"
-    commands:
-      - extendedWaitUntil:
-          notVisible:
-            id: "in-app-library__loading"
-          timeout: 5000
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 1500

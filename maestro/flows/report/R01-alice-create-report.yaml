@@ -53,7 +53,7 @@ tags:
       notVisible: ".*[1-9] selected.*"
     commands:
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: ".*[1-9] selected.*"
     timeout: 10000

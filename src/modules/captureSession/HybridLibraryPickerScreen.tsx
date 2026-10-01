@@ -30,7 +30,10 @@ import {
   LIBRARY_GRID_GAP,
   libraryGridColumns,
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
-import { resumePhotokitLibraryAfterAccept } from "@/modules/mediaLibrary/PhotokitThumbView";
+import {
+  resumePhotokitLibraryAfterAccept,
+  photokitIdAt,
+} from "@/modules/mediaLibrary/PhotokitThumbView";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { markLibraryPickerMetadata } from "@/utils/libraryPickerTiming";
 import {
@@ -181,6 +184,26 @@ export function HybridLibraryPickerScreen() {
       setViewerOpen(true);
     },
     [],
+  );
+
+  const handleTrayThumbPress = useCallback(
+    (assetId: string) => {
+      const asset = albumPicker.assetsByIdRef.current.get(assetId);
+      if (!asset) return;
+
+      const index = albumPicker.indexSession
+        ? Array.from({ length: albumPicker.indexSession.count }, (_, i) => {
+            const id = photokitIdAt(albumPicker.indexSession!.token, i);
+            return id;
+          }).indexOf(assetId)
+        : albumPicker.assets.findIndex((a) => a.id === assetId);
+
+      if (index >= 0) {
+        setViewerInitialIndex(index);
+        setViewerOpen(true);
+      }
+    },
+    [albumPicker.assets, albumPicker.assetsByIdRef, albumPicker.indexSession],
   );
 
   const handleDeselectAll = useCallback(() => {
@@ -463,6 +486,7 @@ export function HybridLibraryPickerScreen() {
         })()}
         onRemove={onPressLibraryAsset}
         onDeselectAll={handleDeselectAll}
+        onPressThumb={handleTrayThumbPress}
         testIdPrefix="capture-session"
         accentColor="#08576E"
       />

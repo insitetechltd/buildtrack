@@ -8,6 +8,7 @@ type LibrarySelectedTrayProps = {
   selectedAssets: Array<{ assetId: string; uri: string; order: number }>;
   onRemove: (assetId: string) => void;
   onDeselectAll: () => void;
+  onPressThumb?: (assetId: string) => void;
   testIdPrefix?: string;
   accentColor?: string;
 };
@@ -18,6 +19,7 @@ export function LibrarySelectedTray({
   selectedAssets,
   onRemove,
   onDeselectAll,
+  onPressThumb,
   testIdPrefix = "library-tray",
   accentColor = "#2563EB",
 }: LibrarySelectedTrayProps) {
@@ -75,38 +77,52 @@ export function LibrarySelectedTray({
             testID={`${testIdPrefix}__thumb_${item.assetId}`}
             style={{ position: "relative" }}
           >
-            <ExpoImage
-              source={{ uri: item.uri }}
-              cachePolicy="memory-disk"
-              contentFit="cover"
+            <Pressable
+              testID={`${testIdPrefix}__thumb_body_${item.assetId}`}
+              onPress={() => onPressThumb?.(item.assetId)}
+              disabled={!onPressThumb}
               style={{
                 width: THUMB_SIZE,
                 height: THUMB_SIZE,
-                borderRadius: 8,
-                backgroundColor: "#e5e7eb",
-              }}
-            />
-            <View
-              style={{
-                position: "absolute",
-                top: 4,
-                left: 4,
-                minWidth: 20,
-                height: 20,
-                paddingHorizontal: 4,
-                borderRadius: 10,
-                backgroundColor: accentColor,
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
-                {item.order}
-              </Text>
-            </View>
+              <ExpoImage
+                source={{ uri: item.uri }}
+                cachePolicy="memory-disk"
+                contentFit="cover"
+                style={{
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
+                  borderRadius: 8,
+                  backgroundColor: "#e5e7eb",
+                }}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  left: 4,
+                  minWidth: 20,
+                  height: 20,
+                  paddingHorizontal: 4,
+                  borderRadius: 10,
+                  backgroundColor: accentColor,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                pointerEvents="none"
+              >
+                <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
+                  {item.order}
+                </Text>
+              </View>
+            </Pressable>
             <Pressable
               testID={`${testIdPrefix}__remove_${item.assetId}`}
-              onPress={() => onRemove(item.assetId)}
+              onPress={(e) => {
+                e.stopPropagation();
+                onRemove(item.assetId);
+              }}
               style={{
                 position: "absolute",
                 top: -4,

@@ -32,6 +32,7 @@ import {
 } from "@/modules/mediaLibrary/materializeLibrarySave";
 import { pinLibraryPreviews } from "@/utils/libraryPreviewPin";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
+import { photokitIdAt } from "@/modules/mediaLibrary/PhotokitThumbView";
 import { bakeStrokesOntoPhoto } from "@/utils/bakePhotoDraw";
 import type { DrawStroke } from "@/utils/photoPreviewDraw";
 import type { SelectedPhoto } from "../navigation/navigationTypes";
@@ -164,6 +165,26 @@ export default function InAppLibraryPickerScreen({
       setViewerOpen(true);
     },
     [],
+  );
+
+  const handleTrayThumbPress = useCallback(
+    (assetId: string) => {
+      const asset = albumPicker.assetsByIdRef.current.get(assetId);
+      if (!asset) return;
+
+      const index = albumPicker.indexSession
+        ? Array.from({ length: albumPicker.indexSession.count }, (_, i) => {
+            const id = photokitIdAt(albumPicker.indexSession!.token, i);
+            return id;
+          }).indexOf(assetId)
+        : albumPicker.assets.findIndex((a) => a.id === assetId);
+
+      if (index >= 0) {
+        setViewerInitialIndex(index);
+        setViewerOpen(true);
+      }
+    },
+    [albumPicker.assets, albumPicker.assetsByIdRef, albumPicker.indexSession],
   );
 
   const handleDeselectAll = useCallback(() => {
@@ -458,6 +479,7 @@ export default function InAppLibraryPickerScreen({
         })()}
         onRemove={toggleSelection}
         onDeselectAll={handleDeselectAll}
+        onPressThumb={handleTrayThumbPress}
         testIdPrefix="in-app-library"
         accentColor="#2563EB"
       />

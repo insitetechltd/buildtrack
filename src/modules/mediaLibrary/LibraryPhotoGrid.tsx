@@ -129,38 +129,35 @@ const LibraryGridTile = memo(function LibraryGridTile({
     );
   }
 
-  const handlePress = useCallback(
+  const handleBodyPress = useCallback(() => {
+    if (!realAssetId) {
+      return;
+    }
+    if (onCenterPress) {
+      // Body tap = open fullscreen
+      const index = photokitIndex ?? -1;
+      onCenterPress(assetId, index);
+    } else {
+      // Fallback to toggle when no fullscreen handler
+      onPress(assetId);
+    }
+  }, [realAssetId, assetId, photokitIndex, onPress, onCenterPress]);
+
+  const handleCheckboxPress = useCallback(
     (event: any) => {
+      event.stopPropagation();
       if (!realAssetId) {
         return;
       }
-      
-      // Detect corner vs center tap
-      const { locationX, locationY } = event.nativeEvent;
-      const CORNER_THRESHOLD = tileSize * 0.25; // 25% from edges = corner
-      
-      const isCorner =
-        locationX < CORNER_THRESHOLD ||
-        locationX > tileSize - CORNER_THRESHOLD ||
-        locationY < CORNER_THRESHOLD ||
-        locationY > tileSize - CORNER_THRESHOLD;
-      
-      if (isCorner || !onCenterPress) {
-        // Corner tap or no center handler = toggle selection
-        onPress(assetId);
-      } else {
-        // Center tap = open fullscreen
-        const index = photokitIndex ?? -1;
-        onCenterPress(assetId, index);
-      }
+      onPress(assetId);
     },
-    [realAssetId, tileSize, assetId, photokitIndex, onPress, onCenterPress],
+    [realAssetId, assetId, onPress],
   );
 
   return (
     <Pressable
       testID={`${testIdPrefix}__tile_${assetId}`}
-      onPress={handlePress}
+      onPress={handleBodyPress}
       style={{
         width: tileSize,
         height: tileSize,
@@ -210,7 +207,44 @@ const LibraryGridTile = memo(function LibraryGridTile({
           ]}
         />
       )}
-      {selected && order != null ? (
+      {/* Corner checkbox - dedicated 44pt hit target */}
+      {realAssetId && onCenterPress ? (
+        <Pressable
+          testID={`${testIdPrefix}__checkbox_${assetId}`}
+          onPress={handleCheckboxPress}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 44,
+            height: 44,
+            alignItems: "flex-end",
+            justifyContent: "flex-start",
+            padding: 6,
+          }}
+        >
+          {selected && order != null ? (
+            <View
+              style={[
+                styles.checkboxBadge,
+                { backgroundColor: theme.badgeBackground },
+              ]}
+            >
+              <Text style={[styles.checkboxBadgeText, { color: theme.badgeText }]}>
+                {order}
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.checkboxEmpty,
+                { borderColor: "rgba(255,255,255,0.8)" },
+              ]}
+            />
+          )}
+        </Pressable>
+      ) : selected && order != null ? (
+        // Fallback badge when no fullscreen (legacy)
         <View
           testID={`${testIdPrefix}__order_badge_${assetId}`}
           style={[styles.orderBadge, { backgroundColor: theme.badgeBackground }]}
@@ -850,5 +884,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
+  },
+  checkboxBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+  checkboxEmpty: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
 });

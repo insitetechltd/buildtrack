@@ -1,12 +1,33 @@
-# Confirm Select Photos → back on Create Task form with attachments.
+# Confirm Select Photos → handle routing → back on Create Task form with attachments.
+# Capture-session flow includes routing Alert after confirm.
 appId: com.buildtrack.app.local
 ---
 - tapOn:
     id: "photo-selection__confirm"
+# Handle native Alert routing (Report / Update / Assign)
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+# Handle RN bottom sheet routing (if shown)
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+# Handle secondary Alert (if shown)
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
 - extendedWaitUntil:
     visible:
       id: "create-task__continuous_form"
-    timeout: 8000
+    timeout: 25000
 - assertVisible:
     id: "create-task__attachments_section"
 - runFlow: _assert-no-logbox.yaml

@@ -61,25 +61,26 @@ tags:
 # Take screenshot of initial library state
 - takeScreenshot: "retry-library-initial"
 
-# Select photo slot 0 (17%, 28%)
+# Select photo slot 0 - Phase B: tap upper-right corner checkbox (center opens fullscreen)
 - tapOn:
-    point: "17%, 28%"
+    point: "30%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - runFlow:
     when:
       notVisible: ".*[1-9] selected.*"
     commands:
+      # Fallback: retry corner tap
       - tapOn:
-          point: "17%, 28%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: "1 selected"
     timeout: 8000
 - takeScreenshot: "retry-after-slot-0"
 
-# Select photo slot 1 (50%, 28%)
+# Select photo slot 1 - Phase B: tap corner checkbox of middle tile
 - tapOn:
-    point: "50%, 28%"
+    point: "63%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - extendedWaitUntil:
@@ -87,9 +88,9 @@ tags:
     timeout: 8000
 - takeScreenshot: "retry-after-slot-1"
 
-# Select photo slot 2 (83%, 28%)
+# Select photo slot 2 - Phase B: tap corner checkbox of right tile
 - tapOn:
-    point: "83%, 28%"
+    point: "96%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - extendedWaitUntil:

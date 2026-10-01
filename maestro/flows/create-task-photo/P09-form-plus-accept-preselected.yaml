@@ -7,7 +7,7 @@ tags:
 - evalScript: ${output.permutation = "P09"}
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: _open-library.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
 
 - runFlow: _pick-first.yaml
 - runFlow: _confirm-selection.yaml

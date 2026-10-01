@@ -1,5 +1,6 @@
 # Pick gallery slot 1 (row0 col1).
+# Phase B: tap upper-right corner checkbox to select (center opens fullscreen).
 appId: com.buildtrack.app.local
 ---
 - tapOn:
-    point: "50%, 20%"
+    point: "63%, 18%"

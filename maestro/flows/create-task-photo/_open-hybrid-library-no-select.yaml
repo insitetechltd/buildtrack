@@ -1,0 +1,58 @@
+# Open hybrid library picker without selecting photos.
+# Leaves caller in capture-session__hybrid_library ready to select.
+# Camera FAB → CaptureSession → library peek → hybrid library grid.
+# Photos fixtures: scripts/maestro/ensure-create-task-photo-media.sh only.
+# Phase B: caller must tap CORNER checkbox to select (center opens fullscreen).
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__camera_icon_surface"
+    commands:
+      - tapOn:
+          id: "root-tab__camera_icon_surface"
+      - waitForAnimationToEnd:
+          timeout: 2500
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_peek"
+    commands:
+      - tapOn:
+          id: "capture-session__library_peek"
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 1500

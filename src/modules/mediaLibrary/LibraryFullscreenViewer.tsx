@@ -308,7 +308,7 @@ export function LibraryFullscreenViewer({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "#000",
+        backgroundColor: "#fff",
         zIndex: 1000,
       }}
     >
@@ -331,15 +331,15 @@ export function LibraryFullscreenViewer({
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: isCommitting ? "rgba(100,100,100,0.3)" : "rgba(255,255,255,0.2)",
+            backgroundColor: isCommitting ? "#d1d5db" : "#f3f4f6",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="close" size={24} color="#fff" />
+          <Ionicons name="close" size={24} color="#374151" />
         </Pressable>
 
-        <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
+        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
           {currentIndex + 1} / {itemCount}
         </Text>
 
@@ -351,7 +351,7 @@ export function LibraryFullscreenViewer({
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: isSelected ? accentColor : isCommitting ? "rgba(100,100,100,0.3)" : "rgba(255,255,255,0.2)",
+            backgroundColor: isSelected ? accentColor : isCommitting ? "#d1d5db" : "#f3f4f6",
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -359,13 +359,13 @@ export function LibraryFullscreenViewer({
           <Ionicons
             name={isSelected ? "checkmark" : "ellipse-outline"}
             size={24}
-            color="#fff"
+            color={isSelected ? "#fff" : "#374151"}
           />
         </Pressable>
       </View>
 
       {/* Swipeable Grid */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: "#fff" }}>
         <FlatList
           ref={flatListRef}
           data={items}
@@ -376,6 +376,7 @@ export function LibraryFullscreenViewer({
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          style={{ backgroundColor: "#fff" }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -393,6 +394,7 @@ export function LibraryFullscreenViewer({
                   height: height - 200,
                   alignItems: "center",
                   justifyContent: "center",
+                  backgroundColor: "#fff",
                 }}
               >
                 {useNativeThumbs && NativeThumb && indexMode && indexSession && !itemAnnotation?.annotatedUri ? (
@@ -471,85 +473,82 @@ export function LibraryFullscreenViewer({
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: "rgba(0,0,0,0.9)",
+            backgroundColor: "#fff",
             paddingHorizontal: 16,
-            paddingTop: 12,
+            paddingTop: 16,
             paddingBottom: 24,
+            borderTopWidth: 1,
+            borderTopColor: "#e5e7eb",
           }}
         >
           {!drawMode && !cropMode ? (
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable
-                testID={`${testIdPrefix}__start_draw`}
-                onPress={handleToggleDrawMode}
-                disabled={isCommitting}
-                style={{
-                  flex: 1,
-                  backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                <Ionicons name="create-outline" size={20} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+            <View style={{ flexDirection: "row", gap: 16, justifyContent: "center" }}>
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <Pressable
+                  testID={`${testIdPrefix}__start_draw`}
+                  onPress={handleToggleDrawMode}
+                  disabled={isCommitting}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: isCommitting ? "#d1d5db" : accentColor,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="create-outline" size={24} color="#fff" />
+                </Pressable>
+                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
                   Annotate
                 </Text>
-              </Pressable>
+              </View>
 
-              <Pressable
-                testID={`${testIdPrefix}__rotate`}
-                onPress={handleRotate}
-                disabled={isCommitting}
-                style={{
-                  flex: 1,
-                  backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                {isCommitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="refresh-outline" size={20} color="#fff" />
-                    <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
-                      Rotate
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <Pressable
+                  testID={`${testIdPrefix}__rotate`}
+                  onPress={handleRotate}
+                  disabled={isCommitting}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: isCommitting ? "#d1d5db" : accentColor,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isCommitting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="refresh-outline" size={24} color="#fff" />
+                  )}
+                </Pressable>
+                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
+                  Rotate
+                </Text>
+              </View>
 
-              <Pressable
-                testID={`${testIdPrefix}__start_crop`}
-                onPress={handleToggleCropMode}
-                disabled={isCommitting}
-                style={{
-                  flex: 1,
-                  backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                <Ionicons name="crop-outline" size={20} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <Pressable
+                  testID={`${testIdPrefix}__start_crop`}
+                  onPress={handleToggleCropMode}
+                  disabled={isCommitting}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: isCommitting ? "#d1d5db" : accentColor,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="crop-outline" size={24} color="#fff" />
+                </Pressable>
+                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
                   Crop
                 </Text>
-              </Pressable>
+              </View>
             </View>
           ) : drawMode ? (
             <>
@@ -575,7 +574,7 @@ export function LibraryFullscreenViewer({
                         borderRadius: 18,
                         backgroundColor: swatch,
                         borderWidth: 2,
-                        borderColor: selected ? "#fff" : "rgba(255,255,255,0.3)",
+                        borderColor: selected ? "#111827" : "#d1d5db",
                         opacity: isCommitting ? 0.5 : 1,
                       }}
                     />
@@ -590,13 +589,13 @@ export function LibraryFullscreenViewer({
                   disabled={isCommitting}
                   style={{
                     flex: 1,
-                    backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.15)",
+                    backgroundColor: isCommitting ? "#d1d5db" : "#f3f4f6",
                     paddingVertical: 12,
                     borderRadius: 10,
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>Cancel</Text>
+                  <Text style={{ color: "#374151", fontSize: 15, fontWeight: "600" }}>Cancel</Text>
                 </Pressable>
 
                 <Pressable
@@ -607,8 +606,8 @@ export function LibraryFullscreenViewer({
                     flex: 1,
                     backgroundColor:
                       isCommitting || activeStrokes.length === 0
-                        ? "rgba(100,100,100,0.3)"
-                        : "rgba(255,255,255,0.15)",
+                        ? "#e5e7eb"
+                        : "#f3f4f6",
                     paddingVertical: 12,
                     borderRadius: 10,
                     alignItems: "center",
@@ -616,7 +615,7 @@ export function LibraryFullscreenViewer({
                 >
                   <Text
                     style={{
-                      color: activeStrokes.length === 0 ? "#888" : "#fff",
+                      color: activeStrokes.length === 0 ? "#9ca3af" : "#374151",
                       fontSize: 15,
                       fontWeight: "600",
                     }}
@@ -631,7 +630,7 @@ export function LibraryFullscreenViewer({
                   disabled={isCommitting}
                   style={{
                     flex: 1,
-                    backgroundColor: isCommitting ? "rgba(37, 99, 235, 0.5)" : accentColor,
+                    backgroundColor: isCommitting ? "#93c5fd" : accentColor,
                     paddingVertical: 12,
                     borderRadius: 10,
                     alignItems: "center",

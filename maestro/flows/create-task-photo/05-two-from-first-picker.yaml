@@ -25,7 +25,7 @@ tags:
 - assertVisible: ".*2 selected.*"
 - takeScreenshot: "ct-photo-05-picker-two"
 - tapOn:
-    id: "in-app-library__accept"
+    id: "in-app-library__done"
 - extendedWaitUntil:
     visible:
       id: "photo-selection__tile_1"

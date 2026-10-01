@@ -91,11 +91,14 @@ export function prefetchPhotokitLibraryIndex(
           await hydratePhotokitPreviewIds();
         }
         const persisted = peekPhotokitPreviewIds();
+        // Skip warm-id path when filters are active — persisted IDs assume default sort/date.
+        const hasActiveFilters = ascending || afterEpochSeconds !== null || beforeEpochSeconds !== null;
         if (
           albumKey == null &&
           persisted &&
           persisted.length >= LIBRARY_PICKER_2B_FIRST_BATCH &&
-          isPhotokitLibraryWithIdsAvailable()
+          isPhotokitLibraryWithIdsAvailable() &&
+          !hasActiveFilters
         ) {
           const preview = await openPhotokitLibraryWithIds(persisted);
           if (preview) {

@@ -409,6 +409,8 @@ enum PhotokitThumbEngine {
 
   /// Fast path: resolve a persisted newest-N id list (no Recents scan).
   /// Must not sit on `workQueue` behind expandLibraryFull (TF 235 reopen tax).
+  /// ASSUMES: persisted IDs already in newest-first order (from persistPreviewFromSession).
+  /// Sorts by creationDate descending to guard against stale AsyncStorage order.
   static func openLibraryWithIds(_ ids: [String]) -> PhotokitLibrarySession? {
     let capped = ids.prefix(200).filter { !$0.isEmpty }
     guard !capped.isEmpty else {
@@ -429,6 +431,11 @@ enum PhotokitThumbEngine {
       if let asset = map[id], asset.mediaType == .image {
         assets.append(asset)
       }
+    }
+    // Sort by creationDate descending (newest-first) to ensure consistent display
+    // even if AsyncStorage has stale old-to-new order.
+    assets.sort { a, b in
+      (a.creationDate ?? Date.distantPast) > (b.creationDate ?? Date.distantPast)
     }
     guard !assets.isEmpty else {
       return nil

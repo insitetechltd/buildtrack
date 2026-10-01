@@ -1,7 +1,8 @@
-# Track B: slot 0 — settle then tap (Y≈20% = tile row center on Pro Max 440×956).
+# Track B: slot 0 — settle then tap corner checkbox.
+# Phase B: tap upper-right corner checkbox to select (center opens fullscreen).
 appId: com.buildtrack.app.local
 ---
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
-    point: "17%, 20%"
+    point: "30%, 18%"

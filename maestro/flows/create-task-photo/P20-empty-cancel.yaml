@@ -7,7 +7,7 @@ tags:
 - evalScript: ${output.permutation = "P20"}
 - runFlow: _boot-b.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: _open-library.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
 
 - takeScreenshot: "ct-P20-empty-library"
 - tapOn:

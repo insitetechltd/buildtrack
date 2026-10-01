@@ -1,5 +1,5 @@
 # Pick first (slot 0) → accept → Select Photos with tile_0.
-# Retry alternate Y if percent-grid flake (same pattern as _pick-first-b).
+# Phase B: _pick-slot-0 uses corner tap; fallback also uses corner.
 appId: com.buildtrack.app.local
 ---
 - runFlow: _pick-slot-0.yaml
@@ -7,8 +7,9 @@ appId: com.buildtrack.app.local
     when:
       notVisible: ".*1 selected.*"
     commands:
+      # Fallback: retry corner tap slightly adjusted
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: ".*1 selected.*"
     timeout: 8000

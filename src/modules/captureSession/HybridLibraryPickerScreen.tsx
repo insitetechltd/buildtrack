@@ -22,8 +22,6 @@ import {
 } from "@/modules/mediaLibrary/LibraryFullscreenViewer";
 import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
-import { bakeStrokesOntoPhoto } from "@/utils/bakePhotoDraw";
-import type { DrawStroke } from "@/utils/photoPreviewDraw";
 import {
   LIBRARY_FILL_UNTIL_COUNT,
   LIBRARY_GRID_COLUMNS,
@@ -233,22 +231,12 @@ export function HybridLibraryPickerScreen() {
     [],
   );
 
-  const handleCommitAnnotation = useCallback(
-    async (assetId: string, strokes: DrawStroke[]): Promise<string | null> => {
-      const asset = albumPicker.assetsByIdRef.current.get(assetId);
-      if (!asset) return null;
-
-      try {
-        const sourceUri = asset.uri;
-        const annotatedUri = await bakeStrokesOntoPhoto(sourceUri, strokes);
-        return annotatedUri;
-      } catch (error) {
-        console.error("❌ [HybridLibrary] Annotation failed:", error);
-        Alert.alert("Error", "Could not apply annotations. Please try again.");
-        return null;
-      }
+  const handleCommitEdit = useCallback(
+    async (assetId: string, editedUri: string): Promise<void> => {
+      // Viewer already baked the edit, just need to record it
+      // The annotation map is already updated via handleUpdateAnnotation
     },
-    [albumPicker.assetsByIdRef],
+    [],
   );
 
   const handleAccept = useCallback(async () => {
@@ -501,7 +489,7 @@ export function HybridLibraryPickerScreen() {
         onToggleSelect={onPressLibraryAsset}
         onClose={() => setViewerOpen(false)}
         onUpdateAnnotation={handleUpdateAnnotation}
-        onCommitAnnotation={handleCommitAnnotation}
+        onCommitEdit={handleCommitEdit}
         testIdPrefix="capture-session"
         accentColor="#08576E"
       />

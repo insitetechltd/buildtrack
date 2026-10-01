@@ -33,8 +33,6 @@ import {
 import { pinLibraryPreviews } from "@/utils/libraryPreviewPin";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { photokitIdAt } from "@/modules/mediaLibrary/PhotokitThumbView";
-import { bakeStrokesOntoPhoto } from "@/utils/bakePhotoDraw";
-import type { DrawStroke } from "@/utils/photoPreviewDraw";
 import type { SelectedPhoto } from "../navigation/navigationTypes";
 
 export type InAppLibraryPickerResult = SelectedPhoto[];
@@ -203,22 +201,12 @@ export default function InAppLibraryPickerScreen({
     [],
   );
 
-  const handleCommitAnnotation = useCallback(
-    async (assetId: string, strokes: DrawStroke[]): Promise<string | null> => {
-      const asset = albumPicker.assetsByIdRef.current.get(assetId);
-      if (!asset) return null;
-
-      try {
-        const sourceUri = asset.uri;
-        const annotatedUri = await bakeStrokesOntoPhoto(sourceUri, strokes);
-        return annotatedUri;
-      } catch (error) {
-        console.error("❌ [InAppLibrary] Annotation failed:", error);
-        Alert.alert("Error", "Could not apply annotations. Please try again.");
-        return null;
-      }
+  const handleCommitEdit = useCallback(
+    async (assetId: string, editedUri: string): Promise<void> => {
+      // Viewer already baked the edit, just need to record it
+      // The annotation map is already updated via handleUpdateAnnotation
     },
-    [albumPicker.assetsByIdRef],
+    [],
   );
 
   const handleAcceptAction = useCallback(async () => {
@@ -494,7 +482,7 @@ export default function InAppLibraryPickerScreen({
         onToggleSelect={toggleSelection}
         onClose={() => setViewerOpen(false)}
         onUpdateAnnotation={handleUpdateAnnotation}
-        onCommitAnnotation={handleCommitAnnotation}
+        onCommitEdit={handleCommitEdit}
         testIdPrefix="in-app-library"
         accentColor="#2563EB"
       />

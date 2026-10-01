@@ -6,11 +6,13 @@ import {
   FlatList,
   useWindowDimensions,
   ActivityIndicator,
+  Alert,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImageManipulator from "expo-image-manipulator";
 import type * as MediaLibrary from "expo-media-library";
 
 import {
@@ -20,6 +22,7 @@ import {
   type PhotokitLibrarySession,
 } from "./PhotokitThumbView";
 import { DrawOverlay } from "../../components/photoEdit/DrawOverlay";
+import { CropOverlay } from "../../components/photoEdit/CropOverlay";
 import {
   appendStroke,
   DRAW_COLORS,
@@ -27,10 +30,12 @@ import {
   type DrawColor,
   type DrawStroke,
 } from "../../utils/photoPreviewDraw";
+import type { SourceCrop } from "../../utils/photoPreviewEdit";
 
 export type AssetAnnotation = {
-  drawStrokes: DrawStroke[];
+  drawStrokes?: DrawStroke[];
   annotatedUri?: string;
+  isEdited?: boolean;
 };
 
 type LibraryFullscreenViewerProps = {
@@ -43,7 +48,7 @@ type LibraryFullscreenViewerProps = {
   onToggleSelect: (assetId: string) => void;
   onClose: () => void;
   onUpdateAnnotation?: (assetId: string, annotation: AssetAnnotation) => void;
-  onCommitAnnotation?: (assetId: string, strokes: DrawStroke[]) => Promise<string | null>;
+  onCommitEdit?: (assetId: string, editedUri: string) => Promise<void>;
   testIdPrefix?: string;
   accentColor?: string;
 };
@@ -71,6 +76,7 @@ export function LibraryFullscreenViewer({
   const { width, height } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [drawMode, setDrawMode] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
   const [drawColor, setDrawColor] = useState<DrawColor>(DRAW_COLORS[0]);
   const [activeStrokes, setActiveStrokes] = useState<DrawStroke[]>([]);
   const [isCommitting, setIsCommitting] = useState(false);
@@ -103,6 +109,7 @@ export function LibraryFullscreenViewer({
     if (visible && initialIndex >= 0 && initialIndex < items.length) {
       setCurrentIndex(initialIndex);
       setDrawMode(false);
+      setCropMode(false);
       setActiveStrokes([]);
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({
@@ -116,6 +123,7 @@ export function LibraryFullscreenViewer({
   useEffect(() => {
     if (!visible) {
       setDrawMode(false);
+      setCropMode(false);
       setActiveStrokes([]);
     }
   }, [visible]);
@@ -128,7 +136,7 @@ export function LibraryFullscreenViewer({
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (drawMode) return;
+      if (drawMode || cropMode) return;
       const offsetX = event.nativeEvent.contentOffset.x;
       const index = Math.round(offsetX / width);
       if (index >= 0 && index < items.length && index !== currentIndex) {
@@ -136,20 +144,21 @@ export function LibraryFullscreenViewer({
         setActiveStrokes([]);
       }
     },
-    [currentIndex, drawMode, items.length, width],
+    [cropMode, currentIndex, drawMode, items.length, width],
   );
 
   const handleToggleSelect = useCallback(() => {
-    if (currentItem && !drawMode) {
+    if (currentItem && !drawMode && !cropMode) {
       onToggleSelect(currentItem.assetId);
     }
-  }, [currentItem, drawMode, onToggleSelect]);
+  }, [cropMode, currentItem, drawMode, onToggleSelect]);
 
   const handleToggleDrawMode = useCallback(() => {
     if (drawMode) {
       setDrawMode(false);
       setActiveStrokes([]);
     } else {
+      setCropMode(false);
       if (currentItem) {
         const existing = annotations.get(currentItem.assetId);
         setActiveStrokes(existing?.drawStrokes || []);
@@ -170,26 +179,121 @@ export function LibraryFullscreenViewer({
   }, []);
 
   const handleDoneDrawing = useCallback(async () => {
-    if (!currentItem || !onCommitAnnotation || activeStrokes.length === 0) {
+    if (!currentItem || !onCommitEdit || activeStrokes.length === 0) {
       setDrawMode(false);
       setActiveStrokes([]);
       return;
     }
 
     setIsCommitting(true);
-    const annotatedUri = await onCommitAnnotation(currentItem.assetId, activeStrokes);
-    setIsCommitting(false);
-
-    if (annotatedUri && onUpdateAnnotation) {
-      onUpdateAnnotation(currentItem.assetId, {
-        drawStrokes: activeStrokes,
-        annotatedUri,
-      });
+    try {
+      const sourceUri = displayUri;
+      const { bakeStrokesOntoPhoto } = await import("../../utils/bakePhotoDraw");
+      const annotatedUri = await bakeStrokesOntoPhoto(sourceUri, activeStrokes);
+      
+      await onCommitEdit(currentItem.assetId, annotatedUri);
+      
+      if (onUpdateAnnotation) {
+        onUpdateAnnotation(currentItem.assetId, {
+          drawStrokes: activeStrokes,
+          annotatedUri,
+          isEdited: true,
+        });
+      }
+    } catch (error) {
+      console.error("❌ [LibraryViewer] Draw failed:", error);
+      Alert.alert("Error", "Could not apply drawing. Please try again.");
+    } finally {
+      setIsCommitting(false);
+      setDrawMode(false);
+      setActiveStrokes([]);
     }
+  }, [activeStrokes, currentItem, displayUri, onCommitEdit, onUpdateAnnotation]);
 
-    setDrawMode(false);
-    setActiveStrokes([]);
-  }, [activeStrokes, currentItem, onCommitAnnotation, onUpdateAnnotation]);
+  const handleRotate = useCallback(async () => {
+    if (!currentItem || !onCommitEdit) return;
+
+    setIsCommitting(true);
+    try {
+      const sourceUri = displayUri;
+      const result = await ImageManipulator.manipulateAsync(
+        sourceUri,
+        [{ rotate: 90 }],
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
+      );
+
+      await onCommitEdit(currentItem.assetId, result.uri);
+
+      if (onUpdateAnnotation) {
+        onUpdateAnnotation(currentItem.assetId, {
+          annotatedUri: result.uri,
+          isEdited: true,
+        });
+      }
+    } catch (error) {
+      console.error("❌ [LibraryViewer] Rotate failed:", error);
+      Alert.alert("Error", "Could not rotate photo. Please try again.");
+    } finally {
+      setIsCommitting(false);
+    }
+  }, [currentItem, displayUri, onCommitEdit, onUpdateAnnotation]);
+
+  const handleToggleCropMode = useCallback(() => {
+    if (cropMode) {
+      setCropMode(false);
+    } else {
+      setDrawMode(false);
+      setActiveStrokes([]);
+      setCropMode(true);
+    }
+  }, [cropMode]);
+
+  const handleApplyCrop = useCallback(
+    async (crop: SourceCrop) => {
+      if (!currentItem || !onCommitEdit) return;
+
+      if (crop.width < 1 || crop.height < 1) {
+        Alert.alert("Invalid Crop", "Please select a larger crop area.");
+        return;
+      }
+
+      setIsCommitting(true);
+      try {
+        const sourceUri = displayUri;
+        const result = await ImageManipulator.manipulateAsync(
+          sourceUri,
+          [
+            {
+              crop: {
+                originX: crop.originX,
+                originY: crop.originY,
+                width: crop.width,
+                height: crop.height,
+              },
+            },
+          ],
+          { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
+        );
+
+        await onCommitEdit(currentItem.assetId, result.uri);
+
+        if (onUpdateAnnotation) {
+          onUpdateAnnotation(currentItem.assetId, {
+            annotatedUri: result.uri,
+            isEdited: true,
+          });
+        }
+
+        setCropMode(false);
+      } catch (error) {
+        console.error("❌ [LibraryViewer] Crop failed:", error);
+        Alert.alert("Error", "Could not crop photo. Please try again.");
+      } finally {
+        setIsCommitting(false);
+      }
+    },
+    [currentItem, displayUri, onCommitEdit, onUpdateAnnotation],
+  );
 
   if (!visible) {
     return null;
@@ -268,7 +372,7 @@ export function LibraryFullscreenViewer({
           keyExtractor={(item) => `viewer_${item.assetId}`}
           horizontal
           pagingEnabled
-          scrollEnabled={!drawMode}
+          scrollEnabled={!drawMode && !cropMode}
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -335,10 +439,32 @@ export function LibraryFullscreenViewer({
             />
           </View>
         )}
+
+        {/* CropOverlay only on current item when in crop mode */}
+        {cropMode && displayUri && (
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width,
+              height: height - 200,
+            }}
+          >
+            <CropOverlay
+              uri={displayUri}
+              containerWidth={width}
+              containerHeight={height - 200}
+              disabled={isCommitting}
+              onCancel={handleToggleCropMode}
+              onApply={handleApplyCrop}
+            />
+          </View>
+        )}
       </View>
 
-      {/* Drawing Tools */}
-      {onCommitAnnotation && (
+      {/* Edit Tools */}
+      {onCommitEdit && (
         <View
           style={{
             position: "absolute",
@@ -351,28 +477,81 @@ export function LibraryFullscreenViewer({
             paddingBottom: 24,
           }}
         >
-          {!drawMode ? (
-            <Pressable
-              testID={`${testIdPrefix}__start_draw`}
-              onPress={handleToggleDrawMode}
-              disabled={isCommitting}
-              style={{
-                backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
-                paddingVertical: 14,
-                paddingHorizontal: 20,
-                borderRadius: 12,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              <Ionicons name="create-outline" size={20} color="#fff" />
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
-                Annotate
-              </Text>
-            </Pressable>
-          ) : (
+          {!drawMode && !cropMode ? (
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Pressable
+                testID={`${testIdPrefix}__start_draw`}
+                onPress={handleToggleDrawMode}
+                disabled={isCommitting}
+                style={{
+                  flex: 1,
+                  backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="create-outline" size={20} color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+                  Annotate
+                </Text>
+              </Pressable>
+
+              <Pressable
+                testID={`${testIdPrefix}__rotate`}
+                onPress={handleRotate}
+                disabled={isCommitting}
+                style={{
+                  flex: 1,
+                  backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {isCommitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="refresh-outline" size={20} color="#fff" />
+                    <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+                      Rotate
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+
+              <Pressable
+                testID={`${testIdPrefix}__start_crop`}
+                onPress={handleToggleCropMode}
+                disabled={isCommitting}
+                style={{
+                  flex: 1,
+                  backgroundColor: isCommitting ? "rgba(100,100,100,0.5)" : "rgba(255,255,255,0.2)",
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="crop-outline" size={20} color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+                  Crop
+                </Text>
+              </Pressable>
+            </View>
+          ) : drawMode ? (
             <>
               <View
                 style={{

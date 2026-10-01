@@ -296,11 +296,11 @@ export function CropOverlay({
           disabled={disabled}
           style={{ padding: 8 }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "650", color: "#18212b" }}>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#18212b" }}>
             Cancel
           </Text>
         </Pressable>
-        <Text style={{ fontSize: 13, fontWeight: "650", color: "#303a44", letterSpacing: 0.01 }}>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#303a44", letterSpacing: 0.01 }}>
           Crop · rotate inside
         </Text>
         <Pressable
@@ -309,7 +309,7 @@ export function CropOverlay({
           disabled={disabled}
           style={{ padding: 8 }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "650", color: "#18212b" }}>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#18212b" }}>
             Done
           </Text>
         </Pressable>
@@ -485,7 +485,7 @@ export function CropOverlay({
         </View>
       </View>
 
-      {/* Bottom Bar - White Chrome */}
+      {/* Bottom Bar - Black Chrome (WhatsApp Style) */}
       <View
         style={{
           position: "absolute",
@@ -493,161 +493,165 @@ export function CropOverlay({
           right: 0,
           bottom: 0,
           height: BOTTOM_BAR_HEIGHT,
-          backgroundColor: "#fff",
+          backgroundColor: "#000",
           borderTopWidth: 1,
-          borderTopColor: "#edf0f2",
-          paddingHorizontal: 22,
-          paddingTop: 8,
-          paddingBottom: 12,
+          borderTopColor: "#fff",
         }}
       >
-        {/* Fine Rotate Dial - Rotating Wheel Arc */}
-        <View style={{ height: 78, alignItems: "center", justifyContent: "flex-start" }}>
-          <View style={{ width: dialWidth + 28, height: 78 }}>
+        {/* Fine Rotate Dial - Fixed Arc with Horizontal Scrub */}
+        <View style={{ height: 120, alignItems: "center", justifyContent: "center" }}>
+          <View
+            {...rotationDialResponder.panHandlers}
+            testID="photo-selection__rotation_dial"
+            style={{
+              width: containerWidth,
+              height: 120,
+              position: "relative",
+            }}
+          >
+            {/* Scrollable Arc Container - Translates Horizontally */}
             <View
-              {...rotationDialResponder.panHandlers}
-              testID="photo-selection__rotation_dial"
               style={{
-                width: dialWidth + 28,
-                height: 78,
-                position: "relative",
-                paddingHorizontal: 14,
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              {/* Rotating Wheel Arc */}
+              {/* Arc Content - Moves Under Fixed Pointer */}
               <View
                 style={{
-                  position: "absolute",
-                  left: 14,
-                  right: 14,
-                  top: 8,
-                  height: 60,
+                  width: dialWidth * 2,
+                  height: 100,
+                  transform: [
+                    { translateX: -(fineRotation / MAX_ROTATION) * (dialWidth / 2) },
+                  ],
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                {/* Arc Background Circle Segment */}
+                {/* Labels Above Arc */}
                 <View
                   style={{
-                    width: 120,
-                    height: 120,
                     position: "absolute",
-                    top: 0,
-                    borderRadius: 60,
-                    borderWidth: 2,
-                    borderColor: "#d4dbe0",
-                    borderTopColor: "transparent",
-                    borderLeftColor: "transparent",
-                    borderRightColor: "transparent",
+                    top: 8,
+                    left: 0,
+                    right: 0,
+                    height: 24,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                />
-                
-                {/* Arc Tick Marks on Wheel Perimeter */}
-                {Array.from({ length: 13 }, (_, i) => {
-                  const angle = -MAX_ROTATION + (i * (MAX_ROTATION * 2)) / 12;
-                  const isMajor = angle % 10 === 0;
-                  const isCenter = Math.abs(angle) < 0.1;
-                  
-                  // Position ticks on arc perimeter (radius = 60)
-                  const arcAngle = (angle / MAX_ROTATION) * (Math.PI / 3); // 60° arc span
-                  const radius = 60;
-                  const x = Math.sin(arcAngle) * radius;
-                  const y = Math.cos(arcAngle) * radius;
-                  
-                  return (
-                    <View
-                      key={i}
-                      style={{
-                        position: "absolute",
-                        left: "50%",
-                        top: radius,
-                        width: isMajor ? 2 : 1,
-                        height: isMajor ? 12 : 8,
-                        backgroundColor: isMajor ? "#4a5861" : "#9aa5ad",
-                        transform: [
-                          { translateX: x - (isMajor ? 1 : 0.5) },
-                          { translateY: -y - (isMajor ? 12 : 8) },
-                          { rotate: `${-angle}deg` },
-                        ],
-                      }}
-                    />
-                  );
-                })}
-
-                {/* Arc Tick Labels Below the Wheel */}
-                {[-30, -20, -10, 0, 10, 20, 30].map((angle) => {
-                  const arcAngle = (angle / MAX_ROTATION) * (Math.PI / 3);
-                  const radius = 60;
-                  const x = Math.sin(arcAngle) * radius;
-                  const y = Math.cos(arcAngle) * radius;
-                  const isZero = angle === 0;
-                  
-                  return (
-                    <Pressable
-                      key={angle}
-                      onPress={isZero ? handleResetToOriginal : undefined}
-                      style={{
-                        position: "absolute",
-                        left: "50%",
-                        top: radius + 8,
-                        transform: [
-                          { translateX: x - 16 },
-                          { translateY: -y },
-                        ],
-                        paddingVertical: 4,
-                        paddingHorizontal: 4,
-                      }}
-                    >
-                      <Text
+                >
+                  {[-30, -20, -10, 0, 10, 20, 30].map((angle) => {
+                    const offset = (angle / MAX_ROTATION) * (dialWidth / 2);
+                    const isZero = angle === 0;
+                    
+                    return (
+                      <Pressable
+                        key={angle}
+                        onPress={isZero ? handleResetToOriginal : undefined}
                         style={{
-                          color: isZero ? "#18212b" : "#596671",
-                          fontSize: 13,
-                          fontWeight: isZero ? "750" : "600",
-                          textAlign: "center",
+                          position: "absolute",
+                          left: "50%",
+                          transform: [{ translateX: offset - 16 }],
+                          paddingVertical: 4,
+                          paddingHorizontal: 8,
                         }}
                       >
-                        {angle === 0 ? "0°" : `${angle}°`}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: isZero ? "700" : "500",
+                            textAlign: "center",
+                          }}
+                        >
+                          {angle}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
 
-                {/* Pointer - Triangle Arrow on Wheel */}
+                {/* Downward-Curving Arc of White Dots (Bowl/Smile Shape) */}
                 <View
                   style={{
                     position: "absolute",
-                    left: "50%",
-                    top: 60,
-                    transform: [
-                      { rotate: `${-fineRotation}deg` },
-                      { translateY: -52 },
-                      { translateX: -5 },
-                    ],
-                    width: 0,
-                    height: 0,
-                    borderLeftWidth: 5,
-                    borderRightWidth: 5,
-                    borderBottomWidth: 7,
-                    borderLeftColor: "transparent",
-                    borderRightColor: "transparent",
-                    borderBottomColor: "#2b3844",
+                    top: 40,
+                    left: 0,
+                    right: 0,
+                    height: 40,
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                />
+                >
+                  {Array.from({ length: 31 }, (_, i) => {
+                    const angle = -MAX_ROTATION + (i * 2);
+                    const offset = (angle / MAX_ROTATION) * (dialWidth / 2);
+                    
+                    // Parabolic curve: y = k * x^2 (downward arc)
+                    // Ends (±30°) are higher than center (0°)
+                    const normalizedAngle = angle / MAX_ROTATION; // -1 to +1
+                    const yOffset = normalizedAngle * normalizedAngle * 12; // Parabolic: center=0, ends=12
+                    
+                    return (
+                      <View
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          top: yOffset,
+                          width: 4,
+                          height: 4,
+                          borderRadius: 2,
+                          backgroundColor: "#fff",
+                          transform: [{ translateX: offset - 2 }],
+                        }}
+                      />
+                    );
+                  })}
+                </View>
               </View>
             </View>
+
+            {/* Fixed Pointer - White Upward Triangle at Bottom Center */}
+            <View
+              style={{
+                position: "absolute",
+                left: "50%",
+                bottom: 8,
+                transform: [{ translateX: -6 }],
+                width: 0,
+                height: 0,
+                borderLeftWidth: 6,
+                borderRightWidth: 6,
+                borderBottomWidth: 9,
+                borderLeftColor: "transparent",
+                borderRightColor: "transparent",
+                borderBottomColor: "#fff",
+                borderTopWidth: 0,
+              }}
+              pointerEvents="none"
+            />
           </View>
         </View>
 
-        {/* Control Buttons */}
+        {/* Control Buttons - Icon Only in Corners */}
         <View
           style={{
-            height: 48,
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 60,
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
-            gap: 14,
-            borderTopWidth: 1,
-            borderTopColor: "#f0f2f4",
+            justifyContent: "space-between",
+            paddingHorizontal: 24,
           }}
         >
           <Pressable
@@ -655,45 +659,27 @@ export function CropOverlay({
             onPress={handleRotate90}
             disabled={disabled}
             style={{
-              height: 40,
-              minWidth: 108,
-              flexDirection: "row",
+              width: 44,
+              height: 44,
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
-              borderWidth: 1,
-              borderColor: "#d4dbe0",
-              borderRadius: 9,
-              backgroundColor: "#fff",
             }}
           >
-            <Ionicons name="refresh-outline" size={21} color="#263540" />
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#24313c" }}>
-              90°
-            </Text>
+            <Ionicons name="refresh-outline" size={28} color="#fff" />
           </Pressable>
 
           <Pressable
             testID="photo-selection__aspect_ratio"
             disabled
             style={{
-              height: 40,
-              minWidth: 108,
-              flexDirection: "row",
+              width: 44,
+              height: 44,
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
-              borderWidth: 1,
-              borderColor: "#d4dbe0",
-              borderRadius: 9,
-              backgroundColor: "#fff",
               opacity: 0.5,
             }}
           >
-            <Ionicons name="crop-outline" size={21} color="#263540" />
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#24313c" }}>
-              Aspect
-            </Text>
+            <Ionicons name="crop-outline" size={28} color="#fff" />
           </Pressable>
         </View>
       </View>

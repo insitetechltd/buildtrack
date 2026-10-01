@@ -270,7 +270,6 @@ export function CropOverlay({
   }
 
   const dialWidth = containerWidth - 80;
-  const dialPointerOffset = ((fineRotation / MAX_ROTATION) * (dialWidth / 2));
 
   return (
     <View
@@ -328,29 +327,42 @@ export function CropOverlay({
         }}
         pointerEvents="box-none"
       >
-        {/* Rotated Image - Scaled to Fill Crop */}
+        {/* Rotated Image - Scaled to Fill Crop - Clipped to Crop Frame */}
         <View
           style={{
             position: "absolute",
-            width: containerWidth,
-            height: photoHeight,
-            alignItems: "center",
-            justifyContent: "center",
+            left: crop.x,
+            top: crop.y,
+            width: crop.width,
+            height: crop.height,
+            overflow: "hidden",
           }}
           pointerEvents="none"
         >
-          <ExpoImage
-            source={{ uri }}
+          <View
             style={{
-              width: imageLayout.width,
-              height: imageLayout.height,
-              transform: [
-                { rotate: `${totalRotation}deg` },
-                { scale: imageScale },
-              ],
+              position: "absolute",
+              left: imageLayout.x - crop.x,
+              top: imageLayout.y - crop.y,
+              width: containerWidth,
+              height: photoHeight,
+              alignItems: "center",
+              justifyContent: "center",
             }}
-            contentFit="contain"
-          />
+          >
+            <ExpoImage
+              source={{ uri }}
+              style={{
+                width: imageLayout.width,
+                height: imageLayout.height,
+                transform: [
+                  { rotate: `${totalRotation}deg` },
+                  { scale: imageScale },
+                ],
+              }}
+              contentFit="contain"
+            />
+          </View>
         </View>
 
         {/* Crop Overlay Mask */}
@@ -489,89 +501,99 @@ export function CropOverlay({
           paddingBottom: 12,
         }}
       >
-        {/* Fine Rotate Dial */}
+        {/* Fine Rotate Dial - Rotating Wheel Arc */}
         <View style={{ height: 78, alignItems: "center", justifyContent: "flex-start" }}>
           <View style={{ width: dialWidth + 28, height: 78 }}>
-            <Text
-              style={{
-                textAlign: "center",
-                color: "#68737d",
-                fontSize: 10,
-                fontWeight: "650",
-                letterSpacing: 0.02,
-                marginBottom: 4,
-              }}
-            >
-              FINE ROTATE
-            </Text>
             <View
               {...rotationDialResponder.panHandlers}
               testID="photo-selection__rotation_dial"
               style={{
                 width: dialWidth + 28,
-                height: 56,
+                height: 78,
                 position: "relative",
                 paddingHorizontal: 14,
               }}
             >
-              {/* Dial Track */}
+              {/* Rotating Wheel Arc */}
               <View
                 style={{
                   position: "absolute",
                   left: 14,
                   right: 14,
-                  bottom: 15,
-                  height: 26,
+                  top: 8,
+                  height: 60,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {/* Center Line */}
+                {/* Arc Background Circle Segment */}
                 <View
                   style={{
+                    width: 120,
+                    height: 120,
                     position: "absolute",
-                    left: 0,
-                    right: 0,
-                    bottom: 6,
-                    height: 1,
-                    backgroundColor: "#b5bec5",
+                    top: 0,
+                    borderRadius: 60,
+                    borderWidth: 2,
+                    borderColor: "#d4dbe0",
+                    borderTopColor: "transparent",
+                    borderLeftColor: "transparent",
+                    borderRightColor: "transparent",
                   }}
                 />
                 
-                {/* Tick Marks - Larger */}
+                {/* Arc Tick Marks on Wheel Perimeter */}
                 {Array.from({ length: 13 }, (_, i) => {
                   const angle = -MAX_ROTATION + (i * (MAX_ROTATION * 2)) / 12;
                   const isMajor = angle % 10 === 0;
                   const isCenter = Math.abs(angle) < 0.1;
-                  const leftPercent = (i / 12) * 100;
+                  
+                  // Position ticks on arc perimeter (radius = 60)
+                  const arcAngle = (angle / MAX_ROTATION) * (Math.PI / 3); // 60° arc span
+                  const radius = 60;
+                  const x = Math.sin(arcAngle) * radius;
+                  const y = Math.cos(arcAngle) * radius;
                   
                   return (
                     <View
                       key={i}
                       style={{
                         position: "absolute",
-                        left: `${leftPercent}%`,
-                        bottom: 6,
+                        left: "50%",
+                        top: radius,
                         width: isMajor ? 2 : 1,
-                        height: isMajor ? 18 : 10,
+                        height: isMajor ? 12 : 8,
                         backgroundColor: isMajor ? "#4a5861" : "#9aa5ad",
-                        transform: [{ translateX: isMajor ? -1 : -0.5 }],
+                        transform: [
+                          { translateX: x - (isMajor ? 1 : 0.5) },
+                          { translateY: -y - (isMajor ? 12 : 8) },
+                          { rotate: `${-angle}deg` },
+                        ],
                       }}
                     />
                   );
                 })}
 
-                {/* Tick Labels - Larger, No Overlap */}
-                {[-30, -20, -10, 0, 10, 20, 30].map((angle, idx) => {
-                  const leftPercent = ((angle + 30) / 60) * 100;
+                {/* Arc Tick Labels Below the Wheel */}
+                {[-30, -20, -10, 0, 10, 20, 30].map((angle) => {
+                  const arcAngle = (angle / MAX_ROTATION) * (Math.PI / 3);
+                  const radius = 60;
+                  const x = Math.sin(arcAngle) * radius;
+                  const y = Math.cos(arcAngle) * radius;
                   const isZero = angle === 0;
+                  
                   return (
                     <Pressable
                       key={angle}
                       onPress={isZero ? handleResetToOriginal : undefined}
                       style={{
                         position: "absolute",
-                        left: `${leftPercent}%`,
-                        bottom: -8,
-                        transform: [{ translateX: -16 }],
+                        left: "50%",
+                        top: radius + 8,
+                        transform: [
+                          { translateX: x - 16 },
+                          { translateY: -y },
+                        ],
                         paddingVertical: 4,
                         paddingHorizontal: 4,
                       }}
@@ -590,13 +612,17 @@ export function CropOverlay({
                   );
                 })}
 
-                {/* Pointer - Triangle Arrow */}
+                {/* Pointer - Triangle Arrow on Wheel */}
                 <View
                   style={{
                     position: "absolute",
                     left: "50%",
-                    bottom: 0,
-                    marginLeft: dialPointerOffset,
+                    top: 60,
+                    transform: [
+                      { rotate: `${-fineRotation}deg` },
+                      { translateY: -52 },
+                      { translateX: -5 },
+                    ],
                     width: 0,
                     height: 0,
                     borderLeftWidth: 5,
@@ -605,7 +631,6 @@ export function CropOverlay({
                     borderLeftColor: "transparent",
                     borderRightColor: "transparent",
                     borderBottomColor: "#2b3844",
-                    transform: [{ translateX: -5 }],
                   }}
                 />
               </View>
@@ -643,7 +668,7 @@ export function CropOverlay({
             }}
           >
             <Ionicons name="refresh-outline" size={21} color="#263540" />
-            <Text style={{ fontSize: 12, fontWeight: "700", color: "#24313c" }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#24313c" }}>
               90°
             </Text>
           </Pressable>
@@ -666,24 +691,11 @@ export function CropOverlay({
             }}
           >
             <Ionicons name="crop-outline" size={21} color="#263540" />
-            <Text style={{ fontSize: 12, fontWeight: "700", color: "#24313c" }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#24313c" }}>
               Aspect
             </Text>
           </Pressable>
         </View>
-
-        {/* Footnote */}
-        <Text
-          style={{
-            marginTop: 7,
-            textAlign: "center",
-            color: "#7a858e",
-            fontSize: 9.5,
-            lineHeight: 12,
-          }}
-        >
-          L on frame · dial snaps 1° · tap 0° resets · image scales to fill crop
-        </Text>
       </View>
     </View>
   );

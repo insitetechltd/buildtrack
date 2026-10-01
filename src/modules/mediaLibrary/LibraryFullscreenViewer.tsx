@@ -434,14 +434,14 @@ export function LibraryFullscreenViewer({
                     token={indexSession.token}
                     index={item.index}
                     pixelSize={Math.max(width, height)}
-                    contentFit="cover"
+                    contentFit="contain"
                     style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
                   />
                 ) : (
                   <ExpoImage
                     source={{ uri: itemUri }}
                     cachePolicy="memory-disk"
-                    contentFit="cover"
+                    contentFit="contain"
                     style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
                   />
                 )}

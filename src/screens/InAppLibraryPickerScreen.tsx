@@ -16,6 +16,8 @@ import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
+import { LibraryFullscreenViewer } from "@/modules/mediaLibrary/LibraryFullscreenViewer";
+import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import {
   LIBRARY_GRID_GAP,
   libraryGridColumns,
@@ -97,6 +99,9 @@ export default function InAppLibraryPickerScreen({
 
   const [isPinning, setIsPinning] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [actionPromptOpen, setActionPromptOpen] = useState(false);
   const [selectionOrderByKey, setSelectionOrderByKey] = useState(() =>
     selectionMapFromPhotos(initiallySelectedPhotos),
   );
@@ -115,7 +120,7 @@ export default function InAppLibraryPickerScreen({
 
   const selectedCount = selectionOrderByKey.size;
 
-  const onPressAsset = useCallback(
+  const toggleSelection = useCallback(
     (assetId: string) => {
       setSelectionOrderByKey((current) => {
         const next = new Map(current);
@@ -143,7 +148,21 @@ export default function InAppLibraryPickerScreen({
     [selectionLimit],
   );
 
-  const handleAccept = useCallback(async () => {
+  const onPressAsset = toggleSelection;
+
+  const onCenterPressAsset = useCallback(
+    (assetId: string, index: number) => {
+      setViewerInitialIndex(index);
+      setViewerOpen(true);
+    },
+    [],
+  );
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectionOrderByKey(new Map());
+  }, []);
+
+  const handleAcceptAction = useCallback(async () => {
     if (selectedCount === 0) {
       Alert.alert("Select photos", "Highlight at least one photo to continue.");
       return;
@@ -188,6 +207,16 @@ export default function InAppLibraryPickerScreen({
     selectedCount,
     selectionOrderByKey,
   ]);
+
+  const handleDone = useCallback(() => {
+    if (selectedCount === 0) {
+      return;
+    }
+    // Phase B: Action target chosen after checkmark
+    // TODO: Wire to report/update/assign entry points when available
+    // For now, proceed to accept (existing post-select flow)
+    void handleAcceptAction();
+  }, [selectedCount, handleAcceptAction]);
 
   const albumRow = (
     <View
@@ -319,24 +348,20 @@ export default function InAppLibraryPickerScreen({
           {selectedCount > 0 ? `${selectedCount} selected` : "Library"}
         </Text>
         <Pressable
-          testID="in-app-library__accept"
+          testID="in-app-library__done"
           accessible={true}
-          onPress={handleAccept}
-          disabled={selectedCount === 0 || isPinning}
+          onPress={handleDone}
+          disabled={selectedCount === 0}
           style={{
             height: 44,
             width: 44,
             borderRadius: 22,
-            backgroundColor: selectedCount > 0 && !isPinning ? "#2563EB" : "#d1d5db",
+            backgroundColor: selectedCount > 0 ? "#2563EB" : "#d1d5db",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          {isPinning ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="checkmark" size={24} color="#fff" />
-          )}
+          <Ionicons name="checkmark" size={24} color="#fff" />
         </Pressable>
       </View>
 
@@ -351,14 +376,47 @@ export default function InAppLibraryPickerScreen({
           selectedIds={selectedIds}
           selectionOrderByKey={selectionOrderByKey}
           onPressAsset={onPressAsset}
+          onCenterPressAsset={onCenterPressAsset}
           theme={IN_APP_THEME}
-          contentPaddingBottom={insets.bottom + 24}
+          contentPaddingBottom={insets.bottom + 120}
           placeholderCount={
             albumPicker.indexSession ? 0 : skeletonTileCount
           }
           paintResetKey={`${albumPicker.selectedAlbumId}:${albumPicker.indexSession?.token ?? "paged"}`}
           ListHeaderComponent={albumRow}
         />
+
+      <LibrarySelectedTray
+        selectedAssets={(() => {
+          const sorted = [...selectionOrderByKey.entries()]
+            .sort((a, b) => a[1] - b[1])
+            .map(([assetId, order]) => {
+              const asset = albumPicker.assetsByIdRef.current.get(assetId);
+              return {
+                assetId,
+                uri: asset?.uri ?? `ph://${assetId}`,
+                order,
+              };
+            });
+          return sorted;
+        })()}
+        onRemove={toggleSelection}
+        onDeselectAll={handleDeselectAll}
+        testIdPrefix="in-app-library"
+        accentColor="#2563EB"
+      />
+
+      <LibraryFullscreenViewer
+        visible={viewerOpen}
+        initialIndex={viewerInitialIndex}
+        assets={albumPicker.assets}
+        indexSession={albumPicker.indexSession}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelection}
+        onClose={() => setViewerOpen(false)}
+        testIdPrefix="in-app-library"
+        accentColor="#2563EB"
+      />
 
       <LibraryAlbumPickerModal
         visible={albumPicker.albumPickerOpen}

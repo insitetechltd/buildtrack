@@ -91,6 +91,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   photokitToken,
   photokitIndex,
   onPress,
+  onCenterPress,
   testIdPrefix,
   theme,
   bottomGap = LIBRARY_GRID_GAP,
@@ -109,6 +110,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   bottomGap?: number;
   marginRight?: number;
   onPress: (assetId: string) => void;
+  onCenterPress?: (assetId: string, index: number) => void;
   testIdPrefix: string;
   theme: LibraryGridTileTheme;
 }) {
@@ -127,15 +129,38 @@ const LibraryGridTile = memo(function LibraryGridTile({
     );
   }
 
+  const handlePress = useCallback(
+    (event: any) => {
+      if (!realAssetId) {
+        return;
+      }
+      
+      // Detect corner vs center tap
+      const { locationX, locationY } = event.nativeEvent;
+      const CORNER_THRESHOLD = tileSize * 0.25; // 25% from edges = corner
+      
+      const isCorner =
+        locationX < CORNER_THRESHOLD ||
+        locationX > tileSize - CORNER_THRESHOLD ||
+        locationY < CORNER_THRESHOLD ||
+        locationY > tileSize - CORNER_THRESHOLD;
+      
+      if (isCorner || !onCenterPress) {
+        // Corner tap or no center handler = toggle selection
+        onPress(assetId);
+      } else {
+        // Center tap = open fullscreen
+        const index = photokitIndex ?? -1;
+        onCenterPress(assetId, index);
+      }
+    },
+    [realAssetId, tileSize, assetId, photokitIndex, onPress, onCenterPress],
+  );
+
   return (
     <Pressable
       testID={`${testIdPrefix}__tile_${assetId}`}
-      onPress={() => {
-        if (!realAssetId) {
-          return;
-        }
-        onPress(assetId);
-      }}
+      onPress={handlePress}
       style={{
         width: tileSize,
         height: tileSize,
@@ -231,6 +256,7 @@ export type LibraryPhotoGridProps = {
   selectedIds: Set<string>;
   selectionOrderByKey: Map<string, number>;
   onPressAsset: (assetId: string) => void;
+  onCenterPressAsset?: (assetId: string, index: number) => void;
   testIdPrefix: string;
   theme?: Partial<LibraryGridTileTheme>;
   contentPaddingBottom?: number;
@@ -253,6 +279,7 @@ export function LibraryPhotoGrid({
   selectedIds,
   selectionOrderByKey,
   onPressAsset,
+  onCenterPressAsset,
   testIdPrefix,
   theme: themeOverride,
   contentPaddingBottom = 24,
@@ -611,6 +638,7 @@ export function LibraryPhotoGrid({
             photokitToken={indexToken}
             photokitIndex={index}
             onPress={onPressAsset}
+            onCenterPress={onCenterPressAsset}
             testIdPrefix={testIdPrefix}
             theme={theme}
             bottomGap={0}
@@ -635,6 +663,7 @@ export function LibraryPhotoGrid({
       indexCount,
       indexToken,
       onPressAsset,
+      onCenterPressAsset,
       paint.shouldDecodeIndex,
       pixelSize,
       resolveIndexId,
@@ -670,7 +699,9 @@ export function LibraryPhotoGrid({
           order={selectionOrderByKey.get(item.asset.id)}
           bindImage={paint.shouldDecodeIndex(item.index)}
           useNativeThumb={useNativeThumbs}
+          photokitIndex={item.index}
           onPress={onPressAsset}
+          onCenterPress={onCenterPressAsset}
           testIdPrefix={testIdPrefix}
           theme={theme}
         />
@@ -678,6 +709,7 @@ export function LibraryPhotoGrid({
     },
     [
       onPressAsset,
+      onCenterPressAsset,
       paint.shouldDecodeIndex,
       pixelSize,
       selectedIds,

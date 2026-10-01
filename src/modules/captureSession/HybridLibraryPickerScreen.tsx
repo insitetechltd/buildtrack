@@ -16,6 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
+import { LibraryFullscreenViewer } from "@/modules/mediaLibrary/LibraryFullscreenViewer";
+import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
 import {
   LIBRARY_FILL_UNTIL_COUNT,
@@ -55,6 +57,8 @@ export function HybridLibraryPickerScreen() {
 
   const [sessionExpanded, setSessionExpanded] = useState(true);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
 
@@ -162,6 +166,23 @@ export function HybridLibraryPickerScreen() {
     },
     [addOrSelectLibraryPhoto, albumPicker.assetsByIdRef, toggleSelected],
   );
+
+  const onCenterPressLibraryAsset = useCallback(
+    (assetId: string, index: number) => {
+      setViewerInitialIndex(index);
+      setViewerOpen(true);
+    },
+    [],
+  );
+
+  const handleDeselectAll = useCallback(() => {
+    const store = useCaptureSessionStore.getState();
+    store.photos.forEach((photo) => {
+      if (photo.selected) {
+        toggleSelected(photo.id);
+      }
+    });
+  }, [toggleSelected]);
 
   const handleAccept = useCallback(async () => {
     if (acceptingRef.current) {
@@ -364,7 +385,8 @@ export function HybridLibraryPickerScreen() {
           selectedIds={selectedLibraryIds}
           selectionOrderByKey={selectionOrderByKey}
           onPressAsset={onPressLibraryAsset}
-          contentPaddingBottom={insets.bottom + 24}
+          onCenterPressAsset={onCenterPressLibraryAsset}
+          contentPaddingBottom={insets.bottom + 120}
           placeholderCount={
             albumPicker.indexSession ? 0 : skeletonTileCount
           }
@@ -376,6 +398,38 @@ export function HybridLibraryPickerScreen() {
             </View>
           }
         />
+
+      <LibrarySelectedTray
+        selectedAssets={(() => {
+          const sorted = [...selectionOrderByKey.entries()]
+            .sort((a, b) => a[1] - b[1])
+            .map(([assetId, order]) => {
+              const photo = photos.find((p) => p.mediaLibraryAssetId === assetId);
+              return {
+                assetId,
+                uri: photo?.uri ?? `ph://${assetId}`,
+                order,
+              };
+            });
+          return sorted;
+        })()}
+        onRemove={onPressLibraryAsset}
+        onDeselectAll={handleDeselectAll}
+        testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
+
+      <LibraryFullscreenViewer
+        visible={viewerOpen}
+        initialIndex={viewerInitialIndex}
+        assets={albumPicker.assets}
+        indexSession={albumPicker.indexSession}
+        selectedIds={selectedLibraryIds}
+        onToggleSelect={onPressLibraryAsset}
+        onClose={() => setViewerOpen(false)}
+        testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
 
       {(albumPicker.assets.length > 0 || albumPicker.indexSession != null) && (
         <View

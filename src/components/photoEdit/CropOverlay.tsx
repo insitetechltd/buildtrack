@@ -26,6 +26,7 @@ const HANDLE_LENGTH = 23;
 const MAX_ROTATION = 30;
 const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 180;
+const SNAP_DEGREE = 1;
 
 type CropOverlayProps = {
   uri: string;
@@ -51,6 +52,7 @@ export function CropOverlay({
   const [baseRotation, setBaseRotation] = useState(0);
   const [fineRotation, setFineRotation] = useState(0);
   const [loadError, setLoadError] = useState(false);
+  const [originalAngle, setOriginalAngle] = useState(0);
   
   const cropRef = useRef<Rect | null>(null);
   const cropStartRef = useRef<Rect | null>(null);
@@ -73,6 +75,7 @@ export function CropOverlay({
     setCrop(null);
     setBaseRotation(0);
     setFineRotation(0);
+    setOriginalAngle(0);
     setLoadError(false);
 
     resolveImageDimensions(uri)
@@ -191,7 +194,8 @@ export function CropOverlay({
           const delta = (dx / dialWidth) * (MAX_ROTATION * 2);
           let next = start + delta;
           next = Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, next));
-          setFineRotation(next);
+          const snapped = Math.round(next / SNAP_DEGREE) * SNAP_DEGREE;
+          setFineRotation(snapped);
         },
       }),
     [containerWidth, disabled],
@@ -199,6 +203,11 @@ export function CropOverlay({
 
   const handleRotate90 = useCallback(() => {
     setBaseRotation((prev) => (prev + 90) % 360);
+  }, []);
+
+  const handleResetToOriginal = useCallback(() => {
+    setBaseRotation(0);
+    setFineRotation(0);
   }, []);
 
   const handleApply = () => {
@@ -215,6 +224,19 @@ export function CropOverlay({
   };
 
   const totalRotation = baseRotation + fineRotation;
+
+  const imageScale = useMemo(() => {
+    if (!imageLayout || !crop) return 1;
+    const rotRad = (Math.abs(totalRotation) * Math.PI) / 180;
+    if (rotRad < 0.001) return 1;
+    const cos = Math.abs(Math.cos(rotRad));
+    const sin = Math.abs(Math.sin(rotRad));
+    const rotatedWidth = imageLayout.width * cos + imageLayout.height * sin;
+    const rotatedHeight = imageLayout.width * sin + imageLayout.height * cos;
+    const scaleX = rotatedWidth / imageLayout.width;
+    const scaleY = rotatedHeight / imageLayout.height;
+    return Math.max(scaleX, scaleY);
+  }, [imageLayout, crop, totalRotation]);
 
   if (loadError) {
     return (
@@ -306,7 +328,7 @@ export function CropOverlay({
         }}
         pointerEvents="box-none"
       >
-        {/* Rotated Image - Cover Fit */}
+        {/* Rotated Image - Scaled to Fill Crop */}
         <View
           style={{
             position: "absolute",
@@ -322,7 +344,10 @@ export function CropOverlay({
             style={{
               width: imageLayout.width,
               height: imageLayout.height,
-              transform: [{ rotate: `${totalRotation}deg` }],
+              transform: [
+                { rotate: `${totalRotation}deg` },
+                { scale: imageScale },
+              ],
             }}
             contentFit="contain"
           />
@@ -346,7 +371,7 @@ export function CropOverlay({
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.56)" }} />
         </View>
 
-        {/* L-Bracket Corners - Sitting on Frame Edges */}
+        {/* L-Bracket Corners - Exactly on Crop Frame Line */}
         <View
           {...tl.panHandlers}
           testID="photo-selection__crop_handle_tl"
@@ -361,8 +386,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              left: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
-              top: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              left: HANDLE_SIZE / 2,
+              top: HANDLE_SIZE / 2,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderLeftWidth: HANDLE_THICKNESS,
@@ -386,8 +411,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              right: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
-              top: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              right: HANDLE_SIZE / 2,
+              top: HANDLE_SIZE / 2,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderRightWidth: HANDLE_THICKNESS,
@@ -411,8 +436,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              left: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
-              bottom: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              left: HANDLE_SIZE / 2,
+              bottom: HANDLE_SIZE / 2,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderLeftWidth: HANDLE_THICKNESS,
@@ -436,8 +461,8 @@ export function CropOverlay({
           <View
             style={{
               position: "absolute",
-              right: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
-              bottom: HANDLE_SIZE / 2 - HANDLE_THICKNESS,
+              right: HANDLE_SIZE / 2,
+              bottom: HANDLE_SIZE / 2,
               width: HANDLE_LENGTH,
               height: HANDLE_LENGTH,
               borderRightWidth: HANDLE_THICKNESS,
@@ -511,7 +536,7 @@ export function CropOverlay({
                   }}
                 />
                 
-                {/* Tick Marks */}
+                {/* Tick Marks - Larger */}
                 {Array.from({ length: 13 }, (_, i) => {
                   const angle = -MAX_ROTATION + (i * (MAX_ROTATION * 2)) / 12;
                   const isMajor = angle % 10 === 0;
@@ -525,34 +550,43 @@ export function CropOverlay({
                         position: "absolute",
                         left: `${leftPercent}%`,
                         bottom: 6,
-                        width: 1,
-                        height: isMajor ? 14 : 8,
-                        backgroundColor: isMajor ? "#65727d" : "#aeb8c0",
-                        transform: [{ translateX: -0.5 }],
+                        width: isMajor ? 2 : 1,
+                        height: isMajor ? 18 : 10,
+                        backgroundColor: isMajor ? "#4a5861" : "#9aa5ad",
+                        transform: [{ translateX: isMajor ? -1 : -0.5 }],
                       }}
                     />
                   );
                 })}
 
-                {/* Tick Labels */}
+                {/* Tick Labels - Larger, No Overlap */}
                 {[-30, -20, -10, 0, 10, 20, 30].map((angle, idx) => {
                   const leftPercent = ((angle + 30) / 60) * 100;
                   const isZero = angle === 0;
                   return (
-                    <Text
+                    <Pressable
                       key={angle}
+                      onPress={isZero ? handleResetToOriginal : undefined}
                       style={{
                         position: "absolute",
                         left: `${leftPercent}%`,
-                        bottom: -1,
-                        transform: [{ translateX: -12 }],
-                        color: isZero ? "#18212b" : "#596671",
-                        fontSize: 10,
-                        fontWeight: isZero ? "750" : "600",
+                        bottom: -8,
+                        transform: [{ translateX: -16 }],
+                        paddingVertical: 4,
+                        paddingHorizontal: 4,
                       }}
                     >
-                      {angle === 0 ? "0°" : `${angle > 0 ? "" : ""}${angle}°`}
-                    </Text>
+                      <Text
+                        style={{
+                          color: isZero ? "#18212b" : "#596671",
+                          fontSize: 13,
+                          fontWeight: isZero ? "750" : "600",
+                          textAlign: "center",
+                        }}
+                      >
+                        {angle === 0 ? "0°" : `${angle}°`}
+                      </Text>
+                    </Pressable>
                   );
                 })}
 
@@ -648,7 +682,7 @@ export function CropOverlay({
             lineHeight: 12,
           }}
         >
-          L corners sit on frame · dial = fine rotate · tools stay below photo
+          L on frame · dial snaps 1° · tap 0° resets · image scales to fill crop
         </Text>
       </View>
     </View>

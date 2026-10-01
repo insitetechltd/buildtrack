@@ -20,8 +20,9 @@ tags:
     when:
       notVisible: ".*1 selected.*"
     commands:
+      # Phase B: retry corner tap
       - tapOn:
-          point: "17%, 20%"
+          point: "29%, 20%"
 - assertVisible: ".*1 selected.*"
 - takeScreenshot: "ct-P17-after-retap"
 - runFlow: _accept-library.yaml

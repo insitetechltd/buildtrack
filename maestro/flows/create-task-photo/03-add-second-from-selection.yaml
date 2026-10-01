@@ -30,8 +30,12 @@ tags:
 - tapOn: "Choose from Library"
 - extendedWaitUntil:
     visible:
-      id: "in-app-library__screen"
-    timeout: 5000
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
 # Prior selection must already be highlighted — count starts at 1
 - assertVisible: ".*1 selected.*"
 - takeScreenshot: "ct-photo-03-reopen-preserves-first"

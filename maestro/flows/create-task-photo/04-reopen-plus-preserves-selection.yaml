@@ -37,13 +37,18 @@ tags:
 - tapOn: "Choose from Library"
 - extendedWaitUntil:
     visible:
-      id: "in-app-library__screen"
-    timeout: 5000
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
 # Product contract: previously attached library assets reopen pre-selected
 - assertVisible: ".*1 selected.*"
 - takeScreenshot: "ct-photo-04-plus-preserves-selection"
+# Phase B: cancel hybrid library via back button
 - tapOn:
-    id: "in-app-library__cancel"
+    id: "app-screen-header__back"
 - assertVisible:
     id: "create-task__continuous_form"
 - runFlow: _submit-create-task.yaml

@@ -17,20 +17,19 @@ tags:
       - tapOn: ".*Project A - Commercial Building.*"
       - assertVisible:
           id: "dashboard-screen__root"
-- runFlow: _open-library.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
+# Phase B: corner taps to select two photos
 - tapOn:
-    point: "17%, 26%"
+    point: "30%, 18%"
 - tapOn:
-    point: "50%, 26%"
+    point: "63%, 18%"
 - assertVisible: ".*2 selected.*"
 - takeScreenshot: "ct-photo-05-picker-two"
-- tapOn:
-    id: "in-app-library__done"
+- runFlow: _accept-library.yaml
 - extendedWaitUntil:
     visible:
       id: "photo-selection__tile_1"
     timeout: 12000
-- tapOn:
-    id: "photo-selection__confirm"
+- runFlow: _confirm-selection.yaml
 - runFlow: _submit-create-task.yaml
 - takeScreenshot: "ct-photo-05-done"

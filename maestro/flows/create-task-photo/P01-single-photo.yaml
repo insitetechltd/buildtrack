@@ -8,15 +8,7 @@ tags:
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: _open-library.yaml
-# Legacy library pick path — only if still on in-app library (pre-capture-first).
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__screen"
-    commands:
-      - runFlow: _pick-first.yaml
-      - takeScreenshot: "ct-P01-selection-one"
-      - runFlow: _confirm-selection.yaml
+# Phase B: _open-library is capture-first, lands directly on form with photo attached.
 - takeScreenshot: "ct-P01-form-one"
 - runFlow: _submit-create-task.yaml
 - takeScreenshot: "ct-P01-done"

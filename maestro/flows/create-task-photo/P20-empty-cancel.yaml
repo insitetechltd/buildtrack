@@ -10,24 +10,21 @@ tags:
 - runFlow: _open-hybrid-library-no-select.yaml
 
 - takeScreenshot: "ct-P20-empty-library"
+# Phase B: cancel hybrid library via back button
 - tapOn:
-    id: "in-app-library__cancel"
+    id: "app-screen-header__back"
 - waitForAnimationToEnd:
     timeout: 1500
-# Cancel can miss under XCTest — retry / system back like P19
+# Retry if still on library (missed press / XCTest race)
 - runFlow:
     when:
       visible:
-        id: "in-app-library__screen"
+        id: "capture-session__library_grid"
     commands:
       - tapOn:
-          id: "in-app-library__cancel"
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__screen"
-    commands:
-      - back
+          id: "app-screen-header__back"
+      - waitForAnimationToEnd:
+          timeout: 1000
 - runFlow:
     when:
       visible: "Dismiss"

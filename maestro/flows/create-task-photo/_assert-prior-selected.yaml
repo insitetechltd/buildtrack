@@ -1,10 +1,11 @@
 # Assert library header shows prior ledger count already selected.
 # Caller sets output.ledgerCount via evalScript before runFlow.
+# Phase B: hybrid library grid, no separate in-app-library screen.
 appId: com.buildtrack.app.local
 ---
 - extendedWaitUntil:
     visible:
-      id: "in-app-library__screen"
+      id: "capture-session__library_grid"
     timeout: 5000
 - runFlow:
     when:

@@ -19,7 +19,9 @@ import {
 } from "../../utils/photoPreviewEdit";
 
 const MIN_CROP_PX = 48;
-const HANDLE = 28;
+const HANDLE_SIZE = 44; // Touch target size
+const HANDLE_THICKNESS = 3; // Line thickness
+const HANDLE_LENGTH = 24; // Length of each L-bracket arm
 
 type CropOverlayProps = {
   uri: string;
@@ -223,35 +225,69 @@ export function CropOverlay({
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }} />
       </View>
 
+      {/* Top-left corner handle */}
       <View
         {...tl.panHandlers}
         testID="photo-selection__crop_handle_tl"
-        style={[styles.handle, { left: crop.x - HANDLE / 2, top: crop.y - HANDLE / 2 }]}
-      />
+        style={{
+          position: "absolute",
+          left: crop.x - HANDLE_SIZE / 2,
+          top: crop.y - HANDLE_SIZE / 2,
+          width: HANDLE_SIZE,
+          height: HANDLE_SIZE,
+        }}
+      >
+        <View style={{ position: "absolute", left: 0, top: 0, width: HANDLE_LENGTH, height: HANDLE_THICKNESS, backgroundColor: "#fff" }} />
+        <View style={{ position: "absolute", left: 0, top: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
+      </View>
+
+      {/* Top-right corner handle */}
       <View
         {...tr.panHandlers}
         testID="photo-selection__crop_handle_tr"
-        style={[styles.handle, { left: crop.x + crop.width - HANDLE / 2, top: crop.y - HANDLE / 2 }]}
-      />
+        style={{
+          position: "absolute",
+          left: crop.x + crop.width - HANDLE_SIZE / 2,
+          top: crop.y - HANDLE_SIZE / 2,
+          width: HANDLE_SIZE,
+          height: HANDLE_SIZE,
+        }}
+      >
+        <View style={{ position: "absolute", right: 0, top: 0, width: HANDLE_LENGTH, height: HANDLE_THICKNESS, backgroundColor: "#fff" }} />
+        <View style={{ position: "absolute", right: 0, top: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
+      </View>
+
+      {/* Bottom-left corner handle */}
       <View
         {...bl.panHandlers}
         testID="photo-selection__crop_handle_bl"
-        style={[
-          styles.handle,
-          { left: crop.x - HANDLE / 2, top: crop.y + crop.height - HANDLE / 2 },
-        ]}
-      />
+        style={{
+          position: "absolute",
+          left: crop.x - HANDLE_SIZE / 2,
+          top: crop.y + crop.height - HANDLE_SIZE / 2,
+          width: HANDLE_SIZE,
+          height: HANDLE_SIZE,
+        }}
+      >
+        <View style={{ position: "absolute", left: 0, bottom: 0, width: HANDLE_LENGTH, height: HANDLE_THICKNESS, backgroundColor: "#fff" }} />
+        <View style={{ position: "absolute", left: 0, bottom: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
+      </View>
+
+      {/* Bottom-right corner handle */}
       <View
         {...br.panHandlers}
         testID="photo-selection__crop_handle_br"
-        style={[
-          styles.handle,
-          {
-            left: crop.x + crop.width - HANDLE / 2,
-            top: crop.y + crop.height - HANDLE / 2,
-          },
-        ]}
-      />
+        style={{
+          position: "absolute",
+          left: crop.x + crop.width - HANDLE_SIZE / 2,
+          top: crop.y + crop.height - HANDLE_SIZE / 2,
+          width: HANDLE_SIZE,
+          height: HANDLE_SIZE,
+        }}
+      >
+        <View style={{ position: "absolute", right: 0, bottom: 0, width: HANDLE_LENGTH, height: HANDLE_THICKNESS, backgroundColor: "#fff" }} />
+        <View style={{ position: "absolute", right: 0, bottom: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
+      </View>
 
       <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-3 px-4">
         <Pressable
@@ -280,14 +316,5 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     top: 0,
-  },
-  handle: {
-    position: "absolute",
-    width: HANDLE,
-    height: HANDLE,
-    borderRadius: HANDLE / 2,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#2563EB",
   },
 });

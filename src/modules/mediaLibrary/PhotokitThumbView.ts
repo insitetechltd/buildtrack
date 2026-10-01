@@ -12,13 +12,22 @@ type PhotokitThumbsNative = {
   stopCaching?: () => void;
   openLibrary?: (
     albumId: string,
+    ascending: boolean,
+    afterEpochSeconds: number | null,
+    beforeEpochSeconds: number | null,
   ) => { token: number; count: number } | Promise<{ token: number; count: number }>;
   openLibraryLimited?: (
     albumId: string,
     limit: number,
+    ascending: boolean,
+    afterEpochSeconds: number | null,
+    beforeEpochSeconds: number | null,
   ) => { token: number; count: number } | Promise<{ token: number; count: number }>;
   expandLibraryFull?: (
     token: number,
+    ascending: boolean,
+    afterEpochSeconds: number | null,
+    beforeEpochSeconds: number | null,
   ) => { token: number; count: number } | Promise<{ token: number; count: number }>;
   openLibraryWithIds?: (
     ids: string[],
@@ -143,6 +152,9 @@ function parseSession(
 
 export async function openPhotokitLibrary(
   albumId: string | null,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): Promise<PhotokitLibrarySession | null> {
   const native = loadNativeModule();
   if (!native?.openLibrary) {
@@ -150,7 +162,9 @@ export async function openPhotokitLibrary(
   }
   return runExclusivePhotokitJob("openLibrary", async () => {
     try {
-      const opened = await Promise.resolve(native.openLibrary!(albumId ?? ""));
+      const opened = await Promise.resolve(
+        native.openLibrary!(albumId ?? "", ascending, afterEpochSeconds, beforeEpochSeconds)
+      );
       return parseSession(opened);
     } catch {
       return null;
@@ -158,10 +172,13 @@ export async function openPhotokitLibrary(
   });
 }
 
-/** Option 2B: newest `limit` Recents via unsorted index-from-end (no sort). */
+/** Option 2B: newest `limit` Library with sort and date filter. */
 export async function openPhotokitLibraryLimited(
   albumId: string | null,
   limit: number,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): Promise<PhotokitLibrarySession | null> {
   const native = loadNativeModule();
   if (!native?.openLibraryLimited || limit < 1) {
@@ -170,7 +187,7 @@ export async function openPhotokitLibraryLimited(
   return runExclusivePhotokitJob("openLibraryLimited", async () => {
     try {
       const opened = await Promise.resolve(
-        native.openLibraryLimited!(albumId ?? "", limit),
+        native.openLibraryLimited!(albumId ?? "", limit, ascending, afterEpochSeconds, beforeEpochSeconds),
       );
       return parseSession(opened);
     } catch {
@@ -195,9 +212,12 @@ export async function openPhotokitLibraryWithIds(
   }
 }
 
-/** Option 2B: grow session to full Recents; token must stay the same. */
+/** Option 2B: grow session to full Library; token must stay the same. */
 export async function expandPhotokitLibraryFull(
   token: number,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): Promise<PhotokitLibrarySession | null> {
   const native = loadNativeModule();
   if (!native?.expandLibraryFull || token < 1) {
@@ -205,7 +225,9 @@ export async function expandPhotokitLibraryFull(
   }
   return runExclusivePhotokitJob("expandLibraryFull", async () => {
     try {
-      const opened = await Promise.resolve(native.expandLibraryFull!(token));
+      const opened = await Promise.resolve(
+        native.expandLibraryFull!(token, ascending, afterEpochSeconds, beforeEpochSeconds)
+      );
       const session = parseSession(opened);
       if (!session || session.token !== token) {
         return null;

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
+import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
   LIBRARY_GRID_GAP,
@@ -95,6 +96,7 @@ export default function InAppLibraryPickerScreen({
   }, [height, insets.bottom, insets.top, width]);
 
   const [isPinning, setIsPinning] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [selectionOrderByKey, setSelectionOrderByKey] = useState(() =>
     selectionMapFromPhotos(initiallySelectedPhotos),
   );
@@ -188,28 +190,56 @@ export default function InAppLibraryPickerScreen({
   ]);
 
   const albumRow = (
-    <Pressable
-      testID="in-app-library__album_picker"
-      onPress={() => albumPicker.setAlbumPickerOpen(true)}
+    <View
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        marginLeft: 12,
+        justifyContent: "space-between",
+        marginHorizontal: 12,
         marginTop: 10,
         marginBottom: 6,
-        alignSelf: "flex-start",
-        paddingVertical: 4,
-        paddingRight: 8,
       }}
-      accessibilityRole="button"
-      accessibilityLabel={`Album ${albumPicker.selectedAlbumTitle}`}
     >
-      <Text style={{ fontSize: 15, fontWeight: "700", color: "#10222B" }}>
-        {albumPicker.selectedAlbumTitle}
-      </Text>
-      <Ionicons name="chevron-down" size={18} color="#666" />
-    </Pressable>
+      <Pressable
+        testID="in-app-library__album_picker"
+        onPress={() => albumPicker.setAlbumPickerOpen(true)}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingVertical: 4,
+          paddingRight: 8,
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`Album ${albumPicker.selectedAlbumTitle}`}
+      >
+        <Text style={{ fontSize: 15, fontWeight: "700", color: "#10222B" }}>
+          {albumPicker.selectedAlbumTitle}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color="#666" />
+      </Pressable>
+      
+      <Pressable
+        testID="in-app-library__filter_button"
+        onPress={() => setFilterModalOpen(true)}
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 8,
+          backgroundColor: "#f3f4f6",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Filter photos"
+      >
+        <Ionicons name="funnel-outline" size={16} color="#374151" />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151" }}>
+          Filter
+        </Text>
+      </Pressable>
+    </View>
   );
 
   if (permissionPhase === "denied") {
@@ -336,6 +366,17 @@ export default function InAppLibraryPickerScreen({
         selectedAlbumId={albumPicker.selectedAlbumId}
         onClose={() => albumPicker.setAlbumPickerOpen(false)}
         onSelectAlbum={albumPicker.onSelectAlbum}
+        testIdPrefix="in-app-library"
+        accentColor="#2563EB"
+      />
+
+      <LibraryFilterModal
+        visible={filterModalOpen}
+        filterState={albumPicker.filterState}
+        onClose={() => setFilterModalOpen(false)}
+        onApply={(newFilter) => {
+          albumPicker.setFilterState(newFilter);
+        }}
         testIdPrefix="in-app-library"
         accentColor="#2563EB"
       />

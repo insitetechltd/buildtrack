@@ -65,10 +65,13 @@ function persistPreviewFromSession(session: PhotokitLibrarySession): void {
 /**
  * Start index early (camera tab). Path depends on A/B flag:
  * - warm: full openLibrary
- * - native2b: persisted ids (if any) then limited Recents — expand after first screen
+ * - native2b: persisted ids (if any) then limited Library — expand after first screen
  */
 export function prefetchPhotokitLibraryIndex(
   albumKey: string | null = null,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): Promise<PhotokitLibrarySession | null> | null {
   if (!isPhotokitLibraryIndexAvailable()) {
     return null;
@@ -102,14 +105,17 @@ export function prefetchPhotokitLibraryIndex(
         const limited = await openPhotokitLibraryLimited(
           albumKey,
           LIBRARY_PICKER_2B_FIRST_BATCH,
+          ascending,
+          afterEpochSeconds,
+          beforeEpochSeconds,
         );
         if (!limited) {
-          return cacheSession(albumKey, await openPhotokitLibrary(albumKey));
+          return cacheSession(albumKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
         }
         persistPreviewFromSession(limited);
         return cacheSession(albumKey, limited);
       }
-      return cacheSession(albumKey, await openPhotokitLibrary(albumKey));
+      return cacheSession(albumKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
     } finally {
       inFlight = null;
     }
@@ -120,6 +126,9 @@ export function prefetchPhotokitLibraryIndex(
 /** Await limited or full session; kicks expand if 2b and still limited. */
 export async function awaitPhotokitLibraryIndex(
   albumKey: string | null,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): Promise<PhotokitLibrarySession | null> {
   if (!isPhotokitLibraryIndexAvailable()) {
     return null;
@@ -127,7 +136,7 @@ export async function awaitPhotokitLibraryIndex(
   if (cachedSession && cachedAlbumKey === albumKey) {
     return cachedSession;
   }
-  const run = prefetchPhotokitLibraryIndex(albumKey);
+  const run = prefetchPhotokitLibraryIndex(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds);
   if (!run) {
     return null;
   }
@@ -149,6 +158,9 @@ export function resumePhotokitLibraryExpandAfterAccept(): void {
 export async function awaitPhotokitLibraryExpand(
   albumKey: string | null,
   token: number,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): Promise<PhotokitLibrarySession | null> {
   if (expandPaused) {
     return cachedSession;
@@ -159,7 +171,7 @@ export async function awaitPhotokitLibraryExpand(
       return expandInFlight;
     }
     if (isLibraryPickerNative2b() && isPhotokitLibrary2bAvailable()) {
-      expandInFlight = expandPhotokitLibraryFull(token).then((full) => {
+      expandInFlight = expandPhotokitLibraryFull(token, ascending, afterEpochSeconds, beforeEpochSeconds).then((full) => {
         expandInFlight = null;
         if (expandPaused) {
           return cachedSession;
@@ -173,7 +185,7 @@ export async function awaitPhotokitLibraryExpand(
     }
     return cachedSession;
   }
-  return awaitPhotokitLibraryIndex(albumKey);
+  return awaitPhotokitLibraryIndex(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds);
 }
 
 /**
@@ -185,6 +197,9 @@ export function schedulePhotokitLibraryExpandAfterFirstPaint(
   token: number,
   onExpanded?: (session: PhotokitLibrarySession) => void,
   timeoutMs: number = LIBRARY_FIRST_PHOTO_BUDGET_MS,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): () => void {
   let cancelled = false;
   let started = false;
@@ -193,7 +208,7 @@ export function schedulePhotokitLibraryExpandAfterFirstPaint(
       return;
     }
     started = true;
-    void awaitPhotokitLibraryExpand(albumKey, token).then((full) => {
+    void awaitPhotokitLibraryExpand(albumKey, token, ascending, afterEpochSeconds, beforeEpochSeconds).then((full) => {
       if (cancelled || !full) {
         return;
       }
@@ -219,7 +234,7 @@ export function schedulePhotokitLibraryExpandAfterFirstPaint(
 }
 
 /**
- * Grow limited Recents only after the user scrolls near the end of the
+ * Grow limited Library only after the user scrolls near the end of the
  * first batch. Auto-expand on first paint blocked Accept originals (TF 235).
  */
 export function requestPhotokitLibraryExpandIfScrolled(
@@ -229,6 +244,9 @@ export function requestPhotokitLibraryExpandIfScrolled(
   sessionCount: number,
   userScrolled: boolean,
   onExpanded?: (session: PhotokitLibrarySession) => void,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
 ): void {
   if (expandPaused || !userScrolled || token < 1 || sessionCount < 1) {
     return;
@@ -239,7 +257,7 @@ export function requestPhotokitLibraryExpandIfScrolled(
   if (lastVisibleIndex < sessionCount - 3) {
     return;
   }
-  void awaitPhotokitLibraryExpand(albumKey, token).then((full) => {
+  void awaitPhotokitLibraryExpand(albumKey, token, ascending, afterEpochSeconds, beforeEpochSeconds).then((full) => {
     if (expandPaused || !full) {
       return;
     }

@@ -1,10 +1,10 @@
 import * as MediaLibrary from "expo-media-library";
 
-/** Sentinel: Recents (Camera Roll). UI title is Recents; fetch is still unsorted Recents. */
+/** Sentinel: Library (all photos chronological). UI title is Library; fetch is full photo library. */
 export const ALL_PHOTOS_ALBUM_ID = "__all__";
 
 /** User-facing name for `ALL_PHOTOS_ALBUM_ID` — keep fetch on Recents, not “All Photos”. */
-export const RECENTS_ALBUM_TITLE = "Recents";
+export const RECENTS_ALBUM_TITLE = "Library";
 
 /** Follow-up pages while scrolling — one extra screen, not 6-at-a-time (too slow) or 36 (one long stall). */
 export const LIBRARY_PAGE_SIZE = 18;
@@ -20,7 +20,7 @@ export const LIBRARY_PREFETCH_UNTIL_COUNT =
   LIBRARY_FILL_UNTIL_COUNT + LIBRARY_PAGE_SIZE;
 export const LIBRARY_GRID_COLUMNS = 3;
 export const LIBRARY_GRID_GAP = 2;
-/** Phone Recents density. iPad width ÷ this ≈ column count (capped). */
+/** Phone Library density. iPad width ÷ this ≈ column count (capped). */
 export const LIBRARY_GRID_TARGET_TILE_PT = 128;
 /** Hard cap so a 13" landscape sheet does not mount a 10-wide PhotoKit burst. */
 export const LIBRARY_GRID_MAX_COLUMNS = 8;
@@ -30,7 +30,7 @@ export const LIBRARY_GRID_FIRST_WAVE_ITEMS_CAP = 24;
 export const LIBRARY_GRID_FIRST_WAVE_ROWS = 6;
 
 /**
- * Recents grid columns from window width. iPhone stays 3; iPad gets more
+ * Library grid columns from window width. iPhone stays 3; iPad gets more
  * columns so tiles stay ~phone-sized instead of 1/3 of the iPad.
  */
 export function libraryGridColumns(width: number): number {
@@ -68,7 +68,7 @@ export function libraryGridFirstWaveItemCount(opts: {
   );
 }
 
-/** Newest captured first — matches Photos Recents (not modificationTime). */
+/** Newest captured first — chronological Library view (not modificationTime). */
 export const LIBRARY_ASSET_SORT: MediaLibrary.SortByValue[] = [
   [MediaLibrary.SortBy.creationTime, false],
 ];
@@ -84,3 +84,41 @@ export type LibraryAssetPage = {
   endCursor: string | undefined;
   hasNextPage: boolean;
 };
+
+/** Photo library sort order */
+export type LibrarySortOrder = "descending" | "ascending";
+
+/** Photo library time filter (creationDate window) */
+export type LibraryTimeFilter = "all" | "lastWeek" | "lastMonth";
+
+export type LibraryFilterState = {
+  sortOrder: LibrarySortOrder;
+  timeFilter: LibraryTimeFilter;
+};
+
+export const DEFAULT_LIBRARY_FILTER: LibraryFilterState = {
+  sortOrder: "descending",  // Latest first
+  timeFilter: "all",         // No date window
+};
+
+/**
+ * Calculate date range for time filters (creationDate window).
+ * Returns epoch seconds for PhotoKit NSPredicate.
+ */
+export function timeFilterDateRange(filter: LibraryTimeFilter): {
+  afterEpochSeconds: number | null;
+  beforeEpochSeconds: number | null;
+} {
+  if (filter === "all") {
+    return { afterEpochSeconds: null, beforeEpochSeconds: null };
+  }
+  const now = Date.now() / 1000; // Convert to seconds
+  const oneDay = 24 * 60 * 60;
+  if (filter === "lastWeek") {
+    return { afterEpochSeconds: now - 7 * oneDay, beforeEpochSeconds: null };
+  }
+  if (filter === "lastMonth") {
+    return { afterEpochSeconds: now - 30 * oneDay, beforeEpochSeconds: null };
+  }
+  return { afterEpochSeconds: null, beforeEpochSeconds: null };
+}

@@ -14,6 +14,7 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
+import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
 import {
@@ -53,6 +54,7 @@ export function HybridLibraryPickerScreen() {
   );
 
   const [sessionExpanded, setSessionExpanded] = useState(true);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
 
@@ -253,14 +255,45 @@ export function HybridLibraryPickerScreen() {
   ) : null;
 
   const albumRow = (
-    <Pressable
-      testID="capture-session__album_picker"
-      onPress={() => albumPicker.setAlbumPickerOpen(true)}
-      style={styles.albumRow}
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+      }}
     >
-      <Text style={styles.libraryLabel}>{albumPicker.selectedAlbumTitle}</Text>
-      <Ionicons name="chevron-down" size={18} color="#666" />
-    </Pressable>
+      <Pressable
+        testID="capture-session__album_picker"
+        onPress={() => albumPicker.setAlbumPickerOpen(true)}
+        style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+      >
+        <Text style={styles.libraryLabel}>{albumPicker.selectedAlbumTitle}</Text>
+        <Ionicons name="chevron-down" size={18} color="#666" />
+      </Pressable>
+      
+      <Pressable
+        testID="capture-session__filter_button"
+        onPress={() => setFilterModalOpen(true)}
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 8,
+          backgroundColor: "#f3f4f6",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Filter photos"
+      >
+        <Ionicons name="funnel-outline" size={16} color="#374151" />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151" }}>
+          Filter
+        </Text>
+      </Pressable>
+    </View>
   );
 
   if (albumPicker.permission === "denied") {
@@ -361,6 +394,17 @@ export function HybridLibraryPickerScreen() {
         selectedAlbumId={albumPicker.selectedAlbumId}
         onClose={() => albumPicker.setAlbumPickerOpen(false)}
         onSelectAlbum={albumPicker.onSelectAlbum}
+        testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
+
+      <LibraryFilterModal
+        visible={filterModalOpen}
+        filterState={albumPicker.filterState}
+        onClose={() => setFilterModalOpen(false)}
+        onApply={(newFilter) => {
+          albumPicker.setFilterState(newFilter);
+        }}
         testIdPrefix="capture-session"
         accentColor="#08576E"
       />

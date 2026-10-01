@@ -32,7 +32,8 @@ export function LibrarySelectedTray({
         backgroundColor: "#fff",
         borderTopWidth: 1,
         borderTopColor: "#e5e7eb",
-        paddingVertical: 8,
+        paddingTop: 12,
+        paddingBottom: 16,
         paddingHorizontal: 12,
       }}
     >
@@ -41,7 +42,7 @@ export function LibrarySelectedTray({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 8,
+          marginBottom: 12,
         }}
       >
         <Text style={{ fontSize: 14, fontWeight: "600", color: "#374151" }}>
@@ -66,7 +67,7 @@ export function LibrarySelectedTray({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
+        contentContainerStyle={{ gap: 12, paddingVertical: 12, paddingHorizontal: 12 }}
       >
         {selectedAssets.map((item) => (
           <View

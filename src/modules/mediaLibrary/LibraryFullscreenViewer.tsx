@@ -69,7 +69,7 @@ export function LibraryFullscreenViewer({
   onToggleSelect,
   onClose,
   onUpdateAnnotation,
-  onCommitAnnotation,
+  onCommitEdit,
   testIdPrefix = "library-viewer",
   accentColor = "#2563EB",
 }: LibraryFullscreenViewerProps) {
@@ -646,7 +646,7 @@ export function LibraryFullscreenViewer({
                 </Pressable>
               </View>
             </>
-          )}
+          ) : null}
         </View>
       )}
     </View>

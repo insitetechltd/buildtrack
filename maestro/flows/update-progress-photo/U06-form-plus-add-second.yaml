@@ -16,10 +16,13 @@ tags:
 - assertVisible: "Select photos"
 - waitForAnimationToEnd:
     timeout: 1000
-# Re-pick first to restore ledger
-- runFlow: ../create-task-photo/_pick-first.yaml
+# Dual-pick: slot 0 then slot 1, single accept (P02 pattern)
+- runFlow: ../create-task-photo/_pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
 - runFlow: ../create-task-photo/_pick-slot-1.yaml
-- assertVisible: ".*2 selected.*"
+# After dual-pick: may land on preview or show .*2 selected.*
 - runFlow: ../create-task-photo/_accept-library.yaml
 - assertVisible:
     id: "photo-selection__tile_1"

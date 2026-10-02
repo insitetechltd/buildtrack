@@ -487,7 +487,7 @@ export function CropOverlay({
         </View>
       </View>
 
-      {/* Bottom Bar - Black Chrome (WhatsApp Style) */}
+      {/* Bottom Bar - Black Chrome with Overflow Hidden (Clips Dial) */}
       <View
         style={{
           position: "absolute",
@@ -496,18 +496,27 @@ export function CropOverlay({
           bottom: 0,
           height: BOTTOM_BAR_HEIGHT,
           backgroundColor: "#000",
+          overflow: "hidden",
         }}
       >
-        {/* Fine Rotate Dial - Small Compass R≈200 Bowl Arc */}
-        <View style={{ height: 120, alignItems: "center", justifyContent: "flex-end" }}>
+        {/* Fine Rotate Dial - Small Compass R≈200 Bowl Arc (Clipped at Rest) */}
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: -DIAL_RADIUS + 18,
+            height: DIAL_RADIUS * 2,
+            overflow: "visible",
+          }}
+        >
           <View
             {...rotationDialResponder.panHandlers}
             testID="photo-selection__rotation_dial"
             style={{
               width: containerWidth,
-              height: 120,
+              height: DIAL_RADIUS * 2,
               position: "relative",
-              overflow: "visible",
             }}
           >
             {/* Arc + Labels Container - Translates Horizontally */}
@@ -515,7 +524,7 @@ export function CropOverlay({
               style={{
                 position: "absolute",
                 left: "50%",
-                bottom: 36,
+                top: 0,
                 width: containerWidth * 3,
                 height: DIAL_RADIUS * 2,
                 transform: [
@@ -525,13 +534,13 @@ export function CropOverlay({
               }}
               pointerEvents="none"
             >
-              {/* Circle center is at (width/2, DIAL_RADIUS * 2) - above the arc, behind photo */}
+              {/* Circle center is at (width/2, DIAL_RADIUS) - above the visible bar window */}
               {/* Generate dots every 2° from -90° to +90° (91 dots total) */}
               {Array.from({ length: 91 }, (_, i) => {
                 const angleDeg = -MAX_ROTATION + i * 2;
                 const angleRad = (angleDeg * Math.PI) / 180;
                 const cx = (containerWidth * 3) / 2;
-                const cy = DIAL_RADIUS * 2 - DIAL_RADIUS;
+                const cy = DIAL_RADIUS;
                 const x = cx + DIAL_RADIUS * Math.sin(angleRad);
                 const y = cy + DIAL_RADIUS * Math.cos(angleRad);
                 const isMajor = angleDeg % 30 === 0;
@@ -557,7 +566,7 @@ export function CropOverlay({
               {[-90, -60, -30, 0, 30, 60, 90].map((angleDeg) => {
                 const angleRad = (angleDeg * Math.PI) / 180;
                 const cx = (containerWidth * 3) / 2;
-                const cy = DIAL_RADIUS * 2 - DIAL_RADIUS;
+                const cy = DIAL_RADIUS;
                 const labelX = cx + DIAL_RADIUS * Math.sin(angleRad);
                 const labelY = cy + DIAL_RADIUS * Math.cos(angleRad) - 16;
                 const isZero = angleDeg === 0;
@@ -588,28 +597,29 @@ export function CropOverlay({
                 );
               })}
             </View>
-
-            {/* Fixed Pointer - White Upward Triangle at Bottom Center */}
-            <View
-              style={{
-                position: "absolute",
-                left: "50%",
-                bottom: 36,
-                transform: [{ translateX: -6 }],
-                width: 0,
-                height: 0,
-                borderLeftWidth: 6,
-                borderRightWidth: 6,
-                borderBottomWidth: 9,
-                borderLeftColor: "transparent",
-                borderRightColor: "transparent",
-                borderBottomColor: "#fff",
-                borderTopWidth: 0,
-              }}
-              pointerEvents="none"
-            />
           </View>
         </View>
+
+        {/* Fixed Pointer - White Upward Triangle at Bottom Center */}
+        <View
+          style={{
+            position: "absolute",
+            left: "50%",
+            bottom: 36,
+            transform: [{ translateX: -6 }],
+            width: 0,
+            height: 0,
+            borderLeftWidth: 6,
+            borderRightWidth: 6,
+            borderBottomWidth: 9,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderBottomColor: "#fff",
+            borderTopWidth: 0,
+            zIndex: 10,
+          }}
+          pointerEvents="none"
+        />
 
         {/* Control Buttons - Icon Only in Corners */}
         <View

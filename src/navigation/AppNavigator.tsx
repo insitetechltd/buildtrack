@@ -145,6 +145,8 @@ import {
   handOffCaptureFirstToUpdateProgress,
   launchTaskListPhotoUpdate,
   promptCaptureFirstDestination,
+  resolveCaptureFirstLibrarySaveAction,
+  resolveCaptureSessionCompleteAction,
 } from "./captureFirstCameraFlow";
 import CaptureTaskPickerScreen from "../screens/CaptureTaskPickerScreen";
 import {
@@ -1009,8 +1011,20 @@ function InAppLibraryPickerScreenWrapper({
           (photo) => !photo.mediaLibraryAssetId,
         );
         const nextPhotos = [...localOnly, ...libraryPhotos];
-        if (captureFirstFlow && nextPhotos.length === 0) {
+        const librarySaveAction = resolveCaptureFirstLibrarySaveAction({
+          captureFirstFlow,
+          photoCount: nextPhotos.length,
+        });
+        if (librarySaveAction === "exit") {
           exitCaptureFirstFlow(navigation as any);
+          return;
+        }
+        // Capture-first: skip Select Photos — Done → Report / Update / Assign / Cancel.
+        if (librarySaveAction === "destination") {
+          promptCaptureFirstDestination({
+            navigation: navigation as any,
+            photos: nextPhotos,
+          });
           return;
         }
         const photoParams: PhotoSelectionParams = {
@@ -1884,7 +1898,15 @@ function CaptureSessionScreenWrapper({
         exitCaptureFirstFlow(navigation as any);
       }}
       onComplete={(photos) => {
-        if (isAddPhotos && params && typeof params === "object") {
+        const completeAction = resolveCaptureSessionCompleteAction({
+          isAddPhotos,
+        });
+        if (
+          completeAction === "photoSelection" &&
+          isAddPhotos &&
+          params &&
+          typeof params === "object"
+        ) {
           (navigation.navigate as any)("PhotoSelection", {
             taskId: params.taskId,
             subTaskId: params.subTaskId,
@@ -1909,14 +1931,10 @@ function CaptureSessionScreenWrapper({
           });
           return;
         }
-        (navigation.navigate as any)("PhotoSelection", {
-          initialPhotos: photos,
-          uploadImmediately: false,
-          captureFirstFlow: true,
-          returnScreen: "CreateTask",
-          entityType: "task",
-          initialCompletionPercentage: 0,
-          selectionRevision: Date.now(),
+        // Camera-tab capture-first: skip Select Photos → Report / Update / Assign / Cancel.
+        promptCaptureFirstDestination({
+          navigation: navigation as any,
+          photos,
         });
       }}
     />

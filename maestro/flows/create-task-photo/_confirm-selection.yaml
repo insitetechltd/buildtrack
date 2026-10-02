@@ -1,16 +1,20 @@
-# Confirm Select Photos → handle routing → back on Create Task form with attachments.
-# Capture-session flow includes routing Alert after confirm.
+# After library Done: land on Create Task form with attachments.
+# Capture-first skips Select Photos (chooser already handled in _accept-library).
+# Add-photos / legacy path may still show photo-selection__confirm.
 appId: com.buildtrack.app.local
 ---
-- tapOn:
-    id: "photo-selection__confirm"
-# Handle native Alert routing (Report / Update / Assign)
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__confirm"
+    commands:
+      - tapOn:
+          id: "photo-selection__confirm"
 - runFlow:
     when:
       visible: ".*Assign.*"
     commands:
       - tapOn: ".*Assign.*"
-# Handle RN bottom sheet routing (if shown)
 - runFlow:
     when:
       visible:
@@ -18,7 +22,6 @@ appId: com.buildtrack.app.local
     commands:
       - tapOn:
           id: "create-task__routing_choice_create"
-# Handle secondary Alert (if shown)
 - runFlow:
     when:
       visible: "Create Task"

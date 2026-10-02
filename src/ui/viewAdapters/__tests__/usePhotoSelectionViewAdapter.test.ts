@@ -203,6 +203,38 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
   });
 
+  it("handleApplyCrop prepends rotate before crop when rotation is nonzero", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [{ uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false }],
+      } as any),
+    );
+
+    await act(async () => {
+      await result.current.handleApplyCrop(
+        0,
+        {
+          originX: 10,
+          originY: 20,
+          width: 100,
+          height: 80,
+        },
+        12.5,
+      );
+    });
+
+    expect(mockManipulateAsync).toHaveBeenCalledWith(
+      "file://a.jpg",
+      [
+        { rotate: 12.5 },
+        { crop: { originX: 10, originY: 20, width: 100, height: 80 } },
+      ],
+      expect.objectContaining({ format: "jpeg" }),
+    );
+    expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
+  });
+
   it("handleApplyDraw bakes strokes via Skia helper then pins annotatedUri", async () => {
     const { result } = renderHook(() =>
       usePhotoSelectionViewAdapter({

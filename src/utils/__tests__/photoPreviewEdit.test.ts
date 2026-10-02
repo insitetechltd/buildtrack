@@ -1,6 +1,7 @@
 import {
   defaultCropRectInImageLayout,
   getContainedImageLayout,
+  getEditCanvasImageLayout,
   mapCropRectToSourcePixels,
   resolveImageDimensions,
 } from "../photoPreviewEdit";
@@ -86,8 +87,24 @@ describe("photoPreviewEdit", () => {
     });
   });
 
+  describe("getEditCanvasImageLayout", () => {
+    it("scales contained image to 85% pad so full crop has finger room", () => {
+      const full = getContainedImageLayout(200, 200, 400, 200);
+      const padded = getEditCanvasImageLayout(200, 200, 400, 200, 0.85);
+      expect(padded.width).toBeCloseTo(full.width * 0.85, 5);
+      expect(padded.height).toBeCloseTo(full.height * 0.85, 5);
+      expect(padded.x + padded.width / 2).toBeCloseTo(100, 5);
+      expect(padded.y + padded.height / 2).toBeCloseTo(100, 5);
+    });
+  });
+
   describe("defaultCropRectInImageLayout", () => {
-    it("insets from the image layout", () => {
+    it("defaults to the full image layout (no inset)", () => {
+      const imageLayout = { x: 10, y: 20, width: 100, height: 80 };
+      expect(defaultCropRectInImageLayout(imageLayout)).toEqual(imageLayout);
+    });
+
+    it("insets from the image layout when fraction is provided", () => {
       const imageLayout = { x: 10, y: 20, width: 100, height: 80 };
       const crop = defaultCropRectInImageLayout(imageLayout, 0.1);
       expect(crop).toEqual({ x: 20, y: 28, width: 80, height: 64 });

@@ -72,12 +72,7 @@ appId: com.buildtrack.app.local
     timeout: 10000
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 25000
-- tapOn:
-    id: "photo-selection__confirm"
+# Capture-first: skip Select Photos → Report / Update / Assign / Cancel
 - runFlow:
     when:
       visible: ".*Assign.*"

@@ -273,9 +273,8 @@ export default function InAppLibraryPickerScreen({
     if (selectedCount === 0) {
       return;
     }
-    // Phase B: Action target chosen after checkmark
-    // TODO: Wire to report/update/assign entry points when available
-    // For now, proceed to accept (existing post-select flow)
+    // Capture-first wrappers intercept onSave and prompt Report / Update / Assign.
+    // Add-photos / form reopen still return the batch via onSave.
     void handleAcceptAction();
   }, [selectedCount, handleAcceptAction]);
 
@@ -456,9 +455,10 @@ export default function InAppLibraryPickerScreen({
               if (!asset) {
                 return null;
               }
+              const editedUri = annotations.get(assetId)?.annotatedUri;
               return {
                 assetId,
-                uri: asset.uri,
+                uri: editedUri || asset.uri,
                 order,
               };
             })

@@ -1,13 +1,20 @@
-# Accept library selection → photo-selection confirm OR direct form/composer land.
-# Phase B: tap Done badge on hybrid library.
-# Fast path (P09/U07 harness lag): lands directly on form with attachment_preview.
-# Traditional path: lands on photo-selection__confirm first.
+# Accept library selection → capture-first destination chooser (skip Select Photos).
+# Phase B: tap Done on hybrid library, then Assign (Report / Update / Assign / Cancel).
+# Keep waits tight: fail fast if pin/nav hangs.
 appId: com.buildtrack.app.local
 ---
 - waitForAnimationToEnd:
     timeout: 800
 - tapOn:
-    point: "95%,10%"
+    id: "capture-session__hybrid_done"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_grid"
+    commands:
+      - tapOn:
+          point: "95%,10%"
 - runFlow:
     when:
       visible:
@@ -28,40 +35,34 @@ appId: com.buildtrack.app.local
               id: "capture-session__library_grid"
           commands:
             - tapOn:
+                id: "capture-session__hybrid_done"
+                optional: true
+            - tapOn:
                 point: "95%,10%"
-# Wait for either photo-selection__confirm OR form/composer land
+# Destination Alert (PLATFORM_LIMITATION: native Alert has no testID)
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+# Add-photos path may still land on Select Photos (not capture-first).
 - runFlow:
     when:
       visible:
         id: "photo-selection__confirm"
     commands:
-      # Traditional path: confirm screen present
-      - extendedWaitUntil:
-          visible:
-            id: "photo-selection__confirm"
-          timeout: 3000
-- runFlow:
-    when:
-      notVisible:
-        id: "photo-selection__confirm"
-    commands:
-      # Fast path: already on form/composer with attachment preview
-      - runFlow:
-          when:
-            visible:
-              id: "create-task__continuous_form"
-          commands:
-            - extendedWaitUntil:
-                visible:
-                  id: "create-task__attachment_preview_0"
-                timeout: 3000
-      - runFlow:
-          when:
-            visible:
-              id: "report-reply-composer"
-          commands:
-            - extendedWaitUntil:
-                visible:
-                  id: "report-reply-composer__photo"
-                timeout: 3000
+      - assertVisible:
+          id: "photo-selection__confirm"
 - runFlow: _assert-no-logbox.yaml

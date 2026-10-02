@@ -13,6 +13,8 @@ import {
   promptCaptureFirstDestination,
   promptCaptureFirstSource,
   rememberCaptureFirstOrigin,
+  resolveCaptureFirstLibrarySaveAction,
+  resolveCaptureSessionCompleteAction,
 } from "../captureFirstCameraFlow";
 
 jest.mock("expo-image-picker", () => ({
@@ -340,5 +342,37 @@ describe("captureFirstCameraFlow", () => {
     jest.runAllTimers();
     expect(dispatch).toHaveBeenCalled();
     jest.useRealTimers();
+  });
+
+  describe("AppNavigator wrapper skip-Select-Photos contract", () => {
+    it("resolveCaptureFirstLibrarySaveAction skips Select Photos for capture-first with photos", () => {
+      expect(
+        resolveCaptureFirstLibrarySaveAction({
+          captureFirstFlow: true,
+          photoCount: 2,
+        }),
+      ).toBe("destination");
+      expect(
+        resolveCaptureFirstLibrarySaveAction({
+          captureFirstFlow: true,
+          photoCount: 0,
+        }),
+      ).toBe("exit");
+      expect(
+        resolveCaptureFirstLibrarySaveAction({
+          captureFirstFlow: false,
+          photoCount: 2,
+        }),
+      ).toBe("photoSelection");
+    });
+
+    it("resolveCaptureSessionCompleteAction skips Select Photos for camera-tab capture-first", () => {
+      expect(resolveCaptureSessionCompleteAction({ isAddPhotos: false })).toBe(
+        "destination",
+      );
+      expect(resolveCaptureSessionCompleteAction({ isAddPhotos: true })).toBe(
+        "photoSelection",
+      );
+    });
   });
 });

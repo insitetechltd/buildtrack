@@ -1,4 +1,4 @@
-# P19 — Form has 2 → remove 1 → + library fresh (not preserved)
+# P19 — Form has 2 → remove 1 → + library preselect remaining
 appId: com.buildtrack.app.local
 tags:
   - create-task-photo
@@ -18,68 +18,19 @@ tags:
     id: "create-task__attachment_preview_remove_0"
 - takeScreenshot: "ct-P19-form-one-after-remove"
 - runFlow: _reopen-library-from-form.yaml
-# Form-plus reopen starts fresh (selection cleared) - correct product behavior
-- assertVisible: "Select photos"
-- waitForAnimationToEnd:
-    timeout: 1000
-# Phase B: cancel library (dual-surface: hybrid back or header back or legacy cancel)
-- runFlow:
-    when:
-      visible:
-        id: "capture-session__hybrid_back"
-    commands:
-      - tapOn:
-          id: "capture-session__hybrid_back"
-      - waitForAnimationToEnd:
-          timeout: 1000
-- runFlow:
-    when:
-      visible:
-        id: "app-screen-header__back"
-    commands:
-      - tapOn:
-          id: "app-screen-header__back"
-      - waitForAnimationToEnd:
-          timeout: 1000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__cancel"
-    commands:
-      - tapOn:
-          id: "in-app-library__cancel"
-      - waitForAnimationToEnd:
-          timeout: 1000
-# After hybrid_back, may land on camera surface - dismiss to form
-- runFlow:
-    when:
-      visible:
-        id: "capture-session__cancel"
-    commands:
-      - tapOn:
-          id: "capture-session__cancel"
-      - waitForAnimationToEnd:
-          timeout: 1000
-# Retry if still on library (missed press / XCTest race)
+- runFlow: _assert-prior-selected-1.yaml
+# Phase B: cancel hybrid library via back button
+- tapOn:
+    id: "app-screen-header__back"
 - runFlow:
     when:
       visible:
         id: "capture-session__library_grid"
     commands:
       - tapOn:
-          id: "capture-session__hybrid_back"
+          id: "app-screen-header__back"
       - waitForAnimationToEnd:
           timeout: 1000
-      # May land on camera again after retry
-      - runFlow:
-          when:
-            visible:
-              id: "capture-session__cancel"
-          commands:
-            - tapOn:
-                id: "capture-session__cancel"
-            - waitForAnimationToEnd:
-                timeout: 1000
 - extendedWaitUntil:
     visible:
       id: "create-task__continuous_form"

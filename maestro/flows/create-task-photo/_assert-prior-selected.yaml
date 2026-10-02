@@ -1,76 +1,25 @@
 # Assert library header shows prior ledger count already selected.
 # Caller sets output.ledgerCount via evalScript before runFlow.
-# Phase B: may be hybrid CaptureSession OR legacy InAppLibrary.
-# Proof: order badges on tiles (not title text for form reopen compat).
+# Phase B: hybrid library grid, no separate in-app-library screen.
 appId: com.buildtrack.app.local
 ---
-# Wait for either hybrid or legacy grid
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 5000
 - runFlow:
     when:
-      visible:
-        id: "capture-session__library_grid"
+      true: ${output.ledgerCount == 1}
     commands:
-      - extendedWaitUntil:
-          visible:
-            id: "capture-session__library_grid"
-          timeout: 5000
-      - waitForAnimationToEnd:
-          timeout: 1000
+      - assertVisible: ".*1 selected.*"
 - runFlow:
     when:
-      visible:
-        id: "in-app-library__grid"
+      true: ${output.ledgerCount == 2}
     commands:
-      - extendedWaitUntil:
-          visible:
-            id: "in-app-library__grid"
-          timeout: 5000
-# Legacy: title text
+      - assertVisible: ".*2 selected.*"
 - runFlow:
     when:
-      visible:
-        id: "in-app-library__grid"
+      true: ${output.ledgerCount == 3}
     commands:
-      - runFlow:
-          when:
-            true: ${output.ledgerCount == 1}
-          commands:
-            - assertVisible: ".*1 selected.*"
-      - runFlow:
-          when:
-            true: ${output.ledgerCount == 2}
-          commands:
-            - assertVisible: ".*2 selected.*"
-      - runFlow:
-          when:
-            true: ${output.ledgerCount == 3}
-          commands:
-            - assertVisible: ".*3 selected.*"
-# Hybrid: order badges
-- runFlow:
-    when:
-      visible:
-        id: "capture-session__library_grid"
-    commands:
-      - runFlow:
-          when:
-            true: ${output.ledgerCount >= 1}
-          commands:
-            - assertVisible:
-                text: "1"
-                index: 0
-      - runFlow:
-          when:
-            true: ${output.ledgerCount >= 2}
-          commands:
-            - assertVisible:
-                text: "2"
-                index: 1
-      - runFlow:
-          when:
-            true: ${output.ledgerCount >= 3}
-          commands:
-            - assertVisible:
-                text: "3"
-                index: 2
+      - assertVisible: ".*3 selected.*"
 - takeScreenshot: "ct-photo-prior-selected-ledger"

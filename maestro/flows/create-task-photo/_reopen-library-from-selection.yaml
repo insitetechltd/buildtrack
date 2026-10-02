@@ -1,5 +1,5 @@
-# From Select Photos: Add more → Choose from Library → library grid.
-# Phase B: may open hybrid CaptureSession OR legacy InAppLibrary (route varies).
+# From Select Photos: Add more → Choose from Library → hybrid grid.
+# Phase B: opens CaptureSession hybrid library, not legacy in-app library.
 appId: com.buildtrack.app.local
 ---
 - assertVisible:
@@ -7,24 +7,13 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "photo-selection__add_more"
 - tapOn: "Choose from Library"
-# Accept either hybrid or legacy in-app library
-- runFlow:
-    when:
-      visible:
-        id: "capture-session__hybrid_library"
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: "capture-session__library_grid"
-          timeout: 15000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__screen"
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: "in-app-library__grid"
-          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
 - waitForAnimationToEnd:
     timeout: 1500

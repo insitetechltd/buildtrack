@@ -12,25 +12,11 @@ tags:
 - runFlow: _pick-first.yaml
 - runFlow: _reopen-library-from-selection.yaml
 - runFlow: _assert-prior-selected-1.yaml
-# Phase B: cancel library via back/cancel (dual-surface)
-- runFlow:
-    when:
-      visible:
-        id: "app-screen-header__back"
-    commands:
-      - tapOn:
-          id: "app-screen-header__back"
-      - waitForAnimationToEnd:
-          timeout: 1000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__cancel"
-    commands:
-      - tapOn:
-          id: "in-app-library__cancel"
-      - waitForAnimationToEnd:
-          timeout: 1000
+# Phase B: cancel hybrid library via back button
+- tapOn:
+    id: "app-screen-header__back"
+- waitForAnimationToEnd:
+    timeout: 1000
 # Retry if still on library (missed press / XCTest race)
 - runFlow:
     when:
@@ -39,15 +25,6 @@ tags:
     commands:
       - tapOn:
           id: "app-screen-header__back"
-      - waitForAnimationToEnd:
-          timeout: 1000
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__grid"
-    commands:
-      - tapOn:
-          id: "in-app-library__cancel"
       - waitForAnimationToEnd:
           timeout: 1000
 - assertVisible:

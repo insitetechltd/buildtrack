@@ -18,11 +18,10 @@ tags:
 - runFlow: ../create-task-photo/_pick-slot-2.yaml
 - assertVisible: ".*3 selected.*"
 - runFlow: ../create-task-photo/_accept-library.yaml
-# Phase B: Select Photos shows only newly added tiles; prior docks merge on form.
-# Assert 3 total after confirm (on form attachments).
-- runFlow: _confirm-selection.yaml
+# Phase B: Assert 3 tiles on selection screen (matches CT P05 pattern)
 - assertVisible:
-    id: "update-progress__photo_preview_tile_2"
-- takeScreenshot: "up-U04-three"
+    id: "photo-selection__tile_2"
+- takeScreenshot: "up-U04-three-tiles"
+- runFlow: _confirm-selection.yaml
 - runFlow: _submit-update.yaml
 - takeScreenshot: "up-U04-done"

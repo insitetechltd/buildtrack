@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -79,6 +79,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
   });
+  const cropModeRef = useRef(false);
 
   const {
     output,
@@ -127,6 +128,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
   /** Step 2: N-Photos / tile → open rotate·crop·draw·reset editor (not accept). */
   const openEditScreen = (index: number) => {
     if (index < 0 || index >= photos.length) return;
+    cropModeRef.current = false;
     setCropMode(false);
     setDrawMode(false);
     setDrawStrokes([]);
@@ -136,6 +138,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
 
   /** Leave editor only — does not accept the batch. */
   const closeEditScreen = () => {
+    cropModeRef.current = false;
     setCropMode(false);
     setDrawMode(false);
     setDrawStrokes([]);
@@ -201,17 +204,23 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 contentFit="contain"
               />
             )}
-            {cropMode ? (
+            {cropModeRef.current ? (
               <CropOverlay
                 uri={previewUri}
                 containerWidth={previewImageSize.width}
                 containerHeight={previewImageSize.height}
                 disabled={isEditingPhoto}
-                onCancel={() => setCropMode(false)}
-                onApply={(crop) => {
+                onCancel={() => {
+                  cropModeRef.current = false;
                   setCropMode(false);
+                }}
+                onApply={async (crop) => {
+                  cropModeRef.current = false;
+                  setCropMode(false);
+                  // Force synchronous unmount by yielding control
+                  await new Promise(resolve => setTimeout(resolve, 0));
                   if (enlargedPhotoIndex !== null) {
-                    handleApplyCrop(enlargedPhotoIndex, crop);
+                    await handleApplyCrop(enlargedPhotoIndex, crop);
                   }
                 }}
               />
@@ -308,11 +317,13 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 setDrawMode(false);
                 setDrawStrokes([]);
                 if (cropMode) {
+                  cropModeRef.current = false;
                   setCropMode(false);
                   return;
                 }
                 const ready = await prepareOverlaySource();
                 if (!ready) return;
+                cropModeRef.current = true;
                 setCropMode(true);
               }}
               onToggleDraw={async () => {
@@ -328,6 +339,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                   exitDrawMode();
                   return;
                 }
+                cropModeRef.current = false;
                 setCropMode(false);
                 const ready = await prepareOverlaySource();
                 if (!ready) return;
@@ -344,6 +356,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               }}
               onReset={() => {
                 exitDrawMode();
+                cropModeRef.current = false;
                 setCropMode(false);
                 handleResetEdits(enlargedPhotoIndex);
               }}

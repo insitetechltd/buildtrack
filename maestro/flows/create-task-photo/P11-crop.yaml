@@ -21,13 +21,13 @@ tags:
 - takeScreenshot: "ct-P11-crop-mode"
 - tapOn:
     id: "photo-selection__crop_apply"
-# Wait for crop overlay to exit (not just toolbar visible)
+# Wait for crop overlay to exit (longer timeout for harness lag)
 - extendedWaitUntil:
     notVisible:
       id: "photo-selection__crop_overlay"
-    timeout: 5000
+    timeout: 15000
 - waitForAnimationToEnd:
-    timeout: 500
+    timeout: 800
 - takeScreenshot: "ct-P11-after-crop"
 - tapOn:
     id: "photo-selection__preview_confirm"

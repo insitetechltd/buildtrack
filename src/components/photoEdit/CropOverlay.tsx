@@ -439,6 +439,34 @@ export function CropOverlay({
         }}
         pointerEvents="box-none"
       >
+        {/* Opaque Side Masks - Block ±60/±90 Labels at Rest - SPEC §3.3b */}
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: DIAL_RADIUS + 20,
+            flexDirection: "row",
+            justifyContent: "space-between",
+          }}
+          pointerEvents="none"
+        >
+          <View
+            style={{
+              width: 70,
+              height: "100%",
+              backgroundColor: "#c7dce3",
+            }}
+          />
+          <View
+            style={{
+              width: 70,
+              height: "100%",
+              backgroundColor: "#c7dce3",
+            }}
+          />
+        </View>
         {/* Rotated Image - Scaled to Fill Crop - Clipped to Crop Frame */}
         <View
           style={{

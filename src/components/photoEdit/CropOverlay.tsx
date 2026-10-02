@@ -55,6 +55,7 @@ export function CropOverlay({
   const [fineRotation, setFineRotation] = useState(0);
   const [loadError, setLoadError] = useState(false);
   const [originalAngle, setOriginalAngle] = useState(0);
+  const [isHiding, setIsHiding] = useState(false);
   
   const cropRef = useRef<Rect | null>(null);
   const cropStartRef = useRef<Rect | null>(null);
@@ -222,7 +223,12 @@ export function CropOverlay({
     );
     if (!mapped) return;
     const totalRotation = baseRotation + fineRotation;
-    onApply(mapped, Math.abs(totalRotation) > 0.1 ? totalRotation : undefined);
+    
+    setIsHiding(true);
+    
+    Promise.resolve().then(() => {
+      onApply(mapped, Math.abs(totalRotation) > 0.1 ? totalRotation : undefined);
+    });
   };
 
   const totalRotation = baseRotation + fineRotation;
@@ -239,6 +245,10 @@ export function CropOverlay({
     const scaleY = rotatedHeight / imageLayout.height;
     return Math.max(scaleX, scaleY);
   }, [imageLayout, crop, totalRotation]);
+
+  if (isHiding) {
+    return null;
+  }
 
   if (loadError) {
     return (

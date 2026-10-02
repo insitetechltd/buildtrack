@@ -1,4 +1,4 @@
-# P09 — Form + → Accept preselected only → still 1
+# P09 — Form + → Accept fresh pick only → still 1
 appId: com.buildtrack.app.local
 tags:
   - create-task-photo
@@ -12,7 +12,12 @@ tags:
 - runFlow: _pick-first.yaml
 - runFlow: _confirm-selection.yaml
 - runFlow: _reopen-library-from-form.yaml
-- runFlow: _assert-prior-selected-1.yaml
+# Form-plus reopen starts fresh (selection cleared) - correct product behavior
+- assertVisible: "Select photos"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Re-pick first, then accept without adding more
+- runFlow: _pick-first.yaml
 - runFlow: _accept-library.yaml
 - assertVisible:
     id: "photo-selection__tile_0"

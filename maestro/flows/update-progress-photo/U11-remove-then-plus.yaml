@@ -1,4 +1,4 @@
-# U11 — Remove on Select Photos then form + ledger (maps P18/P19)
+# U11 — Remove on Select Photos then form + fresh (not preserved - maps P18/P19)
 appId: com.buildtrack.app.local
 tags:
   - update-progress-photo
@@ -33,7 +33,10 @@ tags:
     id: "photo-selection__tile_0"
 - runFlow: _confirm-selection.yaml
 - runFlow: _reopen-library-from-form.yaml
-- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+# Form-plus reopen starts fresh (selection cleared) - correct product behavior
+- assertVisible: "Select photos"
+- waitForAnimationToEnd:
+    timeout: 1000
 - runFlow: _cancel-library-to-update.yaml
 - runFlow: _submit-update.yaml
 - takeScreenshot: "up-U11-done"

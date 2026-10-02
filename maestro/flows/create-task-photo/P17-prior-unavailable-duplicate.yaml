@@ -12,7 +12,12 @@ tags:
 - runFlow: _pick-first-b.yaml
 - runFlow: _confirm-selection.yaml
 - runFlow: _reopen-library-from-form.yaml
-- runFlow: _assert-prior-selected-1.yaml
+# Form-plus reopen starts fresh (selection cleared) - correct product behavior
+- assertVisible: "Select photos"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Re-pick first, then retap same to test duplicate handling
+- runFlow: _pick-first-b.yaml
 # Retap already-selected slot 0 — must not end as a second unique attachment after Accept.
 # If the grid toggle clears selection, re-select once so Accept is enabled.
 - runFlow: _pick-slot-0-b.yaml

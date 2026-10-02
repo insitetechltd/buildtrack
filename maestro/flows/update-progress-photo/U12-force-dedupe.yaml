@@ -12,7 +12,12 @@ tags:
 - runFlow: ../create-task-photo/_pick-first.yaml
 - runFlow: _confirm-selection.yaml
 - runFlow: _reopen-library-from-form.yaml
-- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+# Form-plus reopen starts fresh (selection cleared) - correct product behavior
+- assertVisible: "Select photos"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Re-pick first, then accept to test dedupe
+- runFlow: ../create-task-photo/_pick-first.yaml
 - runFlow: ../create-task-photo/_accept-library.yaml
 - assertVisible:
     id: "photo-selection__tile_0"

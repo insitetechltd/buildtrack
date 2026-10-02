@@ -1,4 +1,4 @@
-# U05 — Form + preserves prior (maps P07)
+# U05 — Form + fresh library (not preserved - maps P07)
 appId: com.buildtrack.app.local
 tags:
   - update-progress-photo
@@ -13,9 +13,12 @@ tags:
 - runFlow: _confirm-selection.yaml
 - takeScreenshot: "up-U05-form-one"
 - runFlow: _reopen-library-from-form.yaml
-- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+# Form-plus reopen starts fresh (selection cleared) - correct product behavior
+- assertVisible: "Select photos"
+- waitForAnimationToEnd:
+    timeout: 1000
 - runFlow: _cancel-library-to-update.yaml
 - assertVisible:
-    id: "update-progress__take_photo"
+    id: "report-reply-composer__photo"
 - runFlow: _submit-update.yaml
 - takeScreenshot: "up-U05-done"

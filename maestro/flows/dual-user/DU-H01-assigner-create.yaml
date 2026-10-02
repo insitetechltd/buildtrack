@@ -47,9 +47,9 @@ tags:
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: "du-h01-02c-john-library"
-# First Recents tile (3-col grid). Same slot convention as create-task-photo/_pick-slot-0.
+# First Recents tile - Phase B: tap upper-right corner checkbox (center opens fullscreen)
 - tapOn:
-    point: "17%, 28%"
+    point: "30%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - runFlow:
@@ -57,12 +57,12 @@ tags:
       notVisible: ".*[1-9] selected.*"
     commands:
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: ".*[1-9] selected.*"
     timeout: 10000
 - tapOn:
-    id: "capture-session__hybrid_accept"
+    id: "capture-session__hybrid_done"
 - extendedWaitUntil:
     visible:
       id: "photo-selection__confirm"

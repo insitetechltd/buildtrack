@@ -26,6 +26,17 @@ jest.mock("@/modules/mediaLibrary/LibraryAlbumPickerModal", () => ({
   LibraryAlbumPickerModal: () => null,
 }));
 
+// Phase B chrome uses Ionicons / overlays — stub so permission tests stay focused.
+jest.mock("@/modules/mediaLibrary/LibraryFilterModal", () => ({
+  LibraryFilterModal: () => null,
+}));
+jest.mock("@/modules/mediaLibrary/LibrarySelectedTray", () => ({
+  LibrarySelectedTray: () => null,
+}));
+jest.mock("@/modules/mediaLibrary/LibraryFullscreenViewer", () => ({
+  LibraryFullscreenViewer: () => null,
+}));
+
 jest.mock("@/modules/mediaLibrary/LibraryPhotoGrid", () => {
   const React = require("react");
   const { View, Pressable } = require("react-native");
@@ -198,7 +209,7 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     });
     fireEvent.press(await findByTestId("in-app-library__tile_asset-42"));
     await act(async () => {
-      fireEvent.press(await findByTestId("in-app-library__accept"));
+      fireEvent.press(await findByTestId("in-app-library__done"));
     });
 
     await waitFor(() => {
@@ -215,6 +226,17 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
         previewUri: "file:///tmp/preview-asset-42.jpg",
       }),
     ]);
+  });
+
+  it("Done is disabled when selection is empty (Phase B rename in-app-library__done)", async () => {
+    const onSave = jest.fn();
+    const { findByTestId } = render(
+      <InAppLibraryPickerScreen onCancel={jest.fn()} onSave={onSave} />,
+    );
+    const done = await findByTestId("in-app-library__done");
+    expect(done.props.accessibilityState?.disabled ?? done.props.disabled).toBeTruthy();
+    fireEvent.press(done);
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("header Cancel forwards to onCancel (form reopen dismiss path)", async () => {
@@ -264,7 +286,7 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     await findByTestId("in-app-library__grid");
 
     await act(async () => {
-      fireEvent.press(await findByTestId("in-app-library__accept"));
+      fireEvent.press(await findByTestId("in-app-library__done"));
     });
 
     await waitFor(() => {

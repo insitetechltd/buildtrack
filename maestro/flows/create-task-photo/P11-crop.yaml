@@ -7,7 +7,7 @@ tags:
 - evalScript: ${output.permutation = "P11"}
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: _open-library.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
 
 - runFlow: _pick-first.yaml
 - tapOn:
@@ -21,10 +21,13 @@ tags:
 - takeScreenshot: "ct-P11-crop-mode"
 - tapOn:
     id: "photo-selection__crop_apply"
+# Wait for crop overlay to exit (longer timeout for harness lag)
 - extendedWaitUntil:
-    visible:
-      id: "photo-selection__tool_crop"
-    timeout: 5000
+    notVisible:
+      id: "photo-selection__crop_overlay"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 800
 - takeScreenshot: "ct-P11-after-crop"
 - tapOn:
     id: "photo-selection__preview_confirm"

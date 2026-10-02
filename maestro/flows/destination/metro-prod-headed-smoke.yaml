@@ -109,11 +109,11 @@ tags:
 # Hybrid library review (session strip) → Accept → Select Photos annotate
 - extendedWaitUntil:
     visible:
-      id: "capture-session__hybrid_accept"
+      id: "capture-session__hybrid_done"
     timeout: 20000
 - takeScreenshot: "metro-prod-01c-hybrid"
 - tapOn:
-    id: "capture-session__hybrid_accept"
+    id: "capture-session__hybrid_done"
 # Accept pins camera draft → Select Photos (can be slow on first shutter pin).
 - extendedWaitUntil:
     visible:

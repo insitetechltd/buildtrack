@@ -26,10 +26,11 @@ tags:
     timeout: 8000
 - takeScreenshot: "ct-P03-picker-two-more"
 - runFlow: _accept-library.yaml
-# Assert 3 attachments total (1 from initial + 2 from reopen).
-- assertVisible:
-    id: "photo-selection__tile_2"
+# Phase B: Select Photos shows only newly added 2 tiles (0+1); prior attach merges on form.
+# Assert 3 total after confirm (on form attachments).
 - runFlow: _confirm-selection.yaml
+- assertVisible:
+    id: "create-task__attachment_preview_2"
 - takeScreenshot: "ct-P03-form-three"
 - runFlow: _submit-create-task.yaml
 - takeScreenshot: "ct-P03-done"

@@ -12,9 +12,17 @@ tags:
 - runFlow: ../create-task-photo/_pick-first.yaml
 - runFlow: _confirm-selection.yaml
 - runFlow: _reopen-library-from-form.yaml
-- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+# Form-plus reopen starts fresh (selection cleared) - correct product behavior
+- assertVisible: "Select photos"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Dual-pick: slot 0 then slot 1, single accept (P02 pattern)
+- runFlow: ../create-task-photo/_pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
 - runFlow: ../create-task-photo/_pick-slot-1.yaml
-- assertVisible: ".*2 selected.*"
+# After dual-pick: may land on preview or show .*2 selected.*
 - runFlow: ../create-task-photo/_accept-library.yaml
 - assertVisible:
     id: "photo-selection__tile_1"

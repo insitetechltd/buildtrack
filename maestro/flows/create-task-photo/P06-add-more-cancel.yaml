@@ -7,29 +7,49 @@ tags:
 - evalScript: ${output.permutation = "P06"}
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: _open-library.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
 
 - runFlow: _pick-first.yaml
 - runFlow: _reopen-library-from-selection.yaml
 - runFlow: _assert-prior-selected-1.yaml
-- tapOn:
-    id: "in-app-library__cancel"
-- waitForAnimationToEnd:
-    timeout: 1000
-# Cancel can miss under XCTest — retry / system back like P20
+# Phase B: cancel library via back/cancel (dual-surface)
 - runFlow:
     when:
       visible:
-        id: "in-app-library__screen"
+        id: "app-screen-header__back"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__cancel"
     commands:
       - tapOn:
           id: "in-app-library__cancel"
+      - waitForAnimationToEnd:
+          timeout: 1000
+# Retry if still on library (missed press / XCTest race)
 - runFlow:
     when:
       visible:
-        id: "in-app-library__screen"
+        id: "capture-session__library_grid"
     commands:
-      - back
+      - tapOn:
+          id: "app-screen-header__back"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__grid"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+      - waitForAnimationToEnd:
+          timeout: 1000
 - assertVisible:
     id: "photo-selection__tile_0"
 - assertVisible:

@@ -4,7 +4,10 @@ import { clearLibraryThumbnailMemoryCache } from "@/utils/libraryThumbnailCache"
 import {
   ALL_PHOTOS_ALBUM_ID,
   RECENTS_ALBUM_TITLE,
+  DEFAULT_LIBRARY_FILTER,
+  timeFilterDateRange,
   type LibraryAlbumChoice,
+  type LibraryFilterState,
 } from "./libraryAlbumConstants";
 import {
   peekRememberedAlbumId,
@@ -25,11 +28,17 @@ export function useLibraryAlbumPicker({
     () => peekRememberedAlbumId() || ALL_PHOTOS_ALBUM_ID,
   );
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
+  const [filterState, setFilterState] = useState<LibraryFilterState>(DEFAULT_LIBRARY_FILTER);
+
+  const dateRange = useMemo(() => timeFilterDateRange(filterState.timeFilter), [filterState.timeFilter]);
 
   const grid = useLibraryGridAssets({
     enabled,
     selectedAlbumId,
     consumeWarmPage,
+    sortOrder: filterState.sortOrder,
+    afterEpochSeconds: dateRange.afterEpochSeconds,
+    beforeEpochSeconds: dateRange.beforeEpochSeconds,
   });
 
   useEffect(() => {
@@ -61,7 +70,9 @@ export function useLibraryAlbumPicker({
     albumPickerOpen,
     setAlbumPickerOpen,
     onSelectAlbum,
+    filterState,
+    setFilterState,
   };
 }
 
-export type { LibraryAlbumChoice };
+export type { LibraryAlbumChoice, LibraryFilterState };

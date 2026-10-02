@@ -58,12 +58,18 @@ type UseLibraryGridAssetsOptions = {
   enabled: boolean;
   selectedAlbumId: string;
   consumeWarmPage?: boolean;
+  sortOrder?: "descending" | "ascending";
+  afterEpochSeconds?: number | null;
+  beforeEpochSeconds?: number | null;
 };
 
 export function useLibraryGridAssets({
   enabled,
   selectedAlbumId,
   consumeWarmPage = false,
+  sortOrder = "descending",
+  afterEpochSeconds = null,
+  beforeEpochSeconds = null,
 }: UseLibraryGridAssetsOptions) {
   const [albums, setAlbums] = useState<LibraryAlbumChoice[]>(
     () => peekRememberedAlbums() ?? DEFAULT_ALBUMS,
@@ -147,7 +153,7 @@ export function useLibraryGridAssets({
         after,
         album: albumId === ALL_PHOTOS_ALBUM_ID ? undefined : albumId,
         mediaType: MediaLibrary.MediaType.photo,
-        sortBy: LIBRARY_ASSET_SORT,
+        sortBy: [[MediaLibrary.SortBy.creationTime, sortOrder === "descending" ? false : true]],
       });
       if (
         pageRequestRef.current !== requestId ||
@@ -238,7 +244,8 @@ export function useLibraryGridAssets({
           indexOpeningRef.current = true;
           setLoadingPage(true);
           pageRequestRef.current += 1;
-          const limited = await awaitPhotokitLibraryIndex(albumArg);
+          const ascending = sortOrder === "ascending";
+          const limited = await awaitPhotokitLibraryIndex(albumArg, ascending, afterEpochSeconds, beforeEpochSeconds);
           if (cancelled || openGenRef.current !== openGen) {
             indexOpeningRef.current = false;
             setLoadingPage(false);
@@ -349,7 +356,8 @@ export function useLibraryGridAssets({
         indexOpeningRef.current = true;
         setLoadingPage(true);
         pageRequestRef.current += 1;
-        const opened = await awaitPhotokitLibraryIndex(albumArg);
+        const ascending = sortOrder === "ascending";
+        const opened = await awaitPhotokitLibraryIndex(albumArg, ascending, afterEpochSeconds, beforeEpochSeconds);
         if (cancelled || openGenRef.current !== openGen) {
           indexOpeningRef.current = false;
           setLoadingPage(false);
@@ -474,6 +482,7 @@ export function useLibraryGridAssets({
       }
       const albumArg =
         selectedAlbumId === ALL_PHOTOS_ALBUM_ID ? null : selectedAlbumId;
+      const ascending = sortOrder === "ascending";
       requestPhotokitLibraryExpandIfScrolled(
         albumArg,
         session.token,
@@ -490,9 +499,12 @@ export function useLibraryGridAssets({
           indexSessionRef.current = expanded;
           setIndexSession(expanded);
         },
+        ascending,
+        afterEpochSeconds,
+        beforeEpochSeconds,
       );
     },
-    [selectedAlbumId],
+    [selectedAlbumId, sortOrder, afterEpochSeconds, beforeEpochSeconds],
   );
 
   return {

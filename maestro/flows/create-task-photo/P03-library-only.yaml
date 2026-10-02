@@ -8,7 +8,7 @@ tags:
 - evalScript: ${output.permutation = "P03-library-only"}
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: _open-library-direct.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
 
 # Pick 3 photos from library slots 0, 1, 2
 - runFlow: _pick-slot-0.yaml

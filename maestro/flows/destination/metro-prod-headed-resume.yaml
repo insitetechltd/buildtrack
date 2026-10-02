@@ -5,29 +5,23 @@ tags:
   - metro-prod-headed
 ---
 - takeScreenshot: "metro-prod-resume-00-select-photos"
+# Phase B: hybrid library Done button
 - runFlow:
     when:
       visible:
-        id: "capture-session__hybrid_accept"
+        id: "capture-session__hybrid_done"
     commands:
       - tapOn:
-          id: "capture-session__hybrid_accept"
-- runFlow:
-    when:
-      visible:
-        id: "in-app-library__accept"
-    commands:
-      - tapOn:
-          id: "in-app-library__accept"
-# Fallback: blue checkmark top-right (accessibility)
-- runFlow:
-    when:
-      visible: "Select Photos"
-    commands:
-      - tapOn:
-          point: "92%,8%"
+          id: "capture-session__hybrid_done"
 - waitForAnimationToEnd:
     timeout: 2000
+# Wait for photo-selection confirm
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 15000
+- tapOn:
+    id: "photo-selection__confirm"
 - runFlow:
     when:
       visible:

@@ -1,9 +1,44 @@
 # Assert library shows exactly 3 prior selected (ledger invariant).
+# Phase B: may be hybrid CaptureSession OR legacy InAppLibrary.
+# Proof: order badges "1", "2", "3" on selected tiles (not title text for form reopen compat).
 appId: com.buildtrack.app.local
 ---
-- extendedWaitUntil:
-    visible:
-      id: "in-app-library__screen"
-    timeout: 8000
-- assertVisible: ".*3 selected.*"
+# Wait for either hybrid or legacy grid
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_grid"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "capture-session__library_grid"
+          timeout: 8000
+      - waitForAnimationToEnd:
+          timeout: 1000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__grid"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "in-app-library__grid"
+          timeout: 8000
+      # Legacy: title text works
+      - assertVisible: ".*3 selected.*"
+# Hybrid: order badges "1", "2", "3" prove three selected tiles
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_grid"
+    commands:
+      - assertVisible:
+          text: "1"
+          index: 0
+      - assertVisible:
+          text: "2"
+          index: 1
+      - assertVisible:
+          text: "3"
+          index: 2
 - takeScreenshot: "ct-photo-ledger-3-selected"

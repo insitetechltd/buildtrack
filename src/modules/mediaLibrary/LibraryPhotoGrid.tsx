@@ -91,6 +91,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   photokitToken,
   photokitIndex,
   onPress,
+  onCenterPress,
   testIdPrefix,
   theme,
   bottomGap = LIBRARY_GRID_GAP,
@@ -109,6 +110,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   bottomGap?: number;
   marginRight?: number;
   onPress: (assetId: string) => void;
+  onCenterPress?: (assetId: string, index: number) => void;
   testIdPrefix: string;
   theme: LibraryGridTileTheme;
 }) {
@@ -127,15 +129,35 @@ const LibraryGridTile = memo(function LibraryGridTile({
     );
   }
 
+  const handleBodyPress = useCallback(() => {
+    if (!realAssetId) {
+      return;
+    }
+    if (onCenterPress) {
+      // Body tap = open fullscreen
+      const index = photokitIndex ?? -1;
+      onCenterPress(assetId, index);
+    } else {
+      // Fallback to toggle when no fullscreen handler
+      onPress(assetId);
+    }
+  }, [realAssetId, assetId, photokitIndex, onPress, onCenterPress]);
+
+  const handleCheckboxPress = useCallback(
+    (event: any) => {
+      event.stopPropagation();
+      if (!realAssetId) {
+        return;
+      }
+      onPress(assetId);
+    },
+    [realAssetId, assetId, onPress],
+  );
+
   return (
     <Pressable
       testID={`${testIdPrefix}__tile_${assetId}`}
-      onPress={() => {
-        if (!realAssetId) {
-          return;
-        }
-        onPress(assetId);
-      }}
+      onPress={handleBodyPress}
       style={{
         width: tileSize,
         height: tileSize,
@@ -185,7 +207,44 @@ const LibraryGridTile = memo(function LibraryGridTile({
           ]}
         />
       )}
-      {selected && order != null ? (
+      {/* Corner checkbox - dedicated 44pt hit target */}
+      {realAssetId && onCenterPress ? (
+        <Pressable
+          testID={`${testIdPrefix}__checkbox_${assetId}`}
+          onPress={handleCheckboxPress}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 44,
+            height: 44,
+            alignItems: "flex-end",
+            justifyContent: "flex-start",
+            padding: 6,
+          }}
+        >
+          {selected && order != null ? (
+            <View
+              style={[
+                styles.checkboxBadge,
+                { backgroundColor: theme.badgeBackground },
+              ]}
+            >
+              <Text style={[styles.checkboxBadgeText, { color: theme.badgeText }]}>
+                {order}
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.checkboxEmpty,
+                { borderColor: "rgba(255,255,255,0.8)" },
+              ]}
+            />
+          )}
+        </Pressable>
+      ) : selected && order != null ? (
+        // Fallback badge when no fullscreen (legacy)
         <View
           testID={`${testIdPrefix}__order_badge_${assetId}`}
           style={[styles.orderBadge, { backgroundColor: theme.badgeBackground }]}
@@ -231,6 +290,7 @@ export type LibraryPhotoGridProps = {
   selectedIds: Set<string>;
   selectionOrderByKey: Map<string, number>;
   onPressAsset: (assetId: string) => void;
+  onCenterPressAsset?: (assetId: string, index: number) => void;
   testIdPrefix: string;
   theme?: Partial<LibraryGridTileTheme>;
   contentPaddingBottom?: number;
@@ -253,6 +313,7 @@ export function LibraryPhotoGrid({
   selectedIds,
   selectionOrderByKey,
   onPressAsset,
+  onCenterPressAsset,
   testIdPrefix,
   theme: themeOverride,
   contentPaddingBottom = 24,
@@ -611,6 +672,7 @@ export function LibraryPhotoGrid({
             photokitToken={indexToken}
             photokitIndex={index}
             onPress={onPressAsset}
+            onCenterPress={onCenterPressAsset}
             testIdPrefix={testIdPrefix}
             theme={theme}
             bottomGap={0}
@@ -635,6 +697,7 @@ export function LibraryPhotoGrid({
       indexCount,
       indexToken,
       onPressAsset,
+      onCenterPressAsset,
       paint.shouldDecodeIndex,
       pixelSize,
       resolveIndexId,
@@ -670,7 +733,9 @@ export function LibraryPhotoGrid({
           order={selectionOrderByKey.get(item.asset.id)}
           bindImage={paint.shouldDecodeIndex(item.index)}
           useNativeThumb={useNativeThumbs}
+          photokitIndex={item.index}
           onPress={onPressAsset}
+          onCenterPress={onCenterPressAsset}
           testIdPrefix={testIdPrefix}
           theme={theme}
         />
@@ -678,6 +743,7 @@ export function LibraryPhotoGrid({
     },
     [
       onPressAsset,
+      onCenterPressAsset,
       paint.shouldDecodeIndex,
       pixelSize,
       selectedIds,
@@ -818,5 +884,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
+  },
+  checkboxBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+  checkboxEmpty: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
 });

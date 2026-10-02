@@ -1,0 +1,148 @@
+# RETRY — Three photos with explicit selection and waits
+# Goal: Prove whether 2-of-3 was Maestro flake or app bug
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - retry
+---
+# Boot and ensure project
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+
+# Navigate to Camera tab
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 10000
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__camera"
+    timeout: 15000
+
+# Open library
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_peek"
+    commands:
+      - tapOn:
+          id: "capture-session__library_peek"
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Take screenshot of initial library state
+- takeScreenshot: "retry-library-initial"
+
+# Select photo slot 0 - Phase B: tap upper-right corner checkbox (center opens fullscreen)
+- tapOn:
+    point: "30%, 18%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- runFlow:
+    when:
+      notVisible: ".*[1-9] selected.*"
+    commands:
+      # Fallback: retry corner tap
+      - tapOn:
+          point: "29%, 20%"
+- extendedWaitUntil:
+    visible: "1 selected"
+    timeout: 8000
+- takeScreenshot: "retry-after-slot-0"
+
+# Select photo slot 1 - Phase B: tap corner checkbox of middle tile
+- tapOn:
+    point: "63%, 18%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- extendedWaitUntil:
+    visible: "2 selected"
+    timeout: 8000
+- takeScreenshot: "retry-after-slot-1"
+
+# Select photo slot 2 - Phase B: tap corner checkbox of right tile
+- tapOn:
+    point: "96%, 18%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- extendedWaitUntil:
+    visible: "3 selected"
+    timeout: 8000
+- takeScreenshot: "retry-after-slot-2-should-be-3"
+
+# Accept selection
+- tapOn:
+    id: "capture-session__hybrid_done"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 15000
+
+# Assert all 3 tiles are present
+- assertVisible:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__tile_1"
+- assertVisible:
+    id: "photo-selection__tile_2"
+- takeScreenshot: "retry-selection-screen-3-tiles"
+
+# Confirm selection
+- tapOn:
+    id: "photo-selection__confirm"
+
+# Route to Create Task
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+- takeScreenshot: "retry-form-with-3-photos"
+
+# Submit task
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "retry-done-task-list"

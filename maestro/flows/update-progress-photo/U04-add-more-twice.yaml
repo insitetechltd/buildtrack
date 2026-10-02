@@ -10,17 +10,18 @@ tags:
 - runFlow: _seed-task-open-update.yaml
 - runFlow: _open-library.yaml
 - runFlow: ../create-task-photo/_pick-first.yaml
-- runFlow: ../create-task-photo/_reopen-library-from-selection.yaml
+- runFlow: _reopen-library-from-selection.yaml
 - runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
 - runFlow: ../create-task-photo/_pick-second-keep-first.yaml
-- runFlow: ../create-task-photo/_reopen-library-from-selection.yaml
+- runFlow: _reopen-library-from-selection.yaml
 - runFlow: ../create-task-photo/_assert-prior-selected-2.yaml
 - runFlow: ../create-task-photo/_pick-slot-2.yaml
 - assertVisible: ".*3 selected.*"
 - runFlow: ../create-task-photo/_accept-library.yaml
+# Phase B: Assert 3 tiles on selection screen (matches CT P05 pattern)
 - assertVisible:
     id: "photo-selection__tile_2"
-- takeScreenshot: "up-U04-three"
+- takeScreenshot: "up-U04-three-tiles"
 - runFlow: _confirm-selection.yaml
 - runFlow: _submit-update.yaml
 - takeScreenshot: "up-U04-done"

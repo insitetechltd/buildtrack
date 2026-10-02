@@ -14,7 +14,13 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
+import { LibraryFilterModal } from "@/modules/mediaLibrary/LibraryFilterModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
+import {
+  LibraryFullscreenViewer,
+  type AssetAnnotation,
+} from "@/modules/mediaLibrary/LibraryFullscreenViewer";
+import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
 import {
   LIBRARY_FILL_UNTIL_COUNT,
@@ -22,7 +28,10 @@ import {
   LIBRARY_GRID_GAP,
   libraryGridColumns,
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
-import { resumePhotokitLibraryAfterAccept } from "@/modules/mediaLibrary/PhotokitThumbView";
+import {
+  resumePhotokitLibraryAfterAccept,
+  photokitIdAt,
+} from "@/modules/mediaLibrary/PhotokitThumbView";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { markLibraryPickerMetadata } from "@/utils/libraryPickerTiming";
 import {
@@ -53,8 +62,14 @@ export function HybridLibraryPickerScreen() {
   );
 
   const [sessionExpanded, setSessionExpanded] = useState(true);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
+  const [annotations, setAnnotations] = useState<Map<string, AssetAnnotation>>(
+    new Map(),
+  );
 
   const columns = useMemo(() => libraryGridColumns(width), [width]);
   const tileSize = useMemo(
@@ -161,6 +176,69 @@ export function HybridLibraryPickerScreen() {
     [addOrSelectLibraryPhoto, albumPicker.assetsByIdRef, toggleSelected],
   );
 
+  const onCenterPressLibraryAsset = useCallback(
+    (assetId: string, index: number) => {
+      setViewerInitialIndex(index);
+      setViewerOpen(true);
+    },
+    [],
+  );
+
+  const handleTrayThumbPress = useCallback(
+    (assetId: string) => {
+      const asset = albumPicker.assetsByIdRef.current.get(assetId);
+      if (!asset) return;
+
+      const index = albumPicker.indexSession
+        ? Array.from({ length: albumPicker.indexSession.count }, (_, i) => {
+            const id = photokitIdAt(albumPicker.indexSession!.token, i);
+            return id;
+          }).indexOf(assetId)
+        : albumPicker.assets.findIndex((a) => a.id === assetId);
+
+      if (index >= 0) {
+        setViewerInitialIndex(index);
+        setViewerOpen(true);
+      }
+    },
+    [albumPicker.assets, albumPicker.assetsByIdRef, albumPicker.indexSession],
+  );
+
+  const handleDeselectAll = useCallback(() => {
+    const store = useCaptureSessionStore.getState();
+    store.photos.forEach((photo) => {
+      if (photo.selected) {
+        toggleSelected(photo.id);
+      }
+    });
+    setAnnotations(new Map());
+  }, [toggleSelected]);
+
+  const handleUpdateAnnotation = useCallback(
+    (assetId: string, annotation: AssetAnnotation) => {
+      setAnnotations((prev) => {
+        const next = new Map(prev);
+        next.set(assetId, annotation);
+        return next;
+      });
+
+      const store = useCaptureSessionStore.getState();
+      const photo = store.photos.find((p) => p.mediaLibraryAssetId === assetId);
+      if (photo && annotation.annotatedUri) {
+        store.updatePhotoUri(photo.id, annotation.annotatedUri);
+      }
+    },
+    [],
+  );
+
+  const handleCommitEdit = useCallback(
+    async (assetId: string, editedUri: string): Promise<void> => {
+      // Viewer already baked the edit, just need to record it
+      // The annotation map is already updated via handleUpdateAnnotation
+    },
+    [],
+  );
+
   const handleAccept = useCallback(async () => {
     if (acceptingRef.current) {
       return;
@@ -253,14 +331,45 @@ export function HybridLibraryPickerScreen() {
   ) : null;
 
   const albumRow = (
-    <Pressable
-      testID="capture-session__album_picker"
-      onPress={() => albumPicker.setAlbumPickerOpen(true)}
-      style={styles.albumRow}
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+      }}
     >
-      <Text style={styles.libraryLabel}>{albumPicker.selectedAlbumTitle}</Text>
-      <Ionicons name="chevron-down" size={18} color="#666" />
-    </Pressable>
+      <Pressable
+        testID="capture-session__album_picker"
+        onPress={() => albumPicker.setAlbumPickerOpen(true)}
+        style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+      >
+        <Text style={styles.libraryLabel}>{albumPicker.selectedAlbumTitle}</Text>
+        <Ionicons name="chevron-down" size={18} color="#666" />
+      </Pressable>
+      
+      <Pressable
+        testID="capture-session__filter_button"
+        onPress={() => setFilterModalOpen(true)}
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 8,
+          backgroundColor: "#f3f4f6",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Filter photos"
+      >
+        <Ionicons name="funnel-outline" size={16} color="#374151" />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151" }}>
+          Filter
+        </Text>
+      </Pressable>
+    </View>
   );
 
   if (albumPicker.permission === "denied") {
@@ -307,7 +416,7 @@ export function HybridLibraryPickerScreen() {
           {selectedCount > 0 ? `${selectedCount} selected` : "Select photos"}
         </Text>
         <Pressable
-          testID="capture-session__hybrid_accept"
+          testID="capture-session__hybrid_done"
           onPress={handleAccept}
           disabled={accepting}
           style={styles.headerSide}
@@ -331,7 +440,8 @@ export function HybridLibraryPickerScreen() {
           selectedIds={selectedLibraryIds}
           selectionOrderByKey={selectionOrderByKey}
           onPressAsset={onPressLibraryAsset}
-          contentPaddingBottom={insets.bottom + 24}
+          onCenterPressAsset={onCenterPressLibraryAsset}
+          contentPaddingBottom={insets.bottom + 120}
           placeholderCount={
             albumPicker.indexSession ? 0 : skeletonTileCount
           }
@@ -343,6 +453,46 @@ export function HybridLibraryPickerScreen() {
             </View>
           }
         />
+
+      <LibrarySelectedTray
+        selectedAssets={(() => {
+          const entries = [...selectionOrderByKey.entries()]
+            .sort((a, b) => a[1] - b[1])
+            .map(([assetId, order]) => {
+              const photo = photos.find((p) => p.mediaLibraryAssetId === assetId);
+              if (!photo) {
+                return null;
+              }
+              return {
+                assetId,
+                uri: photo.uri,
+                order,
+              };
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null);
+          return entries;
+        })()}
+        onRemove={onPressLibraryAsset}
+        onDeselectAll={handleDeselectAll}
+        onPressThumb={handleTrayThumbPress}
+        testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
+
+      <LibraryFullscreenViewer
+        visible={viewerOpen}
+        initialIndex={viewerInitialIndex}
+        assets={albumPicker.assets}
+        indexSession={albumPicker.indexSession}
+        selectedIds={selectedLibraryIds}
+        annotations={annotations}
+        onToggleSelect={onPressLibraryAsset}
+        onClose={() => setViewerOpen(false)}
+        onUpdateAnnotation={handleUpdateAnnotation}
+        onCommitEdit={handleCommitEdit}
+        testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
 
       {(albumPicker.assets.length > 0 || albumPicker.indexSession != null) && (
         <View
@@ -361,6 +511,17 @@ export function HybridLibraryPickerScreen() {
         selectedAlbumId={albumPicker.selectedAlbumId}
         onClose={() => albumPicker.setAlbumPickerOpen(false)}
         onSelectAlbum={albumPicker.onSelectAlbum}
+        testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
+
+      <LibraryFilterModal
+        visible={filterModalOpen}
+        filterState={albumPicker.filterState}
+        onClose={() => setFilterModalOpen(false)}
+        onApply={(newFilter) => {
+          albumPicker.setFilterState(newFilter);
+        }}
         testIdPrefix="capture-session"
         accentColor="#08576E"
       />

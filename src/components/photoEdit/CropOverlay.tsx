@@ -317,7 +317,107 @@ export function CropOverlay({
         </Pressable>
       </View>
 
-      {/* Photo Stage - Full Source with Crop Frame */}
+      {/* Fine Rotate Dial - Positioned Behind Photo Stage for Natural Masking */}
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: TOP_BAR_HEIGHT + photoHeight - DIAL_RADIUS - 164,
+          height: DIAL_RADIUS * 2,
+        }}
+      >
+        <View
+          {...rotationDialResponder.panHandlers}
+          testID="photo-selection__rotation_dial"
+          style={{
+            width: containerWidth,
+            height: DIAL_RADIUS * 2,
+            position: "relative",
+          }}
+        >
+          {/* Arc + Labels Container - Translates Horizontally */}
+          <View
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: 0,
+              width: containerWidth * 3,
+              height: DIAL_RADIUS * 2,
+              transform: [
+                { translateX: -(containerWidth * 3) / 2 },
+                { translateX: -(fineRotation / MAX_ROTATION) * (containerWidth / 2) },
+              ],
+            }}
+            pointerEvents="none"
+          >
+            {/* Circle center is at (width/2, DIAL_RADIUS) - above photo bottom edge at rest */}
+            {/* Generate dots every 2° from -90° to +90° (91 dots total) */}
+            {Array.from({ length: 91 }, (_, i) => {
+              const angleDeg = -MAX_ROTATION + i * 2;
+              const angleRad = (angleDeg * Math.PI) / 180;
+              const cx = (containerWidth * 3) / 2;
+              const cy = DIAL_RADIUS;
+              const x = cx + DIAL_RADIUS * Math.sin(angleRad);
+              const y = cy + DIAL_RADIUS * Math.cos(angleRad);
+              const isMajor = angleDeg % 30 === 0;
+              const dotSize = isMajor ? 3.9 : 2.8;
+
+              return (
+                <View
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    left: x - dotSize / 2,
+                    top: y - dotSize / 2,
+                    width: dotSize,
+                    height: dotSize,
+                    borderRadius: dotSize / 2,
+                    backgroundColor: "#fff",
+                  }}
+                />
+              );
+            })}
+
+            {/* Labels -90 -60 -30 0 30 60 90 above arc */}
+            {[-90, -60, -30, 0, 30, 60, 90].map((angleDeg) => {
+              const angleRad = (angleDeg * Math.PI) / 180;
+              const cx = (containerWidth * 3) / 2;
+              const cy = DIAL_RADIUS;
+              const labelX = cx + DIAL_RADIUS * Math.sin(angleRad);
+              const labelY = cy + DIAL_RADIUS * Math.cos(angleRad) - 16;
+              const isZero = angleDeg === 0;
+
+              return (
+                <Pressable
+                  key={angleDeg}
+                  onPress={isZero ? handleResetToOriginal : undefined}
+                  style={{
+                    position: "absolute",
+                    left: labelX - 20,
+                    top: labelY,
+                    width: 40,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontSize: 11,
+                      fontWeight: isZero ? "600" : "500",
+                      textAlign: "center",
+                    }}
+                  >
+                    {angleDeg}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      {/* Photo Stage - Full Source with Crop Frame - Layers ABOVE dial for masking */}
       <View
         style={{
           position: "absolute",
@@ -487,7 +587,7 @@ export function CropOverlay({
         </View>
       </View>
 
-      {/* Bottom Bar - Black Chrome with Overflow Hidden (Clips Dial) */}
+      {/* Bottom Bar - Black Chrome */}
       <View
         style={{
           position: "absolute",
@@ -496,110 +596,8 @@ export function CropOverlay({
           bottom: 0,
           height: BOTTOM_BAR_HEIGHT,
           backgroundColor: "#000",
-          overflow: "hidden",
         }}
       >
-        {/* Fine Rotate Dial - Small Compass R≈200 Bowl Arc (Clipped at Rest) */}
-        <View
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: -DIAL_RADIUS + 18,
-            height: DIAL_RADIUS * 2,
-            overflow: "visible",
-          }}
-        >
-          <View
-            {...rotationDialResponder.panHandlers}
-            testID="photo-selection__rotation_dial"
-            style={{
-              width: containerWidth,
-              height: DIAL_RADIUS * 2,
-              position: "relative",
-            }}
-          >
-            {/* Arc + Labels Container - Translates Horizontally */}
-            <View
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: 0,
-                width: containerWidth * 3,
-                height: DIAL_RADIUS * 2,
-                transform: [
-                  { translateX: -(containerWidth * 3) / 2 },
-                  { translateX: -(fineRotation / MAX_ROTATION) * (containerWidth / 2) },
-                ],
-              }}
-              pointerEvents="none"
-            >
-              {/* Circle center is at (width/2, DIAL_RADIUS) - above the visible bar window */}
-              {/* Generate dots every 2° from -90° to +90° (91 dots total) */}
-              {Array.from({ length: 91 }, (_, i) => {
-                const angleDeg = -MAX_ROTATION + i * 2;
-                const angleRad = (angleDeg * Math.PI) / 180;
-                const cx = (containerWidth * 3) / 2;
-                const cy = DIAL_RADIUS;
-                const x = cx + DIAL_RADIUS * Math.sin(angleRad);
-                const y = cy + DIAL_RADIUS * Math.cos(angleRad);
-                const isMajor = angleDeg % 30 === 0;
-                const dotSize = isMajor ? 3.9 : 2.8;
-
-                return (
-                  <View
-                    key={i}
-                    style={{
-                      position: "absolute",
-                      left: x - dotSize / 2,
-                      top: y - dotSize / 2,
-                      width: dotSize,
-                      height: dotSize,
-                      borderRadius: dotSize / 2,
-                      backgroundColor: "#fff",
-                    }}
-                  />
-                );
-              })}
-
-              {/* Labels -90 -60 -30 0 30 60 90 above arc */}
-              {[-90, -60, -30, 0, 30, 60, 90].map((angleDeg) => {
-                const angleRad = (angleDeg * Math.PI) / 180;
-                const cx = (containerWidth * 3) / 2;
-                const cy = DIAL_RADIUS;
-                const labelX = cx + DIAL_RADIUS * Math.sin(angleRad);
-                const labelY = cy + DIAL_RADIUS * Math.cos(angleRad) - 16;
-                const isZero = angleDeg === 0;
-
-                return (
-                  <Pressable
-                    key={angleDeg}
-                    onPress={isZero ? handleResetToOriginal : undefined}
-                    style={{
-                      position: "absolute",
-                      left: labelX - 20,
-                      top: labelY,
-                      width: 40,
-                      paddingVertical: 4,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#fff",
-                        fontSize: 11,
-                        fontWeight: isZero ? "600" : "500",
-                        textAlign: "center",
-                      }}
-                    >
-                      {angleDeg}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-
         {/* Fixed Pointer - White Upward Triangle at Bottom Center */}
         <View
           style={{

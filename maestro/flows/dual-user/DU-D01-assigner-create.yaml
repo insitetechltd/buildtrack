@@ -46,8 +46,9 @@ tags:
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: "du-d01-02c-john-library"
+# Phase B: tap upper-right corner checkbox to select (center opens fullscreen)
 - tapOn:
-    point: "17%, 28%"
+    point: "30%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - runFlow:
@@ -55,19 +56,14 @@ tags:
       notVisible: ".*[1-9] selected.*"
     commands:
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: ".*[1-9] selected.*"
     timeout: 10000
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 25000
-- takeScreenshot: "du-d01-02d-john-select-photos"
-- tapOn:
-    id: "photo-selection__confirm"
+# Capture-first: skip Select Photos → destination chooser
+- takeScreenshot: "du-d01-02d-john-destination-chooser"
 - runFlow:
     when:
       visible: ".*Assign.*"

@@ -463,9 +463,10 @@ export function HybridLibraryPickerScreen() {
               if (!photo) {
                 return null;
               }
+              const editedUri = annotations.get(assetId)?.annotatedUri;
               return {
                 assetId,
-                uri: photo.uri,
+                uri: editedUri || photo.uri,
                 order,
               };
             })

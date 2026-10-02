@@ -1,4 +1,6 @@
-# Track B pick-first with retries if first tap misses (percent-grid flake).
+# Track B pick-first with retries if first tap misses.
+# Phase B: _pick-slot-0-b uses corner tap; fallbacks also use corner area.
+# Capture-first: accept lands on Create form (or Select Photos for add-photos).
 appId: com.buildtrack.app.local
 ---
 - runFlow: _pick-slot-0-b.yaml
@@ -6,23 +8,38 @@ appId: com.buildtrack.app.local
     when:
       notVisible: ".*1 selected.*"
     commands:
+      # Fallback: retry corner tap slightly adjusted
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - runFlow:
     when:
       notVisible: ".*1 selected.*"
     commands:
       - tapOn:
-          point: "17%, 24%"
+          point: "31%, 16%"
 - runFlow:
     when:
       notVisible: ".*1 selected.*"
     commands:
       - tapOn:
-          point: "17%, 18%"
+          point: "28%, 19%"
 - extendedWaitUntil:
     visible: ".*1 selected.*"
     timeout: 8000
 - runFlow: _accept-library.yaml
-- assertVisible:
-    id: "photo-selection__tile_0"
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__tile_0"
+    commands:
+      - assertVisible:
+          id: "photo-selection__tile_0"
+- runFlow:
+    when:
+      notVisible:
+        id: "photo-selection__tile_0"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "create-task__continuous_form"
+          timeout: 25000

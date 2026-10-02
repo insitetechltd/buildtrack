@@ -7,7 +7,7 @@ tags:
 - evalScript: ${output.permutation = "P17"}
 - runFlow: _boot-b.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: _open-library.yaml
+- runFlow: _open-hybrid-library-no-select.yaml
 
 - runFlow: _pick-first-b.yaml
 - runFlow: _confirm-selection.yaml
@@ -20,8 +20,9 @@ tags:
     when:
       notVisible: ".*1 selected.*"
     commands:
+      # Phase B: retry corner tap
       - tapOn:
-          point: "17%, 20%"
+          point: "29%, 20%"
 - assertVisible: ".*1 selected.*"
 - takeScreenshot: "ct-P17-after-retap"
 - runFlow: _accept-library.yaml

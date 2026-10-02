@@ -114,14 +114,11 @@ tags:
 - takeScreenshot: "metro-prod-01c-hybrid"
 - tapOn:
     id: "capture-session__hybrid_done"
-# Accept pins camera draft → Select Photos (can be slow on first shutter pin).
+# Capture-first: skip Select Photos → Report / Update / Assign (pin can be slow).
 - extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
+    visible: ".*Assign.*"
     timeout: 90000
-- takeScreenshot: "metro-prod-01d-select-photos"
-- tapOn:
-    id: "photo-selection__confirm"
+- takeScreenshot: "metro-prod-01d-destination-chooser"
 # Native Alert chooser (Report / Update / Assign) — no RN testID
 - runFlow:
     when:

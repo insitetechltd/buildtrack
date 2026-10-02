@@ -217,6 +217,8 @@ export function promptCaptureFirstSource(
 
 /**
  * After hybrid Accept: hand selected drafts into Select Photos (annotation) on Camera stack.
+ * @deprecated Prefer resolveCaptureFirstLibrarySaveAction + promptCaptureFirstDestination
+ * for camera-tab capture-first (skip Select Photos until destination is chosen).
  */
 export function navigateCaptureFirstPhotoSelection(
   navigation: CaptureFirstNavigation,
@@ -226,6 +228,40 @@ export function navigateCaptureFirstPhotoSelection(
     screen: "PhotoSelection",
     params: buildCaptureFirstPhotoSelectionParams(photos),
   });
+}
+
+/**
+ * InAppLibraryPicker onSave routing (AppNavigator wrapper contract).
+ * Capture-first with photos → destination chooser (skip Select Photos).
+ */
+export type CaptureFirstLibrarySaveAction =
+  | "exit"
+  | "destination"
+  | "photoSelection";
+
+export function resolveCaptureFirstLibrarySaveAction(opts: {
+  captureFirstFlow: boolean;
+  photoCount: number;
+}): CaptureFirstLibrarySaveAction {
+  if (!opts.captureFirstFlow) {
+    return "photoSelection";
+  }
+  if (opts.photoCount <= 0) {
+    return "exit";
+  }
+  return "destination";
+}
+
+/**
+ * CaptureSessionFlow onComplete routing (AppNavigator wrapper contract).
+ * Camera-tab capture-first → destination; Add Photos entry → Select Photos.
+ */
+export type CaptureSessionCompleteAction = "destination" | "photoSelection";
+
+export function resolveCaptureSessionCompleteAction(opts: {
+  isAddPhotos: boolean;
+}): CaptureSessionCompleteAction {
+  return opts.isAddPhotos ? "photoSelection" : "destination";
 }
 
 /**

@@ -61,25 +61,26 @@ tags:
 # Take screenshot of initial library state
 - takeScreenshot: "retry-library-initial"
 
-# Select photo slot 0 (17%, 28%)
+# Select photo slot 0 - Phase B: tap upper-right corner checkbox (center opens fullscreen)
 - tapOn:
-    point: "17%, 28%"
+    point: "30%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - runFlow:
     when:
       notVisible: ".*[1-9] selected.*"
     commands:
+      # Fallback: retry corner tap
       - tapOn:
-          point: "17%, 28%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: "1 selected"
     timeout: 8000
 - takeScreenshot: "retry-after-slot-0"
 
-# Select photo slot 1 (50%, 28%)
+# Select photo slot 1 - Phase B: tap corner checkbox of middle tile
 - tapOn:
-    point: "50%, 28%"
+    point: "63%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - extendedWaitUntil:
@@ -87,9 +88,9 @@ tags:
     timeout: 8000
 - takeScreenshot: "retry-after-slot-1"
 
-# Select photo slot 2 (83%, 28%)
+# Select photo slot 2 - Phase B: tap corner checkbox of right tile
 - tapOn:
-    point: "83%, 28%"
+    point: "96%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - extendedWaitUntil:
@@ -97,28 +98,10 @@ tags:
     timeout: 8000
 - takeScreenshot: "retry-after-slot-2-should-be-3"
 
-# Accept selection
+# Accept selection → capture-first destination (skip Select Photos)
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 15000
-
-# Assert all 3 tiles are present
-- assertVisible:
-    id: "photo-selection__tile_0"
-- assertVisible:
-    id: "photo-selection__tile_1"
-- assertVisible:
-    id: "photo-selection__tile_2"
-- takeScreenshot: "retry-selection-screen-3-tiles"
-
-# Confirm selection
-- tapOn:
-    id: "photo-selection__confirm"
-
-# Route to Create Task
+- takeScreenshot: "retry-destination-chooser-after-3"
 - runFlow:
     when:
       visible: ".*Assign.*"

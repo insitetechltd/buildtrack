@@ -1,12 +1,36 @@
-# Confirm Select Photos → back on Create Task form with attachments.
+# After library Done: land on Create Task form with attachments.
+# Capture-first skips Select Photos (chooser already handled in _accept-library).
+# Add-photos / legacy path may still show photo-selection__confirm.
 appId: com.buildtrack.app.local
 ---
-- tapOn:
-    id: "photo-selection__confirm"
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__confirm"
+    commands:
+      - tapOn:
+          id: "photo-selection__confirm"
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
 - extendedWaitUntil:
     visible:
       id: "create-task__continuous_form"
-    timeout: 8000
+    timeout: 25000
 - assertVisible:
     id: "create-task__attachments_section"
 - runFlow: _assert-no-logbox.yaml

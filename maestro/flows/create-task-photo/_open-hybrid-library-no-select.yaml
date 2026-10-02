@@ -1,6 +1,8 @@
-# Open library picker directly from Dashboard (no capture-first).
-# Phase B: Dashboard → Camera FAB → CaptureSession → hybrid library grid.
-# Leaves caller on hybrid library grid ready to select photos.
+# Open hybrid library picker without selecting photos.
+# Leaves caller in capture-session__hybrid_library ready to select.
+# Camera FAB → CaptureSession → library peek → hybrid library grid.
+# Photos fixtures: scripts/maestro/ensure-create-task-photo-media.sh only.
+# Phase B: caller must tap CORNER checkbox to select (center opens fullscreen).
 appId: com.buildtrack.app.local
 ---
 - runFlow:
@@ -30,15 +32,6 @@ appId: com.buildtrack.app.local
     visible:
       id: "capture-session__camera"
     timeout: 20000
-# Tap fallback "Open Library" link to open hybrid library
-- runFlow:
-    when:
-      visible:
-        id: "capture-session__open_library_fallback"
-    commands:
-      - tapOn:
-          id: "capture-session__open_library_fallback"
-# If peek is shown instead of fallback, tap it
 - runFlow:
     when:
       visible:
@@ -46,7 +39,13 @@ appId: com.buildtrack.app.local
     commands:
       - tapOn:
           id: "capture-session__library_peek"
-# Wait for hybrid library screen
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__open_library_fallback"
+    commands:
+      - tapOn:
+          id: "capture-session__open_library_fallback"
 - extendedWaitUntil:
     visible:
       id: "capture-session__hybrid_library"

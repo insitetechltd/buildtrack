@@ -182,7 +182,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               }
             }}
           >
-            {previewUri.startsWith("file://") ? (
+            {!cropMode && previewUri.startsWith("file://") ? (
               <ExpoImage
                 source={{ uri: previewUri }}
                 cachePolicy="memory-disk"
@@ -193,14 +193,15 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                   height: previewImageSize.height,
                 }}
               />
-            ) : (
+            ) : null}
+            {!cropMode && !previewUri.startsWith("file://") ? (
               <SelectedPhotoThumb
                 photo={enlargedPhoto}
                 width={previewImageSize.width}
                 height={previewImageSize.height}
                 contentFit="contain"
               />
-            )}
+            ) : null}
             {cropMode ? (
               <CropOverlay
                 uri={previewUri}
@@ -208,8 +209,8 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 containerHeight={previewImageSize.height}
                 disabled={isEditingPhoto}
                 onCancel={() => setCropMode(false)}
-                onApply={async (crop) => {
-                  await handleApplyCrop(enlargedPhotoIndex, crop);
+                onApply={async (crop, rotation) => {
+                  await handleApplyCrop(enlargedPhotoIndex, crop, rotation);
                   setCropMode(false);
                 }}
               />

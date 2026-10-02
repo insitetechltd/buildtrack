@@ -55,27 +55,24 @@ appId: com.buildtrack.app.local
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 1500
+# Phase B: tap upper-right corner checkbox to select (center tap opens fullscreen)
 - tapOn:
-    point: "17%, 28%"
+    point: "30%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - runFlow:
     when:
       notVisible: ".*[1-9] selected.*"
     commands:
+      # Fallback: retry corner tap slightly adjusted
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: ".*[1-9] selected.*"
     timeout: 10000
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 25000
-- tapOn:
-    id: "photo-selection__confirm"
+# Capture-first: skip Select Photos → Report / Update / Assign / Cancel
 - runFlow:
     when:
       visible: ".*Assign.*"

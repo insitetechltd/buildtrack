@@ -94,6 +94,35 @@ export function getContainedImageLayout(
   };
 }
 
+/**
+ * Contain-fit the image inside a centered pad of the container.
+ * Default padScale 0.85 (= 15% margin) so a full-size crop rect still leaves
+ * finger room outside the image to drag corner handles.
+ */
+export function getEditCanvasImageLayout(
+  containerWidth: number,
+  containerHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+  padScale = 0.85,
+): Rect {
+  const safePad = Math.max(0.5, Math.min(1, padScale));
+  const padWidth = containerWidth * safePad;
+  const padHeight = containerHeight * safePad;
+  const nested = getContainedImageLayout(
+    padWidth,
+    padHeight,
+    imageWidth,
+    imageHeight,
+  );
+  return {
+    x: nested.x + (containerWidth - padWidth) / 2,
+    y: nested.y + (containerHeight - padHeight) / 2,
+    width: nested.width,
+    height: nested.height,
+  };
+}
+
 function intersectRects(a: Rect, b: Rect): Rect | null {
   const left = Math.max(a.x, b.x);
   const top = Math.max(a.y, b.y);
@@ -140,10 +169,15 @@ export function mapCropRectToSourcePixels(
   return { originX, originY, width, height };
 }
 
-/** Default crop frame: inset fraction of the contained image (0–0.45). */
-export function defaultCropRectInImageLayout(imageLayout: Rect, insetFraction = 0.08): Rect {
-  const insetX = imageLayout.width * insetFraction;
-  const insetY = imageLayout.height * insetFraction;
+/**
+ * Default crop frame over the image layout.
+ * insetFraction 0 = crop encompasses the entire image (edit-canvas SoT).
+ * Positive inset (0–0.45) shrinks the frame inside the image.
+ */
+export function defaultCropRectInImageLayout(imageLayout: Rect, insetFraction = 0): Rect {
+  const clamped = Math.max(0, Math.min(0.45, insetFraction));
+  const insetX = imageLayout.width * clamped;
+  const insetY = imageLayout.height * clamped;
   return {
     x: imageLayout.x + insetX,
     y: imageLayout.y + insetY,

@@ -43,8 +43,9 @@ tags:
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 2000
+# Phase B: tap upper-right corner checkbox to select (center opens fullscreen)
 - tapOn:
-    point: "17%, 28%"
+    point: "30%, 18%"
 - waitForAnimationToEnd:
     timeout: 1000
 - runFlow:
@@ -52,19 +53,13 @@ tags:
       notVisible: ".*[1-9] selected.*"
     commands:
       - tapOn:
-          point: "17%, 22%"
+          point: "29%, 20%"
 - extendedWaitUntil:
     visible: ".*[1-9] selected.*"
     timeout: 10000
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 25000
-- tapOn:
-    id: "photo-selection__confirm"
-# Native Alert: ↑ Report | ↔ Update | ↓ Assign — screenshot before tap
+# Capture-first: skip Select Photos → Report / Update / Assign
 - extendedWaitUntil:
     visible: ".*Report.*"
     timeout: 15000

@@ -81,6 +81,10 @@ export function LibraryFullscreenViewer({
   const TOOLBAR_HEIGHT = 128; // border 1 + paddingTop 16 + button 56 + gap 4 + label ~22 + paddingBottom 24 + extra buffer 5
   const PHOTO_HEIGHT = height - HEADER_HEIGHT - TOOLBAR_HEIGHT;
   
+  // Dimension key for FlatList remount on orientation change
+  // Forces fresh layout calculations when orientation changes to prevent crash
+  const dimensionKey = useMemo(() => `${Math.round(width / 100)}-${Math.round(height / 100)}`, [width, height]);
+  
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [drawMode, setDrawMode] = useState(false);
   const [cropMode, setCropMode] = useState(false);
@@ -126,6 +130,18 @@ export function LibraryFullscreenViewer({
       }, 50);
     }
   }, [visible, initialIndex, items.length]);
+
+  // Reset scroll position when dimensions change (orientation change)
+  useEffect(() => {
+    if (visible && currentIndex >= 0 && currentIndex < items.length) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: currentIndex,
+          animated: false,
+        });
+      }, 50);
+    }
+  }, [dimensionKey, visible, currentIndex, items.length]);
 
   useEffect(() => {
     if (!visible) {
@@ -382,6 +398,7 @@ export function LibraryFullscreenViewer({
       {/* Swipeable Grid */}
       <View style={{ height: PHOTO_HEIGHT, backgroundColor: "#fff" }}>
         <FlatList
+          key={dimensionKey}
           ref={flatListRef}
           data={items}
           keyExtractor={(item) => `viewer_${item.assetId}`}
@@ -417,14 +434,14 @@ export function LibraryFullscreenViewer({
                     token={indexSession.token}
                     index={item.index}
                     pixelSize={Math.max(width, height)}
-                    contentFit="cover"
+                    contentFit="contain"
                     style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
                   />
                 ) : (
                   <ExpoImage
                     source={{ uri: itemUri }}
                     cachePolicy="memory-disk"
-                    contentFit="cover"
+                    contentFit="contain"
                     style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
                   />
                 )}

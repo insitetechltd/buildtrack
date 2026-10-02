@@ -140,8 +140,8 @@ export function mapCropRectToSourcePixels(
   return { originX, originY, width, height };
 }
 
-/** Default crop frame: inset fraction of the contained image (0–0.45). */
-export function defaultCropRectInImageLayout(imageLayout: Rect, insetFraction = 0.08): Rect {
+/** Default crop frame: full image layout (no inset) for crop mode. */
+export function defaultCropRectInImageLayout(imageLayout: Rect, insetFraction = 0): Rect {
   const insetX = imageLayout.width * insetFraction;
   const insetY = imageLayout.height * insetFraction;
   return {

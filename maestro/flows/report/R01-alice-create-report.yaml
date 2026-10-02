@@ -59,13 +59,7 @@ tags:
     timeout: 10000
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 25000
-- tapOn:
-    id: "photo-selection__confirm"
-# Native Alert: ↑ Report | ↔ Update | ↓ Assign — screenshot before tap
+# Capture-first: skip Select Photos → Report / Update / Assign
 - extendedWaitUntil:
     visible: ".*Report.*"
     timeout: 15000

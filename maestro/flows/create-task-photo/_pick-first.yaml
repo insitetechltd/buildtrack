@@ -1,4 +1,4 @@
-# Pick first (slot 0) → accept → Select Photos with tile_0.
+# Pick first (slot 0) → accept → Create Task form (capture-first skips Select Photos).
 # Phase B: _pick-slot-0 uses corner tap; fallback also uses corner.
 appId: com.buildtrack.app.local
 ---
@@ -14,5 +14,19 @@ appId: com.buildtrack.app.local
     visible: ".*1 selected.*"
     timeout: 8000
 - runFlow: _accept-library.yaml
-- assertVisible:
-    id: "photo-selection__tile_0"
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__tile_0"
+    commands:
+      - assertVisible:
+          id: "photo-selection__tile_0"
+- runFlow:
+    when:
+      notVisible:
+        id: "photo-selection__tile_0"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "create-task__continuous_form"
+          timeout: 25000

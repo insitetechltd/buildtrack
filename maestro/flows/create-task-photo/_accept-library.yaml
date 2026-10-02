@@ -1,12 +1,20 @@
-# Accept library selection → wait for Select Photos (multi-pin can be slow).
-# Phase B: tap Done badge on hybrid library, then wait for photo-selection confirm.
-# Keep waits tight: fail fast if pin/nav hangs rather than sit on loading for 60s+.
+# Accept library selection → capture-first destination chooser (skip Select Photos).
+# Phase B: tap Done on hybrid library, then Assign (Report / Update / Assign / Cancel).
+# Keep waits tight: fail fast if pin/nav hangs.
 appId: com.buildtrack.app.local
 ---
 - waitForAnimationToEnd:
     timeout: 800
 - tapOn:
-    point: "95%,10%"
+    id: "capture-session__hybrid_done"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_grid"
+    commands:
+      - tapOn:
+          point: "95%,10%"
 - runFlow:
     when:
       visible:
@@ -27,9 +35,34 @@ appId: com.buildtrack.app.local
               id: "capture-session__library_grid"
           commands:
             - tapOn:
+                id: "capture-session__hybrid_done"
+                optional: true
+            - tapOn:
                 point: "95%,10%"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 15000
+# Destination Alert (PLATFORM_LIMITATION: native Alert has no testID)
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- runFlow:
+    when:
+      visible: "Create Task"
+    commands:
+      - tapOn: "Create Task"
+# Add-photos path may still land on Select Photos (not capture-first).
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__confirm"
+    commands:
+      - assertVisible:
+          id: "photo-selection__confirm"
 - runFlow: _assert-no-logbox.yaml

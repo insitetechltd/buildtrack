@@ -15,13 +15,12 @@ tags:
           id: "capture-session__hybrid_done"
 - waitForAnimationToEnd:
     timeout: 2000
-# Wait for photo-selection confirm
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 15000
-- tapOn:
-    id: "photo-selection__confirm"
+# Capture-first: skip Select Photos → destination chooser
+- runFlow:
+    when:
+      visible: ".*Assign.*"
+    commands:
+      - tapOn: ".*Assign.*"
 - runFlow:
     when:
       visible:

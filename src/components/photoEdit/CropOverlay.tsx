@@ -4,15 +4,15 @@ import {
   Text,
   Pressable,
   PanResponder,
-  Image,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
   defaultCropRectInImageLayout,
-  getContainedImageLayout,
+  getEditCanvasImageLayout,
   mapCropRectToSourcePixels,
   resolveImageDimensions,
   type Rect,
@@ -20,10 +20,12 @@ import {
 } from "../../utils/photoPreviewEdit";
 
 const MIN_CROP_PX = 48;
-const HANDLE_SIZE = 44; // Touch target size
-const HANDLE_THICKNESS = 2; // WhatsApp-style thin lines
-const HANDLE_LENGTH = 20; // Tight L-bracket arms
-const MAX_ROTATION = 30; // degrees, -30 to +30
+const HANDLE_SIZE = 44;
+const HANDLE_THICKNESS = 2;
+const HANDLE_LENGTH = 20;
+const MAX_ROTATION = 30;
+/** Image occupies 85% of the canvas so crop handles have finger room outside. */
+const EDIT_CANVAS_PAD = 0.85;
 
 type CropOverlayProps = {
   uri: string;
@@ -46,8 +48,8 @@ export function CropOverlay({
 }: CropOverlayProps) {
   const [sourceSize, setSourceSize] = useState<{ width: number; height: number } | null>(null);
   const [crop, setCrop] = useState<Rect | null>(null);
-  const [baseRotation, setBaseRotation] = useState(0); // 90° increments from rotate button
-  const [fineRotation, setFineRotation] = useState(0); // Fine rotation angle from dial (-30 to +30)
+  const [baseRotation, setBaseRotation] = useState(0);
+  const [fineRotation, setFineRotation] = useState(0);
   const [loadError, setLoadError] = useState(false);
   const cropRef = useRef<Rect | null>(null);
   const cropStartRef = useRef<Rect | null>(null);
@@ -67,6 +69,8 @@ export function CropOverlay({
     setSourceSize(null);
     setCrop(null);
     setLoadError(false);
+    setBaseRotation(0);
+    setFineRotation(0);
 
     resolveImageDimensions(uri)
       .then((size) => {
@@ -88,17 +92,19 @@ export function CropOverlay({
 
   const imageLayout = useMemo(() => {
     if (!sourceSize) return null;
-    return getContainedImageLayout(
+    return getEditCanvasImageLayout(
       containerWidth,
       containerHeight,
       sourceSize.width,
       sourceSize.height,
+      EDIT_CANVAS_PAD,
     );
   }, [containerWidth, containerHeight, sourceSize]);
 
   useEffect(() => {
     if (imageLayout && imageLayout.width > 0) {
-      setCrop(defaultCropRectInImageLayout(imageLayout));
+      // Full image bounds — padScale already left finger room outside the photo.
+      setCrop(defaultCropRectInImageLayout(imageLayout, 0));
     }
   }, [imageLayout]);
 
@@ -180,8 +186,6 @@ export function CropOverlay({
         onPanResponderMove: (_evt, gesture) => {
           const start = fineRotationStartRef.current;
           const dx = gesture.dx;
-          // Map horizontal gesture to rotation (-30 to +30 degrees)
-          // Assume 200pt gesture width maps to full range
           const delta = (dx / 200) * (MAX_ROTATION * 2);
           let next = start + delta;
           next = Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, next));
@@ -192,9 +196,10 @@ export function CropOverlay({
   );
 
   const handleRotate90 = useCallback(() => {
-    // Add 90° to base rotation
     setBaseRotation((prev) => (prev + 90) % 360);
   }, []);
+
+  const totalRotation = baseRotation + fineRotation;
 
   const handleApply = () => {
     if (!crop || !imageLayout || !sourceSize) return;
@@ -205,7 +210,6 @@ export function CropOverlay({
       sourceSize.height,
     );
     if (!mapped) return;
-    const totalRotation = baseRotation + fineRotation;
     onApply(mapped, Math.abs(totalRotation) > 0.1 ? totalRotation : undefined);
   };
 
@@ -213,8 +217,8 @@ export function CropOverlay({
     return (
       <View
         testID="photo-selection__crop_overlay"
-        style={[styles.fill, { width: containerWidth, height: containerHeight }]}
-        className="items-center justify-center bg-black/70"
+        style={[styles.fill, { width: containerWidth, height: containerHeight, backgroundColor: "#000" }]}
+        className="items-center justify-center"
       >
         <Text className="text-white mb-3">Could not load image size</Text>
         <Pressable
@@ -232,20 +236,44 @@ export function CropOverlay({
     return (
       <View
         testID="photo-selection__crop_overlay"
-        style={[styles.fill, { width: containerWidth, height: containerHeight }]}
-        className="items-center justify-center bg-black/40"
+        style={[styles.fill, { width: containerWidth, height: containerHeight, backgroundColor: "#000" }]}
+        className="items-center justify-center"
       >
         <ActivityIndicator color="white" />
       </View>
     );
   }
 
+  const dialWidth = Math.max(160, containerWidth - 80);
+
   return (
     <View
       testID="photo-selection__crop_overlay"
-      style={[styles.fill, { width: containerWidth, height: containerHeight }]}
-      pointerEvents="box-none"
+      style={[
+        styles.fill,
+        {
+          width: containerWidth,
+          height: containerHeight,
+          backgroundColor: "#000",
+        },
+      ]}
     >
+      {/* Image owned by crop screen — scaled to pad, rotated only via dial / 90° */}
+      <ExpoImage
+        source={{ uri }}
+        cachePolicy="memory-disk"
+        contentFit="contain"
+        transition={0}
+        style={{
+          position: "absolute",
+          left: imageLayout.x,
+          top: imageLayout.y,
+          width: imageLayout.width,
+          height: imageLayout.height,
+          transform: [{ rotate: `${totalRotation}deg` }],
+        }}
+      />
+
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <View style={{ height: crop.y, backgroundColor: "rgba(0,0,0,0.55)" }} />
         <View style={{ flexDirection: "row", height: crop.height }}>
@@ -263,7 +291,6 @@ export function CropOverlay({
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }} />
       </View>
 
-      {/* Top-left corner handle */}
       <View
         {...tl.panHandlers}
         testID="photo-selection__crop_handle_tl"
@@ -279,7 +306,6 @@ export function CropOverlay({
         <View style={{ position: "absolute", left: 0, top: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
       </View>
 
-      {/* Top-right corner handle */}
       <View
         {...tr.panHandlers}
         testID="photo-selection__crop_handle_tr"
@@ -295,7 +321,6 @@ export function CropOverlay({
         <View style={{ position: "absolute", right: 0, top: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
       </View>
 
-      {/* Bottom-left corner handle */}
       <View
         {...bl.panHandlers}
         testID="photo-selection__crop_handle_bl"
@@ -311,7 +336,6 @@ export function CropOverlay({
         <View style={{ position: "absolute", left: 0, bottom: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
       </View>
 
-      {/* Bottom-right corner handle */}
       <View
         {...br.panHandlers}
         testID="photo-selection__crop_handle_br"
@@ -327,8 +351,81 @@ export function CropOverlay({
         <View style={{ position: "absolute", right: 0, bottom: 0, width: HANDLE_THICKNESS, height: HANDLE_LENGTH, backgroundColor: "#fff" }} />
       </View>
 
-      {/* 90° Rotate Button - Bottom Left */}
-      <View className="absolute bottom-3 left-4">
+      {/* Dial — primary rotate control (not drag-on-image) */}
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 88,
+          paddingHorizontal: 16,
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, marginBottom: 8 }}>
+          {totalRotation === 0
+            ? "0°"
+            : `${totalRotation > 0 ? "+" : ""}${totalRotation.toFixed(1)}°`}
+        </Text>
+        <View
+          {...rotationDialResponder.panHandlers}
+          testID="photo-selection__rotation_dial"
+          style={{
+            width: dialWidth,
+            height: 50,
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              height: 40,
+            }}
+          >
+            {Array.from({ length: 13 }, (_, i) => {
+              const angle = -MAX_ROTATION + (i * (MAX_ROTATION * 2)) / 12;
+              const isCenter = Math.abs(angle) < 0.1;
+              const isMajor = angle % 10 === 0;
+              const tickHeight = isCenter ? 20 : isMajor ? 14 : 8;
+              return (
+                <View
+                  key={i}
+                  style={{
+                    width: isCenter ? 2 : 1,
+                    height: tickHeight,
+                    backgroundColor: "#fff",
+                    opacity: isCenter ? 1 : 0.5,
+                  }}
+                />
+              );
+            })}
+          </View>
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: dialWidth / 2 + (fineRotation / MAX_ROTATION) * (dialWidth / 2) - 1,
+              width: 2,
+              height: 24,
+              backgroundColor: "#3b82f6",
+            }}
+          />
+        </View>
+      </View>
+
+      <View
+        style={{
+          position: "absolute",
+          left: 16,
+          right: 16,
+          bottom: 24,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
         <Pressable
           testID="photo-selection__rotate_90"
           onPress={handleRotate90}
@@ -344,79 +441,34 @@ export function CropOverlay({
         >
           <Ionicons name="refresh-outline" size={24} color="#fff" />
         </Pressable>
-      </View>
 
-      {/* Rotation Dial */}
-      <View className="absolute bottom-20 left-0 right-0 px-4">
-        <View className="items-center">
-          <Text className="text-white text-xs mb-2 opacity-80">
-            {baseRotation + fineRotation === 0
-              ? "0°"
-              : `${baseRotation + fineRotation > 0 ? "+" : ""}${(baseRotation + fineRotation).toFixed(1)}°`}
-          </Text>
-          <View
-            {...rotationDialResponder.panHandlers}
-            testID="photo-selection__rotation_dial"
-            style={{
-              width: containerWidth - 80,
-              height: 50,
-              position: "relative",
-              justifyContent: "center",
-            }}
-          >
-            {/* Tick marks */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 40 }}>
-              {Array.from({ length: 13 }, (_, i) => {
-                const angle = -MAX_ROTATION + (i * (MAX_ROTATION * 2)) / 12;
-                const isCenter = Math.abs(angle) < 0.1;
-                const isMajor = angle % 10 === 0;
-                const height = isCenter ? 20 : isMajor ? 14 : 8;
-                const opacity = isCenter ? 1 : 0.5;
-                return (
-                  <View
-                    key={i}
-                    style={{
-                      width: isCenter ? 2 : 1,
-                      height,
-                      backgroundColor: "#fff",
-                      opacity,
-                    }}
-                  />
-                );
-              })}
-            </View>
-            {/* Pointer indicator */}
-            <View
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: "50%",
-                marginLeft: ((fineRotation / MAX_ROTATION) * (containerWidth - 80)) / 2 - 1,
-                width: 2,
-                height: 24,
-                backgroundColor: "#3b82f6",
-              }}
-            />
-          </View>
-        </View>
-      </View>
-
-      <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-3 px-4">
         <Pressable
           testID="photo-selection__crop_cancel"
           onPress={onCancel}
           disabled={disabled}
-          className="bg-white/20 rounded-xl px-5 py-3"
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(255,255,255,0.2)",
+            borderRadius: 12,
+            paddingVertical: 14,
+            alignItems: "center",
+          }}
         >
-          <Text className="text-white font-semibold">Cancel</Text>
+          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>Cancel</Text>
         </Pressable>
         <Pressable
           testID="photo-selection__crop_apply"
           onPress={handleApply}
           disabled={disabled}
-          className="bg-blue-600 rounded-xl px-5 py-3"
+          style={{
+            flex: 1,
+            backgroundColor: "#2563EB",
+            borderRadius: 12,
+            paddingVertical: 14,
+            alignItems: "center",
+          }}
         >
-          <Text className="text-white font-semibold">Apply</Text>
+          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>Apply</Text>
         </Pressable>
       </View>
     </View>

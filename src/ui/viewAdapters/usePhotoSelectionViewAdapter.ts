@@ -84,7 +84,7 @@ export function usePhotoSelectionViewAdapter({
   handleAddPhotos: () => Promise<void>;
   handlePhotoPress: (index: number) => void;
   handleRotatePhoto: (index: number) => Promise<void>;
-  handleApplyCrop: (index: number, crop: SourceCrop) => Promise<void>;
+  handleApplyCrop: (index: number, crop: SourceCrop, rotation?: number) => Promise<void>;
   handlePrepareEditSource: (index: number) => Promise<string | null>;
   handleApplyDraw: (index: number, strokes: DrawStroke[]) => Promise<boolean>;
   handleResetEdits: (index: number) => void;
@@ -296,7 +296,7 @@ export function usePhotoSelectionViewAdapter({
     }
   };
 
-  const handleApplyCrop = async (index: number, crop: SourceCrop) => {
+  const handleApplyCrop = async (index: number, crop: SourceCrop, rotation?: number) => {
     const photo = selectedPhotos[index];
     if (!photo) return;
     if (crop.width < 1 || crop.height < 1) {
@@ -306,18 +306,21 @@ export function usePhotoSelectionViewAdapter({
 
     try {
       setIsEditingPhoto(true);
+      const actions: ImageManipulator.Action[] = [];
+      if (rotation && Math.abs(rotation) > 0.1) {
+        actions.push({ rotate: rotation });
+      }
+      actions.push({
+        crop: {
+          originX: crop.originX,
+          originY: crop.originY,
+          width: crop.width,
+          height: crop.height,
+        },
+      });
       const result = await ImageManipulator.manipulateAsync(
         await sourceUriForEdit(photo),
-        [
-          {
-            crop: {
-              originX: crop.originX,
-              originY: crop.originY,
-              width: crop.width,
-              height: crop.height,
-            },
-          },
-        ],
+        actions,
         { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
       );
       await commitEditedUri(index, result.uri);

@@ -98,28 +98,10 @@ tags:
     timeout: 8000
 - takeScreenshot: "retry-after-slot-2-should-be-3"
 
-# Accept selection
+# Accept selection → capture-first destination (skip Select Photos)
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 15000
-
-# Assert all 3 tiles are present
-- assertVisible:
-    id: "photo-selection__tile_0"
-- assertVisible:
-    id: "photo-selection__tile_1"
-- assertVisible:
-    id: "photo-selection__tile_2"
-- takeScreenshot: "retry-selection-screen-3-tiles"
-
-# Confirm selection
-- tapOn:
-    id: "photo-selection__confirm"
-
-# Route to Create Task
+- takeScreenshot: "retry-destination-chooser-after-3"
 - runFlow:
     when:
       visible: ".*Assign.*"

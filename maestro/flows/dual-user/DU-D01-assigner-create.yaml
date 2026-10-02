@@ -62,13 +62,8 @@ tags:
     timeout: 10000
 - tapOn:
     id: "capture-session__hybrid_done"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 25000
-- takeScreenshot: "du-d01-02d-john-select-photos"
-- tapOn:
-    id: "photo-selection__confirm"
+# Capture-first: skip Select Photos → destination chooser
+- takeScreenshot: "du-d01-02d-john-destination-chooser"
 - runFlow:
     when:
       visible: ".*Assign.*"

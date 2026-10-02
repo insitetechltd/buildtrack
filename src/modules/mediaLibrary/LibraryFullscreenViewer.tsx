@@ -1,23 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   Pressable,
-  FlatList,
   useWindowDimensions,
   ActivityIndicator,
   Alert,
-  type NativeSyntheticEvent,
-  type NativeScrollEvent,
+  StyleSheet,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImageManipulator from "expo-image-manipulator";
 import type * as MediaLibrary from "expo-media-library";
+import * as ImageManipulator from "expo-image-manipulator";
 
 import {
-  getPhotokitThumbNativeView,
-  isPhotokitThumbsAvailable,
   photokitIdAt,
   type PhotokitLibrarySession,
 } from "./PhotokitThumbView";
@@ -59,6 +55,11 @@ type ViewerItem = {
   uri: string;
 };
 
+/**
+ * Fullscreen review / edit for one library asset at a time.
+ * Intentionally not a paged FlatList — paging recycled adjacent cells and fought
+ * the previous photo after crop/annotate (second-open flicker).
+ */
 export function LibraryFullscreenViewer({
   visible,
   initialIndex,
@@ -74,22 +75,19 @@ export function LibraryFullscreenViewer({
   accentColor = "#2563EB",
 }: LibraryFullscreenViewerProps) {
   const { width, height } = useWindowDimensions();
-  
-  // Layout calculations to eliminate black gaps between photo and toolbar
-  // Measured from rendered components for precise layout
-  const HEADER_HEIGHT = 112; // paddingTop 48 + paddingVertical 12*2 + button 40
-  const TOOLBAR_HEIGHT = 128; // border 1 + paddingTop 16 + button 56 + gap 4 + label ~22 + paddingBottom 24 + extra buffer 5
+
+  const HEADER_HEIGHT = 112;
+  const TOOLBAR_HEIGHT = 128;
   const PHOTO_HEIGHT = height - HEADER_HEIGHT - TOOLBAR_HEIGHT;
-  
+
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [drawMode, setDrawMode] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [drawColor, setDrawColor] = useState<DrawColor>(DRAW_COLORS[0]);
   const [activeStrokes, setActiveStrokes] = useState<DrawStroke[]>([]);
   const [isCommitting, setIsCommitting] = useState(false);
-  const flatListRef = useRef<FlatList<ViewerItem>>(null);
-  const useNativeThumbs = isPhotokitThumbsAvailable();
-  const NativeThumb = useNativeThumbs ? getPhotokitThumbNativeView() : null;
+  /** Remount key for the single image surface when opening a different asset. */
+  const [imageSession, setImageSession] = useState(0);
 
   const indexMode = indexSession != null;
   const itemCount = indexMode ? indexSession.count : assets.length;
@@ -112,46 +110,47 @@ export function LibraryFullscreenViewer({
     }));
   }, [assets, indexMode, indexSession]);
 
-  useEffect(() => {
-    if (visible && initialIndex >= 0 && initialIndex < items.length) {
-      setCurrentIndex(initialIndex);
-      setDrawMode(false);
-      setCropMode(false);
-      setActiveStrokes([]);
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: initialIndex,
-          animated: false,
-        });
-      }, 50);
-    }
-  }, [visible, initialIndex, items.length]);
+  const openAssetId =
+    initialIndex >= 0 && initialIndex < items.length
+      ? items[initialIndex]?.assetId
+      : "";
 
-  useEffect(() => {
+  // Sync to the opened asset before paint so the prior photo never flashes.
+  useLayoutEffect(() => {
     if (!visible) {
       setDrawMode(false);
       setCropMode(false);
       setActiveStrokes([]);
+      return;
     }
-  }, [visible]);
+    if (initialIndex < 0 || initialIndex >= items.length) return;
+    setCurrentIndex(initialIndex);
+    setDrawMode(false);
+    setCropMode(false);
+    setActiveStrokes([]);
+    setImageSession((n) => n + 1);
+  }, [visible, initialIndex, openAssetId, items.length]);
 
   const currentItem = items[currentIndex];
   const isSelected = currentItem ? selectedIds.has(currentItem.assetId) : false;
-  const currentAnnotation = currentItem ? annotations.get(currentItem.assetId) : undefined;
-  const displayUri = currentAnnotation?.annotatedUri || currentItem?.uri;
-  const committedStrokes = currentAnnotation?.drawStrokes || [];
+  const currentAnnotation = currentItem
+    ? annotations.get(currentItem.assetId)
+    : undefined;
+  const displayUri = currentAnnotation?.annotatedUri || currentItem?.uri || "";
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (drawMode || cropMode) return;
-      const offsetX = event.nativeEvent.contentOffset.x;
-      const index = Math.round(offsetX / width);
-      if (index >= 0 && index < items.length && index !== currentIndex) {
-        setCurrentIndex(index);
-        setActiveStrokes([]);
+  const canGoPrev = currentIndex > 0;
+  const canGoNext = currentIndex < items.length - 1;
+
+  const goToIndex = useCallback(
+    (next: number) => {
+      if (next < 0 || next >= items.length || drawMode || cropMode || isCommitting) {
+        return;
       }
+      setCurrentIndex(next);
+      setActiveStrokes([]);
+      setImageSession((n) => n + 1);
     },
-    [cropMode, currentIndex, drawMode, items.length, width],
+    [cropMode, drawMode, isCommitting, items.length],
   );
 
   const handleToggleSelect = useCallback(() => {
@@ -174,12 +173,9 @@ export function LibraryFullscreenViewer({
     }
   }, [annotations, currentItem, drawMode]);
 
-  const handleCommitStroke = useCallback(
-    (stroke: DrawStroke) => {
-      setActiveStrokes((prev) => appendStroke(prev, stroke));
-    },
-    [],
-  );
+  const handleCommitStroke = useCallback((stroke: DrawStroke) => {
+    setActiveStrokes((prev) => appendStroke(prev, stroke));
+  }, []);
 
   const handleUndoStroke = useCallback(() => {
     setActiveStrokes((prev) => undoLastStroke(prev));
@@ -194,12 +190,11 @@ export function LibraryFullscreenViewer({
 
     setIsCommitting(true);
     try {
-      const sourceUri = displayUri;
       const { bakeStrokesOntoPhoto } = await import("../../utils/bakePhotoDraw");
-      const annotatedUri = await bakeStrokesOntoPhoto(sourceUri, activeStrokes);
-      
+      const annotatedUri = await bakeStrokesOntoPhoto(displayUri, activeStrokes);
+
       await onCommitEdit(currentItem.assetId, annotatedUri);
-      
+
       if (onUpdateAnnotation) {
         onUpdateAnnotation(currentItem.assetId, {
           drawStrokes: activeStrokes,
@@ -207,6 +202,7 @@ export function LibraryFullscreenViewer({
           isEdited: true,
         });
       }
+      setImageSession((n) => n + 1);
     } catch (error) {
       console.error("❌ [LibraryViewer] Draw failed:", error);
       Alert.alert("Error", "Could not apply drawing. Please try again.");
@@ -216,34 +212,6 @@ export function LibraryFullscreenViewer({
       setActiveStrokes([]);
     }
   }, [activeStrokes, currentItem, displayUri, onCommitEdit, onUpdateAnnotation]);
-
-  const handleRotate = useCallback(async () => {
-    if (!currentItem || !onCommitEdit) return;
-
-    setIsCommitting(true);
-    try {
-      const sourceUri = displayUri;
-      const result = await ImageManipulator.manipulateAsync(
-        sourceUri,
-        [{ rotate: 90 }],
-        { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
-      );
-
-      await onCommitEdit(currentItem.assetId, result.uri);
-
-      if (onUpdateAnnotation) {
-        onUpdateAnnotation(currentItem.assetId, {
-          annotatedUri: result.uri,
-          isEdited: true,
-        });
-      }
-    } catch (error) {
-      console.error("❌ [LibraryViewer] Rotate failed:", error);
-      Alert.alert("Error", "Could not rotate photo. Please try again.");
-    } finally {
-      setIsCommitting(false);
-    }
-  }, [currentItem, displayUri, onCommitEdit, onUpdateAnnotation]);
 
   const handleToggleCropMode = useCallback(() => {
     if (cropMode) {
@@ -266,15 +234,10 @@ export function LibraryFullscreenViewer({
 
       setIsCommitting(true);
       try {
-        const sourceUri = displayUri;
         const actions: ImageManipulator.Action[] = [];
-
-        // Apply rotation first if provided
         if (rotation && Math.abs(rotation) > 0.1) {
           actions.push({ rotate: rotation });
         }
-
-        // Then crop
         actions.push({
           crop: {
             originX: crop.originX,
@@ -285,7 +248,7 @@ export function LibraryFullscreenViewer({
         });
 
         const result = await ImageManipulator.manipulateAsync(
-          sourceUri,
+          displayUri,
           actions,
           { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
         );
@@ -299,6 +262,7 @@ export function LibraryFullscreenViewer({
           });
         }
 
+        setImageSession((n) => n + 1);
         setCropMode(false);
       } catch (error) {
         console.error("❌ [LibraryViewer] Crop failed:", error);
@@ -314,127 +278,116 @@ export function LibraryFullscreenViewer({
     return null;
   }
 
-  return (
-    <View
-      testID={`${testIdPrefix}__fullscreen`}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "#fff",
-        zIndex: 1000,
-      }}
-    >
-      {/* Header */}
+  // Crop/rotate is a separate full-screen editor — no picker X / select chrome.
+  if (cropMode && displayUri) {
+    return (
       <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          paddingTop: 48,
-        }}
+        testID={`${testIdPrefix}__fullscreen`}
+        style={styles.root}
       >
+        <CropOverlay
+          key={`crop_${currentItem?.assetId}_${displayUri}`}
+          uri={displayUri}
+          containerWidth={width}
+          containerHeight={height}
+          disabled={isCommitting}
+          onCancel={handleToggleCropMode}
+          onApply={handleApplyCrop}
+        />
+        {isCommitting ? (
+          <View style={styles.committingMask}>
+            <ActivityIndicator color="#fff" />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <View testID={`${testIdPrefix}__fullscreen`} style={styles.root}>
+      <View style={styles.header}>
         <Pressable
           testID={`${testIdPrefix}__close`}
           onPress={onClose}
-          disabled={isCommitting}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: isCommitting ? "#d1d5db" : "#f3f4f6",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          disabled={isCommitting || drawMode}
+          style={[styles.headerBtn, drawMode && styles.headerBtnDim]}
         >
-          <Ionicons name="close" size={24} color="#374151" />
+          <Ionicons name="close" size={24} color="#fff" />
         </Pressable>
 
-        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
+        <Text style={styles.counter}>
           {currentIndex + 1} / {itemCount}
         </Text>
 
         <Pressable
           testID={`${testIdPrefix}__toggle_select`}
           onPress={handleToggleSelect}
-          disabled={isCommitting}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: isSelected ? accentColor : isCommitting ? "#d1d5db" : "#f3f4f6",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          disabled={isCommitting || drawMode}
+          style={[
+            styles.headerBtn,
+            { backgroundColor: isSelected ? accentColor : "rgba(255,255,255,0.15)" },
+            drawMode && styles.headerBtnDim,
+          ]}
         >
           <Ionicons
             name={isSelected ? "checkmark" : "ellipse-outline"}
             size={24}
-            color={isSelected ? "#fff" : "#374151"}
+            color="#fff"
           />
         </Pressable>
       </View>
 
-      {/* Swipeable Grid */}
-      <View style={{ height: PHOTO_HEIGHT, backgroundColor: "#fff" }}>
-        <FlatList
-          ref={flatListRef}
-          data={items}
-          keyExtractor={(item) => `viewer_${item.assetId}`}
-          horizontal
-          pagingEnabled
-          scrollEnabled={!drawMode && !cropMode}
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          style={{ backgroundColor: "#fff", height: PHOTO_HEIGHT }}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-          renderItem={({ item }) => {
-            const isCurrentItem = item.index === currentIndex;
-            const itemAnnotation = annotations.get(item.assetId);
-            const itemUri = itemAnnotation?.annotatedUri || item.uri;
+      <View style={{ height: PHOTO_HEIGHT, backgroundColor: "#000" }}>
+        {displayUri ? (
+          <ExpoImage
+            key={`viewer_img_${currentItem?.assetId}_${displayUri}_${imageSession}`}
+            source={{ uri: displayUri }}
+            recyclingKey={`${currentItem?.assetId}:${displayUri}`}
+            cachePolicy="memory-disk"
+            contentFit="contain"
+            transition={0}
+            style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#000" }}
+          />
+        ) : (
+          <View
+            style={{
+              width,
+              height: PHOTO_HEIGHT,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ActivityIndicator color="#fff" />
+          </View>
+        )}
 
-            return (
-              <View
-                style={{
-                  width,
-                  height: PHOTO_HEIGHT,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#fff",
-                }}
+        {/* Edge prev/next — no recycled FlatList pages fighting each other */}
+        {!drawMode && !cropMode ? (
+          <>
+            {canGoPrev ? (
+              <Pressable
+                testID={`${testIdPrefix}__prev`}
+                onPress={() => goToIndex(currentIndex - 1)}
+                style={[styles.edgeNav, { left: 4 }]}
+                hitSlop={12}
               >
-                {useNativeThumbs && NativeThumb && indexMode && indexSession && !itemAnnotation?.annotatedUri ? (
-                  <NativeThumb
-                    token={indexSession.token}
-                    index={item.index}
-                    pixelSize={Math.max(width, height)}
-                    contentFit="cover"
-                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
-                  />
-                ) : (
-                  <ExpoImage
-                    source={{ uri: itemUri }}
-                    cachePolicy="memory-disk"
-                    contentFit="cover"
-                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
-                  />
-                )}
-              </View>
-            );
-          }}
-        />
-        
-        {/* DrawOverlay only on current item when in draw mode */}
-        {drawMode && displayUri && (
+                <Ionicons name="chevron-back" size={28} color="#fff" />
+              </Pressable>
+            ) : null}
+            {canGoNext ? (
+              <Pressable
+                testID={`${testIdPrefix}__next`}
+                onPress={() => goToIndex(currentIndex + 1)}
+                style={[styles.edgeNav, { right: 4 }]}
+                hitSlop={12}
+              >
+                <Ionicons name="chevron-forward" size={28} color="#fff" />
+              </Pressable>
+            ) : null}
+          </>
+        ) : null}
+
+        {drawMode && displayUri ? (
           <View
             style={{
               position: "absolute",
@@ -455,68 +408,26 @@ export function LibraryFullscreenViewer({
               onCommitStroke={handleCommitStroke}
             />
           </View>
-        )}
-
-        {/* CropOverlay only on current item when in crop mode */}
-        {cropMode && displayUri && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width,
-              height: PHOTO_HEIGHT,
-            }}
-          >
-            <CropOverlay
-              uri={displayUri}
-              containerWidth={width}
-              containerHeight={PHOTO_HEIGHT}
-              disabled={isCommitting}
-              onCancel={handleToggleCropMode}
-              onApply={handleApplyCrop}
-            />
-          </View>
-        )}
+        ) : null}
       </View>
 
-      {/* Edit Tools */}
-      {onCommitEdit && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: "#fff",
-            paddingHorizontal: 16,
-            paddingTop: 16,
-            paddingBottom: 24,
-            borderTopWidth: 1,
-            borderTopColor: "#e5e7eb",
-          }}
-        >
-          {!drawMode && !cropMode ? (
+      {onCommitEdit ? (
+        <View style={styles.toolbar}>
+          {!drawMode ? (
             <View style={{ flexDirection: "row", gap: 16, justifyContent: "center" }}>
               <View style={{ alignItems: "center", gap: 4 }}>
                 <Pressable
                   testID={`${testIdPrefix}__start_draw`}
                   onPress={handleToggleDrawMode}
                   disabled={isCommitting}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: isCommitting ? "#d1d5db" : accentColor,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  style={[
+                    styles.toolBtn,
+                    { backgroundColor: isCommitting ? "#4b5563" : accentColor },
+                  ]}
                 >
                   <Ionicons name="create-outline" size={24} color="#fff" />
                 </Pressable>
-                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
-                  Annotate
-                </Text>
+                <Text style={styles.toolLabel}>Annotate</Text>
               </View>
 
               <View style={{ alignItems: "center", gap: 4 }}>
@@ -524,23 +435,17 @@ export function LibraryFullscreenViewer({
                   testID={`${testIdPrefix}__start_crop`}
                   onPress={handleToggleCropMode}
                   disabled={isCommitting}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: isCommitting ? "#d1d5db" : accentColor,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  style={[
+                    styles.toolBtn,
+                    { backgroundColor: isCommitting ? "#4b5563" : accentColor },
+                  ]}
                 >
                   <Ionicons name="crop-outline" size={24} color="#fff" />
                 </Pressable>
-                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
-                  Crop
-                </Text>
+                <Text style={styles.toolLabel}>Crop</Text>
               </View>
             </View>
-          ) : drawMode ? (
+          ) : (
             <>
               <View
                 style={{
@@ -564,7 +469,7 @@ export function LibraryFullscreenViewer({
                         borderRadius: 18,
                         backgroundColor: swatch,
                         borderWidth: 2,
-                        borderColor: selected ? "#111827" : "#d1d5db",
+                        borderColor: selected ? "#fff" : "#4b5563",
                         opacity: isCommitting ? 0.5 : 1,
                       }}
                     />
@@ -577,67 +482,135 @@ export function LibraryFullscreenViewer({
                   testID={`${testIdPrefix}__cancel_draw`}
                   onPress={handleToggleDrawMode}
                   disabled={isCommitting}
-                  style={{
-                    flex: 1,
-                    backgroundColor: isCommitting ? "#d1d5db" : "#f3f4f6",
-                    paddingVertical: 12,
-                    borderRadius: 10,
-                    alignItems: "center",
-                  }}
+                  style={styles.drawAction}
                 >
-                  <Text style={{ color: "#374151", fontSize: 15, fontWeight: "600" }}>Cancel</Text>
+                  <Text style={styles.drawActionText}>Cancel</Text>
                 </Pressable>
 
                 <Pressable
                   testID={`${testIdPrefix}__undo_stroke`}
                   onPress={handleUndoStroke}
                   disabled={isCommitting || activeStrokes.length === 0}
-                  style={{
-                    flex: 1,
-                    backgroundColor:
-                      isCommitting || activeStrokes.length === 0
-                        ? "#e5e7eb"
-                        : "#f3f4f6",
-                    paddingVertical: 12,
-                    borderRadius: 10,
-                    alignItems: "center",
-                  }}
+                  style={[
+                    styles.drawAction,
+                    activeStrokes.length === 0 && { opacity: 0.45 },
+                  ]}
                 >
-                  <Text
-                    style={{
-                      color: activeStrokes.length === 0 ? "#9ca3af" : "#374151",
-                      fontSize: 15,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Undo
-                  </Text>
+                  <Text style={styles.drawActionText}>Undo</Text>
                 </Pressable>
 
                 <Pressable
                   testID={`${testIdPrefix}__done_draw`}
                   onPress={handleDoneDrawing}
                   disabled={isCommitting}
-                  style={{
-                    flex: 1,
-                    backgroundColor: isCommitting ? "#93c5fd" : accentColor,
-                    paddingVertical: 12,
-                    borderRadius: 10,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  style={[
+                    styles.drawAction,
+                    {
+                      backgroundColor: isCommitting ? "#93c5fd" : accentColor,
+                    },
+                  ]}
                 >
                   {isCommitting ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>Done</Text>
+                    <Text style={styles.drawActionText}>Done</Text>
                   )}
                 </Pressable>
               </View>
             </>
-          ) : null}
+          )}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000",
+    zIndex: 1000,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 48,
+    backgroundColor: "#000",
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerBtnDim: {
+    opacity: 0.4,
+  },
+  counter: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  edgeNav: {
+    position: "absolute",
+    top: "45%",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolbar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#000",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,255,255,0.12)",
+  },
+  toolBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolLabel: {
+    color: "#e5e7eb",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  drawAction: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawActionText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  committingMask: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+});

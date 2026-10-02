@@ -1,4 +1,5 @@
-# P11 — Crop Apply → confirm → submit
+# P11 — In-picker Crop Apply → Done → Assign → submit
+# Capture-first skips Select Photos; crop lives in LibraryFullscreenViewer.
 appId: com.buildtrack.app.local
 tags:
   - create-task-photo
@@ -9,25 +10,42 @@ tags:
 - runFlow: _ensure-project.yaml
 - runFlow: _open-hybrid-library-no-select.yaml
 
-- runFlow: _pick-first.yaml
+# Select via corner checkbox
+- runFlow: _pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+
+# Center tap → fullscreen viewer (Phase B)
 - tapOn:
-    id: "photo-selection__tile_0"
-- assertVisible:
-    id: "photo-selection__preview"
+    point: "50%, 35%"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__fullscreen"
+    timeout: 8000
 - tapOn:
-    id: "photo-selection__tool_crop"
+    id: "capture-session__start_crop"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__crop_overlay"
+    timeout: 8000
 - assertVisible:
-    id: "photo-selection__crop_overlay"
+    id: "photo-selection__rotation_dial"
 - takeScreenshot: "ct-P11-crop-mode"
 - tapOn:
     id: "photo-selection__crop_apply"
 - extendedWaitUntil:
     visible:
-      id: "photo-selection__tool_crop"
-    timeout: 5000
+      id: "capture-session__start_crop"
+    timeout: 8000
 - takeScreenshot: "ct-P11-after-crop"
 - tapOn:
-    id: "photo-selection__preview_confirm"
+    id: "capture-session__close"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_done"
+    timeout: 8000
+- runFlow: _accept-library.yaml
 - runFlow: _confirm-selection.yaml
 - runFlow: _submit-create-task.yaml
 - takeScreenshot: "ct-P11-done"

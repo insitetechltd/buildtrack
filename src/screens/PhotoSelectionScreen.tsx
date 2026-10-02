@@ -208,9 +208,11 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 containerHeight={previewImageSize.height}
                 disabled={isEditingPhoto}
                 onCancel={() => setCropMode(false)}
-                onApply={async (crop) => {
+                onApply={(crop) => {
                   setCropMode(false);
-                  await handleApplyCrop(enlargedPhotoIndex, crop);
+                  if (enlargedPhotoIndex !== null) {
+                    handleApplyCrop(enlargedPhotoIndex, crop);
+                  }
                 }}
               />
             ) : null}

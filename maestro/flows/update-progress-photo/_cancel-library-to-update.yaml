@@ -44,6 +44,15 @@ appId: com.buildtrack.app.local
 - runFlow:
     when:
       visible:
+        id: "photo-selection__close"
+    commands:
+      - tapOn:
+          id: "photo-selection__close"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- runFlow:
+    when:
+      visible:
         id: "photo-selection__confirm"
     commands:
       - tapOn:

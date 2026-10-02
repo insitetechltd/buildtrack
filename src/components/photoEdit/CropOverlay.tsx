@@ -302,12 +302,15 @@ export function CropOverlay({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          zIndex: 100,
+          elevation: 100,
         }}
       >
         <Pressable
           testID="photo-selection__crop_cancel"
           onPress={onCancel}
           disabled={disabled}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{ padding: 8 }}
         >
           <Text style={{ fontSize: 15, fontWeight: "600", color: "#18212b" }}>
@@ -321,6 +324,7 @@ export function CropOverlay({
           testID="photo-selection__crop_apply"
           onPress={handleApply}
           disabled={disabled}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{ padding: 8 }}
         >
           <Text style={{ fontSize: 15, fontWeight: "600", color: "#18212b" }}>
@@ -331,6 +335,7 @@ export function CropOverlay({
 
       {/* Fine Rotate Dial - Positioned Behind Photo Stage for Natural Masking */}
       <View
+        pointerEvents="box-none"
         style={{
           position: "absolute",
           left: 0,

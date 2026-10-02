@@ -3,10 +3,10 @@ appId: com.buildtrack.app.local
 - scrollUntilVisible:
     centerElement: true
     element:
-      id: "update-progress__take_photo"
+      id: "report-reply-composer__photo"
     direction: UP
 - tapOn:
-    id: "update-progress__take_photo"
+    id: "report-reply-composer__photo"
 - tapOn: "Choose from Library"
 - extendedWaitUntil:
     visible:

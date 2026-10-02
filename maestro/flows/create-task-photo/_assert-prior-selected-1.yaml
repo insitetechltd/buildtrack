@@ -12,6 +12,10 @@ appId: com.buildtrack.app.local
           visible:
             id: "capture-session__library_grid"
           timeout: 8000
+      # Hybrid: wait for selectedCount to sync (title updates from "Select photos" to "1 selected")
+      - extendedWaitUntil:
+          visible: ".*1 selected.*"
+          timeout: 5000
 - runFlow:
     when:
       visible:
@@ -21,5 +25,5 @@ appId: com.buildtrack.app.local
           visible:
             id: "in-app-library__grid"
           timeout: 8000
-- assertVisible: ".*1 selected.*"
+      - assertVisible: ".*1 selected.*"
 - takeScreenshot: "ct-photo-ledger-1-selected"

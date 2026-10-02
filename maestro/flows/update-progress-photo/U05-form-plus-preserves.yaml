@@ -16,6 +16,6 @@ tags:
 - runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
 - runFlow: _cancel-library-to-update.yaml
 - assertVisible:
-    id: "update-progress__take_photo"
+    id: "report-reply-composer__photo"
 - runFlow: _submit-update.yaml
 - takeScreenshot: "up-U05-done"

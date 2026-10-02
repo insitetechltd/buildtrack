@@ -392,39 +392,45 @@ export function CropOverlay({
             })}
 
             {/* Labels -90 -60 -30 0 30 60 90 above arc */}
-            {[-90, -60, -30, 0, 30, 60, 90].map((angleDeg) => {
-              const angleRad = (angleDeg * Math.PI) / 180;
-              const cx = (containerWidth * 3) / 2;
-              const cy = DIAL_RADIUS;
-              const labelX = cx + DIAL_RADIUS * Math.sin(angleRad);
-              const labelY = cy + DIAL_RADIUS * Math.cos(angleRad) - 16;
-              const isZero = angleDeg === 0;
+            {/* Only render labels within peek zone to remove ±60/±90 from a11y tree at rest */}
+            {[-90, -60, -30, 0, 30, 60, 90]
+              .filter((angleDeg) => {
+                const PEEK_RANGE = 35;
+                return Math.abs(angleDeg - fineRotation) <= PEEK_RANGE;
+              })
+              .map((angleDeg) => {
+                const angleRad = (angleDeg * Math.PI) / 180;
+                const cx = (containerWidth * 3) / 2;
+                const cy = DIAL_RADIUS;
+                const labelX = cx + DIAL_RADIUS * Math.sin(angleRad);
+                const labelY = cy + DIAL_RADIUS * Math.cos(angleRad) - 16;
+                const isZero = angleDeg === 0;
 
-              return (
-                <Pressable
-                  key={angleDeg}
-                  onPress={isZero ? handleResetToOriginal : undefined}
-                  style={{
-                    position: "absolute",
-                    left: labelX - 20,
-                    top: labelY,
-                    width: 40,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <Text
+                return (
+                  <Pressable
+                    key={angleDeg}
+                    onPress={isZero ? handleResetToOriginal : undefined}
                     style={{
-                      color: "#fff",
-                      fontSize: 11,
-                      fontWeight: isZero ? "600" : "500",
-                      textAlign: "center",
+                      position: "absolute",
+                      left: labelX - 20,
+                      top: labelY,
+                      width: 40,
+                      paddingVertical: 4,
                     }}
                   >
-                    {angleDeg}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontSize: 11,
+                        fontWeight: isZero ? "600" : "500",
+                        textAlign: "center",
+                      }}
+                    >
+                      {angleDeg}
+                    </Text>
+                  </Pressable>
+                );
+              })}
           </View>
         </View>
       </View>

@@ -209,8 +209,8 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 disabled={isEditingPhoto}
                 onCancel={() => setCropMode(false)}
                 onApply={async (crop) => {
-                  await handleApplyCrop(enlargedPhotoIndex, crop);
                   setCropMode(false);
+                  await handleApplyCrop(enlargedPhotoIndex, crop);
                 }}
               />
             ) : null}

@@ -280,6 +280,7 @@ export function LibraryFullscreenViewer({
         return;
       }
 
+      setCropMode(false);
       setIsCommitting(true);
       try {
         const sourceUri = displayUri;
@@ -314,8 +315,6 @@ export function LibraryFullscreenViewer({
             isEdited: true,
           });
         }
-
-        setCropMode(false);
       } catch (error) {
         console.error("❌ [LibraryViewer] Crop failed:", error);
         Alert.alert("Error", "Could not crop photo. Please try again.");

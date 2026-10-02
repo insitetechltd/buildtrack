@@ -10,7 +10,7 @@ tags:
 - runFlow: _seed-task-open-update.yaml
 - runFlow: _open-library.yaml
 - runFlow: ../create-task-photo/_pick-first.yaml
-- runFlow: ../create-task-photo/_reopen-library-from-selection.yaml
+- runFlow: _reopen-library-from-selection.yaml
 - runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
 - runFlow: ../create-task-photo/_pick-second-keep-first.yaml
 - takeScreenshot: "up-U03-two-tiles"

@@ -1,0 +1,19 @@
+# From Select Photos: Add more → Choose from Library → legacy in-app library.
+# Update Progress Phase B: opens InAppLibrary, not hybrid CaptureSession.
+appId: com.buildtrack.app.local
+---
+- assertVisible:
+    id: "photo-selection__add_more"
+- tapOn:
+    id: "photo-selection__add_more"
+- tapOn: "Choose from Library"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__grid"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 1500

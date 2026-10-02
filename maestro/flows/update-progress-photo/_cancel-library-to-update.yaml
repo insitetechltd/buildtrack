@@ -1,11 +1,36 @@
 # Cancel hybrid library → land on Update Progress.
-# Phase B: cancel from CaptureSession hybrid library back to update form.
+# Phase B: cancel from CaptureSession hybrid library back to update form (dual-surface).
 appId: com.buildtrack.app.local
 ---
-- tapOn:
-    id: "app-screen-header__back"
-- waitForAnimationToEnd:
-    timeout: 2000
+# Dual-surface cancel: hybrid back or header back or legacy cancel
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__hybrid_back"
+    commands:
+      - tapOn:
+          id: "capture-session__hybrid_back"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible:
+        id: "app-screen-header__back"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__cancel"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+      - waitForAnimationToEnd:
+          timeout: 2000
+# If still on photo selection screen, go back one more time
 - runFlow:
     when:
       visible:

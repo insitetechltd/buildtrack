@@ -50,7 +50,8 @@ appId: com.buildtrack.app.local
           id: "app-screen-header__back"
       - waitForAnimationToEnd:
           timeout: 1000
+# Land on Progress composer, not update-progress screen_title
 - extendedWaitUntil:
     visible:
-      id: "update-progress__screen_title"
+      id: "report-reply-composer"
     timeout: 15000

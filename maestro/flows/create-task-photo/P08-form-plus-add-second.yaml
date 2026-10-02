@@ -19,7 +19,7 @@ tags:
 # Re-pick first to restore ledger
 - runFlow: _pick-first.yaml
 - runFlow: _pick-slot-1.yaml
-- assertVisible: ".*2 selected.*"
+# After pick #2: lands on preview/edit_toolbar, not multi-select count chrome
 - runFlow: _accept-library.yaml
 - assertVisible:
     id: "photo-selection__tile_1"

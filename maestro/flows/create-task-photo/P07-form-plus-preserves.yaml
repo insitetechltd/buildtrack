@@ -45,6 +45,16 @@ tags:
           id: "in-app-library__cancel"
       - waitForAnimationToEnd:
           timeout: 1000
+# After hybrid_back, may land on camera surface - dismiss to form
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__cancel"
+    commands:
+      - tapOn:
+          id: "capture-session__cancel"
+      - waitForAnimationToEnd:
+          timeout: 1000
 # Retry if still on library (missed press / XCTest race)
 - runFlow:
     when:
@@ -55,6 +65,16 @@ tags:
           id: "capture-session__hybrid_back"
       - waitForAnimationToEnd:
           timeout: 1000
+      # May land on camera again after retry
+      - runFlow:
+          when:
+            visible:
+              id: "capture-session__cancel"
+          commands:
+            - tapOn:
+                id: "capture-session__cancel"
+            - waitForAnimationToEnd:
+                timeout: 1000
 - extendedWaitUntil:
     visible:
       id: "create-task__continuous_form"

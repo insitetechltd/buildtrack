@@ -204,7 +204,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 contentFit="contain"
               />
             )}
-            {cropModeRef.current ? (
+            {cropMode ? (
               <CropOverlay
                 uri={previewUri}
                 containerWidth={previewImageSize.width}
@@ -215,10 +215,10 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                   setCropMode(false);
                 }}
                 onApply={async (crop) => {
-                  cropModeRef.current = false;
+                  // Root cause fix: setCropMode triggers re-render that evaluates {cropMode ? ...}
+                  // Refs don't trigger re-renders, so gating on cropModeRef.current caused 15s delay
                   setCropMode(false);
-                  // Force synchronous unmount by yielding control
-                  await new Promise(resolve => setTimeout(resolve, 0));
+                  cropModeRef.current = false;
                   if (enlargedPhotoIndex !== null) {
                     await handleApplyCrop(enlargedPhotoIndex, crop);
                   }

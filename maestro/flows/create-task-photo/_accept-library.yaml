@@ -1,6 +1,7 @@
-# Accept library selection → wait for Select Photos (multi-pin can be slow).
-# Phase B: tap Done badge on hybrid library, then wait for photo-selection confirm.
-# Keep waits tight: fail fast if pin/nav hangs rather than sit on loading for 60s+.
+# Accept library selection → photo-selection confirm OR direct form/composer land.
+# Phase B: tap Done badge on hybrid library.
+# Fast path (P09/U07 harness lag): lands directly on form with attachment_preview.
+# Traditional path: lands on photo-selection__confirm first.
 appId: com.buildtrack.app.local
 ---
 - waitForAnimationToEnd:
@@ -28,8 +29,39 @@ appId: com.buildtrack.app.local
           commands:
             - tapOn:
                 point: "95%,10%"
-- extendedWaitUntil:
-    visible:
-      id: "photo-selection__confirm"
-    timeout: 15000
+# Wait for either photo-selection__confirm OR form/composer land
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__confirm"
+    commands:
+      # Traditional path: confirm screen present
+      - extendedWaitUntil:
+          visible:
+            id: "photo-selection__confirm"
+          timeout: 3000
+- runFlow:
+    when:
+      notVisible:
+        id: "photo-selection__confirm"
+    commands:
+      # Fast path: already on form/composer with attachment preview
+      - runFlow:
+          when:
+            visible:
+              id: "create-task__continuous_form"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: "create-task__attachment_preview_0"
+                timeout: 3000
+      - runFlow:
+          when:
+            visible:
+              id: "report-reply-composer"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: "report-reply-composer__photo"
+                timeout: 3000
 - runFlow: _assert-no-logbox.yaml

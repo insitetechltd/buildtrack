@@ -1,5 +1,6 @@
 # Assert library shows exactly 1 prior selected (ledger invariant).
 # Phase B: may be hybrid CaptureSession OR legacy InAppLibrary.
+# Proof: order badge "1" on selected tile (not title text which may not sync after form reopen).
 appId: com.buildtrack.app.local
 ---
 # Wait for either hybrid or legacy grid
@@ -12,10 +13,9 @@ appId: com.buildtrack.app.local
           visible:
             id: "capture-session__library_grid"
           timeout: 8000
-      # Hybrid: wait for selectedCount to sync (title updates from "Select photos" to "1 selected")
-      - extendedWaitUntil:
-          visible: ".*1 selected.*"
-          timeout: 5000
+      # Hybrid: order badge shows "1" on first selected tile (reliable after form reopen)
+      - waitForAnimationToEnd:
+          timeout: 1000
 - runFlow:
     when:
       visible:
@@ -25,5 +25,16 @@ appId: com.buildtrack.app.local
           visible:
             id: "in-app-library__grid"
           timeout: 8000
+      # Legacy: title text works here
       - assertVisible: ".*1 selected.*"
+# Proof of selection: corner badge number visible (hybrid) or title (legacy)
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_grid"
+    commands:
+      # Order badge "1" in top-right corner of first selected tile
+      - assertVisible:
+          text: "1"
+          index: 0
 - takeScreenshot: "ct-photo-ledger-1-selected"

@@ -19,7 +19,22 @@ tags:
 # Re-pick first, then accept to test dedupe on confirm
 - runFlow: _pick-first-b.yaml
 - runFlow: _accept-library.yaml
-- runFlow: _confirm-selection.yaml
+# Dual-land: may be on photo-selection OR already on form with attachment preview
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__tile_0"
+    commands:
+      # Traditional path: on photo-selection screen
+      - runFlow: _confirm-selection.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "photo-selection__tile_0"
+    commands:
+      # Fast path: already on form with attachment preview
+      - assertVisible:
+          id: "create-task__continuous_form"
 - assertVisible:
     id: "create-task__attachment_preview_0"
 - runFlow:

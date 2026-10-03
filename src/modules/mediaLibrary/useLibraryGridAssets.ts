@@ -229,22 +229,13 @@ export function useLibraryGridAssets({
           afterEpochSeconds == null &&
           beforeEpochSeconds == null;
 
-        // Option 2B: limited Recents first (no sorted warm wait). Expand after first screen.
+        // Option 2B: live user-library walk. Gray tiles until it returns.
+        // Do not paint a warm page or saved IDs first. Empty walk stays empty.
         if (
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID &&
           isLibraryPickerNative2b() &&
           isPhotokitLibrary2bAvailable()
         ) {
-          const peekWarm = defaultFetch ? peekWarmLibraryPage() : null;
-          if (peekWarm && peekWarm.assets.length > 0) {
-            applyBridgeAssets(peekWarm.assets);
-            setEndCursor(peekWarm.endCursor);
-            setHasNextPage(peekWarm.hasNextPage);
-            endCursorRef.current = peekWarm.endCursor;
-            hasNextPageRef.current = peekWarm.hasNextPage;
-            setInitialLoadDone(true);
-          }
-
           indexOpeningRef.current = true;
           setLoadingPage(true);
           pageRequestRef.current += 1;
@@ -255,19 +246,38 @@ export function useLibraryGridAssets({
             setLoadingPage(false);
             return;
           }
-          if (limited) {
+          indexOpeningRef.current = false;
+          setLoadingPage(false);
+          if (limited && limited.count > 0) {
             indexSessionRef.current = limited;
             setAssets([]);
             assetsByIdRef.current = new Map();
             setIndexSession(limited);
             setInitialLoadDone(true);
-            setLoadingPage(false);
-            indexOpeningRef.current = false;
             return;
           }
-          indexOpeningRef.current = false;
-          setLoadingPage(false);
-          // Fall through to warm path if limited open failed.
+          setAssets([]);
+          assetsByIdRef.current = new Map();
+          setIndexSession(null);
+          setHasNextPage(false);
+          hasNextPageRef.current = false;
+          setInitialLoadDone(true);
+          return;
+        }
+
+        // Shipping path with no native walk: stay empty. Do not paint warm or pages.
+        if (
+          selectedAlbumId === ALL_PHOTOS_ALBUM_ID &&
+          isLibraryPickerNative2b() &&
+          defaultFetch
+        ) {
+          setAssets([]);
+          assetsByIdRef.current = new Map();
+          setIndexSession(null);
+          setHasNextPage(false);
+          hasNextPageRef.current = false;
+          setInitialLoadDone(true);
+          return;
         }
 
         // Warm path is newest-first. A sort or date filter must not paint that page first.

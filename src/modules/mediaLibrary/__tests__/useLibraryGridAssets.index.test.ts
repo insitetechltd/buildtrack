@@ -46,6 +46,10 @@ jest.mock("@/utils/libraryWarmPrefetch", () => ({
   isWarmLibraryPrefetchInFlight: jest.fn(() => false),
 }));
 
+jest.mock("@/utils/libraryPickerPerf", () => ({
+  isLibraryPickerNative2b: () => false,
+}));
+
 jest.mock("../PhotokitThumbView", () => ({
   isPhotokitLibraryIndexAvailable: () => true,
   isPhotokitLibrary2bAvailable: () => false,

@@ -17,12 +17,6 @@ jest.mock("../libraryIndexPrefetch", () => ({
     mockPrefetchIndex(...args),
 }));
 
-const mockHydrateIds = jest.fn(async () => null);
-
-jest.mock("../libraryPreviewIds", () => ({
-  hydratePhotokitPreviewIds: (...args: unknown[]) => mockHydrateIds(...args),
-}));
-
 jest.mock("../mediaLibraryPermission", () => ({
   ensureMediaLibraryChecked: (...args: unknown[]) => mockEnsure(...args),
 }));
@@ -38,7 +32,6 @@ describe("startLibraryCapturePrefetch", () => {
     mockEnsure.mockResolvedValue({ granted: true });
     mockWarm.mockResolvedValue(undefined);
     mockPrefetchIndex.mockReturnValue(Promise.resolve(null));
-    mockHydrateIds.mockResolvedValue(null);
     mockIs2b.mockReturnValue(false);
   });
 
@@ -60,23 +53,14 @@ describe("startLibraryCapturePrefetch", () => {
     expect(order).toEqual(["warm", "index"]);
   });
 
-  it("native2b indexes without MediaLibrary warm", async () => {
+  it("native2b does not start a library walk from the camera tab", async () => {
     mockIs2b.mockReturnValue(true);
-    const order: string[] = [];
-    mockWarm.mockImplementation(async () => {
-      order.push("warm");
-    });
-    mockPrefetchIndex.mockImplementation(() => {
-      order.push("index");
-      return Promise.resolve(null);
-    });
     startLibraryCapturePrefetch();
     await new Promise((r) => setTimeout(r, 0));
     await Promise.resolve();
     await Promise.resolve();
-    expect(order).toEqual(["index"]);
     expect(mockWarm).not.toHaveBeenCalled();
-    expect(mockHydrateIds).toHaveBeenCalled();
+    expect(mockPrefetchIndex).not.toHaveBeenCalled();
   });
 
   it("skips warm and index when permission denied", async () => {

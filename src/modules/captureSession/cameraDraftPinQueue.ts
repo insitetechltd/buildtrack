@@ -32,7 +32,9 @@ export function enqueueCameraDraftPin(request: CameraDraftPinRequest): void {
       if (state.pinGeneration !== generation) {
         return;
       }
-      if (!state.photos.some((photo) => photo.id === request.id)) {
+      const photo = state.photos.find((row) => row.id === request.id);
+      // A crop or drawing already replaced the shutter file. Do not put the original back.
+      if (!photo || photo.uri !== request.sourceUri) {
         return;
       }
       state.updatePhotoUri(request.id, pinnedUri);

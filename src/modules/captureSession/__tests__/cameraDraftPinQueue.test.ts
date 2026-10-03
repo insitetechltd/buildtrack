@@ -100,6 +100,28 @@ describe("cameraDraftPinQueue", () => {
     );
   });
 
+  it("does not replace a camera photo that was already cropped or drawn on", async () => {
+    const pin = deferred<string>();
+    (pinDraftMedia as jest.Mock).mockReturnValue(pin.promise);
+    useCaptureSessionStore.getState().addCameraPhoto({
+      id: "a",
+      uri: "file://cache-a.jpg",
+      fileName: "a.jpg",
+    });
+    enqueueCameraDraftPin({
+      id: "a",
+      sourceUri: "file://cache-a.jpg",
+      fileName: "a.jpg",
+    });
+    useCaptureSessionStore.getState().updatePhotoUri("a", "file://annotated-a.jpg");
+
+    pin.resolve("file://draft/a.jpg");
+    await flushCameraDraftPins();
+    expect(useCaptureSessionStore.getState().photos[0].uri).toBe(
+      "file://annotated-a.jpg",
+    );
+  });
+
   it("removes the row on pin failure and counts it on flush", async () => {
     const pin = deferred<string>();
     (pinDraftMedia as jest.Mock).mockReturnValue(pin.promise);

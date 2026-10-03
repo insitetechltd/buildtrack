@@ -196,4 +196,28 @@ describe("LibraryFullscreenViewer", () => {
     expect(queryByTestId("viewer__toggle_select")).toBeNull();
     expect(queryByTestId("viewer__fullscreen")).toBeTruthy();
   });
+
+  it("opens crop and draw for a camera file passed as a direct item", () => {
+    const onToggleSelect = jest.fn();
+    const { getByTestId } = render(
+      <LibraryFullscreenViewer
+        visible
+        initialIndex={0}
+        assets={[]}
+        directItems={[{ index: 0, assetId: "cam_1", uri: "file://shot.jpg" }]}
+        indexSession={{ token: 9, count: 40 } as never}
+        selectedIds={new Set(["cam_1"])}
+        annotations={new Map()}
+        onToggleSelect={onToggleSelect}
+        onClose={jest.fn()}
+        onCommitEdit={jest.fn().mockResolvedValue(undefined)}
+        testIdPrefix="camera-viewer"
+      />,
+    );
+
+    expect(getByTestId("camera-viewer__start_crop")).toBeTruthy();
+    expect(getByTestId("camera-viewer__start_draw")).toBeTruthy();
+    fireEvent.press(getByTestId("camera-viewer__toggle_select"));
+    expect(onToggleSelect).toHaveBeenCalledWith("cam_1");
+  });
 });

@@ -42,6 +42,8 @@ type LibraryFullscreenViewerProps = {
   visible: boolean;
   initialIndex: number;
   assets: MediaLibrary.Asset[];
+  /** Camera-session rows. When set, the pager uses these file URIs instead of the library index. */
+  directItems?: ViewerItem[];
   indexSession?: PhotokitLibrarySession | null;
   selectedIds: Set<string>;
   annotations: Map<string, AssetAnnotation>;
@@ -53,7 +55,7 @@ type LibraryFullscreenViewerProps = {
   accentColor?: string;
 };
 
-type ViewerItem = {
+export type ViewerItem = {
   index: number;
   assetId: string;
   uri: string;
@@ -77,6 +79,7 @@ export function LibraryFullscreenViewer({
   visible,
   initialIndex,
   assets,
+  directItems,
   indexSession,
   selectedIds,
   annotations,
@@ -112,10 +115,17 @@ export function LibraryFullscreenViewer({
   const useNativeThumbs = isPhotokitThumbsAvailable();
   const NativeThumb = useNativeThumbs ? getPhotokitThumbNativeView() : null;
 
-  const indexMode = indexSession != null;
-  const itemCount = indexMode ? indexSession.count : assets.length;
+  const indexMode = directItems == null && indexSession != null;
+  const itemCount = directItems
+    ? directItems.length
+    : indexMode
+      ? indexSession.count
+      : assets.length;
 
   const items = useMemo((): ViewerItem[] => {
+    if (directItems) {
+      return directItems;
+    }
     if (indexMode && indexSession) {
       return Array.from({ length: indexSession.count }, (_, i) => {
         const id = photokitIdAt(indexSession.token, i);
@@ -131,7 +141,7 @@ export function LibraryFullscreenViewer({
       assetId: asset.id,
       uri: asset.uri,
     }));
-  }, [assets, indexMode, indexSession]);
+  }, [assets, directItems, indexMode, indexSession]);
 
   useEffect(() => {
     if (!visible) {

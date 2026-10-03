@@ -19,6 +19,7 @@ import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
   LibraryFullscreenViewer,
   type AssetAnnotation,
+  type ViewerItem,
 } from "@/modules/mediaLibrary/LibraryFullscreenViewer";
 import { LibrarySelectedTray } from "@/modules/mediaLibrary/LibrarySelectedTray";
 import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
@@ -64,6 +65,7 @@ export function HybridLibraryPickerScreen() {
   const [sessionExpanded, setSessionExpanded] = useState(true);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [cameraViewerIndex, setCameraViewerIndex] = useState<number | null>(null);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
@@ -115,6 +117,34 @@ export function HybridLibraryPickerScreen() {
   }, [sessionCameraPhotos, sessionExpanded]);
 
   const sessionCanExpand = sessionCameraPhotos.length > LIBRARY_GRID_COLUMNS;
+
+  const cameraViewerItems = useMemo((): ViewerItem[] => {
+    return sessionCameraPhotos.map((photo, index) => ({
+      index,
+      assetId: photo.id,
+      uri: photo.uri,
+    }));
+  }, [sessionCameraPhotos]);
+
+  const cameraSelectedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const photo of sessionCameraPhotos) {
+      if (photo.selected) {
+        ids.add(photo.id);
+      }
+    }
+    return ids;
+  }, [sessionCameraPhotos]);
+
+  const openCameraViewer = useCallback(
+    (photoId: string) => {
+      const index = sessionCameraPhotos.findIndex((photo) => photo.id === photoId);
+      if (index >= 0) {
+        setCameraViewerIndex(index);
+      }
+    },
+    [sessionCameraPhotos],
+  );
 
   const selectedCount = useMemo(
     () => photos.filter((p) => p.selected).length,
@@ -186,6 +216,10 @@ export function HybridLibraryPickerScreen() {
 
   const handleTrayThumbPress = useCallback(
     (assetId: string) => {
+      if (sessionCameraPhotos.some((photo) => photo.id === assetId)) {
+        openCameraViewer(assetId);
+        return;
+      }
       const asset = albumPicker.assetsByIdRef.current.get(assetId);
       if (!asset) return;
 
@@ -201,7 +235,7 @@ export function HybridLibraryPickerScreen() {
         setViewerOpen(true);
       }
     },
-    [albumPicker.assets, albumPicker.assetsByIdRef, albumPicker.indexSession],
+    [albumPicker.assets, albumPicker.assetsByIdRef, albumPicker.indexSession, openCameraViewer, sessionCameraPhotos],
   );
 
   const handleDeselectAll = useCallback(() => {
@@ -223,7 +257,9 @@ export function HybridLibraryPickerScreen() {
       });
 
       const store = useCaptureSessionStore.getState();
-      const photo = store.photos.find((p) => p.mediaLibraryAssetId === assetId);
+      const photo = store.photos.find(
+        (p) => p.id === assetId || p.mediaLibraryAssetId === assetId,
+      );
       if (photo && annotation.annotatedUri) {
         store.updatePhotoUri(photo.id, annotation.annotatedUri);
       }
@@ -303,7 +339,8 @@ export function HybridLibraryPickerScreen() {
         {sessionVisiblePhotos.map((item) => (
           <Pressable
             key={item.id}
-            onPress={() => toggleSelected(item.id)}
+            testID={`capture-session__session_tile_${item.id}`}
+            onPress={() => openCameraViewer(item.id)}
             style={{ width: tileSize, height: tileSize }}
           >
             <ExpoImage
@@ -314,16 +351,25 @@ export function HybridLibraryPickerScreen() {
               transition={0}
               style={{ width: tileSize, height: tileSize }}
             />
-            {item.selected ? (
-              <View
-                testID={`capture-session__order_badge_${item.id}`}
-                style={styles.orderBadge}
-              >
-                <Text style={styles.orderBadgeText}>
-                  {selectionOrderByKey.get(item.id) ?? ""}
-                </Text>
-              </View>
-            ) : null}
+            <Pressable
+              testID={`capture-session__order_badge_${item.id}`}
+              onPress={(event) => {
+                event.stopPropagation();
+                toggleSelected(item.id);
+              }}
+              hitSlop={4}
+              style={styles.sessionCheckHit}
+            >
+              {item.selected ? (
+                <View style={styles.orderBadge}>
+                  <Text style={styles.orderBadgeText}>
+                    {selectionOrderByKey.get(item.id) ?? ""}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.sessionCheckEmpty} />
+              )}
+            </Pressable>
           </Pressable>
         ))}
       </View>
@@ -459,7 +505,9 @@ export function HybridLibraryPickerScreen() {
           const entries = [...selectionOrderByKey.entries()]
             .sort((a, b) => a[1] - b[1])
             .map(([assetId, order]) => {
-              const photo = photos.find((p) => p.mediaLibraryAssetId === assetId);
+              const photo =
+                photos.find((p) => p.mediaLibraryAssetId === assetId) ??
+                photos.find((p) => p.source === "camera" && p.id === assetId);
               if (!photo) {
                 return null;
               }
@@ -492,6 +540,21 @@ export function HybridLibraryPickerScreen() {
         onUpdateAnnotation={handleUpdateAnnotation}
         onCommitEdit={handleCommitEdit}
         testIdPrefix="capture-session"
+        accentColor="#08576E"
+      />
+
+      <LibraryFullscreenViewer
+        visible={cameraViewerIndex != null}
+        initialIndex={cameraViewerIndex ?? 0}
+        assets={[]}
+        directItems={cameraViewerItems}
+        selectedIds={cameraSelectedIds}
+        annotations={annotations}
+        onToggleSelect={toggleSelected}
+        onClose={() => setCameraViewerIndex(null)}
+        onUpdateAnnotation={handleUpdateAnnotation}
+        onCommitEdit={handleCommitEdit}
+        testIdPrefix="capture-session-camera"
         accentColor="#08576E"
       />
 
@@ -638,10 +701,25 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#10222B",
   },
-  orderBadge: {
+  sessionCheckHit: {
     position: "absolute",
-    right: 6,
-    top: 6,
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    alignItems: "flex-end",
+    justifyContent: "flex-start",
+    padding: 6,
+  },
+  sessionCheckEmpty: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  orderBadge: {
     minWidth: 22,
     height: 22,
     paddingHorizontal: 5,

@@ -9,12 +9,19 @@ import {
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   defaultCropRectInImageLayout,
-  getContainedImageLayout,
+  dialMarkOffset,
+  dialPeekCenterY,
+  getEditCanvasImageLayout,
+  mapCoverCropAfterRotation,
   mapCropRectToSourcePixels,
   resolveImageDimensions,
+  clampImagePan,
+  cropRectForImageOffset,
+  cropRotationCoverScale,
   type Rect,
   type SourceCrop,
 } from "../../utils/photoPreviewEdit";
@@ -28,7 +35,12 @@ const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 180;
 const SNAP_DEGREE = 1;
 const DIAL_RADIUS = 200;
-const CROP_ENTER_INSET = 0.15;
+/** Photo occupies 85% of the stage so corner handles have finger room outside. */
+const EDIT_CANVAS_PAD = 0.85;
+/** Tick dots and degree labels. White so they stay readable on the black stage. */
+const DIAL_MARK = "#FFFFFF";
+/** Dim outside the crop frame. Light enough that the photo outside the rect stays visible. */
+const OUTSIDE_CROP_DIM = "rgba(0,0,0,0.35)";
 
 type CropOverlayProps = {
   uri: string;
@@ -53,17 +65,27 @@ export function CropOverlay({
   const [crop, setCrop] = useState<Rect | null>(null);
   const [baseRotation, setBaseRotation] = useState(0);
   const [fineRotation, setFineRotation] = useState(0);
+  const [imageOffset, setImageOffset] = useState({ x: 0, y: 0 });
   const [loadError, setLoadError] = useState(false);
   const [originalAngle, setOriginalAngle] = useState(0);
   const [isHiding, setIsHiding] = useState(false);
   
   const cropRef = useRef<Rect | null>(null);
   const cropStartRef = useRef<Rect | null>(null);
+  const imageOffsetRef = useRef({ x: 0, y: 0 });
+  const imageOffsetStartRef = useRef({ x: 0, y: 0 });
+  const panContextRef = useRef({
+    imageLayout: null as Rect | null,
+    crop: null as Rect | null,
+    totalRotation: 0,
+  });
   const fineRotationRef = useRef(0);
   const fineRotationStartRef = useRef(0);
   const isHidingRef = useRef(false);
+  const insets = useSafeAreaInsets();
+  const topBarHeight = insets.top + TOP_BAR_HEIGHT;
 
-  const photoHeight = containerHeight - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  const photoHeight = containerHeight - topBarHeight - BOTTOM_BAR_HEIGHT;
 
   useEffect(() => {
     cropRef.current = crop;
@@ -74,11 +96,16 @@ export function CropOverlay({
   }, [fineRotation]);
 
   useEffect(() => {
+    imageOffsetRef.current = imageOffset;
+  }, [imageOffset]);
+
+  useEffect(() => {
     let cancelled = false;
     setSourceSize(null);
     setCrop(null);
     setBaseRotation(0);
     setFineRotation(0);
+    setImageOffset({ x: 0, y: 0 });
     setOriginalAngle(0);
     setLoadError(false);
 
@@ -102,17 +129,19 @@ export function CropOverlay({
 
   const imageLayout = useMemo(() => {
     if (!sourceSize) return null;
-    return getContainedImageLayout(
+    return getEditCanvasImageLayout(
       containerWidth,
       photoHeight,
       sourceSize.width,
       sourceSize.height,
+      EDIT_CANVAS_PAD,
     );
   }, [containerWidth, photoHeight, sourceSize]);
 
   useEffect(() => {
     if (imageLayout && imageLayout.width > 0) {
-      setCrop(defaultCropRectInImageLayout(imageLayout, CROP_ENTER_INSET));
+      // Full photo bounds. The 85% pad already left finger room outside the image.
+      setCrop(defaultCropRectInImageLayout(imageLayout, 0));
     }
   }, [imageLayout]);
 
@@ -209,44 +238,77 @@ export function CropOverlay({
     setBaseRotation((prev) => (prev + 90) % 360);
   }, []);
 
-  const handleResetToOriginal = useCallback(() => {
+  const handleReset = useCallback(() => {
     setBaseRotation(0);
     setFineRotation(0);
-  }, []);
+    setImageOffset({ x: 0, y: 0 });
+    if (imageLayout && imageLayout.width > 0) {
+      setCrop(defaultCropRectInImageLayout(imageLayout, 0));
+    }
+  }, [imageLayout]);
+
+  const totalRotation = baseRotation + fineRotation;
+  panContextRef.current = { imageLayout, crop, totalRotation };
+
+  useEffect(() => {
+    if (!imageLayout || !crop) return;
+    const scale = cropRotationCoverScale(imageLayout, crop, totalRotation);
+    setImageOffset((prev) => clampImagePan(imageLayout, crop, totalRotation, scale, prev));
+  }, [imageLayout, crop, totalRotation]);
+
+  const imagePanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: () => !disabled,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => {
+          imageOffsetStartRef.current = imageOffsetRef.current;
+        },
+        onPanResponderMove: (_evt, gesture) => {
+          const ctx = panContextRef.current;
+          if (!ctx.imageLayout || !ctx.crop) return;
+          const scale = cropRotationCoverScale(ctx.imageLayout, ctx.crop, ctx.totalRotation);
+          const next = clampImagePan(ctx.imageLayout, ctx.crop, ctx.totalRotation, scale, {
+            x: imageOffsetStartRef.current.x + gesture.dx,
+            y: imageOffsetStartRef.current.y + gesture.dy,
+          });
+          imageOffsetRef.current = next;
+          setImageOffset(next);
+        },
+      }),
+    [disabled],
+  );
 
   const handleApply = () => {
     if (!crop || !imageLayout || !sourceSize) return;
-    const mapped = mapCropRectToSourcePixels(
-      crop,
-      imageLayout,
-      sourceSize.width,
-      sourceSize.height,
-    );
+    const hasRotation = Math.abs(totalRotation) > 0.1;
+    const frame = cropRectForImageOffset(crop, imageOffset);
+    const displayScale = cropRotationCoverScale(imageLayout, crop, totalRotation);
+    const mapped = hasRotation
+      ? mapCoverCropAfterRotation(
+          frame,
+          imageLayout,
+          sourceSize.width,
+          sourceSize.height,
+          totalRotation,
+          displayScale,
+        )
+      : mapCropRectToSourcePixels(
+          frame,
+          imageLayout,
+          sourceSize.width,
+          sourceSize.height,
+        );
     if (!mapped) return;
-    const totalRotation = baseRotation + fineRotation;
     
     isHidingRef.current = true;
     setIsHiding(true);
     
     requestAnimationFrame(() => {
-      onApply(mapped, Math.abs(totalRotation) > 0.1 ? totalRotation : undefined);
+      onApply(mapped, hasRotation ? totalRotation : undefined);
     });
   };
-
-  const totalRotation = baseRotation + fineRotation;
-
-  const imageScale = useMemo(() => {
-    if (!imageLayout || !crop) return 1;
-    const rotRad = (Math.abs(totalRotation) * Math.PI) / 180;
-    if (rotRad < 0.001) return 1;
-    const cos = Math.abs(Math.cos(rotRad));
-    const sin = Math.abs(Math.sin(rotRad));
-    const rotatedWidth = imageLayout.width * cos + imageLayout.height * sin;
-    const rotatedHeight = imageLayout.width * sin + imageLayout.height * cos;
-    const scaleX = rotatedWidth / imageLayout.width;
-    const scaleY = rotatedHeight / imageLayout.height;
-    return Math.max(scaleX, scaleY);
-  }, [imageLayout, crop, totalRotation]);
 
   if (isHiding || isHidingRef.current) {
     return null;
@@ -283,25 +345,35 @@ export function CropOverlay({
     );
   }
 
-  const dialWidth = containerWidth - 80;
+  const imageBottom = topBarHeight + imageLayout.y + imageLayout.height;
+  const buttonRowHeight = 60 + insets.bottom;
+  const dialCenterX = containerWidth / 2;
+  const dialCenterY = Math.min(
+    dialPeekCenterY(imageBottom, DIAL_RADIUS),
+    containerHeight - buttonRowHeight - 8 - DIAL_RADIUS,
+  );
 
   return (
     <View
       testID="photo-selection__crop_overlay"
-      style={[styles.fill, { width: containerWidth, height: containerHeight }]}
-      className="bg-white"
+      style={[
+        styles.fill,
+        { width: containerWidth, height: containerHeight, backgroundColor: "#000" },
+      ]}
     >
-      {/* Top Bar - White Chrome */}
+      {/* Top Bar - below the status bar so Cancel / Done can be tapped */}
       <View
         style={{
-          height: TOP_BAR_HEIGHT,
+          height: topBarHeight,
           backgroundColor: "#fff",
           borderBottomWidth: 1,
           borderBottomColor: "#edf0f2",
+          paddingTop: insets.top,
           paddingHorizontal: 16,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          zIndex: 4,
         }}
       >
         <Pressable
@@ -310,12 +382,12 @@ export function CropOverlay({
           disabled={disabled}
           style={{ padding: 8 }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#18212b" }}>
+          <Text style={{ fontSize: 20, fontWeight: "600", color: "#18212b" }}>
             Cancel
           </Text>
         </Pressable>
-        <Text style={{ fontSize: 13, fontWeight: "600", color: "#303a44", letterSpacing: 0.01 }}>
-          Crop · rotate inside
+        <Text style={{ fontSize: 20, fontWeight: "700", color: "#303a44" }}>
+          Crop / Rotate
         </Text>
         <Pressable
           testID="photo-selection__crop_apply"
@@ -323,201 +395,127 @@ export function CropOverlay({
           disabled={disabled}
           style={{ padding: 8 }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#18212b" }}>
+          <Text style={{ fontSize: 20, fontWeight: "600", color: "#18212b" }}>
             Done
           </Text>
         </Pressable>
       </View>
 
-      {/* Fine Rotate Dial - Positioned Behind Photo Stage for Natural Masking */}
-      <View
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: TOP_BAR_HEIGHT + photoHeight - DIAL_RADIUS - 164,
-          height: DIAL_RADIUS * 2,
-        }}
-      >
+      {/* Fixed circle behind the photo. Markings turn around this center; the center does not move. */}
+      <View style={[StyleSheet.absoluteFill, { zIndex: 0 }]} pointerEvents="box-none">
         <View
           {...rotationDialResponder.panHandlers}
           testID="photo-selection__rotation_dial"
-          style={{
-            width: containerWidth,
-            height: DIAL_RADIUS * 2,
-            position: "relative",
-          }}
+          style={StyleSheet.absoluteFill}
         >
-          {/* Arc + Labels Container - Translates Horizontally */}
-          <View
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: 0,
-              width: containerWidth * 3,
-              height: DIAL_RADIUS * 2,
-              transform: [
-                { translateX: -(containerWidth * 3) / 2 },
-                { translateX: -(fineRotation / MAX_ROTATION) * (containerWidth / 2) },
-              ],
-            }}
-            pointerEvents="none"
-          >
-            {/* Circle center is at (width/2, DIAL_RADIUS) - above photo bottom edge at rest */}
-            {/* Generate dots every 2° from -90° to +90° (91 dots total) */}
-            {Array.from({ length: 91 }, (_, i) => {
-              const angleDeg = -MAX_ROTATION + i * 2;
-              const angleRad = (angleDeg * Math.PI) / 180;
-              const cx = (containerWidth * 3) / 2;
-              const cy = DIAL_RADIUS;
-              const x = cx + DIAL_RADIUS * Math.sin(angleRad);
-              const y = cy + DIAL_RADIUS * Math.cos(angleRad);
-              const isMajor = angleDeg % 30 === 0;
-              const dotSize = isMajor ? 3.9 : 2.8;
-
-              return (
-                <View
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    left: x - dotSize / 2,
-                    top: y - dotSize / 2,
-                    width: dotSize,
-                    height: dotSize,
-                    borderRadius: dotSize / 2,
-                    backgroundColor: "#fff",
-                  }}
-                />
-              );
-            })}
-
-            {/* Labels -90 -60 -30 0 30 60 90 above arc */}
-            {/* Only render labels within peek zone to remove ±60/±90 from a11y tree at rest */}
-            {[-90, -60, -30, 0, 30, 60, 90]
-              .filter((angleDeg) => {
-                const PEEK_RANGE = 35;
-                return Math.abs(angleDeg - fineRotation) <= PEEK_RANGE;
-              })
-              .map((angleDeg) => {
-                const angleRad = (angleDeg * Math.PI) / 180;
-                const cx = (containerWidth * 3) / 2;
-                const cy = DIAL_RADIUS;
-                const labelX = cx + DIAL_RADIUS * Math.sin(angleRad);
-                const labelY = cy + DIAL_RADIUS * Math.cos(angleRad) - 16;
-                const isZero = angleDeg === 0;
-
-                return (
-                  <Pressable
-                    key={angleDeg}
-                    onPress={isZero ? handleResetToOriginal : undefined}
-                    style={{
-                      position: "absolute",
-                      left: labelX - 20,
-                      top: labelY,
-                      width: 40,
-                      paddingVertical: 4,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#fff",
-                        fontSize: 11,
-                        fontWeight: isZero ? "600" : "500",
-                        textAlign: "center",
-                      }}
-                    >
-                      {angleDeg}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-          </View>
+          {Array.from({ length: 91 }, (_, i) => {
+            const angleDeg = -MAX_ROTATION + i * 2;
+            const offset = dialMarkOffset(angleDeg, fineRotation, DIAL_RADIUS);
+            const isMajor = angleDeg % 30 === 0;
+            const dotSize = isMajor ? 5 : 3.5;
+            return (
+              <View
+                key={i}
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: dialCenterX + offset.x - dotSize / 2,
+                  top: dialCenterY + offset.y - dotSize / 2,
+                  width: dotSize,
+                  height: dotSize,
+                  borderRadius: dotSize / 2,
+                  backgroundColor: DIAL_MARK,
+                }}
+              />
+            );
+          })}
+          {[-90, -60, -30, 0, 30, 60, 90].map((angleDeg) => {
+            const offset = dialMarkOffset(angleDeg, fineRotation, DIAL_RADIUS);
+            const isZero = angleDeg === 0;
+            return (
+              <Text
+                key={angleDeg}
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: dialCenterX + offset.x - 18,
+                  top: dialCenterY + offset.y - 28,
+                  width: 36,
+                  color: DIAL_MARK,
+                  fontSize: 16,
+                  fontWeight: isZero ? "700" : "600",
+                  textAlign: "center",
+                }}
+              >
+                {angleDeg}
+              </Text>
+            );
+          })}
         </View>
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: dialCenterX - 6,
+            top: dialCenterY + DIAL_RADIUS + 2,
+            width: 0,
+            height: 0,
+            borderLeftWidth: 6,
+            borderRightWidth: 6,
+            borderBottomWidth: 9,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderBottomColor: "#fff",
+          }}
+        />
       </View>
 
-      {/* Photo Stage - Full Source with Crop Frame - Layers ABOVE dial for masking */}
+      {/* Opaque stage masks the dial. It ends at the photo bottom so ~30% of the arc stays visible. */}
       <View
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          top: TOP_BAR_HEIGHT,
-          bottom: BOTTOM_BAR_HEIGHT,
-          backgroundColor: "#c7dce3",
+          top: topBarHeight,
+          height: imageLayout.y + imageLayout.height,
+          backgroundColor: "#000",
+          overflow: "hidden",
+          zIndex: 1,
         }}
-        pointerEvents="box-none"
+        pointerEvents="auto"
+        {...imagePanResponder.panHandlers}
       >
-        {/* Opaque Side Masks - Block ±60/±90 Labels at Rest - SPEC §3.3b */}
+        {/* Full photo on the black stage. Drag slides the photo; the crop rect stays put. */}
         <View
+          pointerEvents="none"
           style={{
             position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: DIAL_RADIUS + 20,
-            flexDirection: "row",
-            justifyContent: "space-between",
+            left: imageLayout.x + imageOffset.x,
+            top: imageLayout.y + imageOffset.y,
+            width: imageLayout.width,
+            height: imageLayout.height,
+            overflow: "visible",
           }}
-          pointerEvents="none"
         >
-          <View
+          <ExpoImage
+            source={{ uri }}
             style={{
-              width: 70,
-              height: "100%",
-              backgroundColor: "#c7dce3",
+              width: imageLayout.width,
+              height: imageLayout.height,
+              transform: [
+                { rotate: `${totalRotation}deg` },
+                { scale: cropRotationCoverScale(imageLayout, crop, totalRotation) },
+              ],
             }}
+            contentFit="contain"
           />
-          <View
-            style={{
-              width: 70,
-              height: "100%",
-              backgroundColor: "#c7dce3",
-            }}
-          />
-        </View>
-        {/* Rotated Image - Scaled to Fill Crop - Clipped to Crop Frame */}
-        <View
-          style={{
-            position: "absolute",
-            left: crop.x,
-            top: crop.y,
-            width: crop.width,
-            height: crop.height,
-            overflow: "hidden",
-          }}
-          pointerEvents="none"
-        >
-          <View
-            style={{
-              position: "absolute",
-              left: imageLayout.x - crop.x,
-              top: imageLayout.y - crop.y,
-              width: containerWidth,
-              height: photoHeight,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ExpoImage
-              source={{ uri }}
-              style={{
-                width: imageLayout.width,
-                height: imageLayout.height,
-                transform: [
-                  { rotate: `${totalRotation}deg` },
-                  { scale: imageScale },
-                ],
-              }}
-              contentFit="contain"
-            />
-          </View>
         </View>
 
-        {/* Crop Overlay Mask */}
+        {/* Light dim outside the selection so the photo outside the rect stays visible. */}
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <View style={{ height: crop.y, backgroundColor: "rgba(0,0,0,0.56)" }} />
+          <View style={{ height: crop.y, backgroundColor: OUTSIDE_CROP_DIM }} />
           <View style={{ flexDirection: "row", height: crop.height }}>
-            <View style={{ width: crop.x, backgroundColor: "rgba(0,0,0,0.56)" }} />
+            <View style={{ width: crop.x, backgroundColor: OUTSIDE_CROP_DIM }} />
             <View
               style={{
                 width: crop.width,
@@ -526,12 +524,24 @@ export function CropOverlay({
                 borderColor: "rgba(255,255,255,0.96)",
               }}
             />
-            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.56)" }} />
+            <View style={{ flex: 1, backgroundColor: OUTSIDE_CROP_DIM }} />
           </View>
-          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.56)" }} />
+          <View style={{ flex: 1, backgroundColor: OUTSIDE_CROP_DIM }} />
         </View>
 
-        {/* L-Bracket Corners - Exactly on Crop Frame Line */}
+      </View>
+
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: topBarHeight,
+          bottom: 0,
+          zIndex: 2,
+        }}
+      >
         <View
           {...tl.panHandlers}
           testID="photo-selection__crop_handle_tl"
@@ -633,50 +643,27 @@ export function CropOverlay({
         </View>
       </View>
 
-      {/* Bottom Bar - Black Chrome */}
+      {/* Bottom controls sit under the peeking arc and do not cover it. */}
       <View
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           bottom: 0,
-          height: BOTTOM_BAR_HEIGHT,
-          backgroundColor: "#000",
+          height: buttonRowHeight,
+          backgroundColor: "transparent",
+          zIndex: 3,
         }}
+        pointerEvents="box-none"
       >
-        {/* Fixed Pointer - White Upward Triangle at Bottom Center */}
         <View
           style={{
-            position: "absolute",
-            left: "50%",
-            bottom: 36,
-            transform: [{ translateX: -6 }],
-            width: 0,
-            height: 0,
-            borderLeftWidth: 6,
-            borderRightWidth: 6,
-            borderBottomWidth: 9,
-            borderLeftColor: "transparent",
-            borderRightColor: "transparent",
-            borderBottomColor: "#fff",
-            borderTopWidth: 0,
-            zIndex: 10,
-          }}
-          pointerEvents="none"
-        />
-
-        {/* Control Buttons - Icon Only in Corners */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 60,
+            flex: 1,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             paddingHorizontal: 26,
+            paddingBottom: insets.bottom,
           }}
         >
           {/* 90° Rotate CCW - Square + Arrow Icon */}
@@ -696,45 +683,24 @@ export function CropOverlay({
             </View>
           </Pressable>
 
-          {/* Aspect Ratio - Overlapping Rects Icon */}
           <Pressable
-            testID="photo-selection__aspect_ratio"
-            disabled
+            testID="photo-selection__crop_reset"
+            onPress={handleReset}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityLabel="Reset crop and rotation"
             style={{
-              width: 44,
               height: 44,
+              flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              opacity: 0.5,
+              paddingHorizontal: 4,
             }}
           >
-            <View style={{ width: 28, height: 28, position: "relative" }}>
-              <View
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 4,
-                  width: 16,
-                  height: 20,
-                  borderWidth: 1.7,
-                  borderColor: "#fff",
-                  borderRadius: 2,
-                }}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  width: 18,
-                  height: 16,
-                  borderWidth: 1.7,
-                  borderColor: "#fff",
-                  borderRadius: 2,
-                  opacity: 0.75,
-                }}
-              />
-            </View>
+            <Ionicons name="arrow-undo-outline" size={22} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "600", marginLeft: 6 }}>
+              Reset
+            </Text>
           </Pressable>
         </View>
       </View>

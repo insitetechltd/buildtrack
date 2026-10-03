@@ -2,8 +2,15 @@ import {
   defaultCropRectInImageLayout,
   getContainedImageLayout,
   getEditCanvasImageLayout,
+  dialMarkOffset,
+  dialPeekCenterY,
+  mapCoverCropAfterRotation,
   mapCropRectToSourcePixels,
   resolveImageDimensions,
+  clampImagePan,
+  cropRectForImageOffset,
+  cropRotationCoverScale,
+  rotationCoverScale,
 } from "../photoPreviewEdit";
 import { Image } from "react-native";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -84,6 +91,104 @@ describe("photoPreviewEdit", () => {
       const imageLayout = { x: 50, y: 50, width: 100, height: 100 };
       const cropInContainer = { x: 0, y: 0, width: 20, height: 20 };
       expect(mapCropRectToSourcePixels(cropInContainer, imageLayout, 400, 400)).toBeNull();
+    });
+  });
+
+  describe("rotationCoverScale", () => {
+    it("leaves an upright photo unscaled", () => {
+      expect(rotationCoverScale(200, 100, 0)).toBe(1);
+      expect(rotationCoverScale(200, 100, 180)).toBe(1);
+    });
+
+    it("scales a square at 45° by √2 so the frame has no empty corners", () => {
+      expect(rotationCoverScale(100, 100, 45)).toBeCloseTo(Math.SQRT2, 5);
+    });
+
+    it("swaps a non-square photo at 90° enough to cover the original frame", () => {
+      expect(rotationCoverScale(200, 100, 90)).toBe(2);
+    });
+  });
+
+  describe("cropRotationCoverScale", () => {
+    const image = { x: 0, y: 0, width: 200, height: 200 };
+
+    it("does not scale when the crop is still covered", () => {
+      const crop = { x: 50, y: 50, width: 100, height: 100 };
+      expect(cropRotationCoverScale(image, crop, 20)).toBe(1);
+    });
+
+    it("scales a full-frame square at 45° so corners stay filled", () => {
+      expect(cropRotationCoverScale(image, image, 45)).toBeCloseTo(Math.SQRT2, 4);
+    });
+
+    it("returns to 1 when a square is turned a full 90°", () => {
+      expect(cropRotationCoverScale(image, image, 90)).toBe(1);
+    });
+  });
+
+  describe("clampImagePan", () => {
+    const image = { x: 0, y: 0, width: 200, height: 200 };
+
+    it("lets a smaller crop slide until the photo edge meets the frame", () => {
+      const crop = { x: 40, y: 40, width: 120, height: 120 };
+      expect(clampImagePan(image, crop, 0, 1, { x: 80, y: -80 })).toEqual({ x: 40, y: -40 });
+    });
+
+    it("does not move a crop that already covers the whole photo", () => {
+      expect(clampImagePan(image, image, 0, 1, { x: 40, y: 10 })).toEqual({ x: 0, y: 0 });
+    });
+
+    it("does not open empty corners on a full-frame square at 45°", () => {
+      const scale = cropRotationCoverScale(image, image, 45);
+      const clamped = clampImagePan(image, image, 45, scale, { x: 30, y: -20 });
+      expect(clamped.x).toBeCloseTo(0, 3);
+      expect(clamped.y).toBeCloseTo(0, 3);
+    });
+
+    it("shifts the saved crop by the opposite of the pan", () => {
+      const crop = { x: 40, y: 40, width: 120, height: 120 };
+      const offset = clampImagePan(image, crop, 0, 1, { x: 10, y: 0 });
+      const frame = cropRectForImageOffset(crop, offset);
+      expect(mapCropRectToSourcePixels(frame, image, 200, 200)).toEqual({
+        originX: 30,
+        originY: 40,
+        width: 120,
+        height: 120,
+      });
+    });
+  });
+
+  describe("mapCoverCropAfterRotation", () => {
+    it("matches the full source when rotation is 0", () => {
+      const imageLayout = { x: 10, y: 20, width: 200, height: 100 };
+      const crop = mapCoverCropAfterRotation(imageLayout, imageLayout, 400, 200, 0);
+      expect(crop).toEqual({ originX: 0, originY: 0, width: 400, height: 200 });
+    });
+
+    it("keeps a 45° square crop inside the expanded bitmap and centered", () => {
+      const imageLayout = { x: 0, y: 0, width: 100, height: 100 };
+      const crop = mapCoverCropAfterRotation(imageLayout, imageLayout, 100, 100, 45);
+      expect(crop).not.toBeNull();
+      const bitmap = 100 * Math.SQRT2;
+      expect(crop!.originX).toBeGreaterThan(0);
+      expect(crop!.originX + crop!.width).toBeLessThan(bitmap + 1);
+      expect(crop!.width).toBeCloseTo(100 / Math.SQRT2, 0);
+      expect(Math.abs(crop!.originX - (bitmap - crop!.width) / 2)).toBeLessThan(1.5);
+    });
+  });
+
+  describe("dialPeekCenterY", () => {
+    it("keeps the circle center fixed when only the markings turn", () => {
+      const center = dialPeekCenterY(500, 200);
+      expect(center).toBeLessThan(500);
+      expect(dialPeekCenterY(500, 200)).toBe(center);
+      const atRest = dialMarkOffset(0, 0, 200);
+      const turned = dialMarkOffset(15, 15, 200);
+      expect(atRest.x).toBeCloseTo(0, 5);
+      expect(atRest.y).toBeCloseTo(200, 5);
+      expect(turned.x).toBeCloseTo(atRest.x, 5);
+      expect(turned.y).toBeCloseTo(atRest.y, 5);
+      expect(dialMarkOffset(0, 15, 200).x).not.toBeCloseTo(0, 0);
     });
   });
 

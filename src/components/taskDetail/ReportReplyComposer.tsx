@@ -86,22 +86,16 @@ const DOCK_CIRCLE_LOCKED = {
   ...DOCK_CIRCLE_IDLE,
   opacity: 0.5,
 };
-/** Green ring on a dirty % chip (variant 6). */
-const ARMED_RING = "#059669";
-const DOCK_CIRCLE_ARMED = {
-  ...DOCK_CIRCLE,
-  borderWidth: 2,
-  borderColor: ARMED_RING,
-  backgroundColor: "#f1f5f9",
-};
-const BUTTON = "items-center justify-center rounded-full";
 /** Tall enough for multi-step scrubbing; stay open across strokes until tap. */
 const SCRUB_TRACK_HEIGHT = 200;
 const TAP_MOVE_SLOP = 8;
 /** Vertical pixels per 5% step while scrubbing. */
 const PX_PER_STEP = 8;
-/** Armed / submit chip: longer than default so a hold-to-scrub is less likely to post. */
-const ARMED_LONG_PRESS_MS = 500;
+/** Larger percent readout, kept clear of the fingertip while scrubbing. */
+const MAGNIFIER_SIZE = 72;
+const MAGNIFIER_GAP = 12;
+/** Touches this close to the circle still start a scrub. */
+const NEAR_TRACK_SLOP = 28;
 
 function snapCompletion(value: number): number {
   const snapped = Math.round(value / 5) * 5;
@@ -116,6 +110,32 @@ export function completionFromVerticalDrag(
 ): number {
   const deltaSteps = Math.round(-dy / pxPerStep);
   return snapCompletion(startPercentage + deltaSteps * 5);
+}
+
+/**
+ * Track is a fixed 0–100 scale. The button sits at the current percent,
+ * so a second slide that opens at 75% starts 75% up the track. The base stays 0%.
+ */
+export function completionThumbOffset(percentage: number, travel: number): number {
+  if (travel <= 0) return 0;
+  const clamped = Math.max(0, Math.min(100, percentage));
+  return (clamped / 100) * travel;
+}
+
+/**
+ * Server echo of task completion. Skip while the dock is dirty, and skip a
+ * stale percent that has not caught up to the value just posted.
+ */
+export function applyServerCompletion(opts: {
+  server: number;
+  dirty: boolean;
+  pendingSubmit: number | null;
+}): { saved: number; dock: number; pendingSubmit: number | null } | null {
+  if (opts.dirty) return null;
+  if (opts.pendingSubmit != null && opts.server !== opts.pendingSubmit) {
+    return null;
+  }
+  return { saved: opts.server, dock: opts.server, pendingSubmit: null };
 }
 
 export type ProgressDockTrailingSlot = "percent" | "armed" | "submit";
@@ -206,22 +226,17 @@ type CompletionScrubButtonProps = {
 };
 
 /**
- * Progress % control — interaction contract:
+ * Progress % control.
  *
- * - Below 100% when clean: dock shows the % chip/slider. Press-drag varies
- *   % freely (5% snap). Compact pan geometry stays 44×44 for the whole
- *   finger-down (TF-271); the overlay track is visual-only.
- * - Dirty (note, photos, or % ≠ saved): trailing chip is armed (green ring +
- *   N%) or Submit-for-review at 100% with a note. Tap posts; long-press
- *   remounts this *already expanded* at the current % (does not submit).
- *   First no-move finalize is ignored so the lift does not retract
- *   before the next drag.
- * - Drag below 100% and release → armed % if still dirty. Drag back to 100%
- *   with a note → Submit. Leave/re-enter 100% any number of times until tap.
- * - Compact vs leave remount: growing the responder 44→200 mid-press
- *   lets iOS cancel after one 5% step. Leave remount is born at 200px (not a
- *   mid-gesture resize). After retract when clean, remount compact so later
- *   press-drags keep TF-271 geometry.
+ * A press on the circle opens the track (base 0%, top 100%) with the button
+ * already at the current percent. That finger can scrub immediately. Lift
+ * keeps the track open and arms the full track, so the next press anywhere
+ * along it starts a new scrub — needed at 100%, where the opening finger is
+ * at the bottom of the screen and cannot drag down. A vertical move changes
+ * the percent in 5% steps and shows a larger circle above-left of the
+ * fingertip. A sideways move with no vertical component does not. A later
+ * press that lifts without a vertical move closes the track. Send stays on
+ * the note.
  */
 function CompletionScrubButton({
   value,
@@ -233,6 +248,10 @@ function CompletionScrubButton({
 }: CompletionScrubButtonProps) {
   const [isOpen, setIsOpen] = useState(startExpanded);
   const isOpenRef = useRef(startExpanded);
+  // Full-track hits turn on only after the finger is up. Growing the
+  // responder while a press is active cancels the gesture on iOS.
+  const [trackArmed, setTrackArmed] = useState(startExpanded);
+  const trackArmedRef = useRef(startExpanded);
   const startPctRef = useRef(value);
   const didMoveRef = useRef(false);
   const valueRef = useRef(value);
@@ -240,11 +259,11 @@ function CompletionScrubButton({
   const disabledRef = useRef(disabled);
   const onSessionStartRef = useRef(onSessionStart);
   const onRetractRef = useRef(onRetract);
-  const bornExpanded = startExpanded;
-  const [hitHeight, setHitHeight] = useState(
-    startExpanded ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
-  );
-  const ignoreArmingReleaseRef = useRef(startExpanded);
+  const [magnifier, setMagnifier] = useState<{
+    x: number;
+    y: number;
+    percent: number;
+  } | null>(null);
   valueRef.current = value;
   onChangeRef.current = onChange;
   disabledRef.current = disabled;
@@ -258,7 +277,9 @@ function CompletionScrubButton({
     setIsOpen(false);
     didMoveRef.current = false;
     startPctRef.current = valueRef.current;
-    setHitHeight(BUTTON_SIZE);
+    trackArmedRef.current = false;
+    setTrackArmed(false);
+    setMagnifier(null);
     if (wasOpen) {
       onRetractRef.current?.();
     }
@@ -278,18 +299,9 @@ function CompletionScrubButton({
     }
   }, [startExpanded]);
 
-  useEffect(() => {
-    if (!startExpanded) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      ignoreArmingReleaseRef.current = false;
-    }, 450);
-    return () => clearTimeout(timer);
-  }, [startExpanded]);
-
-  // Compact chip: keep 44×44 for the whole finger-down (TF-271).
-  // Leave-100% remount: pan is born at full track height — not a mid-gesture grow.
+  // While a finger is down the hit view stays the size it had at grant.
+  // After lift, the open track grows to the full slider so the next press
+  // can start anywhere along it.
   const pan = useRef(
     Gesture.Pan()
       .minDistance(0)
@@ -297,12 +309,11 @@ function CompletionScrubButton({
       .shouldCancelWhenOutside(false)
       .cancelsTouchesInView(true)
       .blocksExternalGesture()
-      .failOffsetX([-24, 24])
       .hitSlop({
-        top: bornExpanded ? 12 : SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
+        top: NEAR_TRACK_SLOP,
         bottom: 12,
-        left: 12,
-        right: 12,
+        left: NEAR_TRACK_SLOP,
+        right: NEAR_TRACK_SLOP,
       })
       .runOnJS(true)
       .onBegin(() => {
@@ -311,6 +322,7 @@ function CompletionScrubButton({
         }
         Keyboard.dismiss();
         didMoveRef.current = false;
+        setMagnifier(null);
         startPctRef.current = valueRef.current;
         onSessionStartRef.current?.();
         if (!isOpenRef.current) {
@@ -322,36 +334,40 @@ function CompletionScrubButton({
         if (disabledRef.current) {
           return;
         }
-        if (
-          Math.abs(event.translationY) > TAP_MOVE_SLOP ||
-          Math.abs(event.translationX) > TAP_MOVE_SLOP
-        ) {
-          didMoveRef.current = true;
-        }
-        if (!didMoveRef.current) {
+        const vertical = Math.abs(event.translationY) > TAP_MOVE_SLOP;
+        if (!vertical) {
+          setMagnifier(null);
           return;
         }
-        // translationY is from press-down, not last step — one gesture, many 5%s.
-        onChangeRef.current(
-          completionFromVerticalDrag(startPctRef.current, event.translationY),
-        );
+        didMoveRef.current = true;
+        const next = completionFromVerticalDrag(startPctRef.current, event.translationY);
+        onChangeRef.current(next);
+        const hitHeight = trackArmedRef.current ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE;
+        setMagnifier({
+          x: event.x ?? BUTTON_SIZE / 2,
+          y: (event.y ?? BUTTON_SIZE / 2) + (BUTTON_SIZE - hitHeight),
+          percent: next,
+        });
       })
       .onFinalize(() => {
+        setMagnifier(null);
         if (!isOpenRef.current) {
           return;
         }
-        if (ignoreArmingReleaseRef.current && !didMoveRef.current) {
-          ignoreArmingReleaseRef.current = false;
+        // First press, or a scrub, leaves the track up for another stroke.
+        // A press on the already-open track that never moves vertically closes it.
+        if (didMoveRef.current || !trackArmedRef.current) {
+          trackArmedRef.current = true;
+          setTrackArmed(true);
           return;
         }
         retractScrubber();
       }),
   ).current;
 
-  // Thumb: 0% at bottom, 100% at top of the overlay track.
-  const thumbBottom = isOpen
-    ? (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE)
-    : 0;
+  // 0% at the base, 100% at the top. Reopening at 75% starts the button there.
+  const thumbTravel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+  const thumbBottom = isOpen ? completionThumbOffset(value, thumbTravel) : 0;
 
   return (
     // Layout slot always matches peer dock circles — scrub overlays upward.
@@ -359,7 +375,7 @@ function CompletionScrubButton({
       testID="report-reply-composer__completion"
       accessibilityLabel={
         isOpen
-          ? `Completion ${value} percent. Slide vertically, then release to finish.`
+          ? `Completion ${value} percent. Slide anywhere on the track. Tap to close.`
           : `Completion ${value} percent. Press and drag to adjust.`
       }
       accessibilityRole="adjustable"
@@ -401,13 +417,34 @@ function CompletionScrubButton({
             style={{
               bottom: BUTTON_SIZE / 2,
               width: 5,
-              height: Math.max(
-                4,
-                (value / 100) * (SCRUB_TRACK_HEIGHT - BUTTON_SIZE),
-              ),
+              height: Math.max(4, thumbBottom),
               left: (BUTTON_SIZE - 5) / 2,
             }}
           />
+        </View>
+      ) : null}
+      {magnifier ? (
+        <View
+          testID="report-reply-composer__completion_magnifier"
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            width: MAGNIFIER_SIZE,
+            height: MAGNIFIER_SIZE,
+            borderRadius: MAGNIFIER_SIZE / 2,
+            left: magnifier.x - MAGNIFIER_SIZE - MAGNIFIER_GAP,
+            top: magnifier.y - MAGNIFIER_SIZE - MAGNIFIER_GAP,
+            backgroundColor: "#ffffff",
+            borderWidth: 2,
+            borderColor: "#08576E",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 80,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "700", color: "#08576E" }}>
+            {magnifier.percent}%
+          </Text>
         </View>
       ) : null}
       <GestureDetector gesture={pan}>
@@ -419,8 +456,8 @@ function CompletionScrubButton({
             bottom: 0,
             left: 0,
             width: BUTTON_SIZE,
-            // Compact: stay 44. Born-expanded remount: 200 from first frame.
-            height: hitHeight,
+            // 44 while the opening finger is down. Full track only after lift.
+            height: trackArmed ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
             justifyContent: "flex-end",
             zIndex: 50,
           }}
@@ -450,8 +487,7 @@ function CompletionScrubButton({
 /**
  * Task Detail dock (approach B) — stays on the screen, not the root tab bar.
  * Report:   [+] · [text] · [camera] · [send]
- * Progress: [camera] · [text] · [grey % when clean | ringed % when dirty | check@100%+note;
- *           long-press armed/submit → scrub]
+ * Progress: [camera] · [text] · [% circle, same press every time] · [send when the note has text]
  * Awaiting: [% locked] · [Cancel review] · [cam locked] · [✓ locked]
  * Review:   [% locked] · [Reject] · [Accept]
  * Archive:  [Archive]
@@ -478,13 +514,10 @@ export default function ReportReplyComposer({
   showReportFab = false,
   completionPercentage = 0,
   onChangeCompletionPercentage,
-  savedCompletionPercentage,
 }: ReportReplyComposerProps) {
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
-  const [forceProgressScrub, setForceProgressScrub] = useState(false);
-  const [scrubSessionActive, setScrubSessionActive] = useState(false);
   const isAwaitingReview = mode === "awaiting_review";
   const isReviewDecision = mode === "review_decision";
   const isArchiveMode = mode === "archive";
@@ -594,46 +627,18 @@ export default function ReportReplyComposer({
   const leadingFabLocked = controlsLocked;
   const isProgressMode = mode === "progress";
 
-  // Variant 6: grey % when clean; ringed % when dirty; check at 100%+note.
-  const trailingSlot = progressDockTrailingSlot({
-    completionPercentage,
-    savedCompletionPercentage,
-    draft,
-    photoCount: photos.length,
-    forceProgressScrub,
-    scrubSessionActive,
-  });
   const showProgressScrubTrailing =
-    isProgressMode &&
-    Boolean(onChangeCompletionPercentage) &&
-    trailingSlot === "percent";
-  const showProgressArmedTrailing =
-    isProgressMode && trailingSlot === "armed";
-  const showProgressSubmitTrailing =
-    isProgressMode && trailingSlot === "submit";
+    isProgressMode && Boolean(onChangeCompletionPercentage);
+  const noteHasText = draft.trim().length > 0;
   // Report / awaiting keep leading % (locked) and trailing camera+send.
   const showLeadingCompletion = showCompletion && !isProgressMode;
-
-  const handleForceProgressScrub = useCallback(() => {
-    if (isSubmitting) {
-      return;
-    }
-    Keyboard.dismiss();
-    setForceProgressScrub(true);
-    setScrubSessionActive(true);
-  }, [isSubmitting]);
 
   const handleProgressScrubSessionStart = useCallback(() => {
     if (isSubmitting) {
       return;
     }
-    setScrubSessionActive(true);
+    Keyboard.dismiss();
   }, [isSubmitting]);
-
-  const handleProgressScrubRetract = useCallback(() => {
-    setForceProgressScrub(false);
-    setScrubSessionActive(false);
-  }, []);
 
   const photoButton = !isReviewDecision ? (
     <Pressable
@@ -653,57 +658,28 @@ export default function ReportReplyComposer({
     </Pressable>
   ) : null;
 
-  const sendButton = !isReviewDecision && !showProgressScrubTrailing ? (
+  const sendButton = !isReviewDecision && (!isProgressMode || noteHasText) ? (
     <Pressable
       testID="report-reply-composer__send"
       accessibilityRole="button"
-      accessibilityLabel={
-        showProgressArmedTrailing && !canSend
-          ? `Completion ${completionPercentage} percent. Add a description to submit.`
-          : resolvedSendLabel
-      }
-      accessibilityHint={
-        showProgressArmedTrailing || showProgressSubmitTrailing
-          ? "Long press to adjust completion percentage"
-          : undefined
-      }
+      accessibilityLabel={resolvedSendLabel}
       onPress={handleSubmit}
-      onLongPress={
-        showProgressArmedTrailing || showProgressSubmitTrailing
-          ? handleForceProgressScrub
-          : undefined
-      }
-      delayLongPress={
-        showProgressArmedTrailing || showProgressSubmitTrailing
-          ? ARMED_LONG_PRESS_MS
-          : 350
-      }
-      disabled={isProgressMode ? isSubmitting : !canSend}
+      disabled={isProgressMode ? isSubmitting || !canSend : !canSend}
       hitSlop={4}
       style={
         isAwaitingReview
           ? DOCK_CIRCLE_LOCKED
-          : showProgressArmedTrailing
-            ? DOCK_CIRCLE_ARMED
-            : !canSend
-              ? DOCK_CIRCLE_IDLE
-              : {
-                  ...DOCK_CIRCLE,
-                  borderColor: isReadyToSubmitReview ? "#059669" : "#08576E",
-                  backgroundColor: isReadyToSubmitReview ? "#059669" : "#08576E",
-                }
+          : !canSend
+            ? DOCK_CIRCLE_IDLE
+            : {
+                ...DOCK_CIRCLE,
+                borderColor: isReadyToSubmitReview ? "#059669" : "#08576E",
+                backgroundColor: isReadyToSubmitReview ? "#059669" : "#08576E",
+              }
       }
     >
       {isSubmitting && !isAwaitingReview ? (
         <ActivityIndicator color="#ffffff" size="small" />
-      ) : showProgressArmedTrailing ? (
-        <Text
-          testID="report-reply-composer__send_percent"
-          className="text-[11px] font-bold"
-          style={{ color: ARMED_RING }}
-        >
-          {completionPercentage}%
-        </Text>
       ) : (
         <Ionicons
           name={isReadyToSubmitReview || isAwaitingReview ? "checkmark" : "send"}
@@ -717,13 +693,10 @@ export default function ReportReplyComposer({
   const progressScrubTrailing =
     showProgressScrubTrailing && onChangeCompletionPercentage ? (
       <CompletionScrubButton
-        key={forceProgressScrub ? "leave-100" : "compact"}
         value={completionPercentage}
         onChange={onChangeCompletionPercentage}
         disabled={isSubmitting}
-        startExpanded={forceProgressScrub}
         onSessionStart={handleProgressScrubSessionStart}
-        onRetract={handleProgressScrubRetract}
       />
     ) : null;
 
@@ -949,13 +922,11 @@ export default function ReportReplyComposer({
           </View>
         )}
 
-        {/* Progress trailing: grey % / ringed % / check@100%+note. Report/awaiting: camera + send. */}
+        {/* Progress: percent circle always. Send appears beside the note once it has text. */}
         {isProgressMode ? (
           <>
             {progressScrubTrailing}
-            {showProgressArmedTrailing || showProgressSubmitTrailing
-              ? sendButton
-              : null}
+            {sendButton}
           </>
         ) : !isReviewDecision ? (
           <>

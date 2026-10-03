@@ -4,7 +4,7 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 /** Captures Gesture.Pan callbacks so Jest can drive press-drag without a native host. */
 const scrubGesture: {
   onBegin?: () => void;
-  onUpdate?: (event: { translationX: number; translationY: number }) => void;
+  onUpdate?: (event: { translationX: number; translationY: number; x: number; y: number }) => void;
   onFinalize?: () => void;
 } = {};
 
@@ -24,7 +24,7 @@ jest.mock("react-native-gesture-handler", () => {
         scrubGesture.onBegin = fn;
         return api;
       },
-      onUpdate: (fn: (event: { translationX: number; translationY: number }) => void) => {
+      onUpdate: (fn: (event: { translationX: number; translationY: number; x: number; y: number }) => void) => {
         scrubGesture.onUpdate = fn;
         return api;
       },
@@ -49,9 +49,13 @@ function grantCompletion() {
   });
 }
 
-function moveCompletion(translationY: number, translationX = 0) {
+function moveCompletion(
+  translationY: number,
+  translationX = 0,
+  point: { x: number; y: number } = { x: 22, y: 22 },
+) {
   act(() => {
-    scrubGesture.onUpdate?.({ translationX, translationY });
+    scrubGesture.onUpdate?.({ translationX, translationY, ...point });
   });
 }
 
@@ -176,7 +180,7 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
   });
 
-  it("progress dock: camera + text + ringed send when dirty under 100%", () => {
+  it("progress dock keeps the percent circle when the note can send", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -194,13 +198,9 @@ describe("ReportReplyComposer", () => {
 
     expect(screen.getByTestId("report-reply-composer__photo")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__send_percent")).toBeTruthy();
     expect(screen.getByText("40%")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
-      expect.objectContaining({ borderColor: "#059669", backgroundColor: "#f1f5f9" }),
-    );
   });
 
   it("progress dock: clean under 100% keeps grey % and no send", () => {
@@ -223,7 +223,7 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
   });
 
-  it("press-drag on % expands scrubber; release retracts", () => {
+  it("press opens the scrubber; lift keeps it open; a tap closes it", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -245,11 +245,11 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
 
-    // Finger-down expands (press-drag is one gesture — no separate tap).
+    // Finger-down expands. The pan target stays 44 until this finger lifts,
+    // so iOS does not cancel the gesture by resizing the responder.
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
-    // Dock slot and native pan target stay 44 — overlay is visual-only.
     expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
       expect.objectContaining({ height: 44, width: 44 }),
     );
@@ -261,14 +261,20 @@ describe("ReportReplyComposer", () => {
     );
 
     releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 200, width: 44 }),
+    );
+
+    grantCompletion();
+    releaseCompletion();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
       expect.objectContaining({ height: 44, width: 44 }),
     );
   });
 
-  it("progress dock at 100%: long-press submit re-opens scrub to leave 100%", () => {
-    const onChange = jest.fn();
+  it("progress dock at 100% with a note keeps the percent circle beside submit", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -279,47 +285,19 @@ describe("ReportReplyComposer", () => {
         onRemovePhoto={jest.fn()}
         onSubmit={jest.fn()}
         completionPercentage={100}
-        onChangeCompletionPercentage={onChange}
-      />,
-    );
-
-    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
-    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.getByText("100%")).toBeTruthy();
-    // Dock slot stays peer-sized; scrub overlays upward (no tall layout band).
-    expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
-    );
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 44 }),
-    );
-    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 44 }),
-    );
-  });
-
-  it("progress dock dirty at 40% with note: tap send posts, long-press does not", () => {
-    const onSubmit = jest.fn();
-    const screen = render(
-      <ReportReplyComposer
-        mode="progress"
-        draft="rebar tied"
-        photos={[]}
-        onChangeDraft={jest.fn()}
-        onAddPhotos={jest.fn()}
-        onRemovePhoto={jest.fn()}
-        onSubmit={onSubmit}
-        completionPercentage={40}
-        savedCompletionPercentage={40}
         onChangeCompletionPercentage={jest.fn()}
       />,
     );
 
-    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
+      "Submit for review",
+    );
+    grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
+      expect.objectContaining({ bottom: 200 - 44 }),
+    );
   });
 
   it("progress dock at 40% with note: tap send submits", () => {
@@ -343,8 +321,7 @@ describe("ReportReplyComposer", () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it("progress dock photos-only: ringed chip, tap does not submit", () => {
-    const onSubmit = jest.fn();
+  it("progress dock photos-only keeps the percent circle and does not show send", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -353,21 +330,18 @@ describe("ReportReplyComposer", () => {
         onChangeDraft={jest.fn()}
         onAddPhotos={jest.fn()}
         onRemovePhoto={jest.fn()}
-        onSubmit={onSubmit}
+        onSubmit={jest.fn()}
         completionPercentage={40}
         savedCompletionPercentage={40}
         onChangeCompletionPercentage={jest.fn()}
       />,
     );
 
-    expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
-      expect.objectContaining({ borderColor: "#059669" }),
-    );
-    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
   });
 
-  it("progress dock at 100% without note: ringed %, not review check", () => {
+  it("progress dock at 100% without a note stays a percent circle", () => {
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -383,10 +357,9 @@ describe("ReportReplyComposer", () => {
       />,
     );
 
-    expect(screen.getByTestId("report-reply-composer__send_percent")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).not.toBe(
-      "Submit for review",
-    );
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
   });
 
   it("progress dock at 100%: tap submit still submits", () => {
@@ -407,7 +380,7 @@ describe("ReportReplyComposer", () => {
 
     fireEvent.press(screen.getByTestId("report-reply-composer__send"));
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
   });
 
   it("progress dock loop: clean scrub, arm on retract, long-press, 100%+note Submit", () => {
@@ -422,67 +395,26 @@ describe("ReportReplyComposer", () => {
       />,
     );
 
-    const expectCompactChip = () => {
-      expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
-      expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-      expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
-        expect.objectContaining({ height: 44, width: 44 }),
-      );
-      expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-        expect.objectContaining({ height: 44, width: 44 }),
-      );
-    };
-    const expectArmed = (pct: number) => {
-      expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
-      expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
-      expect(screen.getByText(`${pct}%`)).toBeTruthy();
-      expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
-        expect.objectContaining({ borderColor: "#059669" }),
-      );
-    };
-    const expectSubmit = () => {
-      expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
-      expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
-        "Submit for review",
-      );
-    };
-
     expect(screen.getByText("0%")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expectCompactChip();
 
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     moveCompletion(-64);
-    expect(screen.getByText("40%")).toBeTruthy();
+    expect(screen.getAllByText("40%").length).toBeGreaterThan(0);
     moveCompletion(-128);
-    expect(screen.getByText("80%")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-    releaseCompletion();
-    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
-    expectArmed(80);
-
-    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
-    expect(onSubmit).not.toHaveBeenCalled();
-
-    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 44 }),
-    );
+    expect(screen.getAllByText("80%").length).toBeGreaterThan(0);
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-
-    grantCompletion();
-    moveCompletion(-32);
-    expect(screen.getByText("100%")).toBeTruthy();
-    releaseCompletion();
-    expectArmed(100);
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
 
     fireEvent.changeText(screen.getByTestId("report-reply-composer__input"), "done");
-    expectSubmit();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
+      "Submit update, 80 percent",
+    );
     fireEvent.press(screen.getByTestId("report-reply-composer__send"));
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
@@ -504,7 +436,7 @@ describe("ReportReplyComposer", () => {
 
     expect(screen.getByTestId("report-reply-composer__photo")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
-    expect(screen.queryByTestId("report-reply-composer__completion")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
       "Submit for review",
     );
@@ -526,7 +458,7 @@ describe("ReportReplyComposer", () => {
       />,
     );
 
-    fireEvent(screen.getByTestId("report-reply-composer__send"), "onLongPress");
+    grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
 
     screen.rerender(
@@ -677,7 +609,9 @@ describe("ReportReplyComposer", () => {
 
   it("maps vertical drag to 5% completion steps (up increases)", () => {
     const {
+      applyServerCompletion,
       completionFromVerticalDrag,
+      completionThumbOffset,
       progressDockTrailingSlot,
       progressDockIsDirty,
       progressDockShouldInterceptLeave,
@@ -751,6 +685,19 @@ describe("ReportReplyComposer", () => {
     expect(completionFromVerticalDrag(40, -8)).toBe(45);
     expect(completionFromVerticalDrag(40, -40)).toBe(65);
     expect(completionFromVerticalDrag(40, -80)).toBe(90);
+    // Track base stays 0. A posted 75% sits three quarters up the slide.
+    expect(completionThumbOffset(0, 156)).toBe(0);
+    expect(completionThumbOffset(75, 156)).toBeCloseTo(117, 5);
+    expect(completionThumbOffset(100, 156)).toBe(156);
+    expect(applyServerCompletion({ server: 60, dirty: true, pendingSubmit: null })).toBeNull();
+    expect(
+      applyServerCompletion({ server: 60, dirty: false, pendingSubmit: 80 }),
+    ).toBeNull();
+    expect(applyServerCompletion({ server: 80, dirty: false, pendingSubmit: 80 })).toEqual({
+      saved: 80,
+      dock: 80,
+      pendingSubmit: null,
+    });
     expect(progressDockShouldInterceptLeave({ type: "GO_BACK" })).toBe(true);
     expect(progressDockShouldInterceptLeave({ type: "POP" })).toBe(true);
     expect(progressDockShouldInterceptLeave({ type: "PUSH" })).toBe(false);
@@ -792,5 +739,104 @@ describe("ReportReplyComposer", () => {
     moveCompletion(-80);
     expect(onChange.mock.calls.map((call) => call[0])).toEqual([50, 65, 90]);
     releaseCompletion();
+  });
+
+  it("second slide opens with the button at the posted percent", () => {
+    const onChange = jest.fn();
+    const travel = 200 - 44;
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft=""
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={75}
+        savedCompletionPercentage={75}
+        onChangeCompletionPercentage={onChange}
+      />,
+    );
+
+    grantCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
+      expect.objectContaining({ bottom: (75 / 100) * travel }),
+    );
+    moveCompletion(-16);
+    expect(onChange).toHaveBeenLastCalledWith(85);
+  });
+
+  it("after the track opens, a new press anywhere on it can scrub down from 100%", () => {
+    const onChange = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft=""
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={100}
+        savedCompletionPercentage={100}
+        onChangeCompletionPercentage={onChange}
+      />,
+    );
+
+    grantCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 44 }),
+    );
+    releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
+      expect.objectContaining({ height: 200 }),
+    );
+    expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
+      expect.objectContaining({ bottom: 200 - 44 }),
+    );
+
+    grantCompletion();
+    moveCompletion(16);
+    expect(onChange).toHaveBeenLastCalledWith(90);
+  });
+
+  it("shows a magnified percent above-left of the finger while scrubbing", () => {
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft=""
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        completionPercentage={75}
+        savedCompletionPercentage={75}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    grantCompletion();
+    expect(screen.queryByTestId("report-reply-composer__completion_magnifier")).toBeNull();
+
+    moveCompletion(0, 40, { x: 30, y: 20 });
+    expect(screen.queryByTestId("report-reply-composer__completion_magnifier")).toBeNull();
+
+    moveCompletion(-16, 0, { x: 30, y: 8 });
+    const magnifier = screen.getByTestId("report-reply-composer__completion_magnifier");
+    expect(screen.getByText("85%")).toBeTruthy();
+    expect(magnifier.props.style).toEqual(
+      expect.objectContaining({
+        left: 30 - 72 - 12,
+        top: 8 - 72 - 12,
+        width: 72,
+        height: 72,
+      }),
+    );
+
+    releaseCompletion();
+    expect(screen.queryByTestId("report-reply-composer__completion_magnifier")).toBeNull();
   });
 });

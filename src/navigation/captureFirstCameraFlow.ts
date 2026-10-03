@@ -325,16 +325,12 @@ function resetCaptureStackToCreateTask(
   photos: SelectedPhoto[],
   intent: CreateTaskRouteIntent,
 ): void {
-  clearCaptureFirstReturnTab();
-  // Keep Select Photos under Create Task so header Back returns there.
+  // Form is the only screen. Back clears it and returns to the red-button tab.
+  // Keep captureFirstReturnTab until that exit.
   navigation.dispatch?.(
     CommonActions.reset({
-      index: 1,
+      index: 0,
       routes: [
-        {
-          name: "PhotoSelection",
-          params: buildCaptureFirstPhotoSelectionParams(photos),
-        },
         {
           name: "CreateTaskMain",
           params: {

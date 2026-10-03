@@ -665,8 +665,9 @@ describe("TaskDetailScreen sticky layout", () => {
       screen.getByTestId("report-reply-composer__input"),
       "Tied rebar at grid B",
     );
-    expect(screen.getByTestId("report-reply-composer__send").props.style).toEqual(
-      expect.objectContaining({ borderColor: "#059669" }),
+    expect(screen.getByTestId("report-reply-composer__completion")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__send").props.accessibilityLabel).toBe(
+      "Submit update, 40 percent",
     );
     fireEvent.press(screen.getByTestId("report-reply-composer__send"));
 

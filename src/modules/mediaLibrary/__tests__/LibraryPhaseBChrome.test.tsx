@@ -7,7 +7,10 @@ import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { LibraryFilterModal } from "../LibraryFilterModal";
-import { LibraryFullscreenViewer } from "../LibraryFullscreenViewer";
+import {
+  LibraryFullscreenViewer,
+  shouldPlaceFullscreenScroll,
+} from "../LibraryFullscreenViewer";
 import { LibrarySelectedTray } from "../LibrarySelectedTray";
 
 jest.mock("expo-image", () => ({
@@ -119,6 +122,15 @@ describe("LibraryFilterModal", () => {
   });
 });
 
+describe("shouldPlaceFullscreenScroll", () => {
+  it("places once per open and ignores later library growth", () => {
+    expect(shouldPlaceFullscreenScroll(null, 4, 0)).toBe(false);
+    expect(shouldPlaceFullscreenScroll(null, 4, 40)).toBe(true);
+    expect(shouldPlaceFullscreenScroll("4", 4, 4000)).toBe(false);
+    expect(shouldPlaceFullscreenScroll("4", 7, 4000)).toBe(true);
+  });
+});
+
 describe("LibraryFullscreenViewer", () => {
   it("selects only via toggle badge and exposes crop/draw when onCommitEdit is set", () => {
     const onToggleSelect = jest.fn();
@@ -161,5 +173,27 @@ describe("LibraryFullscreenViewer", () => {
     );
     expect(queryByTestId("viewer__start_crop")).toBeNull();
     expect(queryByTestId("viewer__start_draw")).toBeNull();
+  });
+
+  it("replaces picker chrome with the crop editor", () => {
+    const { getByTestId, queryByTestId } = render(
+      <LibraryFullscreenViewer
+        visible
+        initialIndex={0}
+        assets={[sampleAsset as any]}
+        selectedIds={new Set()}
+        annotations={new Map()}
+        onToggleSelect={jest.fn()}
+        onClose={jest.fn()}
+        onCommitEdit={jest.fn().mockResolvedValue(undefined)}
+        testIdPrefix="viewer"
+      />,
+    );
+
+    fireEvent.press(getByTestId("viewer__start_crop"));
+
+    expect(queryByTestId("viewer__close")).toBeNull();
+    expect(queryByTestId("viewer__toggle_select")).toBeNull();
+    expect(queryByTestId("viewer__fullscreen")).toBeTruthy();
   });
 });

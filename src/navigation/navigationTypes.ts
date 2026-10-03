@@ -62,7 +62,7 @@ export type CreateTaskParams = {
   postCaptureDefault?: CameraPostCaptureDefault;
   clearForm?: boolean;
   _timestamp?: number;
-  /** Capture-first camera tab: back should return to Select Photos. */
+  /** Capture-first camera: back leaves the form and returns to the tab where the red button was pressed. */
   captureFirstFlow?: boolean;
   /**
    * Peer entry intent from Report | New Task chooser.

@@ -182,7 +182,11 @@ describe("captureFirstCameraFlow", () => {
     );
   });
 
-  it("promptCaptureFirstDestination Create keeps Select Photos under CreateTaskMain", () => {
+  it("promptCaptureFirstDestination Create opens only the Assign form and keeps the origin tab", () => {
+    rememberCaptureFirstOrigin({
+      index: 2,
+      routes: [{ name: "Activity" }, { name: "Camera" }, { name: "Tasks" }],
+    });
     const dispatch = jest.fn();
     const navigate = jest.fn();
     const photos = [{ uri: "file://x.jpg", fileName: "x.jpg", isAnnotated: false }];
@@ -206,15 +210,8 @@ describe("captureFirstCameraFlow", () => {
 
     expect(dispatch).toHaveBeenCalledWith(
       CommonActions.reset({
-        index: 1,
+        index: 0,
         routes: [
-          {
-            name: "PhotoSelection",
-            params: expect.objectContaining({
-              captureFirstFlow: true,
-              initialPhotos: photos,
-            }),
-          },
           {
             name: "CreateTaskMain",
             params: expect.objectContaining({
@@ -227,8 +224,9 @@ describe("captureFirstCameraFlow", () => {
       }),
     );
     const resetAction = dispatch.mock.calls[0][0];
-    expect(resetAction.payload.routes[1].params.cameraLaunchContext).toBeUndefined();
-    expect(resetAction.payload.routes[1].params.actionType).toBeUndefined();
+    expect(resetAction.payload.routes[0].params.cameraLaunchContext).toBeUndefined();
+    expect(resetAction.payload.routes[0].params.actionType).toBeUndefined();
+    expect(getCaptureFirstReturnTab()).toBe("Tasks");
   });
 
   it("promptCaptureFirstDestination Update keeps Select Photos under CaptureTaskPicker", () => {

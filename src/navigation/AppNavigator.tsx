@@ -1463,7 +1463,23 @@ function CreateTaskScreenWrapper({
 
   return (
     <CreateTaskScreen
-      onNavigateBack={() => navigation.goBack()}
+      onNavigateBack={() => {
+        const freshAssignOrReport =
+          (intent === "report" || intent === "create") &&
+          !editTaskId &&
+          !localDraftId &&
+          route.params?.sourceScreen === "tasks";
+        if (freshAssignOrReport) {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "TasksList" }],
+            }),
+          );
+          return;
+        }
+        navigation.goBack();
+      }}
       onCreateSuccess={handleCreateSuccess}
       onDraftSaved={handleDraftSaved}
       parentTaskId={parentTaskId}
@@ -2123,21 +2139,10 @@ function CreateTaskMainScreen({
   
   // Handle back navigation - if editing, navigate back to TaskDetail screen
   const handleNavigateBack = React.useCallback(() => {
-    // Capture-first create: always pop to Select Photos (kept under this screen).
+    // Assign / Report started from the red camera button: drop the form and
+    // return to the tab where that button was pressed.
     if (captureFirstFlow) {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-        return;
-      }
-      navigation.navigate("PhotoSelection", {
-        initialPhotos: selectedPhotosState ?? [],
-        uploadImmediately: false,
-        captureFirstFlow: true,
-        returnScreen: "CreateTask",
-        entityType: "task",
-        initialCompletionPercentage: 0,
-        selectionRevision: Date.now(),
-      });
+      exitCaptureFirstFlow(navigation as never);
       return;
     }
 
@@ -2180,7 +2185,6 @@ function CreateTaskMainScreen({
     editTaskId,
     localDraftId,
     navigation,
-    selectedPhotosState,
     sourceScreen,
     sourceSubTaskId,
     sourceTaskId,

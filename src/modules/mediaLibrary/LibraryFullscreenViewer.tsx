@@ -59,6 +59,20 @@ type ViewerItem = {
   uri: string;
 };
 
+/**
+ * Place the fullscreen pager once per open. Re-scrolling whenever the library
+ * count grows, or whenever `onScroll` reports another page, ping-pongs the
+ * viewer between the first photo and the thumbnail that was tapped.
+ */
+export function shouldPlaceFullscreenScroll(
+  placedToken: string | null,
+  initialIndex: number,
+  itemCount: number,
+): boolean {
+  if (itemCount <= 0 || initialIndex < 0) return false;
+  return placedToken !== String(initialIndex);
+}
+
 export function LibraryFullscreenViewer({
   visible,
   initialIndex,
@@ -92,6 +106,9 @@ export function LibraryFullscreenViewer({
   const [activeStrokes, setActiveStrokes] = useState<DrawStroke[]>([]);
   const [isCommitting, setIsCommitting] = useState(false);
   const flatListRef = useRef<FlatList<ViewerItem>>(null);
+  const currentIndexRef = useRef(initialIndex);
+  const placedForOpen = useRef<string | null>(null);
+  currentIndexRef.current = currentIndex;
   const useNativeThumbs = isPhotokitThumbsAvailable();
   const NativeThumb = useNativeThumbs ? getPhotokitThumbNativeView() : null;
 
@@ -117,31 +134,39 @@ export function LibraryFullscreenViewer({
   }, [assets, indexMode, indexSession]);
 
   useEffect(() => {
-    if (visible && initialIndex >= 0 && initialIndex < items.length) {
-      setCurrentIndex(initialIndex);
-      setDrawMode(false);
-      setCropMode(false);
-      setActiveStrokes([]);
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: initialIndex,
-          animated: false,
-        });
-      }, 50);
+    if (!visible) {
+      placedForOpen.current = null;
+      return;
     }
+    if (!shouldPlaceFullscreenScroll(placedForOpen.current, initialIndex, items.length)) {
+      return;
+    }
+    const index = Math.min(initialIndex, items.length - 1);
+    placedForOpen.current = String(initialIndex);
+    currentIndexRef.current = index;
+    setCurrentIndex(index);
+    setDrawMode(false);
+    setCropMode(false);
+    setActiveStrokes([]);
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index, animated: false });
+    }, 0);
+    return () => clearTimeout(timer);
   }, [visible, initialIndex, items.length]);
 
-  // Reset scroll position when dimensions change (orientation change)
+  // Orientation only. Do not depend on currentIndex — that re-scrolls on every
+  // page change and fights the list back to the other photo.
   useEffect(() => {
-    if (visible && currentIndex >= 0 && currentIndex < items.length) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: currentIndex,
-          animated: false,
-        });
-      }, 50);
-    }
-  }, [dimensionKey, visible, currentIndex, items.length]);
+    if (!visible) return;
+    const index = currentIndexRef.current;
+    if (index < 0 || index >= items.length) return;
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index, animated: false });
+    }, 0);
+    return () => clearTimeout(timer);
+    // items.length is read when dimensions change; growing the library must not re-scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dimensionKey, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -157,17 +182,23 @@ export function LibraryFullscreenViewer({
   const displayUri = currentAnnotation?.annotatedUri || currentItem?.uri;
   const committedStrokes = currentAnnotation?.drawStrokes || [];
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (drawMode || cropMode) return;
-      const offsetX = event.nativeEvent.contentOffset.x;
+  const commitPageIndex = useCallback(
+    (offsetX: number) => {
+      if (drawMode || cropMode || width <= 0) return;
       const index = Math.round(offsetX / width);
-      if (index >= 0 && index < items.length && index !== currentIndex) {
-        setCurrentIndex(index);
-        setActiveStrokes([]);
-      }
+      if (index < 0 || index >= items.length || index === currentIndexRef.current) return;
+      currentIndexRef.current = index;
+      setCurrentIndex(index);
+      setActiveStrokes([]);
     },
-    [cropMode, currentIndex, drawMode, items.length, width],
+    [cropMode, drawMode, items.length, width],
+  );
+
+  const handleScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      commitPageIndex(event.nativeEvent.contentOffset.x);
+    },
+    [commitPageIndex],
   );
 
   const handleToggleSelect = useCallback(() => {
@@ -329,6 +360,33 @@ export function LibraryFullscreenViewer({
     return null;
   }
 
+  // Crop/rotate is a separate full-screen editor — no picker X / select chrome.
+  if (cropMode && displayUri) {
+    return (
+      <View
+        testID={`${testIdPrefix}__fullscreen`}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "#000",
+          zIndex: 1000,
+        }}
+      >
+        <CropOverlay
+          uri={displayUri}
+          containerWidth={width}
+          containerHeight={height}
+          disabled={isCommitting}
+          onCancel={handleToggleCropMode}
+          onApply={handleApplyCrop}
+        />
+      </View>
+    );
+  }
+
   return (
     <View
       testID={`${testIdPrefix}__fullscreen`}
@@ -338,7 +396,7 @@ export function LibraryFullscreenViewer({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "#fff",
+        backgroundColor: "#000",
         zIndex: 1000,
       }}
     >
@@ -353,23 +411,9 @@ export function LibraryFullscreenViewer({
           paddingTop: 48,
         }}
       >
-        <Pressable
-          testID={`${testIdPrefix}__close`}
-          onPress={onClose}
-          disabled={isCommitting}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: isCommitting ? "#d1d5db" : "#f3f4f6",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="close" size={24} color="#374151" />
-        </Pressable>
+        <View style={{ width: 40, height: 40 }} />
 
-        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
+        <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
           {currentIndex + 1} / {itemCount}
         </Text>
 
@@ -395,7 +439,7 @@ export function LibraryFullscreenViewer({
       </View>
 
       {/* Swipeable Grid */}
-      <View style={{ height: PHOTO_HEIGHT, backgroundColor: "#fff" }}>
+      <View style={{ height: PHOTO_HEIGHT, backgroundColor: "#000" }}>
         <FlatList
           key={dimensionKey}
           ref={flatListRef}
@@ -405,9 +449,31 @@ export function LibraryFullscreenViewer({
           pagingEnabled
           scrollEnabled={!drawMode && !cropMode}
           showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          style={{ backgroundColor: "#fff", height: PHOTO_HEIGHT }}
+          initialScrollIndex={
+            items.length > 0
+              ? Math.min(
+                  Math.max(
+                    placedForOpen.current === String(initialIndex)
+                      ? currentIndex
+                      : initialIndex,
+                    0,
+                  ),
+                  items.length - 1,
+                )
+              : 0
+          }
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          onMomentumScrollEnd={handleScrollEnd}
+          onScrollEndDrag={handleScrollEnd}
+          onScrollToIndexFailed={(info) => {
+            flatListRef.current?.scrollToOffset({
+              offset: info.averageItemLength * info.index,
+              animated: false,
+            });
+          }}
+          style={{ backgroundColor: "#000", height: PHOTO_HEIGHT }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -425,7 +491,7 @@ export function LibraryFullscreenViewer({
                   height: PHOTO_HEIGHT,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "#fff",
+                  backgroundColor: "#000",
                 }}
               >
                 {useNativeThumbs && NativeThumb && indexMode && indexSession && !itemAnnotation?.annotatedUri ? (
@@ -434,14 +500,14 @@ export function LibraryFullscreenViewer({
                     index={item.index}
                     pixelSize={Math.max(width, height)}
                     contentFit="contain"
-                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
+                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#000" }}
                   />
                 ) : (
                   <ExpoImage
                     source={{ uri: itemUri }}
                     cachePolicy="memory-disk"
                     contentFit="contain"
-                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#fff" }}
+                    style={{ width, height: PHOTO_HEIGHT, backgroundColor: "#000" }}
                   />
                 )}
               </View>
@@ -473,27 +539,6 @@ export function LibraryFullscreenViewer({
           </View>
         )}
 
-        {/* CropOverlay only on current item when in crop mode */}
-        {cropMode && displayUri && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width,
-              height: PHOTO_HEIGHT,
-            }}
-          >
-            <CropOverlay
-              uri={displayUri}
-              containerWidth={width}
-              containerHeight={PHOTO_HEIGHT}
-              disabled={isCommitting}
-              onCancel={handleToggleCropMode}
-              onApply={handleApplyCrop}
-            />
-          </View>
-        )}
       </View>
 
       {/* Edit Tools */}
@@ -553,6 +598,27 @@ export function LibraryFullscreenViewer({
                 </Pressable>
                 <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
                   Crop
+                </Text>
+              </View>
+
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <Pressable
+                  testID={`${testIdPrefix}__close`}
+                  onPress={onClose}
+                  disabled={isCommitting}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: isCommitting ? "#d1d5db" : "#f3f4f6",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="close" size={28} color="#374151" />
+                </Pressable>
+                <Text style={{ color: "#374151", fontSize: 13, fontWeight: "600" }}>
+                  Close
                 </Text>
               </View>
             </View>

@@ -27,6 +27,7 @@ import {
   isIpadLandscapeMetaSplit,
 } from "@/components/taskDetail/ipadTimelineEvidenceLayout";
 import ReportReplyComposer, {
+  applyServerCompletion,
   progressDockIsDirty,
   progressDockShouldInterceptLeave,
 } from "@/components/taskDetail/ReportReplyComposer";
@@ -145,6 +146,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const [savedCompletionPercentage, setSavedCompletionPercentage] = useState(0);
   const allowDockLeaveRef = useRef(false);
   const progressDockDirtyRef = useRef(false);
+  const pendingSubmittedCompletionRef = useRef<number | null>(null);
+  const pendingCompletionTaskIdRef = useRef(props.taskId);
   const isReplySubmittingRef = useRef(false);
 
   const detailDock =
@@ -168,6 +171,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     });
   progressDockDirtyRef.current = progressDockDirty;
 
+  if (pendingCompletionTaskIdRef.current !== props.taskId) {
+    pendingCompletionTaskIdRef.current = props.taskId;
+    pendingSubmittedCompletionRef.current = null;
+  }
+
   useEffect(() => {
     if (
       detailDock?.mode === "progress" ||
@@ -175,12 +183,17 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       detailDock?.mode === "review_decision" ||
       detailDock?.mode === "archive"
     ) {
-      const server = detailDock.completionPercentage;
-      if (detailDock.mode === "progress" && progressDockDirtyRef.current) {
+      const next = applyServerCompletion({
+        server: detailDock.completionPercentage,
+        dirty: detailDock.mode === "progress" && progressDockDirtyRef.current,
+        pendingSubmit: pendingSubmittedCompletionRef.current,
+      });
+      if (!next) {
         return;
       }
-      setSavedCompletionPercentage(server);
-      setDockCompletionPercentage(server);
+      pendingSubmittedCompletionRef.current = next.pendingSubmit;
+      setSavedCompletionPercentage(next.saved);
+      setDockCompletionPercentage(next.dock);
     }
   }, [detailDock?.completionPercentage, detailDock?.mode, props.taskId]);
 
@@ -335,6 +348,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           photos: photoUrls,
           completionPercentage: dockCompletionPercentage,
         });
+        pendingSubmittedCompletionRef.current = dockCompletionPercentage;
         setSavedCompletionPercentage(dockCompletionPercentage);
       } else {
         await actions.replyToReport({

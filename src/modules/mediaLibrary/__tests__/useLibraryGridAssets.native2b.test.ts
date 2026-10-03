@@ -108,7 +108,7 @@ describe("useLibraryGridAssets native2b limited-then-expand", () => {
     mockAwaitExpand.mockResolvedValue({ token: 9, count: 1200 });
   });
 
-  it("peeks ready warm assets before limited index resolves", async () => {
+  it("keeps gray tiles until the live walk resolves", async () => {
     mockPeekWarm.mockReturnValue({
       assets: [
         {
@@ -131,11 +131,11 @@ describe("useLibraryGridAssets native2b limited-then-expand", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.assets.length).toBeGreaterThan(0);
-      expect(result.current.initialLoadDone).toBe(true);
+      expect(mockAwaitIndex).toHaveBeenCalled();
     });
+    expect(result.current.assets).toHaveLength(0);
     expect(result.current.indexSession).toBeNull();
-    expect(result.current.assets[0]?.id).toBe("warm0");
+    expect(result.current.initialLoadDone).toBe(false);
     expect(mockConsumeWarm).not.toHaveBeenCalled();
     expect(mockAwaitWarm).not.toHaveBeenCalled();
 
@@ -159,6 +159,9 @@ describe("useLibraryGridAssets native2b limited-then-expand", () => {
       30,
       true,
       expect.any(Function),
+      false,
+      null,
+      null,
     );
 
     await act(async () => {
@@ -175,6 +178,42 @@ describe("useLibraryGridAssets native2b limited-then-expand", () => {
     await waitFor(() => {
       expect(result.current.indexSession).toEqual({ token: 9, count: 1200 });
     });
+  });
+
+  it("stays empty when the live walk returns nothing", async () => {
+    mockAwaitIndex.mockResolvedValue(null);
+    const { result } = renderHook(() =>
+      useLibraryGridAssets({
+        enabled: true,
+        selectedAlbumId: "__all__",
+        consumeWarmPage: true,
+      }),
+    );
+    await waitFor(() => {
+      expect(result.current.initialLoadDone).toBe(true);
+    });
+    expect(result.current.assets).toHaveLength(0);
+    expect(result.current.indexSession).toBeNull();
+    expect(MediaLibrary.getAssetsAsync).not.toHaveBeenCalled();
+    expect(mockConsumeWarm).not.toHaveBeenCalled();
+  });
+
+  it("stays empty when the native walk API is missing", async () => {
+    mockIs2bApi.mockReturnValue(false);
+    const { result } = renderHook(() =>
+      useLibraryGridAssets({
+        enabled: true,
+        selectedAlbumId: "__all__",
+        consumeWarmPage: true,
+      }),
+    );
+    await waitFor(() => {
+      expect(result.current.initialLoadDone).toBe(true);
+    });
+    expect(result.current.assets).toHaveLength(0);
+    expect(mockAwaitIndex).not.toHaveBeenCalled();
+    expect(MediaLibrary.getAssetsAsync).not.toHaveBeenCalled();
+    expect(mockConsumeWarm).not.toHaveBeenCalled();
   });
 
   it("does not wait for in-flight warm before limited open", async () => {

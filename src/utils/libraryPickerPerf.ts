@@ -108,7 +108,7 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 
 /**
  * A/B picker fill path (M-PERF-03).
- * - `native2b` (default, TF237): limited Recents / persisted IDs → first paint → expand on scroll
+ * - `native2b` (default): live user-library walk → first paint → expand on scroll
  * - `warm`: MediaLibrary warm bridge ∥ full openLibrary — starves thumbs (HUD `1st` never)
  *
  * Override: EXPO_PUBLIC_LIBRARY_PICKER_PATH=warm|native2b
@@ -116,10 +116,10 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 export type LibraryPickerPath = "warm" | "native2b";
 
 /**
- * First limited native batch — Recents newest-N via index-from-end (no sort).
- * Also the persisted-ID warm set (`openLibraryWithIds`). 90 ≈ 30 rows (3-col)
- * so scroll stays on the fast path longer; full `openLibrary` still waits
- * until the user is near the end of this set. Native cap is 200.
+ * First limited native batch — user-library walk from the end (no sort).
+ * 90 ≈ 30 rows (3-col) so scroll stays on the fast path longer; full
+ * `openLibrary` still waits until the user is near the end of this set.
+ * Native cap is 200. A finished walk is not reused on the next open.
  */
 export const LIBRARY_PICKER_2B_FIRST_BATCH = 90;
 

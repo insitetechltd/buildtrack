@@ -92,6 +92,11 @@ jest.mock("../../../utils/libraryWarmPrefetch", () => ({
   peekWarmLibraryThumbUri: jest.fn(() => null),
 }));
 
+const mockIsLibraryPickerNative2b = jest.fn(() => false);
+jest.mock("../../../utils/libraryPickerPerf", () => ({
+  isLibraryPickerNative2b: (...args: unknown[]) => mockIsLibraryPickerNative2b(...args),
+}));
+
 import { CaptureSessionHostProvider } from "../CaptureSessionHostContext";
 import { CaptureSessionCameraScreen } from "../CaptureSessionCameraScreen";
 import {
@@ -103,6 +108,8 @@ import {
   ensureCameraPermissionChecked,
   invalidateCameraPermissionCache,
 } from "../../../utils/cameraPermission";
+import * as MediaLibrary from "expo-media-library";
+import { startLibraryCapturePrefetch } from "../../../utils/libraryCapturePrefetch";
 
 describe("CaptureSessionCameraScreen shutter C2", () => {
   beforeEach(async () => {
@@ -115,6 +122,11 @@ describe("CaptureSessionCameraScreen shutter C2", () => {
     mockTakePictureAsync.mockReset();
     mockPinDraftMedia.mockReset();
     mockPinDraftMedia.mockReturnValue(new Promise(() => undefined));
+    mockIsLibraryPickerNative2b.mockReset();
+    mockIsLibraryPickerNative2b.mockReturnValue(false);
+    jest.mocked(MediaLibrary.getPermissionsAsync).mockClear();
+    jest.mocked(MediaLibrary.getAssetsAsync).mockClear();
+    jest.mocked(startLibraryCapturePrefetch).mockClear();
   });
 
   it("allows a second shot while the first pin is still pending", async () => {
@@ -218,5 +230,35 @@ describe("CaptureSessionCameraScreen shutter C2", () => {
     expect(getByTestId("mock-camera-view").props.accessibilityValue).toEqual({
       text: "0",
     });
+  });
+
+  it("native2b skips permission and sorted getAssetsAsync after capture prefetch", async () => {
+    mockIsLibraryPickerNative2b.mockReturnValue(true);
+    jest.mocked(MediaLibrary.getPermissionsAsync).mockResolvedValue({
+      granted: true,
+    } as never);
+    jest.mocked(MediaLibrary.getAssetsAsync).mockResolvedValue({
+      assets: [{ uri: "ph://should-not-load" }],
+    } as never);
+
+    render(
+      <CaptureSessionHostProvider
+        value={{
+          onCancel: jest.fn(),
+          onComplete: jest.fn(),
+          selectionLimit: 20,
+          goToHybridLibrary: mockGoToHybridLibrary,
+          goToCamera: jest.fn(),
+        }}
+      >
+        <CaptureSessionCameraScreen />
+      </CaptureSessionHostProvider>,
+    );
+
+    await waitFor(() => {
+      expect(startLibraryCapturePrefetch).toHaveBeenCalled();
+    });
+    expect(MediaLibrary.getPermissionsAsync).not.toHaveBeenCalled();
+    expect(MediaLibrary.getAssetsAsync).not.toHaveBeenCalled();
   });
 });

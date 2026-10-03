@@ -19,6 +19,7 @@ import {
   peekWarmLibraryThumbUri,
 } from "../../utils/libraryWarmPrefetch";
 import { startLibraryCapturePrefetch } from "../../utils/libraryCapturePrefetch";
+import { isLibraryPickerNative2b } from "../../utils/libraryPickerPerf";
 import {
   peekCameraPermission,
   ensureCameraPermissionChecked,
@@ -101,6 +102,11 @@ export function CaptureSessionCameraScreen() {
         const warmUri = peekWarmLibraryThumbUri();
         if (warmUri) {
           setLibraryThumbUri(warmUri);
+          return;
+        }
+
+        // native2b must not run a sorted getAssetsAsync beside the user-library walk.
+        if (isLibraryPickerNative2b()) {
           return;
         }
 

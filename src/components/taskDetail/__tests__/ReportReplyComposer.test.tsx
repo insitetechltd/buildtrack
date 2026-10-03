@@ -5,7 +5,7 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 const scrubGesture: {
   onBegin?: () => void;
   onUpdate?: (event: { translationX: number; translationY: number; x: number; y: number }) => void;
-  onFinalize?: () => void;
+  onFinalize?: (event?: { x: number; y: number }) => void;
 } = {};
 
 jest.mock("react-native-gesture-handler", () => {
@@ -28,7 +28,7 @@ jest.mock("react-native-gesture-handler", () => {
         scrubGesture.onUpdate = fn;
         return api;
       },
-      onFinalize: (fn: () => void) => {
+      onFinalize: (fn: (event?: { x: number; y: number }) => void) => {
         scrubGesture.onFinalize = fn;
         return api;
       },
@@ -41,7 +41,7 @@ jest.mock("react-native-gesture-handler", () => {
   };
 });
 
-import ReportReplyComposer from "../ReportReplyComposer";
+import ReportReplyComposer, { completionThumbTapPoint } from "../ReportReplyComposer";
 
 function grantCompletion() {
   act(() => {
@@ -59,9 +59,9 @@ function moveCompletion(
   });
 }
 
-function releaseCompletion() {
+function releaseCompletion(point?: { x: number; y: number }) {
   act(() => {
-    scrubGesture.onFinalize?.();
+    scrubGesture.onFinalize?.(point);
   });
 }
 
@@ -267,7 +267,7 @@ describe("ReportReplyComposer", () => {
     );
 
     grantCompletion();
-    releaseCompletion();
+    releaseCompletion(completionThumbTapPoint(40));
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
       expect.objectContaining({ height: 44, width: 44 }),
@@ -838,5 +838,89 @@ describe("ReportReplyComposer", () => {
 
     releaseCompletion();
     expect(screen.queryByTestId("report-reply-composer__completion_magnifier")).toBeNull();
+  });
+
+  it("tap on the slider button closes, then a tap on the green circle sends", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="done"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={40}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    grantCompletion();
+    moveCompletion(-16);
+    releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+
+    grantCompletion();
+    releaseCompletion({ x: 22, y: 190 });
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+
+    grantCompletion();
+    releaseCompletion(completionThumbTapPoint(40));
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
+      expect.objectContaining({ borderColor: "#059669", borderWidth: 2 }),
+    );
+    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+
+    grantCompletion();
+    moveCompletion(-16);
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
+    releaseCompletion();
+
+    grantCompletion();
+    releaseCompletion(completionThumbTapPoint(40));
+    expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
+      expect.objectContaining({ borderColor: "#059669" }),
+    );
+
+    grantCompletion();
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    releaseCompletion();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the open track when the note is focused or Send is pressed", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="done"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={80}
+        savedCompletionPercentage={40}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    grantCompletion();
+    releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+
+    fireEvent(screen.getByTestId("report-reply-composer__input"), "focus");
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+
+    grantCompletion();
+    releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

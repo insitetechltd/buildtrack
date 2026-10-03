@@ -86,6 +86,13 @@ const DOCK_CIRCLE_LOCKED = {
   ...DOCK_CIRCLE_IDLE,
   opacity: 0.5,
 };
+/** Closed circle whose next tap posts the update. */
+const DOCK_CIRCLE_SEND = {
+  ...DOCK_CIRCLE,
+  borderWidth: 2,
+  borderColor: "#059669",
+  backgroundColor: "#f1f5f9",
+};
 /** Tall enough for multi-step scrubbing; stay open across strokes until tap. */
 const SCRUB_TRACK_HEIGHT = 200;
 const TAP_MOVE_SLOP = 8;
@@ -94,8 +101,10 @@ const PX_PER_STEP = 8;
 /** Larger percent readout, kept clear of the fingertip while scrubbing. */
 const MAGNIFIER_SIZE = 72;
 const MAGNIFIER_GAP = 12;
-/** Touches this close to the circle still start a scrub. */
+/** Touches this close above the circle still start a scrub. */
 const NEAR_TRACK_SLOP = 28;
+/** Side slop stays inside the dock gap so the open track does not cover Send. */
+const TRACK_SIDE_SLOP = 4;
 
 function snapCompletion(value: number): number {
   const snapped = Math.round(value / 5) * 5;
@@ -120,6 +129,30 @@ export function completionThumbOffset(percentage: number, travel: number): numbe
   if (travel <= 0) return 0;
   const clamped = Math.max(0, Math.min(100, percentage));
   return (clamped / 100) * travel;
+}
+
+/** True when a tap lands on the circle that sits at `percentage` along the open track. */
+export function tapHitsCompletionThumb(
+  x: number,
+  y: number,
+  percentage: number,
+  hitHeight: number,
+): boolean {
+  if (x < 0 || x > BUTTON_SIZE) return false;
+  const travel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+  const thumbBottom = completionThumbOffset(percentage, travel);
+  const thumbTop = hitHeight - thumbBottom - BUTTON_SIZE;
+  return y >= thumbTop && y <= thumbTop + BUTTON_SIZE;
+}
+
+export function completionThumbTapPoint(
+  percentage: number,
+  hitHeight: number = SCRUB_TRACK_HEIGHT,
+): { x: number; y: number } {
+  const travel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+  const thumbBottom = completionThumbOffset(percentage, travel);
+  const thumbTop = hitHeight - thumbBottom - BUTTON_SIZE;
+  return { x: BUTTON_SIZE / 2, y: thumbTop + BUTTON_SIZE / 2 };
 }
 
 /**
@@ -223,20 +256,25 @@ type CompletionScrubButtonProps = {
   onSessionStart?: () => void;
   /** Fired when the scrubber retracts after a press-drag (or cancel tap). */
   onRetract?: () => void;
+  /** Parent bumps this to close the track (note focus or Send). */
+  closeToken?: number;
+  /** Note has text, so a tap on the closed circle may post. */
+  canSend?: boolean;
+  onSend?: () => void;
+  /** True after a percent change has been closed and the circle will send. */
+  onSendArmedChange?: (armed: boolean) => void;
 };
 
 /**
  * Progress % control.
  *
  * A press on the circle opens the track (base 0%, top 100%) with the button
- * already at the current percent. That finger can scrub immediately. Lift
- * keeps the track open and arms the full track, so the next press anywhere
- * along it starts a new scrub — needed at 100%, where the opening finger is
- * at the bottom of the screen and cannot drag down. A vertical move changes
- * the percent in 5% steps and shows a larger circle above-left of the
- * fingertip. A sideways move with no vertical component does not. A later
- * press that lifts without a vertical move closes the track. Send stays on
- * the note.
+ * already at the current percent. That finger can scrub. Lift keeps the track
+ * open so another press along it can scrub, including down from 100%. A tap
+ * on the circle that sits on the track closes it. A tap at the dock slot does
+ * not. After the percent has changed, that closed circle gets a green outline
+ * and a single tap sends. A vertical drag on the outlined circle opens the
+ * track again instead of sending.
  */
 function CompletionScrubButton({
   value,
@@ -245,6 +283,10 @@ function CompletionScrubButton({
   startExpanded = false,
   onSessionStart,
   onRetract,
+  closeToken = 0,
+  canSend = false,
+  onSend,
+  onSendArmedChange,
 }: CompletionScrubButtonProps) {
   const [isOpen, setIsOpen] = useState(startExpanded);
   const isOpenRef = useRef(startExpanded);
@@ -259,6 +301,13 @@ function CompletionScrubButton({
   const disabledRef = useRef(disabled);
   const onSessionStartRef = useRef(onSessionStart);
   const onRetractRef = useRef(onRetract);
+  const canSendRef = useRef(canSend);
+  const onSendRef = useRef(onSend);
+  const onSendArmedChangeRef = useRef(onSendArmedChange);
+  const [sendArmed, setSendArmed] = useState(false);
+  const sendArmedRef = useRef(false);
+  const changedRef = useRef(false);
+  const pendingSendRef = useRef(false);
   const [magnifier, setMagnifier] = useState<{
     x: number;
     y: number;
@@ -269,6 +318,9 @@ function CompletionScrubButton({
   disabledRef.current = disabled;
   onSessionStartRef.current = onSessionStart;
   onRetractRef.current = onRetract;
+  canSendRef.current = canSend;
+  onSendRef.current = onSend;
+  onSendArmedChangeRef.current = onSendArmedChange;
   isOpenRef.current = isOpen;
 
   const retractScrubber = useCallback(() => {
@@ -280,9 +332,21 @@ function CompletionScrubButton({
     trackArmedRef.current = false;
     setTrackArmed(false);
     setMagnifier(null);
+    if (sendArmedRef.current) {
+      sendArmedRef.current = false;
+      setSendArmed(false);
+    }
     if (wasOpen) {
       onRetractRef.current?.();
     }
+  }, []);
+
+  const armSendAfterChange = useCallback(() => {
+    if (!changedRef.current) {
+      return;
+    }
+    sendArmedRef.current = true;
+    setSendArmed(true);
   }, []);
 
   useEffect(() => {
@@ -299,6 +363,17 @@ function CompletionScrubButton({
     }
   }, [startExpanded]);
 
+  useEffect(() => {
+    if (closeToken > 0 && isOpenRef.current) {
+      retractScrubber();
+      armSendAfterChange();
+    }
+  }, [closeToken, retractScrubber, armSendAfterChange]);
+
+  useEffect(() => {
+    onSendArmedChangeRef.current?.(sendArmed);
+  }, [sendArmed]);
+
   // While a finger is down the hit view stays the size it had at grant.
   // After lift, the open track grows to the full slider so the next press
   // can start anywhere along it.
@@ -312,8 +387,8 @@ function CompletionScrubButton({
       .hitSlop({
         top: NEAR_TRACK_SLOP,
         bottom: 12,
-        left: NEAR_TRACK_SLOP,
-        right: NEAR_TRACK_SLOP,
+        left: TRACK_SIDE_SLOP,
+        right: TRACK_SIDE_SLOP,
       })
       .runOnJS(true)
       .onBegin(() => {
@@ -325,7 +400,10 @@ function CompletionScrubButton({
         setMagnifier(null);
         startPctRef.current = valueRef.current;
         onSessionStartRef.current?.();
-        if (!isOpenRef.current) {
+        const tapWillSend =
+          sendArmedRef.current && canSendRef.current && !isOpenRef.current;
+        pendingSendRef.current = tapWillSend;
+        if (!tapWillSend && !isOpenRef.current) {
           isOpenRef.current = true;
           setIsOpen(true);
         }
@@ -339,7 +417,15 @@ function CompletionScrubButton({
           setMagnifier(null);
           return;
         }
+        if (pendingSendRef.current) {
+          pendingSendRef.current = false;
+          if (!isOpenRef.current) {
+            isOpenRef.current = true;
+            setIsOpen(true);
+          }
+        }
         didMoveRef.current = true;
+        changedRef.current = true;
         const next = completionFromVerticalDrag(startPctRef.current, event.translationY);
         onChangeRef.current(next);
         const hitHeight = trackArmedRef.current ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE;
@@ -349,25 +435,46 @@ function CompletionScrubButton({
           percent: next,
         });
       })
-      .onFinalize(() => {
+      .onFinalize((event) => {
         setMagnifier(null);
+        if (pendingSendRef.current && !didMoveRef.current) {
+          pendingSendRef.current = false;
+          sendArmedRef.current = false;
+          changedRef.current = false;
+          setSendArmed(false);
+          onSendRef.current?.();
+          return;
+        }
+        pendingSendRef.current = false;
         if (!isOpenRef.current) {
           return;
         }
         // First press, or a scrub, leaves the track up for another stroke.
-        // A press on the already-open track that never moves vertically closes it.
         if (didMoveRef.current || !trackArmedRef.current) {
           trackArmedRef.current = true;
           setTrackArmed(true);
           return;
         }
+        const point = event ?? { x: -1, y: -1 };
+        if (
+          !tapHitsCompletionThumb(
+            point.x ?? -1,
+            point.y ?? -1,
+            valueRef.current,
+            SCRUB_TRACK_HEIGHT,
+          )
+        ) {
+          return;
+        }
         retractScrubber();
+        armSendAfterChange();
       }),
   ).current;
 
   // 0% at the base, 100% at the top. Reopening at 75% starts the button there.
   const thumbTravel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
   const thumbBottom = isOpen ? completionThumbOffset(value, thumbTravel) : 0;
+  const showSendOutline = sendArmed && !isOpen && canSend;
 
   return (
     // Layout slot always matches peer dock circles — scrub overlays upward.
@@ -375,7 +482,7 @@ function CompletionScrubButton({
       testID="report-reply-composer__completion"
       accessibilityLabel={
         isOpen
-          ? `Completion ${value} percent. Slide anywhere on the track. Tap to close.`
+          ? `Completion ${value} percent. Slide anywhere on the track. Tap the note or Send to close.`
           : `Completion ${value} percent. Press and drag to adjust.`
       }
       accessibilityRole="adjustable"
@@ -473,7 +580,7 @@ function CompletionScrubButton({
                     left: 0,
                   }
                 : null),
-              ...DOCK_CIRCLE_IDLE,
+              ...(showSendOutline ? DOCK_CIRCLE_SEND : DOCK_CIRCLE_IDLE),
             }}
           >
             <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
@@ -561,13 +668,20 @@ export default function ReportReplyComposer({
               : sendLabel;
   const showLeadingFab = Boolean(onPressTriageActions) || showReportFab;
 
+  const [scrubCloseToken, setScrubCloseToken] = useState(0);
+  const [circleSendArmed, setCircleSendArmed] = useState(false);
+  const closeProgressScrubber = useCallback(() => {
+    setScrubCloseToken((token) => token + 1);
+  }, []);
+
   const handleSubmit = useCallback(() => {
     if (!canSend) {
       return;
     }
     Keyboard.dismiss();
+    closeProgressScrubber();
     onSubmit();
-  }, [canSend, onSubmit]);
+  }, [canSend, closeProgressScrubber, onSubmit]);
 
   const handleCancelReview = useCallback(() => {
     if (isSubmitting || !onCancelReview) {
@@ -616,10 +730,11 @@ export default function ReportReplyComposer({
 
   const handleFocusInput = useCallback(() => {
     setFocused(true);
+    closeProgressScrubber();
     if (isTriageDialOpen) {
       onDismissTriageDial?.();
     }
-  }, [isTriageDialOpen, onDismissTriageDial]);
+  }, [closeProgressScrubber, isTriageDialOpen, onDismissTriageDial]);
 
   const bottomPad = Math.max(insets.bottom, 8);
   const showLockedCompletion =
@@ -697,6 +812,10 @@ export default function ReportReplyComposer({
         onChange={onChangeCompletionPercentage}
         disabled={isSubmitting}
         onSessionStart={handleProgressScrubSessionStart}
+        closeToken={scrubCloseToken}
+        canSend={canSend}
+        onSend={handleSubmit}
+        onSendArmedChange={setCircleSendArmed}
       />
     ) : null;
 
@@ -926,7 +1045,7 @@ export default function ReportReplyComposer({
         {isProgressMode ? (
           <>
             {progressScrubTrailing}
-            {sendButton}
+            {circleSendArmed && noteHasText ? null : sendButton}
           </>
         ) : !isReviewDecision ? (
           <>

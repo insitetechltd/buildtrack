@@ -1,0 +1,5 @@
+
+> template-app-53@1.0.0 assert:ipa-prod-bake
+> bash ./scripts/eas/assert-ipa-prod-bake.sh .eas/artifacts/build-1791013446470.ipa
+
+{"ok":true,"label":"ipa","ipa":".eas/artifacts/build-1791013446470.ipa","sha256":"ec62b0bd7c41eb52e458907bc5a0f25c6517e3c15b4a992be22ca564a96eff8d","bundleId":"com.buildtrack.app.local","version":"1.1.5","buildNumber":"290","prodRef":"jcnzjigxgkzhjsaekoqz","devRefAbsent":true}

@@ -182,7 +182,7 @@ export function useLibraryGridAssets({
         setLoadingPage(false);
       }
     }
-  }, []);
+  }, [sortOrder]);
 
   useEffect(() => {
     if (!enabled) {
@@ -224,6 +224,10 @@ export function useLibraryGridAssets({
       if (isPhotokitLibraryIndexAvailable()) {
         const albumArg =
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID ? null : selectedAlbumId;
+        const defaultFetch =
+          sortOrder === "descending" &&
+          afterEpochSeconds == null &&
+          beforeEpochSeconds == null;
 
         // Option 2B: limited Recents first (no sorted warm wait). Expand after first screen.
         if (
@@ -231,7 +235,7 @@ export function useLibraryGridAssets({
           isLibraryPickerNative2b() &&
           isPhotokitLibrary2bAvailable()
         ) {
-          const peekWarm = peekWarmLibraryPage();
+          const peekWarm = defaultFetch ? peekWarmLibraryPage() : null;
           if (peekWarm && peekWarm.assets.length > 0) {
             applyBridgeAssets(peekWarm.assets);
             setEndCursor(peekWarm.endCursor);
@@ -266,8 +270,8 @@ export function useLibraryGridAssets({
           // Fall through to warm path if limited open failed.
         }
 
-        // Warm path: warm bridge while full openLibrary runs (TF 232 serialize).
-        if (selectedAlbumId === ALL_PHOTOS_ALBUM_ID) {
+        // Warm path is newest-first. A sort or date filter must not paint that page first.
+        if (selectedAlbumId === ALL_PHOTOS_ALBUM_ID && defaultFetch) {
           bridgeBootstrappingRef.current = true;
           try {
             const peekWarm = peekWarmLibraryPage();
@@ -417,12 +421,15 @@ export function useLibraryGridAssets({
       cancelled = true;
     };
   }, [
+    afterEpochSeconds,
     applyBridgeAssets,
+    beforeEpochSeconds,
     consumeWarmPage,
     enabled,
     loadPage,
     permission,
     selectedAlbumId,
+    sortOrder,
   ]);
 
   useEffect(() => {

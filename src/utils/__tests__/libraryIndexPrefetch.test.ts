@@ -87,7 +87,7 @@ describe("libraryIndexPrefetch", () => {
     mockIs2b.mockReturnValue(true);
     const limited = await prefetchPhotokitLibraryIndex(null);
     expect(limited).toEqual({ token: 5, count: 90 });
-    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90);
+    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90, false, null, null);
     expect(mockOpen).not.toHaveBeenCalled();
 
     await new Promise((r) => setTimeout(r, 0));
@@ -102,7 +102,7 @@ describe("libraryIndexPrefetch", () => {
     mockPeekIds.mockReturnValue(["p0", "p1"]);
     const limited = await prefetchPhotokitLibraryIndex(null);
     expect(mockOpenWithIds).not.toHaveBeenCalled();
-    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90);
+    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90, false, null, null);
     expect(limited).toEqual({ token: 5, count: 90 });
   });
 
@@ -134,7 +134,7 @@ describe("libraryIndexPrefetch", () => {
     }
     await Promise.resolve();
     await Promise.resolve();
-    expect(mockExpand).toHaveBeenCalledWith(5);
+    expect(mockExpand).toHaveBeenCalledWith(5, false, null, null);
     await Promise.resolve();
     expect(onExpanded).toHaveBeenCalledWith({ token: 5, count: 50000 });
     expect(peekPhotokitLibraryIndex(null)).toEqual({ token: 5, count: 50000 });
@@ -167,8 +167,19 @@ describe("libraryIndexPrefetch", () => {
     requestPhotokitLibraryExpandIfScrolled(null, 5, 88, 90, true, onExpanded);
     await Promise.resolve();
     await Promise.resolve();
-    expect(mockExpand).toHaveBeenCalledWith(5);
+    expect(mockExpand).toHaveBeenCalledWith(5, false, null, null);
     await Promise.resolve();
     expect(onExpanded).toHaveBeenCalledWith({ token: 5, count: 50000 });
+  });
+
+  it("does not reuse the newest-first session when the sort is oldest first", async () => {
+    await prefetchPhotokitLibraryIndex(null);
+    expect(mockOpen).toHaveBeenCalledTimes(1);
+    mockOpen.mockResolvedValueOnce({ token: 9, count: 10 });
+    const oldest = await prefetchPhotokitLibraryIndex(null, true);
+    expect(mockOpen).toHaveBeenCalledTimes(2);
+    expect(mockOpen).toHaveBeenLastCalledWith(null, true, null, null);
+    expect(oldest).toEqual({ token: 9, count: 10 });
+    expect(peekPhotokitLibraryIndex(null)).toBeNull();
   });
 });

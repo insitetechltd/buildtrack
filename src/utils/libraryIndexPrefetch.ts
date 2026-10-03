@@ -37,13 +37,26 @@ let expandInFlight: Promise<PhotokitLibrarySession | null> | null = null;
 let expandPaused = false;
 let scheduledExpandCancel: (() => void) | null = null;
 
-function cacheSession(
+/** Default newest-first keeps the album key so peek(album) still hits. Any other sort or date window is its own session. */
+export function libraryIndexCacheKey(
   albumKey: string | null,
+  ascending = false,
+  afterEpochSeconds: number | null = null,
+  beforeEpochSeconds: number | null = null,
+): string | null {
+  if (!ascending && afterEpochSeconds == null && beforeEpochSeconds == null) {
+    return albumKey;
+  }
+  return `filter:${albumKey ?? "*"}:${ascending ? "asc" : "desc"}:${afterEpochSeconds ?? ""}:${beforeEpochSeconds ?? ""}`;
+}
+
+function cacheSession(
+  cacheKey: string | null,
   session: PhotokitLibrarySession | null,
 ): PhotokitLibrarySession | null {
   if (session) {
     cachedSession = session;
-    cachedAlbumKey = albumKey;
+    cachedAlbumKey = cacheKey;
   }
   return session;
 }
@@ -76,13 +89,19 @@ export function prefetchPhotokitLibraryIndex(
   if (!isPhotokitLibraryIndexAvailable()) {
     return null;
   }
-  if (cachedSession && cachedAlbumKey === albumKey) {
+  const cacheKey = libraryIndexCacheKey(
+    albumKey,
+    ascending,
+    afterEpochSeconds,
+    beforeEpochSeconds,
+  );
+  if (cachedSession && cachedAlbumKey === cacheKey) {
     return Promise.resolve(cachedSession);
   }
-  if (inFlight && inFlightAlbumKey === albumKey) {
+  if (inFlight && inFlightAlbumKey === cacheKey) {
     return inFlight;
   }
-  inFlightAlbumKey = albumKey;
+  inFlightAlbumKey = cacheKey;
   const use2b = isLibraryPickerNative2b() && isPhotokitLibrary2bAvailable();
   inFlight = (async () => {
     try {
@@ -102,7 +121,7 @@ export function prefetchPhotokitLibraryIndex(
         ) {
           const preview = await openPhotokitLibraryWithIds(persisted);
           if (preview) {
-            return cacheSession(albumKey, preview);
+            return cacheSession(cacheKey, preview);
           }
         }
         const limited = await openPhotokitLibraryLimited(
@@ -113,12 +132,14 @@ export function prefetchPhotokitLibraryIndex(
           beforeEpochSeconds,
         );
         if (!limited) {
-          return cacheSession(albumKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
+          return cacheSession(cacheKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
         }
-        persistPreviewFromSession(limited);
-        return cacheSession(albumKey, limited);
+        if (!hasActiveFilters) {
+          persistPreviewFromSession(limited);
+        }
+        return cacheSession(cacheKey, limited);
       }
-      return cacheSession(albumKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
+      return cacheSession(cacheKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
     } finally {
       inFlight = null;
     }
@@ -136,7 +157,13 @@ export async function awaitPhotokitLibraryIndex(
   if (!isPhotokitLibraryIndexAvailable()) {
     return null;
   }
-  if (cachedSession && cachedAlbumKey === albumKey) {
+  const cacheKey = libraryIndexCacheKey(
+    albumKey,
+    ascending,
+    afterEpochSeconds,
+    beforeEpochSeconds,
+  );
+  if (cachedSession && cachedAlbumKey === cacheKey) {
     return cachedSession;
   }
   const run = prefetchPhotokitLibraryIndex(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds);
@@ -168,7 +195,13 @@ export async function awaitPhotokitLibraryExpand(
   if (expandPaused) {
     return cachedSession;
   }
-  if (cachedSession && cachedAlbumKey === albumKey && cachedSession.token === token) {
+  const cacheKey = libraryIndexCacheKey(
+    albumKey,
+    ascending,
+    afterEpochSeconds,
+    beforeEpochSeconds,
+  );
+  if (cachedSession && cachedAlbumKey === cacheKey && cachedSession.token === token) {
     // Already expanded (count grew) or still limited — kick expand if needed.
     if (expandInFlight) {
       return expandInFlight;
@@ -180,7 +213,7 @@ export async function awaitPhotokitLibraryExpand(
           return cachedSession;
         }
         if (full && full.token === token) {
-          return cacheSession(albumKey, full);
+          return cacheSession(cacheKey, full);
         }
         return cachedSession;
       });

@@ -103,7 +103,12 @@ describe("useLibraryGridAssets Photos index", () => {
       expect(result.current.initialLoadDone).toBe(true);
     });
     expect(mockPreviewNewestIds).not.toHaveBeenCalled();
-    expect(mockAwaitPhotokitLibraryIndex).toHaveBeenCalledWith(null);
+    expect(mockAwaitPhotokitLibraryIndex).toHaveBeenCalledWith(
+      null,
+      false,
+      null,
+      null,
+    );
     expect(result.current.assets).toHaveLength(0);
 
     await act(async () => {
@@ -162,5 +167,35 @@ describe("useLibraryGridAssets Photos index", () => {
     });
     expect(mockPreviewNewestIds).not.toHaveBeenCalled();
     expect(mockGetAssetsAsync).not.toHaveBeenCalled();
+  });
+
+  it("reopens the index when the album sort changes to oldest first", async () => {
+    const { result, rerender } = renderHook(
+      (props: { sortOrder: "descending" | "ascending" }) =>
+        useLibraryGridAssets({
+          enabled: true,
+          selectedAlbumId: "__all__",
+          consumeWarmPage: true,
+          sortOrder: props.sortOrder,
+        }),
+      { initialProps: { sortOrder: "descending" as const } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.indexSession).toEqual({ token: 3, count: 50000 });
+    });
+
+    mockAwaitPhotokitLibraryIndex.mockResolvedValue({ token: 9, count: 12 });
+    rerender({ sortOrder: "ascending" });
+
+    await waitFor(() => {
+      expect(result.current.indexSession).toEqual({ token: 9, count: 12 });
+    });
+    expect(mockAwaitPhotokitLibraryIndex).toHaveBeenCalledWith(
+      null,
+      true,
+      null,
+      null,
+    );
   });
 });

@@ -1,0 +1,5 @@
+
+> template-app-53@1.0.0 assert:ipa-prod-bake
+> bash ./scripts/eas/assert-ipa-prod-bake.sh /Volumes/KooDrive/InsiteApp/.eas/artifacts/build-1791086612889.ipa
+
+{"ok":true,"label":"ipa","ipa":"/Volumes/KooDrive/InsiteApp/.eas/artifacts/build-1791086612889.ipa","sha256":"91ed472894263152fadce9e390f873f035c3b7e6420fdca67191a1e942f145a1","bundleId":"com.buildtrack.app.local","version":"1.1.5","buildNumber":"293","prodRef":"jcnzjigxgkzhjsaekoqz","devRefAbsent":true}

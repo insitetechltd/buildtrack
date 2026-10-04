@@ -1,5 +1,6 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useUpdateProgressViewAdapter } from '../../ui/viewAdapters/useUpdateProgressViewAdapter';
 
 const mockRouteParams: Record<string, unknown> = {
@@ -134,6 +135,7 @@ describe('useUpdateProgressViewAdapter', () => {
       file: { public_url: 'https://example.com/photo.jpg' },
     });
     mockReturnToTaskDetail.mockClear();
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -299,6 +301,144 @@ describe('useUpdateProgressViewAdapter', () => {
     expect(mockReturnToTaskDetail).not.toHaveBeenCalled();
     expect(result.current.output.form.description).toBe('Slab pour complete');
     expect(result.current.output.photos).toHaveLength(1);
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Photos did not upload',
+      expect.stringContaining('still here'),
+    );
+  });
+
+  it('uploads chosen photos concurrently and keeps URL order', async () => {
+    const resolvers: Array<() => void> = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockUploadFileWithVerification.mockImplementation((options: { file: { name: string } }) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      return new Promise((resolve) => {
+        resolvers.push(() => {
+          inFlight -= 1;
+          resolve({
+            success: true,
+            file: { public_url: `https://cdn.example.com/${options.file.name}` },
+          });
+        });
+      });
+    });
+
+    const { result } = renderHook(
+      (props: { selectedPhotos: Array<{ uri: string; fileName: string }> }) =>
+        useUpdateProgressViewAdapter(props),
+      {
+        initialProps: {
+          selectedPhotos: [
+            { uri: 'file:///a.jpg', fileName: 'a.jpg' },
+            { uri: 'file:///b.jpg', fileName: 'b.jpg' },
+            { uri: 'file:///c.jpg', fileName: 'c.jpg' },
+          ],
+        },
+      },
+    );
+
+    act(() => {
+      result.current.actions.setDescription('Slab pour complete');
+    });
+
+    let pending: Promise<void> | undefined;
+    act(() => {
+      pending = result.current.actions.handleSubmitUpdate();
+    });
+
+    await waitFor(() => {
+      expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(3);
+    });
+    expect(maxInFlight).toBe(3);
+
+    resolvers[2]();
+    resolvers[0]();
+    resolvers[1]();
+
+    await act(async () => {
+      await pending;
+    });
+
+    expect(mockAddTaskUpdate).toHaveBeenCalledWith(
+      'task-1',
+      expect.objectContaining({
+        photos: [
+          'https://cdn.example.com/a.jpg',
+          'https://cdn.example.com/b.jpg',
+          'https://cdn.example.com/c.jpg',
+        ],
+      }),
+    );
+  });
+
+  it('does not save an update when one of several chosen photos fails', async () => {
+    mockUploadFileWithVerification.mockImplementation(async (options: { file: { name: string } }) => {
+      if (options.file.name === 'b.jpg') {
+        return { success: false, error: 'Photo upload failed' };
+      }
+      return {
+        success: true,
+        file: { public_url: `https://cdn.example.com/${options.file.name}` },
+      };
+    });
+
+    const { result } = renderHook(
+      (props: { selectedPhotos: Array<{ uri: string; fileName: string }> }) =>
+        useUpdateProgressViewAdapter(props),
+      {
+        initialProps: {
+          selectedPhotos: [
+            { uri: 'file:///a.jpg', fileName: 'a.jpg' },
+            { uri: 'file:///b.jpg', fileName: 'b.jpg' },
+          ],
+        },
+      },
+    );
+
+    act(() => {
+      result.current.actions.setDescription('Slab pour complete');
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmitUpdate();
+    });
+
+    expect(mockAddTaskUpdate).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Photos did not upload',
+      expect.stringContaining('still here'),
+    );
+  });
+
+  it('does not save an update when a chosen photo file is missing', async () => {
+    (FileSystem.getInfoAsync as jest.Mock).mockImplementation(async (uri: string) => ({
+      exists: !uri.includes('missing'),
+    }));
+
+    const { result } = renderHook(
+      (props: { selectedPhotos: Array<{ uri: string; fileName: string }> }) =>
+        useUpdateProgressViewAdapter(props),
+      {
+        initialProps: {
+          selectedPhotos: [
+            { uri: 'file:///ok.jpg', fileName: 'ok.jpg' },
+            { uri: 'file:///missing.jpg', fileName: 'missing.jpg' },
+          ],
+        },
+      },
+    );
+
+    act(() => {
+      result.current.actions.setDescription('Slab pour complete');
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmitUpdate();
+    });
+
+    expect(mockAddTaskUpdate).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
       'Photos did not upload',
       expect.stringContaining('still here'),

@@ -171,36 +171,40 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
 
   const uploadPhotoObjects = async (photosToUpload: SelectedPhoto[], tId: string): Promise<string[]> => {
     if (!user || photosToUpload.length === 0) return [];
-    const uploadedUrls: string[] = [];
 
-    for (let i = 0; i < photosToUpload.length; i++) {
-      const photo = photosToUpload[i];
-      try {
-        const uriToUpload = await ensureCappedLocalPhoto(photo);
-        const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
-        if (!fileInfo.exists) continue;
+    // M-PERF-04 B1: compress+upload each photo independently. Promise.all keeps input order.
+    // Missing files and failed uploads stay out of the list; the caller fail-closes on the count.
+    const uploaded = await Promise.all(
+      photosToUpload.map(async (photo): Promise<string | null> => {
+        try {
+          const uriToUpload = await ensureCappedLocalPhoto(photo);
+          const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
+          if (!fileInfo.exists) return null;
 
-        const result = await uploadFileWithVerification({
-          file: {
-            uri: uriToUpload,
-            name: photo.fileName,
-            type: 'image/jpeg',
-          },
-          entityType: 'task-update',
-          entityId: tId,
-          companyId: user.companyId,
-          userId: user.id,
-        });
+          const result = await uploadFileWithVerification({
+            file: {
+              uri: uriToUpload,
+              name: photo.fileName,
+              type: 'image/jpeg',
+            },
+            entityType: 'task-update',
+            entityId: tId,
+            companyId: user.companyId,
+            userId: user.id,
+          });
 
-        if (result.success && result.file) {
-          uploadedUrls.push(result.file.public_url);
+          if (result.success && result.file?.public_url) {
+            return result.file.public_url;
+          }
+          return null;
+        } catch (error: any) {
+          console.error(error);
+          return null;
         }
-      } catch (error: any) {
-        console.error(error);
-      }
-    }
+      }),
+    );
 
-    return uploadedUrls;
+    return uploaded.filter((url): url is string => Boolean(url));
   };
 
   const handleSubmitUpdate = async () => {

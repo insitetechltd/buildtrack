@@ -39,7 +39,11 @@ export interface FileAttachment {
   file_size: number;
   mime_type: string;
   storage_path: string;
-  /** Display URL — signed after 03c D2 cutover; not a durable public link. */
+  /**
+   * Attachment ref stored by callers.
+   * New uploads use the storage object path (durable). Display resolves a signed
+   * URL via getFileUrl / attachmentPreviewUri. Legacy rows may still be https.
+   */
   public_url: string;
   entity_type: string;
   entity_id: string;
@@ -427,15 +431,15 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
 
     console.log(`✅ [File Upload] File uploaded successfully`);
 
-    // 6. Signed URL (private bucket — getPublicUrl 403s after M-SUPABASE-03c)
-    perf.mark(perfKey, 'start-signed-url');
-    const signedUrl = await createSignedFileUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
-    perf.mark(perfKey, 'complete-signed-url');
-    if (!signedUrl) {
-      throw new Error('Failed to create signed URL');
-    }
-
-    console.log(`🔗 [File Upload] Signed URL generated (ttl=${SIGNED_URL_EXPIRY_SECONDS}s)`);
+    // 6. Signed URL is for display only. Warm the cache in the background.
+    // A mint failure must not fail an upload that already reached Storage.
+    // M-PERF-04 B2: do not await this before returning.
+    void createSignedFileUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS).catch((signError) => {
+      console.warn(
+        '⚠️ [File Upload] Signed URL deferred (upload already stored):',
+        signError?.message || signError,
+      );
+    });
 
     // 7. Determine file type
     const fileType = getFileType(file.type);
@@ -474,7 +478,7 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       file_size: fileSize,
       mime_type: file.type,
       storage_path: storagePath,
-      public_url: signedUrl,
+      public_url: storagePath,
       entity_type: entityType,
       entity_id: entityId,
       uploaded_by: userId,
@@ -485,7 +489,7 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       updated_at: new Date().toISOString(),
     };
 
-    console.log(`🎉 [File Upload] Complete! File available at signed URL`);
+    console.log(`🎉 [File Upload] Complete! Attachment ref is the storage path`);
 
     perf.end(perfKey);
     
@@ -520,6 +524,29 @@ export async function deleteFile(storagePath: string): Promise<void> {
     console.error('❌ [File Upload] Delete failed:', error);
     throw error;
   }
+}
+
+/**
+ * Sync Image uri for an attachment ref.
+ * Local schemes and https pass through (already displayable).
+ * A storage object path resolves through the signed-URL cache, or null until
+ * that cache is warm — callers should subscribeSignedUrlCache and re-render.
+ */
+export function attachmentPreviewUri(ref: string): string | null {
+  if (!ref) {
+    return null;
+  }
+  if (/^(file:|content:|data:|asset:|ph:|assets-library:)/i.test(ref)) {
+    return ref;
+  }
+  if (/^https?:\/\//i.test(ref)) {
+    return ref;
+  }
+  const storagePath = extractBuildtrackStoragePath(ref);
+  if (!storagePath) {
+    return ref;
+  }
+  return getFileUrl(storagePath);
 }
 
 /**
@@ -596,15 +623,18 @@ export async function uploadFileWithVerification(options: FileUploadOptions): Pr
     // Upload the file
     const fileAttachment = await uploadFile(options);
 
-    // Verify the upload
-    const verification = await verifyUpload(fileAttachment.public_url);
+    // HEAD only a real URL. Storage paths are resolved later by getFileUrl;
+    // verifying them here would wait on a request the upload no longer needs.
+    if (/^https?:\/\//i.test(fileAttachment.public_url)) {
+      const verification = await verifyUpload(fileAttachment.public_url);
 
-    if (!verification.success) {
-      console.warn(
-        `⚠️ [File Upload] Upload completed but signed-URL verification was inconclusive: ${
-          verification.error || 'Unknown verification issue'
-        }`
-      );
+      if (!verification.success) {
+        console.warn(
+          `⚠️ [File Upload] Upload completed but signed-URL verification was inconclusive: ${
+            verification.error || 'Unknown verification issue'
+          }`
+        );
+      }
     }
 
     return {

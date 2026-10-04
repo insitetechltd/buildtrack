@@ -1,4 +1,5 @@
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import { usePhotoSelectionViewAdapter } from "../usePhotoSelectionViewAdapter";
 
 const mockUploadFileWithVerification = jest.fn();
@@ -571,5 +572,128 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(1);
     const options = mockUploadFileWithVerification.mock.calls[0][0];
     expect(options.description).toBe("Front door jamb misalignment");
+  });
+
+  it("uploads selected photos concurrently and returns URLs in input order", async () => {
+    const onAttachedToExistingTask = jest.fn();
+    const resolvers: Array<() => void> = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockUploadFileWithVerification.mockImplementation((options: { file: { name: string } }) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      return new Promise((resolve) => {
+        resolvers.push(() => {
+          inFlight -= 1;
+          resolve({
+            success: true,
+            file: { public_url: `https://cdn.example.com/${options.file.name}` },
+          });
+        });
+      });
+    });
+    mockGetTasksByProject.mockReturnValue([
+      { id: "task-order", title: "Order task", updated_at: "2026-08-07T00:00:00Z" },
+    ]);
+
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        taskId: "unused",
+        initialPhotos: [
+          { uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false },
+          { uri: "file://b.jpg", fileName: "b.jpg", isAnnotated: false },
+          { uri: "file://c.jpg", fileName: "c.jpg", isAnnotated: false },
+        ],
+        onAttachedToExistingTask,
+        uploadImmediately: true,
+      } as any),
+    );
+
+    act(() => {
+      result.current.handleSelectTaskForAttach("task-order");
+    });
+
+    let pending: Promise<void> | undefined;
+    act(() => {
+      pending = result.current.handleUploadPhotos();
+    });
+
+    await waitFor(() => {
+      expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(3);
+    });
+    expect(maxInFlight).toBe(3);
+
+    resolvers[2]();
+    resolvers[0]();
+    resolvers[1]();
+
+    await act(async () => {
+      await pending;
+    });
+
+    expect(onAttachedToExistingTask).toHaveBeenCalledWith("task-order", [
+      "https://cdn.example.com/a.jpg",
+      "https://cdn.example.com/b.jpg",
+      "https://cdn.example.com/c.jpg",
+    ]);
+  });
+
+  it("keeps a partial photo-selection upload best-effort and preserves success order", async () => {
+    const onAttachedToExistingTask = jest.fn();
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation((title, _message, buttons) => {
+      if (title !== "Partial Upload") {
+        return;
+      }
+      const continueButton = (
+        buttons as Array<{ text?: string; onPress?: () => void }> | undefined
+      )?.find((button) => button.text === "Continue");
+      continueButton?.onPress?.();
+    });
+    mockUploadFileWithVerification.mockImplementation(async (options: { file: { name: string } }) => {
+      if (options.file.name === "b.jpg") {
+        return { success: false, error: "network" };
+      }
+      return {
+        success: true,
+        file: { public_url: `https://cdn.example.com/${options.file.name}` },
+      };
+    });
+    mockGetTasksByProject.mockReturnValue([
+      { id: "task-partial", title: "Partial task", updated_at: "2026-08-07T00:00:00Z" },
+    ]);
+
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        taskId: "unused",
+        initialPhotos: [
+          { uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false },
+          { uri: "file://b.jpg", fileName: "b.jpg", isAnnotated: false },
+          { uri: "file://c.jpg", fileName: "c.jpg", isAnnotated: false },
+        ],
+        onAttachedToExistingTask,
+        uploadImmediately: true,
+      } as any),
+    );
+
+    act(() => {
+      result.current.handleSelectTaskForAttach("task-partial");
+    });
+
+    await act(async () => {
+      await result.current.handleUploadPhotos();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Partial Upload",
+      expect.stringContaining("2 photo(s) uploaded successfully, 1 failed"),
+      expect.any(Array),
+    );
+    expect(onAttachedToExistingTask).toHaveBeenCalledWith("task-partial", [
+      "https://cdn.example.com/a.jpg",
+      "https://cdn.example.com/c.jpg",
+    ]);
+    alertSpy.mockRestore();
   });
 });

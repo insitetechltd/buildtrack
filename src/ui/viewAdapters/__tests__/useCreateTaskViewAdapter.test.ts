@@ -933,6 +933,69 @@ describe("useCreateTaskViewAdapter", () => {
     expect(mockDeleteTaskById).not.toHaveBeenCalled();
   });
 
+  it("uploads chosen photos concurrently and keeps attachment order", async () => {
+    const resolvers: Array<() => void> = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockUploadFileWithVerification.mockImplementation((options: { file: { name: string } }) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      return new Promise((resolve) => {
+        resolvers.push(() => {
+          inFlight -= 1;
+          resolve({
+            success: true,
+            file: { public_url: `https://cdn.example.com/${options.file.name}` },
+          });
+        });
+      });
+    });
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    act(() => {
+      result.current.actions.updateField("title", "Photo task");
+      result.current.actions.updateField("description", "Install tagged item");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("assignedTo", ["user-2"]);
+      result.current.actions.updateField("attachments", [
+        { uri: "file:///a.jpg", fileName: "a.jpg", isAnnotated: false },
+        { uri: "file:///b.jpg", fileName: "b.jpg", isAnnotated: false },
+        { uri: "file:///c.jpg", fileName: "c.jpg", isAnnotated: false },
+      ]);
+    });
+
+    let submitResult: Promise<boolean> | undefined;
+    act(() => {
+      submitResult = result.current.actions.submit();
+    });
+
+    await waitFor(() => {
+      expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(3);
+    });
+    expect(maxInFlight).toBe(3);
+
+    resolvers[2]();
+    resolvers[0]();
+    resolvers[1]();
+
+    await act(async () => {
+      expect(await submitResult).toBe(true);
+    });
+
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        attachments: [
+          "https://cdn.example.com/a.jpg",
+          "https://cdn.example.com/b.jpg",
+          "https://cdn.example.com/c.jpg",
+        ],
+      }),
+    );
+    expect(mockDeleteTaskById).not.toHaveBeenCalled();
+  });
+
   it("rolls back the created task when a chosen photo fails to upload", async () => {
     mockUploadFileWithVerification.mockResolvedValue({
       success: false,

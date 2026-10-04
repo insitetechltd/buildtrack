@@ -606,6 +606,131 @@ describe("TaskDetailScreen sticky layout", () => {
     );
   });
 
+  it("uploads dock reply photos concurrently and keeps URL order", async () => {
+    const resolvers: Array<() => void> = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    (uploadFileWithVerification as jest.Mock).mockImplementation(
+      (options: { file: { name: string } }) => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        return new Promise((resolve) => {
+          resolvers.push(() => {
+            inFlight -= 1;
+            resolve({
+              success: true,
+              file: { public_url: `https://cdn.example.com/${options.file.name}` },
+            });
+          });
+        });
+      },
+    );
+    const submitDockProgress = jest.fn().mockResolvedValue(undefined);
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: {
+        ...createAdapterActions(),
+        submitDockProgress,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={jest.fn()}
+        inboundSelectedPhotos={[
+          { uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false },
+          { uri: "file://b.jpg", fileName: "b.jpg", isAnnotated: false },
+          { uri: "file://c.jpg", fileName: "c.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "Tied rebar at grid B",
+    );
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+
+    await waitFor(() => {
+      expect(uploadFileWithVerification).toHaveBeenCalledTimes(3);
+    });
+    expect(maxInFlight).toBe(3);
+
+    resolvers[2]();
+    resolvers[0]();
+    resolvers[1]();
+
+    await waitFor(() => {
+      expect(submitDockProgress).toHaveBeenCalledWith({
+        description: "Tied rebar at grid B",
+        photos: [
+          "https://cdn.example.com/a.jpg",
+          "https://cdn.example.com/b.jpg",
+          "https://cdn.example.com/c.jpg",
+        ],
+        completionPercentage: 40,
+      });
+    });
+  });
+
+  it("does not persist dock progress when one of several reply photos fails", async () => {
+    (uploadFileWithVerification as jest.Mock).mockImplementation(
+      async (options: { file: { name: string } }) => {
+        if (options.file.name === "b.jpg") {
+          return { success: false, error: "Photo upload failed" };
+        }
+        return {
+          success: true,
+          file: { public_url: `https://cdn.example.com/${options.file.name}` },
+        };
+      },
+    );
+    const submitDockProgress = jest.fn().mockResolvedValue(undefined);
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        detailDock: {
+          mode: "progress",
+          completionPercentage: 40,
+        },
+      }),
+      actions: {
+        ...createAdapterActions(),
+        submitDockProgress,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={jest.fn()}
+        inboundSelectedPhotos={[
+          { uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false },
+          { uri: "file://b.jpg", fileName: "b.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    fireEvent.changeText(
+      screen.getByTestId("report-reply-composer__input"),
+      "Tied rebar at grid B",
+    );
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Photos did not upload",
+        expect.stringContaining("still here"),
+      );
+    });
+    expect(submitDockProgress).not.toHaveBeenCalled();
+  });
+
   it("shows progress dock green submit affordance at 100% and posts via submitDockProgress", async () => {
     const submitDockProgress = jest.fn().mockResolvedValue(undefined);
     mockUseTaskDetailViewAdapter.mockReturnValue({

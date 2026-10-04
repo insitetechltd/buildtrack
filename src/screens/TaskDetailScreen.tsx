@@ -291,33 +291,38 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       if (!user?.id || !user.companyId || photosToUpload.length === 0) {
         return [];
       }
-      const uploadedUrls: string[] = [];
-      for (const photo of photosToUpload) {
-        try {
-          const uriToUpload = await ensureCappedLocalPhoto(photo);
-          const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
-          if (!fileInfo.exists) {
-            continue;
+      // M-PERF-04 B1: compress+upload each reply photo independently. Order follows input.
+      // A missing file or failed upload is omitted; handleSubmitReply fail-closes on the count.
+      const uploaded = await Promise.all(
+        photosToUpload.map(async (photo): Promise<string | null> => {
+          try {
+            const uriToUpload = await ensureCappedLocalPhoto(photo);
+            const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
+            if (!fileInfo.exists) {
+              return null;
+            }
+            const result = await uploadFileWithVerification({
+              file: {
+                uri: uriToUpload,
+                name: photo.fileName,
+                type: "image/jpeg",
+              },
+              entityType: "task-update",
+              entityId: props.taskId,
+              companyId: user.companyId,
+              userId: user.id,
+            });
+            if (result.success && result.file?.public_url) {
+              return result.file.public_url;
+            }
+            return null;
+          } catch (error) {
+            console.error(error);
+            return null;
           }
-          const result = await uploadFileWithVerification({
-            file: {
-              uri: uriToUpload,
-              name: photo.fileName,
-              type: "image/jpeg",
-            },
-            entityType: "task-update",
-            entityId: props.taskId,
-            companyId: user.companyId,
-            userId: user.id,
-          });
-          if (result.success && result.file) {
-            uploadedUrls.push(result.file.public_url);
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      }
-      return uploadedUrls;
+        }),
+      );
+      return uploaded.filter((url): url is string => Boolean(url));
     },
     [props.taskId, user?.companyId, user?.id],
   );

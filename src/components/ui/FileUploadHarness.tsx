@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Image, Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import {
+  attachmentPreviewUri,
+  subscribeSignedUrlCache,
+} from "../../api/fileUploadService";
 import { useTranslation } from "../../utils/useTranslation";
 
 /**
@@ -59,6 +63,14 @@ export default function FileUploadHarness({
 }: FileUploadHarnessProps) {
   const t = useTranslation();
   const pendingLabel = t.userManagement?.pending ?? "Pending";
+  const [signedUrlEpoch, setSignedUrlEpoch] = useState(0);
+
+  useEffect(() => {
+    if (typeof subscribeSignedUrlCache !== "function") {
+      return;
+    }
+    return subscribeSignedUrlCache(() => setSignedUrlEpoch((epoch) => epoch + 1));
+  }, []);
 
   return (
     <View testID={testID} className={embedded ? "pb-2" : "mb-6"}>
@@ -87,20 +99,29 @@ export default function FileUploadHarness({
           </View>
         </Pressable>
 
-        {items.map((item, index) => (
+        {items.map((item, index) => {
+          const displayUri =
+            signedUrlEpoch >= 0 && typeof attachmentPreviewUri === "function"
+              ? attachmentPreviewUri(item.uri)
+              : item.uri;
+          return (
           <View
             key={item.id}
             testID={`${previewTestIDPrefix}_${index}`}
             className={`${TILE_CLASS} relative`}
           >
-            <Image
-              source={{
-                uri: item.uri,
-                cache: Platform.OS === "ios" ? "force-cache" : "default",
-              }}
-              className={`${TILE_CLASS} rounded-lg bg-gray-100`}
-              resizeMode="cover"
-            />
+            {displayUri ? (
+              <Image
+                source={{
+                  uri: displayUri,
+                  cache: Platform.OS === "ios" ? "force-cache" : "default",
+                }}
+                className={`${TILE_CLASS} rounded-lg bg-gray-100`}
+                resizeMode="cover"
+              />
+            ) : (
+              <View className={`${TILE_CLASS} rounded-lg bg-gray-100`} />
+            )}
             {item.status === "pending" ? (
               <View className="absolute top-1 left-1 bg-amber-500 rounded px-1.5 py-0.5">
                 <Text className="text-white text-xs font-semibold">{pendingLabel}</Text>
@@ -121,7 +142,8 @@ export default function FileUploadHarness({
               </Pressable>
             ) : null}
           </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );

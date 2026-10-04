@@ -8,6 +8,7 @@ import {
   verifyUpload,
   uploadFileWithVerification,
   extractBuildtrackStoragePath,
+  attachmentPreviewUri,
   createSignedFileUrl,
   prefetchSignedUrls,
   __resetSignedUrlCacheForTests,
@@ -131,7 +132,7 @@ describe('fileUploadService', () => {
   });
 
   it('uploads a file and returns signed attachment metadata', async () => {
-    const { from, upload, createSignedUrl } = installStorageMocks();
+    const { from, upload } = installStorageMocks();
     jest.spyOn(Date, 'now').mockReturnValue(1718524800000);
 
     const result = await uploadFile(fileOptions);
@@ -149,13 +150,74 @@ describe('fileUploadService', () => {
         upsert: false,
       })
     );
-    expect(createSignedUrl).toHaveBeenCalledWith(
-      'company-123/tasks/task-123/1718524800000-task-photo.jpg',
-      SIGNED_URL_EXPIRY_SECONDS
-    );
     expect(result.storage_path).toBe('company-123/tasks/task-123/1718524800000-task-photo.jpg');
     expect(result.file_type).toBe('image');
-    expect(result.public_url).toBe(signedUrl);
+    expect(result.public_url).toBe(result.storage_path);
+  });
+
+  it('resolves after storage upload without waiting for a signed URL', async () => {
+    const { upload, createSignedUrl } = installStorageMocks();
+    const insert = jest.fn().mockResolvedValue({ error: null });
+    Object.defineProperty(mockSupabase, 'from', {
+      configurable: true,
+      writable: true,
+      value: jest.fn(() => ({ insert })),
+    });
+
+    let resolveSign: (value: unknown) => void = () => {};
+    createSignedUrl.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSign = resolve;
+        }),
+    );
+    jest.spyOn(Date, 'now').mockReturnValue(1718524800000);
+    const storagePath = 'company-123/tasks/task-123/1718524800000-task-photo.jpg';
+
+    const result = await uploadFile(fileOptions);
+
+    expect(upload).toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task_id: 'task-123',
+        storage_path: storagePath,
+      }),
+    );
+    expect(result.public_url).toBe(storagePath);
+    expect(result.storage_path).toBe(storagePath);
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(createSignedUrl).toHaveBeenCalledWith(storagePath, SIGNED_URL_EXPIRY_SECONDS);
+    resolveSign({ data: null, error: { message: 'sign failed' } });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(result.public_url).toBe(storagePath);
+  });
+
+  it('does not fail an upload that reached storage when signed URL generation rejects', async () => {
+    const { upload, createSignedUrl } = installStorageMocks();
+    createSignedUrl.mockRejectedValue(new Error('sign failed'));
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Date, 'now').mockReturnValue(1718524800000);
+
+    const result = await uploadFile(fileOptions);
+
+    expect(upload).toHaveBeenCalled();
+    expect(result.storage_path).toBe('company-123/tasks/task-123/1718524800000-task-photo.jpg');
+    expect(result.public_url).toBe(result.storage_path);
+  });
+
+  it('previews local and https refs as-is and a storage path once it is signed', async () => {
+    installStorageMocks();
+
+    expect(attachmentPreviewUri('file:///local.jpg')).toBe('file:///local.jpg');
+    expect(attachmentPreviewUri('https://cdn.example.com/plain.jpg')).toBe(
+      'https://cdn.example.com/plain.jpg',
+    );
+    expect(attachmentPreviewUri('company-123/tasks/task-123/file.jpg')).toBeNull();
+
+    await createSignedFileUrl('company-123/tasks/task-123/file.jpg');
+
+    expect(attachmentPreviewUri('company-123/tasks/task-123/file.jpg')).toBe(signedUrl);
   });
 
   it('deletes a file from Supabase storage', async () => {
@@ -208,11 +270,11 @@ describe('fileUploadService', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('returns success when upload completes but signed verification is forbidden', async () => {
+  it('returns success after storage upload without a signed-url HEAD', async () => {
     installStorageMocks();
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.spyOn(global, 'fetch').mockResolvedValue({
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: false,
       status: 403,
     } as Response);
@@ -221,8 +283,10 @@ describe('fileUploadService', () => {
 
     expect(result.success).toBe(true);
     expect(result.file?.storage_path).toContain('company-123/tasks/task-123/');
+    expect(result.file?.public_url).toBe(result.file?.storage_path);
     expect(result.error).toBeUndefined();
-    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
   });

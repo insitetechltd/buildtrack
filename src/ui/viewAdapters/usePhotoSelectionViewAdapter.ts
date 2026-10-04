@@ -543,44 +543,53 @@ export function usePhotoSelectionViewAdapter({
         : selectedTaskId ?? taskId;
 
     try {
-      for (let i = 0; i < selectedPhotos.length; i++) {
-        const photo = selectedPhotos[i];
-        try {
-          const uriToUpload = await ensureCappedLocalPhoto(photo);
-          
-          const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
-          if (!fileInfo.exists) {
-            const errorMsg = `File not found: ${photo.fileName}`;
-            errorMessages.push(errorMsg);
-            failCount++;
-            continue;
-          }
+      // M-PERF-04 B1: independent compress+upload. Best-effort contract stays:
+      // partial success still continues, failures are counted, URL order matches input.
+      const slots = await Promise.all(
+        selectedPhotos.map(async (photo): Promise<
+          | { ok: true; url: string }
+          | { ok: false; error: string }
+        > => {
+          try {
+            const uriToUpload = await ensureCappedLocalPhoto(photo);
 
-          const result = await uploadFileWithVerification({
-            file: {
-              uri: uriToUpload,
-              name: photo.fileName,
-              type: 'image/jpeg',
-            },
-            entityType: resolvedEntityType,
-            entityId: resolvedEntityId,
-            companyId: companyId,
-            userId: userId,
-            description: photo.caption,
-          });
+            const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
+            if (!fileInfo.exists) {
+              return { ok: false, error: `File not found: ${photo.fileName}` };
+            }
 
-          if (result.success && result.file) {
-            successCount++;
-            uploadedUrls.push(result.file.public_url);
-          } else {
+            const result = await uploadFileWithVerification({
+              file: {
+                uri: uriToUpload,
+                name: photo.fileName,
+                type: 'image/jpeg',
+              },
+              entityType: resolvedEntityType,
+              entityId: resolvedEntityId,
+              companyId: companyId,
+              userId: userId,
+              description: photo.caption,
+            });
+
+            if (result.success && result.file?.public_url) {
+              return { ok: true, url: result.file.public_url };
+            }
             const errorMsg = result.error || `Unknown error uploading ${photo.fileName}`;
-            errorMessages.push(`${photo.fileName}: ${errorMsg}`);
-            failCount++;
+            return { ok: false, error: `${photo.fileName}: ${errorMsg}` };
+          } catch (error: any) {
+            const errorMsg = error.message || `Failed to upload ${photo.fileName}`;
+            return { ok: false, error: `${photo.fileName}: ${errorMsg}` };
           }
-        } catch (error: any) {
-          const errorMsg = error.message || `Failed to upload ${photo.fileName}`;
-          errorMessages.push(`${photo.fileName}: ${errorMsg}`);
+        }),
+      );
+
+      for (const slot of slots) {
+        if (slot.ok) {
+          successCount++;
+          uploadedUrls.push(slot.url);
+        } else {
           failCount++;
+          errorMessages.push(slot.error);
         }
       }
 

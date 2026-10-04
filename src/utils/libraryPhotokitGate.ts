@@ -1,7 +1,7 @@
 /**
- * Exclusive queue for Photos-heavy work (MediaLibrary warm + native PhotoKit
- * open/preview/expand). Parallel jobs starve each other on device (TF 231–232:
- * warm∥openLibrary → 20s+; open-during-warm + short wait → warm miss → full open).
+ * Exclusive queue for Photos-heavy work (PhotoKit open/expand, and MediaLibrary
+ * paging when the index API is absent). Parallel jobs starve each other on
+ * device (TF 231–232).
  *
  * Rule for future picker code: every Photos-daemon call goes through
  * `runExclusivePhotokitJob`. Do not fire-and-forget a second job "to go faster."

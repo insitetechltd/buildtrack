@@ -131,7 +131,8 @@ export function launchCaptureFirstSession(
   } | null,
 ): void {
   rememberCaptureFirstOrigin(tabState ?? null);
-  // Start library warm + index open only after camera tab press — never at app launch.
+  // Permission check only, after camera tab press — never at app launch.
+  // The overlay open starts the user-library walk.
   startLibraryCapturePrefetch();
   navigation.navigate("Camera", {
     screen: "CaptureSession",

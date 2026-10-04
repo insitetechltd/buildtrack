@@ -17,12 +17,10 @@ import { useLibraryGridAssets } from "./useLibraryGridAssets";
 
 type UseLibraryAlbumPickerOptions = {
   enabled: boolean;
-  consumeWarmPage?: boolean;
 };
 
 export function useLibraryAlbumPicker({
   enabled,
-  consumeWarmPage = false,
 }: UseLibraryAlbumPickerOptions) {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>(
     () => peekRememberedAlbumId() || ALL_PHOTOS_ALBUM_ID,
@@ -35,7 +33,6 @@ export function useLibraryAlbumPicker({
   const grid = useLibraryGridAssets({
     enabled,
     selectedAlbumId,
-    consumeWarmPage,
     sortOrder: filterState.sortOrder,
     afterEpochSeconds: dateRange.afterEpochSeconds,
     beforeEpochSeconds: dateRange.beforeEpochSeconds,

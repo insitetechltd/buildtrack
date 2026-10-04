@@ -10,7 +10,6 @@ import { ALL_PHOTOS_ALBUM_ID } from "@/modules/mediaLibrary/libraryAlbumConstant
 import {
   LIBRARY_FIRST_PHOTO_BUDGET_MS,
   LIBRARY_PICKER_2B_FIRST_BATCH,
-  isLibraryPickerNative2b,
 } from "@/utils/libraryPickerPerf";
 import { subscribeLibraryPickerTiming } from "@/utils/libraryPickerTiming";
 
@@ -65,8 +64,9 @@ export function markLibraryPickerOpen(): void {
 
 /**
  * Start a live library query for the current open.
- * - warm: full openLibrary
- * - native2b: live user-library walk — scroll continues that walk
+ * User-library walk when that API exists — scroll continues that walk.
+ * Named albums, oldest-first, and date filters pass sort and bounds into the
+ * same open. If the walk API is missing, a sorted openLibrary fetch.
  *
  * Join only a walk started for this same open. A finished walk is not the next grid.
  * If an older walk is still running, return null so the caller can wait, then start fresh.
@@ -98,7 +98,7 @@ export function prefetchPhotokitLibraryIndex(
   }
   inFlightAlbumKey = cacheKey;
   inFlightGeneration = pickerOpenGeneration;
-  const use2b = isLibraryPickerNative2b() && isPhotokitLibrary2bAvailable();
+  const use2b = isPhotokitLibrary2bAvailable();
   inFlight = (async () => {
     try {
       if (use2b) {
@@ -211,7 +211,7 @@ export async function awaitPhotokitLibraryExpand(
     if (expandInFlight) {
       return expandInFlight;
     }
-    if (isLibraryPickerNative2b() && isPhotokitLibrary2bAvailable()) {
+    if (isPhotokitLibrary2bAvailable()) {
       expandInFlight = expandPhotokitLibraryFull(token, ascending, afterEpochSeconds, beforeEpochSeconds).then((full) => {
         expandInFlight = null;
         if (expandPaused) {

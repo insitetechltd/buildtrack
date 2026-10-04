@@ -87,16 +87,6 @@ jest.mock("../../../utils/libraryCapturePrefetch", () => ({
   startLibraryCapturePrefetch: jest.fn(),
 }));
 
-jest.mock("../../../utils/libraryWarmPrefetch", () => ({
-  warmLibraryFirstPage: jest.fn(async () => undefined),
-  peekWarmLibraryThumbUri: jest.fn(() => null),
-}));
-
-const mockIsLibraryPickerNative2b = jest.fn(() => false);
-jest.mock("../../../utils/libraryPickerPerf", () => ({
-  isLibraryPickerNative2b: (...args: unknown[]) => mockIsLibraryPickerNative2b(...args),
-}));
-
 import { CaptureSessionHostProvider } from "../CaptureSessionHostContext";
 import { CaptureSessionCameraScreen } from "../CaptureSessionCameraScreen";
 import {
@@ -122,8 +112,6 @@ describe("CaptureSessionCameraScreen shutter C2", () => {
     mockTakePictureAsync.mockReset();
     mockPinDraftMedia.mockReset();
     mockPinDraftMedia.mockReturnValue(new Promise(() => undefined));
-    mockIsLibraryPickerNative2b.mockReset();
-    mockIsLibraryPickerNative2b.mockReturnValue(false);
     jest.mocked(MediaLibrary.getPermissionsAsync).mockClear();
     jest.mocked(MediaLibrary.getAssetsAsync).mockClear();
     jest.mocked(startLibraryCapturePrefetch).mockClear();
@@ -232,8 +220,7 @@ describe("CaptureSessionCameraScreen shutter C2", () => {
     });
   });
 
-  it("native2b skips permission and sorted getAssetsAsync after capture prefetch", async () => {
-    mockIsLibraryPickerNative2b.mockReturnValue(true);
+  it("does not load a library thumb with sorted getAssetsAsync", async () => {
     jest.mocked(MediaLibrary.getPermissionsAsync).mockResolvedValue({
       granted: true,
     } as never);

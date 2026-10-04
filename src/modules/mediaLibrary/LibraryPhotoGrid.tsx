@@ -437,8 +437,8 @@ export function LibraryPhotoGrid({
       asset,
       index,
     }));
-    // Pad with skeletons so bridge (warm N) does not shrink a full-screen
-    // placeholder grid — keeps height stable until index mode expands.
+    // Pad with skeletons so a short MediaLibrary page does not shrink a
+    // full-screen placeholder grid.
     const pad = Math.max(0, placeholderCount - assetItems.length);
     if (pad === 0) {
       return assetItems;

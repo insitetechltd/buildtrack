@@ -19,7 +19,6 @@ import {
 const mockOpen = jest.fn(async () => ({ token: 2, count: 100 }));
 const mockOpenLimited = jest.fn(async () => ({ token: 5, count: 90 }));
 const mockExpand = jest.fn(async () => ({ token: 5, count: 50000 }));
-const mockIs2b = jest.fn(() => false);
 const mockIs2bApi = jest.fn(() => true);
 
 jest.mock("@/modules/mediaLibrary/PhotokitThumbView", () => ({
@@ -33,7 +32,6 @@ jest.mock("@/modules/mediaLibrary/PhotokitThumbView", () => ({
 jest.mock("@/utils/libraryPickerPerf", () => ({
   LIBRARY_PICKER_2B_FIRST_BATCH: 90,
   LIBRARY_FIRST_PHOTO_BUDGET_MS: 3000,
-  isLibraryPickerNative2b: () => mockIs2b(),
 }));
 
 describe("libraryIndexPrefetch", () => {
@@ -41,33 +39,33 @@ describe("libraryIndexPrefetch", () => {
     jest.clearAllMocks();
     clearPhotokitLibraryIndexPrefetch();
     resetLibraryPickerTimingForTests();
-    mockIs2b.mockReturnValue(false);
     mockIs2bApi.mockReturnValue(true);
     mockOpen.mockResolvedValue({ token: 2, count: 100 });
     mockOpenLimited.mockResolvedValue({ token: 5, count: 90 });
     mockExpand.mockResolvedValue({ token: 5, count: 50000 });
   });
 
-  it("dedupes in-flight openLibrary for the same album key", async () => {
+  it("dedupes in-flight user-library walks for the same album key", async () => {
     const first = prefetchPhotokitLibraryIndex(null);
     const second = prefetchPhotokitLibraryIndex(null);
     expect(first).not.toBeNull();
     expect(second).toBe(first);
     await first;
-    expect(mockOpen).toHaveBeenCalledTimes(1);
-    expect(peekPhotokitLibraryIndex(null)).toEqual({ token: 2, count: 100 });
+    expect(mockOpenLimited).toHaveBeenCalledTimes(1);
+    expect(mockOpen).not.toHaveBeenCalled();
+    expect(peekPhotokitLibraryIndex(null)).toEqual({ token: 5, count: 90 });
   });
 
   it("reopens when album key changes", async () => {
     await prefetchPhotokitLibraryIndex(null);
-    mockOpen.mockResolvedValueOnce({ token: 3, count: 50 });
+    mockOpenLimited.mockResolvedValueOnce({ token: 3, count: 50 });
     await prefetchPhotokitLibraryIndex("album-a");
-    expect(mockOpen).toHaveBeenCalledTimes(2);
+    expect(mockOpenLimited).toHaveBeenCalledTimes(2);
+    expect(mockOpen).not.toHaveBeenCalled();
     expect(peekPhotokitLibraryIndex("album-a")).toEqual({ token: 3, count: 50 });
   });
 
-  it("native2b returns limited session without expanding", async () => {
-    mockIs2b.mockReturnValue(true);
+  it("returns a limited session without expanding", async () => {
     const limited = await prefetchPhotokitLibraryIndex(null);
     expect(limited).toEqual({ token: 5, count: 90 });
     expect(mockOpenLimited).toHaveBeenCalledWith(null, 90, false, null, null);
@@ -80,7 +78,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("does not reuse a finished walk on the next open", async () => {
-    mockIs2b.mockReturnValue(true);
     await prefetchPhotokitLibraryIndex(null);
     mockOpenLimited.mockResolvedValueOnce({ token: 9, count: 90 });
     const next = await prefetchPhotokitLibraryIndex(null);
@@ -89,7 +86,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("does not join a walk that started before this open", async () => {
-    mockIs2b.mockReturnValue(true);
     let releaseFirst: (session: { token: number; count: number }) => void = () => {};
     mockOpenLimited.mockImplementationOnce(
       () =>
@@ -109,7 +105,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("does not fall through to a full library open when the default walk fails", async () => {
-    mockIs2b.mockReturnValue(true);
     mockOpenLimited.mockResolvedValueOnce(null);
     const limited = await prefetchPhotokitLibraryIndex(null);
     expect(limited).toBeNull();
@@ -117,7 +112,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("expands same token after first screen paints", async () => {
-    mockIs2b.mockReturnValue(true);
     await prefetchPhotokitLibraryIndex(null);
     beginLibraryPickerSession();
     markLibraryPickerMetadata(12);
@@ -141,7 +135,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("does not expand on first paint when Accept cancelled the job", async () => {
-    mockIs2b.mockReturnValue(true);
     await prefetchPhotokitLibraryIndex(null);
     beginLibraryPickerSession();
     markLibraryPickerMetadata(12);
@@ -158,7 +151,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("expands when the user scrolls near the end of a limited session", async () => {
-    mockIs2b.mockReturnValue(true);
     await prefetchPhotokitLibraryIndex(null);
     const onExpanded = jest.fn();
     requestPhotokitLibraryExpandIfScrolled(null, 5, 18, 90, false, onExpanded);
@@ -172,7 +164,6 @@ describe("libraryIndexPrefetch", () => {
   });
 
   it("keeps walking after the first batch when the user scrolls near the end", async () => {
-    mockIs2b.mockReturnValue(true);
     await prefetchPhotokitLibraryIndex(null);
     const onExpanded = jest.fn();
     requestPhotokitLibraryExpandIfScrolled(null, 5, 178, 180, true, onExpanded);
@@ -183,12 +174,37 @@ describe("libraryIndexPrefetch", () => {
 
   it("does not reuse the newest-first session when the sort is oldest first", async () => {
     await prefetchPhotokitLibraryIndex(null);
-    expect(mockOpen).toHaveBeenCalledTimes(1);
-    mockOpen.mockResolvedValueOnce({ token: 9, count: 10 });
+    expect(mockOpenLimited).toHaveBeenCalledTimes(1);
+    mockOpenLimited.mockResolvedValueOnce({ token: 9, count: 10 });
     const oldest = await prefetchPhotokitLibraryIndex(null, true);
-    expect(mockOpen).toHaveBeenCalledTimes(2);
-    expect(mockOpen).toHaveBeenLastCalledWith(null, true, null, null);
+    expect(mockOpenLimited).toHaveBeenCalledTimes(2);
+    expect(mockOpenLimited).toHaveBeenLastCalledWith(null, 90, true, null, null);
+    expect(mockOpen).not.toHaveBeenCalled();
     expect(oldest).toEqual({ token: 9, count: 10 });
     expect(peekPhotokitLibraryIndex(null)).toBeNull();
+  });
+
+  it("uses the sorted open when the user-library walk API is missing", async () => {
+    mockIs2bApi.mockReturnValue(false);
+    const session = await prefetchPhotokitLibraryIndex(null);
+    expect(mockOpen).toHaveBeenCalledWith(null, false, null, null);
+    expect(mockOpenLimited).not.toHaveBeenCalled();
+    expect(session).toEqual({ token: 2, count: 100 });
+  });
+
+  it("falls through to the sorted open for a date window when the walk returns nothing", async () => {
+    mockOpenLimited.mockResolvedValueOnce(null);
+    const session = await prefetchPhotokitLibraryIndex(null, false, 100, 200);
+    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90, false, 100, 200);
+    expect(mockOpen).toHaveBeenCalledWith(null, false, 100, 200);
+    expect(session).toEqual({ token: 2, count: 100 });
+  });
+
+  it("falls through to the sorted open for a named album when the walk returns nothing", async () => {
+    mockOpenLimited.mockResolvedValueOnce(null);
+    mockOpen.mockResolvedValueOnce({ token: 4, count: 8 });
+    const session = await prefetchPhotokitLibraryIndex("album-a");
+    expect(mockOpen).toHaveBeenCalledWith("album-a", false, null, null);
+    expect(session).toEqual({ token: 4, count: 8 });
   });
 });

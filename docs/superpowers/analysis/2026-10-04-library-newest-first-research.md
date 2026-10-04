@@ -2,7 +2,8 @@
 
 **Date:** 2026-10-04
 **Milestone:** `WS-PERF / M-PERF-03`
-**Role:** Research only. No app source changed by this document.
+**Role:** Research that locked the TF 292 walk. How the shipped picker works: `documentation/PICKER_PROGRESS.md` § How the default library opens.
+**Headed:** 2026-10-04 TF 292 dogfood — picker, album selection, and filters looked stable.
 **Prior art:** `docs/superpowers/analysis/2026-08-30-photokit-first-paint-journey.md` (HUD legend + TF211–237 journey)
 
 ---

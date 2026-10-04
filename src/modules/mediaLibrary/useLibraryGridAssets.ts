@@ -3,24 +3,13 @@ import * as MediaLibrary from "expo-media-library";
 
 import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import {
-  awaitWarmLibraryPage,
-  consumeWarmLibraryPage,
-  consumeWarmLibraryPageAsync,
-  isWarmLibraryPrefetchInFlight,
-  peekWarmLibraryPage,
-} from "@/utils/libraryWarmPrefetch";
-import {
   awaitPhotokitLibraryIndex,
-  isPhotokitLibraryIndexPrefetchInFlight,
-  peekPhotokitLibraryIndex,
   requestPhotokitLibraryExpandIfScrolled,
 } from "@/utils/libraryIndexPrefetch";
 import { markLibraryPickerLoadPage } from "@/utils/libraryPickerTiming";
-import { isLibraryPickerNative2b } from "@/utils/libraryPickerPerf";
 import {
   isPhotokitLibrary2bAvailable,
   isPhotokitLibraryIndexAvailable,
-  previewPhotokitNewestIds,
   type PhotokitLibrarySession,
 } from "./PhotokitThumbView";
 import {
@@ -39,25 +28,9 @@ import {
 
 const DEFAULT_ALBUMS: LibraryAlbumChoice[] = [recentsSentinelAlbum()];
 
-function stubAssetFromId(id: string): MediaLibrary.Asset {
-  return {
-    id,
-    filename: `library_${id}.jpg`,
-    uri: `ph://${id}`,
-    mediaType: MediaLibrary.MediaType.photo,
-    mediaSubtypes: [],
-    width: 0,
-    height: 0,
-    creationTime: 0,
-    modificationTime: 0,
-    duration: 0,
-  } as MediaLibrary.Asset;
-}
-
 type UseLibraryGridAssetsOptions = {
   enabled: boolean;
   selectedAlbumId: string;
-  consumeWarmPage?: boolean;
   sortOrder?: "descending" | "ascending";
   afterEpochSeconds?: number | null;
   beforeEpochSeconds?: number | null;
@@ -66,7 +39,6 @@ type UseLibraryGridAssetsOptions = {
 export function useLibraryGridAssets({
   enabled,
   selectedAlbumId,
-  consumeWarmPage = false,
   sortOrder = "descending",
   afterEpochSeconds = null,
   beforeEpochSeconds = null,
@@ -93,19 +65,8 @@ export function useLibraryGridAssets({
   const hasNextPageRef = useRef(true);
   /** Sync gate — set before React commits indexSession (blocks auto-fill race). */
   const indexSessionRef = useRef<PhotokitLibrarySession | null>(null);
-  /** Sequential first-buffer fill — auto-fill must not interleave. */
-  const bridgeBootstrappingRef = useRef(false);
   /** Native open in flight — stop MediaLibrary pages (PhotoKit contention). */
   const indexOpeningRef = useRef(false);
-
-  const applyBridgeAssets = useCallback((next: MediaLibrary.Asset[]) => {
-    const map = new Map<string, MediaLibrary.Asset>();
-    for (const asset of next) {
-      map.set(asset.id, asset);
-    }
-    assetsByIdRef.current = map;
-    setAssets(next);
-  }, []);
 
   const loadAlbumsIfNeeded = useCallback(async () => {
     if (albumsLoadedRef.current || albumsLoadingRef.current) {
@@ -219,7 +180,6 @@ export function useLibraryGridAssets({
       endCursorRef.current = undefined;
       hasNextPageRef.current = true;
       indexOpeningRef.current = false;
-      bridgeBootstrappingRef.current = false;
 
       if (isPhotokitLibraryIndexAvailable()) {
         const albumArg =
@@ -229,11 +189,10 @@ export function useLibraryGridAssets({
           afterEpochSeconds == null &&
           beforeEpochSeconds == null;
 
-        // Option 2B: live user-library walk. Gray tiles until it returns.
-        // Do not paint a warm page or saved IDs first. Empty walk stays empty.
+        // Live user-library walk, including oldest-first and date filters.
+        // Gray tiles until it returns. Empty walk stays empty.
         if (
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID &&
-          isLibraryPickerNative2b() &&
           isPhotokitLibrary2bAvailable()
         ) {
           indexOpeningRef.current = true;
@@ -265,12 +224,9 @@ export function useLibraryGridAssets({
           return;
         }
 
-        // Shipping path with no native walk: stay empty. Do not paint warm or pages.
-        if (
-          selectedAlbumId === ALL_PHOTOS_ALBUM_ID &&
-          isLibraryPickerNative2b() &&
-          defaultFetch
-        ) {
+        // Walk API missing on the default newest-first album: stay empty.
+        // Do not paint a MediaLibrary page beside a missing user-library walk.
+        if (selectedAlbumId === ALL_PHOTOS_ALBUM_ID && defaultFetch) {
           setAssets([]);
           assetsByIdRef.current = new Map();
           setIndexSession(null);
@@ -280,89 +236,8 @@ export function useLibraryGridAssets({
           return;
         }
 
-        // Warm path is newest-first. A sort or date filter must not paint that page first.
-        if (selectedAlbumId === ALL_PHOTOS_ALBUM_ID && defaultFetch) {
-          bridgeBootstrappingRef.current = true;
-          try {
-            const peekWarm = peekWarmLibraryPage();
-            if (peekWarm && peekWarm.assets.length > 0) {
-              applyBridgeAssets(peekWarm.assets);
-              setEndCursor(peekWarm.endCursor);
-              setHasNextPage(peekWarm.hasNextPage);
-              endCursorRef.current = peekWarm.endCursor;
-              hasNextPageRef.current = peekWarm.hasNextPage;
-            }
-            if (consumeWarmPage) {
-              // Always wait out an in-flight warm (gate + WARM_IN_FLIGHT_WAIT_MS).
-              // Short race timeouts caused TF 232 warm-miss → full openLibrary ~20s.
-              const warm = await consumeWarmLibraryPageAsync();
-              if (cancelled || openGenRef.current !== openGen) {
-                return;
-              }
-              if (warm && warm.assets.length > 0) {
-                applyBridgeAssets(warm.assets);
-                setEndCursor(warm.endCursor);
-                setHasNextPage(warm.hasNextPage);
-                endCursorRef.current = warm.endCursor;
-                hasNextPageRef.current = warm.hasNextPage;
-              }
-            }
-            const indexReady = peekPhotokitLibraryIndex(null);
-            const indexBusy =
-              indexReady != null || isPhotokitLibraryIndexPrefetchInFlight(null);
-            const warmBusy = isWarmLibraryPrefetchInFlight();
-            if (
-              assetsByIdRef.current.size === 0 &&
-              (indexBusy || warmBusy) &&
-              !cancelled &&
-              openGenRef.current === openGen
-            ) {
-              const warmLate = await awaitWarmLibraryPage();
-              if (cancelled || openGenRef.current !== openGen) {
-                return;
-              }
-              if (warmLate && warmLate.assets.length > 0) {
-                applyBridgeAssets(warmLate.assets);
-                setEndCursor(warmLate.endCursor);
-                setHasNextPage(warmLate.hasNextPage);
-                endCursorRef.current = warmLate.endCursor;
-                hasNextPageRef.current = warmLate.hasNextPage;
-                if (consumeWarmPage) {
-                  consumeWarmLibraryPage();
-                }
-              }
-            }
-            if (
-              assetsByIdRef.current.size === 0 &&
-              !indexBusy &&
-              !warmBusy &&
-              !cancelled &&
-              openGenRef.current === openGen
-            ) {
-              const ids = await previewPhotokitNewestIds(
-                LIBRARY_PREFETCH_UNTIL_COUNT,
-              );
-              if (cancelled || openGenRef.current !== openGen) {
-                return;
-              }
-              if (ids.length > 0) {
-                applyBridgeAssets(ids.map(stubAssetFromId));
-                setHasNextPage(true);
-                hasNextPageRef.current = true;
-              }
-            }
-            if (assetsByIdRef.current.size === 0 && !indexBusy && !warmBusy) {
-              await loadPage(selectedAlbumId);
-              if (cancelled || openGenRef.current !== openGen) {
-                return;
-              }
-              setInitialLoadDone(true);
-            }
-          } finally {
-            bridgeBootstrappingRef.current = false;
-          }
-        }
-
+        // Named albums. Oldest-first and date filters use the walk above when that
+        // API exists; this open is the sorted fetch when it does not.
         if (cancelled || openGenRef.current !== openGen) {
           return;
         }
@@ -394,26 +269,6 @@ export function useLibraryGridAssets({
         }
         indexOpeningRef.current = false;
         setLoadingPage(false);
-        if (assetsByIdRef.current.size > 0) {
-          setInitialLoadDone(true);
-          return;
-        }
-      }
-
-      if (consumeWarmPage && selectedAlbumId === ALL_PHOTOS_ALBUM_ID) {
-        const warm = await consumeWarmLibraryPageAsync();
-        if (cancelled || openGenRef.current !== openGen) {
-          return;
-        }
-        if (warm) {
-          applyBridgeAssets(warm.assets);
-          setEndCursor(warm.endCursor);
-          setHasNextPage(warm.hasNextPage);
-          endCursorRef.current = warm.endCursor;
-          hasNextPageRef.current = warm.hasNextPage;
-          setInitialLoadDone(true);
-          return;
-        }
       }
 
       setAssets([]);
@@ -432,9 +287,7 @@ export function useLibraryGridAssets({
     };
   }, [
     afterEpochSeconds,
-    applyBridgeAssets,
     beforeEpochSeconds,
-    consumeWarmPage,
     enabled,
     loadPage,
     permission,
@@ -449,7 +302,7 @@ export function useLibraryGridAssets({
     if (indexSession != null || indexSessionRef.current != null) {
       return;
     }
-    if (bridgeBootstrappingRef.current || indexOpeningRef.current) {
+    if (indexOpeningRef.current) {
       return;
     }
     if (!hasNextPage) {
@@ -477,7 +330,7 @@ export function useLibraryGridAssets({
 
   const onEndReached = useCallback(() => {
     if (indexSession != null || indexSessionRef.current != null) return;
-    if (bridgeBootstrappingRef.current || indexOpeningRef.current) return;
+    if (indexOpeningRef.current) return;
     if (!hasNextPage || loadingPage || !endCursor) return;
     if (assets.length < LIBRARY_PREFETCH_UNTIL_COUNT) return;
     void loadPage(selectedAlbumId, endCursor);

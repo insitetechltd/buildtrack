@@ -1,16 +1,11 @@
-import { startLibraryCapturePrefetch, resetLibraryCapturePrefetchForTests } from "../libraryCapturePrefetch";
-import { isLibraryPickerNative2b } from "../libraryPickerPerf";
+import {
+  isLibraryCapturePrefetchInFlight,
+  resetLibraryCapturePrefetchForTests,
+  startLibraryCapturePrefetch,
+} from "../libraryCapturePrefetch";
 
-const mockWarm = jest.fn(async () => undefined);
 const mockPrefetchIndex = jest.fn(() => Promise.resolve(null));
 const mockEnsure = jest.fn(async () => ({ granted: true }));
-const mockIs2b = isLibraryPickerNative2b as jest.MockedFunction<
-  typeof isLibraryPickerNative2b
->;
-
-jest.mock("../libraryWarmPrefetch", () => ({
-  warmLibraryFirstPage: (...args: unknown[]) => mockWarm(...args),
-}));
 
 jest.mock("../libraryIndexPrefetch", () => ({
   prefetchPhotokitLibraryIndex: (...args: unknown[]) =>
@@ -21,72 +16,49 @@ jest.mock("../mediaLibraryPermission", () => ({
   ensureMediaLibraryChecked: (...args: unknown[]) => mockEnsure(...args),
 }));
 
-jest.mock("../libraryPickerPerf", () => ({
-  isLibraryPickerNative2b: jest.fn(() => false),
-}));
-
 describe("startLibraryCapturePrefetch", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetLibraryCapturePrefetchForTests();
     mockEnsure.mockResolvedValue({ granted: true });
-    mockWarm.mockResolvedValue(undefined);
     mockPrefetchIndex.mockReturnValue(Promise.resolve(null));
-    mockIs2b.mockReturnValue(false);
   });
 
-  it("awaits warm before starting openLibrary prefetch", async () => {
-    const order: string[] = [];
-    mockWarm.mockImplementation(async () => {
-      order.push("warm");
-    });
-    mockPrefetchIndex.mockImplementation(() => {
-      order.push("index");
-      return Promise.resolve(null);
-    });
-
+  it("checks permission and does not start a library walk from the camera tab", async () => {
     startLibraryCapturePrefetch();
     await new Promise((r) => setTimeout(r, 0));
     await Promise.resolve();
-    await Promise.resolve();
-
-    expect(order).toEqual(["warm", "index"]);
-  });
-
-  it("native2b does not start a library walk from the camera tab", async () => {
-    mockIs2b.mockReturnValue(true);
-    startLibraryCapturePrefetch();
-    await new Promise((r) => setTimeout(r, 0));
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(mockWarm).not.toHaveBeenCalled();
+    expect(mockEnsure).toHaveBeenCalledTimes(1);
     expect(mockPrefetchIndex).not.toHaveBeenCalled();
+    expect(isLibraryCapturePrefetchInFlight()).toBe(false);
   });
 
-  it("skips warm and index when permission denied", async () => {
+  it("still checks permission when access is denied", async () => {
     mockEnsure.mockResolvedValue({ granted: false });
     startLibraryCapturePrefetch();
     await new Promise((r) => setTimeout(r, 0));
     await Promise.resolve();
-    expect(mockWarm).not.toHaveBeenCalled();
+    expect(mockEnsure).toHaveBeenCalledTimes(1);
     expect(mockPrefetchIndex).not.toHaveBeenCalled();
   });
 
   it("single-flights overlapping capture prefetch calls", async () => {
-    let releaseWarm!: () => void;
-    mockWarm.mockImplementation(
+    let releaseEnsure!: (value: { granted: boolean }) => void;
+    mockEnsure.mockImplementation(
       () =>
-        new Promise<void>((resolve) => {
-          releaseWarm = resolve;
+        new Promise<{ granted: boolean }>((resolve) => {
+          releaseEnsure = resolve;
         }),
     );
     startLibraryCapturePrefetch();
     startLibraryCapturePrefetch();
     await new Promise((r) => setTimeout(r, 0));
-    expect(mockWarm).toHaveBeenCalledTimes(1);
-    releaseWarm();
+    expect(mockEnsure).toHaveBeenCalledTimes(1);
+    expect(isLibraryCapturePrefetchInFlight()).toBe(true);
+    releaseEnsure({ granted: true });
     await new Promise((r) => setTimeout(r, 0));
     await Promise.resolve();
-    expect(mockPrefetchIndex).toHaveBeenCalledTimes(1);
+    expect(mockPrefetchIndex).not.toHaveBeenCalled();
+    expect(isLibraryCapturePrefetchInFlight()).toBe(false);
   });
 });

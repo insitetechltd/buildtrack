@@ -78,16 +78,6 @@ jest.mock("../../../utils/libraryCapturePrefetch", () => ({
   startLibraryCapturePrefetch: jest.fn(),
 }));
 
-jest.mock("../../../utils/libraryWarmPrefetch", () => ({
-  warmLibraryFirstPage: jest.fn(async () => undefined),
-  peekWarmLibraryThumbUri: jest.fn(() => null),
-}));
-
-const mockIsLibraryPickerNative2b = jest.fn(() => false);
-jest.mock("../../../utils/libraryPickerPerf", () => ({
-  isLibraryPickerNative2b: (...args: unknown[]) => mockIsLibraryPickerNative2b(...args),
-}));
-
 jest.mock("../cameraAvailability", () => ({
   probeCameraAvailable: (...args: unknown[]) => mockProbeCameraAvailable(...args),
 }));
@@ -127,8 +117,6 @@ describe("CaptureSessionCameraScreen library fallback", () => {
       status: "undetermined",
       canAskAgain: true,
     });
-    mockIsLibraryPickerNative2b.mockReset();
-    mockIsLibraryPickerNative2b.mockReturnValue(false);
   });
 
   it("offers Choose from library when camera permission is not granted", async () => {

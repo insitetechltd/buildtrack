@@ -16,11 +16,7 @@ export const LIBRARY_PAINT_INTERVAL_MS = 32;
 /** Bridge / preview phase: tight ticks so fill feels continuous (not batchy). */
 export const LIBRARY_BRIDGE_PAINT_BATCH_SIZE = 2;
 export const LIBRARY_BRIDGE_PAINT_INTERVAL_MS = 48;
-/**
- * Skeleton tiles while waiting for index (≥ one screen).
- * Keep in sync with LIBRARY_WARM_PAGE_SIZE / columns so bridge paint
- * does not shrink a full-screen skeleton down to 12.
- */
+/** Skeleton tiles while waiting for the library walk (≥ one screen). */
 export const LIBRARY_SKELETON_MIN_ROWS = 6;
 
 export function librarySkeletonTileCount(
@@ -98,28 +94,15 @@ export function libraryPhotokitThumbPixelSize(
   );
 }
 
-/** Camera warm prefetch — first screen + p2 wave (6 rows × 3 cols). */
-export const LIBRARY_WARM_PAGE_SIZE = 18;
-export const LIBRARY_WARM_THUMB_COUNT = 24;
-
-/** Priority decode: viewport tiles beat background warm/pump. */
+/** Priority decode: viewport tiles beat background pump. */
 export const LIBRARY_THUMB_PRIORITY_VIEWPORT = 0;
 export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 
 /**
- * A/B picker fill path (M-PERF-03).
- * - `native2b` (default, TF237): limited Recents / persisted IDs → first paint → expand on scroll
- * - `warm`: MediaLibrary warm bridge ∥ full openLibrary — starves thumbs (HUD `1st` never)
- *
- * Override: EXPO_PUBLIC_LIBRARY_PICKER_PATH=warm|native2b
- */
-export type LibraryPickerPath = "warm" | "native2b";
-
-/**
- * First limited native batch — Recents newest-N via index-from-end (no sort).
- * Also the persisted-ID warm set (`openLibraryWithIds`). 90 ≈ 30 rows (3-col)
- * so scroll stays on the fast path longer; full `openLibrary` still waits
- * until the user is near the end of this set. Native cap is 200.
+ * First limited native batch — user-library walk from the end (no sort).
+ * 90 ≈ 30 rows (3-col) so scroll stays on the fast path longer; full
+ * `openLibrary` still waits until the user is near the end of this set.
+ * Native cap is 200. A finished walk is not reused on the next open.
  */
 export const LIBRARY_PICKER_2B_FIRST_BATCH = 90;
 
@@ -139,34 +122,4 @@ export function isWithinFirstPhotoBudget(
     return false;
   }
   return firstPaintAtMs - overlayOpenAtMs <= budgetMs;
-}
-
-function resolveLibraryPickerPath(): LibraryPickerPath {
-  const fromTest = (
-    globalThis as { __LIBRARY_PICKER_PATH__?: string }
-  ).__LIBRARY_PICKER_PATH__;
-  const raw = (
-    fromTest ||
-    process.env.EXPO_PUBLIC_LIBRARY_PICKER_PATH ||
-    "native2b"
-  ).toLowerCase();
-  return raw === "warm" ? "warm" : "native2b";
-}
-
-/** Resolved path (re-reads test override / env). */
-export function getLibraryPickerPath(): LibraryPickerPath {
-  return resolveLibraryPickerPath();
-}
-
-/** Snapshot at module load — prefer getLibraryPickerPath() when A/B can change in tests. */
-export const LIBRARY_PICKER_PATH: LibraryPickerPath = resolveLibraryPickerPath();
-
-export function isLibraryPickerNative2b(): boolean {
-  return resolveLibraryPickerPath() === "native2b";
-}
-
-/** Jest / tests: force path without rebuilding native. */
-export function setLibraryPickerPathForTests(path: LibraryPickerPath): void {
-  (globalThis as { __LIBRARY_PICKER_PATH__?: LibraryPickerPath }).__LIBRARY_PICKER_PATH__ =
-    path;
 }

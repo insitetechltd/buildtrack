@@ -7,8 +7,10 @@ enum PhotokitLibraryBacking {
   /// Full Library fetch with explicit sort (creationDate descending = newest-first).
   /// reversed flag kept for compatibility but always false (no smart album tricks).
   case fetch(PHFetchResult<PHAsset>, reversed: Bool)
-  /// Newest-first array (Option 2B limited open with explicit sort).
+  /// Newest-first array (filtered or named-album limited open).
   case displayOrder([PHAsset])
+  /// Unsorted user-library fetch. `display` is newest-image-first. `nextIndex` walks down.
+  case userLibrary(result: PHFetchResult<PHAsset>, display: [PHAsset], nextIndex: Int)
 
   var count: Int {
     switch self {
@@ -16,6 +18,8 @@ enum PhotokitLibraryBacking {
       return result.count
     case .displayOrder(let assets):
       return assets.count
+    case .userLibrary(_, let display, _):
+      return display.count
     }
   }
 
@@ -32,6 +36,8 @@ enum PhotokitLibraryBacking {
       return result.object(at: physical)
     case .displayOrder(let assets):
       return assets[index]
+    case .userLibrary(_, let display, _):
+      return display[index]
     }
   }
 }
@@ -240,8 +246,8 @@ enum PhotokitThumbEngine {
     return options
   }
 
-  /// Fetch full photo library (not Recents smart album) with explicit sort and optional date filter.
-  /// iOS 18+ phased out standalone Recents; Library is the canonical chronological view.
+  /// Sorted full-library fetch for expand, oldest-first, and date filters.
+  /// Default first paint does not use this — it walks smartAlbumUserLibrary.
   static func fetchLibrary(
     ascending: Bool = false,
     afterEpochSeconds: Double? = nil,
@@ -311,9 +317,8 @@ enum PhotokitThumbEngine {
     return session
   }
 
-  /// Newest `limit` photos from full Library (not Recents smart album).
-  /// FIX TF 287: Recents smart album had unpredictable sort behavior.
-  /// Use direct library fetch with fetchLimit + explicit creationDate sort.
+  /// Oldest-first and date-filtered limited opens. Not the default first paint:
+  /// a creationDate sort with fetchLimit still scans the library (TF 220 / 234).
   static func newestLibrary(
     limit: Int,
     ascending: Bool = false,
@@ -340,8 +345,51 @@ enum PhotokitThumbEngine {
     return assets
   }
 
-  /// Option 2B: newest `limit` assets with optional sort and date filter.
-  /// Named albums keep fetchLimit + creationDate (usually small).
+  /// Newest images from smartAlbumUserLibrary. Index 0 is the newest image.
+  /// Keeps walking until `imageCount` images or the start of the album.
+  /// Not PHAsset.fetchAssets(with: .image).
+  static func userLibraryCursor(imageCount: Int) -> (PHFetchResult<PHAsset>, [PHAsset], Int)? {
+    let imageCap = max(1, min(imageCount, 200))
+    let collections = PHAssetCollection.fetchAssetCollections(
+      with: .smartAlbum,
+      subtype: .smartAlbumUserLibrary,
+      options: nil
+    )
+    guard let collection = collections.firstObject else {
+      return nil
+    }
+    let result = PHAsset.fetchAssets(in: collection, options: recentsPhysicalOptions())
+    var display: [PHAsset] = []
+    display.reserveCapacity(imageCap)
+    var nextIndex = result.count - 1
+    appendUserLibraryImages(
+      result: result,
+      display: &display,
+      nextIndex: &nextIndex,
+      imageCount: imageCap
+    )
+    return (result, display, nextIndex)
+  }
+
+  static func appendUserLibraryImages(
+    result: PHFetchResult<PHAsset>,
+    display: inout [PHAsset],
+    nextIndex: inout Int,
+    imageCount: Int
+  ) {
+    let target = display.count + max(1, imageCount)
+    while nextIndex >= 0 && display.count < target {
+      let asset = result.object(at: nextIndex)
+      nextIndex -= 1
+      if asset.mediaType == .image {
+        display.append(asset)
+      }
+    }
+  }
+
+  /// Option 2B: newest `limit` assets.
+  /// Default all-photos uses the user-library reverse walk.
+  /// Named albums, oldest-first, and date filters keep fetchLimit + creationDate.
   /// Do not call stopCachingImagesForAllAssets unless replacing an existing session
   /// (cold open was paying a multi-second cache flush — TF 233).
   static func openLibraryLimited(
@@ -357,12 +405,40 @@ enum PhotokitThumbEngine {
     assets.reserveCapacity(capped)
 
     if albumId.isEmpty || albumId == "__all__" {
-      assets = newestLibrary(
-        limit: capped,
-        ascending: ascending,
-        afterEpochSeconds: afterEpochSeconds,
-        beforeEpochSeconds: beforeEpochSeconds
-      )
+      let defaultNewest =
+        !ascending && afterEpochSeconds == nil && beforeEpochSeconds == nil
+      if defaultNewest {
+        if let cursor = userLibraryCursor(imageCount: capped) {
+          sessionLock.lock()
+          defer { sessionLock.unlock() }
+          guard seq == openSeq else {
+            return nil
+          }
+          if librarySession != nil {
+            manager.stopCachingImagesForAllAssets()
+          }
+          cachedRange = nil
+          let session = PhotokitLibrarySession(
+            token: nextToken,
+            backing: .userLibrary(
+              result: cursor.0,
+              display: cursor.1,
+              nextIndex: cursor.2
+            )
+          )
+          nextToken += 1
+          librarySession = session
+          return session
+        }
+        assets = []
+      } else {
+        assets = newestLibrary(
+          limit: capped,
+          ascending: ascending,
+          afterEpochSeconds: afterEpochSeconds,
+          beforeEpochSeconds: beforeEpochSeconds
+        )
+      }
     } else {
       let collections = PHAssetCollection.fetchAssetCollections(
         withLocalIdentifiers: [albumId],
@@ -407,58 +483,48 @@ enum PhotokitThumbEngine {
     return session
   }
 
-  /// Fast path: resolve a persisted newest-N id list (no Recents scan).
-  /// Must not sit on `workQueue` behind expandLibraryFull (TF 235 reopen tax).
-  /// ASSUMES: persisted IDs already in newest-first order (from persistPreviewFromSession).
-  /// Sorts by creationDate descending to guard against stale AsyncStorage order.
-  static func openLibraryWithIds(_ ids: [String]) -> PhotokitLibrarySession? {
-    let capped = ids.prefix(200).filter { !$0.isEmpty }
-    guard !capped.isEmpty else {
-      return nil
-    }
-    let result = PHAsset.fetchAssets(
-      withLocalIdentifiers: Array(capped),
-      options: nil
-    )
-    var map: [String: PHAsset] = [:]
-    map.reserveCapacity(result.count)
-    result.enumerateObjects { asset, _, _ in
-      map[asset.localIdentifier] = asset
-    }
-    var assets: [PHAsset] = []
-    assets.reserveCapacity(capped.count)
-    for id in capped {
-      if let asset = map[id], asset.mediaType == .image {
-        assets.append(asset)
-      }
-    }
-    // Sort by creationDate descending (newest-first) to ensure consistent display
-    // even if AsyncStorage has stale old-to-new order.
-    assets.sort { a, b in
-      (a.creationDate ?? Date.distantPast) > (b.creationDate ?? Date.distantPast)
-    }
-    guard !assets.isEmpty else {
-      return nil
-    }
-    sessionLock.lock()
-    defer { sessionLock.unlock() }
-    cachedRange = nil
-    let session = PhotokitLibrarySession(
-      token: nextToken,
-      backing: .displayOrder(assets)
-    )
-    nextToken += 1
-    librarySession = session
-    return session
-  }
-
-  /// Option 2B: replace backing with full Library fetch; **keep same token**.
+  /// Default user-library session: next 90 images on the same fetch, same token.
+  /// Filtered and named-album sessions replace the backing with a sorted full fetch.
+  /// A session that is already a full fetch is unchanged.
   static func expandLibraryFull(
     token: Int,
     ascending: Bool = false,
     afterEpochSeconds: Double? = nil,
     beforeEpochSeconds: Double? = nil
   ) -> PhotokitLibrarySession? {
+    sessionLock.lock()
+    let existing = librarySession
+    sessionLock.unlock()
+    guard let existing, existing.token == token else {
+      return nil
+    }
+    if case .userLibrary(let result, var display, var nextIndex) = existing.backing {
+      appendUserLibraryImages(
+        result: result,
+        display: &display,
+        nextIndex: &nextIndex,
+        imageCount: 90
+      )
+      sessionLock.lock()
+      defer { sessionLock.unlock() }
+      guard var current = librarySession, current.token == token else {
+        return nil
+      }
+      guard case .userLibrary = current.backing else {
+        return current
+      }
+      cachedRange = nil
+      current.backing = .userLibrary(
+        result: result,
+        display: display,
+        nextIndex: nextIndex
+      )
+      librarySession = current
+      return current
+    }
+    if case .fetch = existing.backing {
+      return existing
+    }
     let result = fetchLibrary(
       ascending: ascending,
       afterEpochSeconds: afterEpochSeconds,
@@ -466,14 +532,19 @@ enum PhotokitThumbEngine {
     )
     sessionLock.lock()
     defer { sessionLock.unlock() }
-    guard var session = librarySession, session.token == token else {
+    guard var current = librarySession, current.token == token else {
       return nil
     }
-    // Keep token; indices 0..<priorCount should still resolve (newest-first).
+    if case .userLibrary = current.backing {
+      return current
+    }
+    if case .fetch = current.backing {
+      return current
+    }
     cachedRange = nil
-    session.backing = .fetch(result, reversed: false)
-    librarySession = session
-    return session
+    current.backing = .fetch(result, reversed: false)
+    librarySession = current
+    return current
   }
 
   /// Nil if token is stale or index is out of range.
@@ -566,21 +637,6 @@ enum PhotokitThumbEngine {
       contentMode: .aspectFill,
       options: makeOptions()
     )
-  }
-
-  /// Newest `limit` local IDs from Library (explicit newest-first sort, no reversal).
-  static func previewNewestIds(limit: Int) -> [String] {
-    let capped = max(1, min(limit, 60))
-    let result = fetchLibrary()
-    var ids: [String] = []
-    ids.reserveCapacity(capped)
-    result.enumerateObjects { asset, _, stop in
-      ids.append(asset.localIdentifier)
-      if ids.count >= capped {
-        stop.pointee = true
-      }
-    }
-    return ids
   }
 
   /// Jobsite evidence export (M-PERF-02). Independent of grid `maxThumbPixel`.
@@ -784,21 +840,7 @@ public final class PhotokitThumbsModule: Module {
       }
     }
 
-    /// Persisted newest-N ids — sync, not on workQueue (must not wait behind expand).
-    Function("openLibraryWithIds") { (ids: [String]) -> [String: Int] in
-      if let session = PhotokitThumbEngine.openLibraryWithIds(ids) {
-        return [
-          "token": session.token,
-          "count": session.backing.count,
-        ]
-      }
-      return [
-        "token": 0,
-        "count": 0,
-      ]
-    }
-
-    /// Option 2B: full Library behind the **same** token (no FlatList remount).
+    /// Option 2B: more images behind the **same** token (no FlatList remount).
     /// Does not bump openSeq — a newer openLibraryLimited/openLibrary owns that.
     AsyncFunction("expandLibraryFull") { (
       token: Int,
@@ -824,16 +866,6 @@ public final class PhotokitThumbsModule: Module {
               "count": 0,
             ])
           }
-        }
-      }
-    }
-
-    AsyncFunction("previewNewestIds") { (limit: Int) async -> [String] in
-      await withCheckedContinuation { (continuation: CheckedContinuation<[String], Never>) in
-        PhotokitThumbEngine.workQueue.async {
-          continuation.resume(
-            returning: PhotokitThumbEngine.previewNewestIds(limit: limit)
-          )
         }
       }
     }

@@ -78,11 +78,6 @@ jest.mock("../../../utils/libraryCapturePrefetch", () => ({
   startLibraryCapturePrefetch: jest.fn(),
 }));
 
-jest.mock("../../../utils/libraryWarmPrefetch", () => ({
-  warmLibraryFirstPage: jest.fn(async () => undefined),
-  peekWarmLibraryThumbUri: jest.fn(() => null),
-}));
-
 jest.mock("../cameraAvailability", () => ({
   probeCameraAvailable: (...args: unknown[]) => mockProbeCameraAvailable(...args),
 }));

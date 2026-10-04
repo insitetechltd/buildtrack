@@ -1,21 +1,15 @@
-import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import * as MediaLibrary from "expo-media-library";
 
 import { invalidateMediaLibraryPermissionCache } from "@/utils/mediaLibraryPermission";
 import { resetLibraryAlbumPickerMemory } from "../libraryAlbumPickerMemory";
-import {
-  consumeWarmLibraryPageAsync,
-  peekWarmLibraryPage,
-} from "@/utils/libraryWarmPrefetch";
-import { isPhotokitLibraryIndexPrefetchInFlight } from "@/utils/libraryIndexPrefetch";
 
 const mockAwaitPhotokitLibraryIndex = jest.fn(async () => ({
   token: 3,
   count: 50000,
 }));
-const mockPreviewNewestIds = jest.fn(async () =>
-  Array.from({ length: 30 }, (_, i) => `n${i}`),
-);
+const mockIs2bApi = jest.fn(() => true);
+const mockIsIndexApi = jest.fn(() => true);
 
 jest.mock("@/utils/libraryIndexPrefetch", () => ({
   awaitPhotokitLibraryIndex: (...args: unknown[]) =>
@@ -34,32 +28,15 @@ jest.mock("expo-media-library", () => ({
   getAlbumsAsync: jest.fn(),
 }));
 
-jest.mock("@/utils/libraryWarmPrefetch", () => ({
-  consumeWarmLibraryPageAsync: jest.fn(async () => ({
-    assets: [{ id: "warm", uri: "ph://warm", filename: "warm.jpg" }],
-    endCursor: "w1",
-    hasNextPage: true,
-  })),
-  consumeWarmLibraryPage: jest.fn(() => null),
-  peekWarmLibraryPage: jest.fn(() => null),
-  awaitWarmLibraryPage: jest.fn(async () => null),
-  isWarmLibraryPrefetchInFlight: jest.fn(() => false),
-}));
-
 jest.mock("../PhotokitThumbView", () => ({
-  isPhotokitLibraryIndexAvailable: () => true,
-  isPhotokitLibrary2bAvailable: () => false,
-  previewPhotokitNewestIds: (...args: unknown[]) =>
-    mockPreviewNewestIds(...args),
+  isPhotokitLibraryIndexAvailable: () => mockIsIndexApi(),
+  isPhotokitLibrary2bAvailable: () => mockIs2bApi(),
 }));
 
 import { useLibraryGridAssets } from "../useLibraryGridAssets";
 
 const mockGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
 const mockGetPermissionsAsync = MediaLibrary.getPermissionsAsync as jest.Mock;
-const mockConsumeWarm = consumeWarmLibraryPageAsync as jest.Mock;
-const mockPeekWarm = peekWarmLibraryPage as jest.Mock;
-const mockIndexInFlight = isPhotokitLibraryIndexPrefetchInFlight as jest.Mock;
 
 describe("useLibraryGridAssets Photos index", () => {
   beforeEach(() => {
@@ -71,17 +48,9 @@ describe("useLibraryGridAssets Photos index", () => {
       canAskAgain: true,
       status: "granted",
     });
+    mockIs2bApi.mockReturnValue(true);
+    mockIsIndexApi.mockReturnValue(true);
     mockAwaitPhotokitLibraryIndex.mockResolvedValue({ token: 3, count: 50000 });
-    mockPreviewNewestIds.mockResolvedValue(
-      Array.from({ length: 30 }, (_, i) => `n${i}`),
-    );
-    mockConsumeWarm.mockResolvedValue({
-      assets: [{ id: "warm", uri: "ph://warm", filename: "warm.jpg" }],
-      endCursor: "w1",
-      hasNextPage: true,
-    });
-    mockPeekWarm.mockReturnValue(null);
-    mockIndexInFlight.mockReturnValue(false);
     mockGetAssetsAsync.mockResolvedValue({
       assets: [],
       endCursor: undefined,
@@ -89,107 +58,60 @@ describe("useLibraryGridAssets Photos index", () => {
     });
   });
 
-  it("uses warm bridge then prefetched index without preview", async () => {
+  it("passes a date window into the PhotoKit open", async () => {
     const { result } = renderHook(() =>
       useLibraryGridAssets({
         enabled: true,
         selectedAlbumId: "__all__",
-        consumeWarmPage: true,
+        afterEpochSeconds: 100,
+        beforeEpochSeconds: 200,
       }),
     );
 
     await waitFor(() => {
       expect(result.current.indexSession).toEqual({ token: 3, count: 50000 });
-      expect(result.current.initialLoadDone).toBe(true);
     });
-    expect(mockPreviewNewestIds).not.toHaveBeenCalled();
     expect(mockAwaitPhotokitLibraryIndex).toHaveBeenCalledWith(
       null,
+      false,
+      100,
+      200,
+    );
+    expect(mockGetAssetsAsync).not.toHaveBeenCalled();
+  });
+
+  it("opens a named album through PhotoKit", async () => {
+    const { result } = renderHook(() =>
+      useLibraryGridAssets({
+        enabled: true,
+        selectedAlbumId: "album-a",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.indexSession).toEqual({ token: 3, count: 50000 });
+    });
+    expect(mockAwaitPhotokitLibraryIndex).toHaveBeenCalledWith(
+      "album-a",
       false,
       null,
       null,
     );
-    expect(result.current.assets).toHaveLength(0);
-
-    await act(async () => {
-      result.current.onEndReached();
-    });
-    const callsAfterIndex = mockGetAssetsAsync.mock.calls.length;
-    await act(async () => {
-      result.current.onEndReached();
-    });
-    expect(mockGetAssetsAsync).toHaveBeenCalledTimes(callsAfterIndex);
-  });
-
-  it("paints preview bridge before awaiting prefetched index when warm is empty", async () => {
-    mockConsumeWarm.mockResolvedValue(null);
-    mockPeekWarm.mockReturnValue(null);
-    const order: string[] = [];
-    mockPreviewNewestIds.mockImplementation(async () => {
-      order.push("preview");
-      return Array.from({ length: 30 }, (_, i) => `n${i}`);
-    });
-    mockAwaitPhotokitLibraryIndex.mockImplementation(async () => {
-      order.push("index");
-      return { token: 4, count: 50000 };
-    });
-
-    const { result } = renderHook(() =>
-      useLibraryGridAssets({
-        enabled: true,
-        selectedAlbumId: "__all__",
-        consumeWarmPage: true,
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.indexSession).toEqual({ token: 4, count: 50000 });
-    });
-    expect(order).toEqual(["preview", "index"]);
     expect(mockGetAssetsAsync).not.toHaveBeenCalled();
   });
 
-  it("never loadPage fallback while index prefetch is in flight", async () => {
-    mockConsumeWarm.mockResolvedValue(null);
-    mockPeekWarm.mockReturnValue(null);
-    mockIndexInFlight.mockReturnValue(true);
-
+  it("uses the sorted PhotoKit open for oldest-first when the walk API is missing", async () => {
+    mockIs2bApi.mockReturnValue(false);
     const { result } = renderHook(() =>
       useLibraryGridAssets({
         enabled: true,
         selectedAlbumId: "__all__",
-        consumeWarmPage: true,
+        sortOrder: "ascending",
       }),
     );
 
     await waitFor(() => {
       expect(result.current.indexSession).toEqual({ token: 3, count: 50000 });
-    });
-    expect(mockPreviewNewestIds).not.toHaveBeenCalled();
-    expect(mockGetAssetsAsync).not.toHaveBeenCalled();
-  });
-
-  it("reopens the index when the album sort changes to oldest first", async () => {
-    const { result, rerender } = renderHook(
-      (props: { sortOrder: "descending" | "ascending" }) =>
-        useLibraryGridAssets({
-          enabled: true,
-          selectedAlbumId: "__all__",
-          consumeWarmPage: true,
-          sortOrder: props.sortOrder,
-        }),
-      { initialProps: { sortOrder: "descending" as const } },
-    );
-
-    await waitFor(() => {
-      expect(result.current.indexSession).toEqual({ token: 3, count: 50000 });
-    });
-
-    mockAwaitPhotokitLibraryIndex.mockResolvedValue({ token: 9, count: 12 });
-    rerender({ sortOrder: "ascending" });
-
-    await waitFor(() => {
-      expect(result.current.indexSession).toEqual({ token: 9, count: 12 });
     });
     expect(mockAwaitPhotokitLibraryIndex).toHaveBeenCalledWith(
       null,
@@ -197,5 +119,6 @@ describe("useLibraryGridAssets Photos index", () => {
       null,
       null,
     );
+    expect(mockGetAssetsAsync).not.toHaveBeenCalled();
   });
 });

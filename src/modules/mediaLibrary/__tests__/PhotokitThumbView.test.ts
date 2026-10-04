@@ -8,7 +8,6 @@ import {
   openPhotokitLibraryLimited,
   openPhotokitLibraryWithIds,
   photokitIdAt,
-  previewPhotokitNewestIds,
   startPhotokitRangeCaching,
   startPhotokitThumbCaching,
   stopPhotokitThumbCaching,
@@ -40,7 +39,6 @@ describe("PhotokitThumbView JS gate", () => {
     await expect(openPhotokitLibraryLimited(null, 60)).resolves.toBeNull();
     await expect(openPhotokitLibraryWithIds(["a"])).resolves.toBeNull();
     await expect(expandPhotokitLibraryFull(1)).resolves.toBeNull();
-    await expect(previewPhotokitNewestIds(30)).resolves.toEqual([]);
     expect(photokitIdAt(1, 0)).toBeNull();
   });
 });

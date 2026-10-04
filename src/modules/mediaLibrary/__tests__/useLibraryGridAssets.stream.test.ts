@@ -14,11 +14,6 @@ jest.mock("expo-media-library", () => ({
   getAlbumsAsync: jest.fn(),
 }));
 
-jest.mock("@/utils/libraryWarmPrefetch", () => ({
-  consumeWarmLibraryPage: jest.fn(() => null),
-  consumeWarmLibraryPageAsync: jest.fn(async () => null),
-}));
-
 const mockGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
 const mockGetPermissionsAsync = MediaLibrary.getPermissionsAsync as jest.Mock;
 
@@ -57,7 +52,6 @@ describe("useLibraryGridAssets first screen", () => {
       useLibraryGridAssets({
         enabled: true,
         selectedAlbumId: "__all__",
-        consumeWarmPage: false,
       }),
     );
 
@@ -84,7 +78,6 @@ describe("useLibraryGridAssets first screen", () => {
       useLibraryGridAssets({
         enabled: true,
         selectedAlbumId: "__all__",
-        consumeWarmPage: false,
       }),
     );
 

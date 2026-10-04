@@ -32,7 +32,6 @@ type PhotokitThumbsNative = {
   openLibraryWithIds?: (
     ids: string[],
   ) => { token: number; count: number } | Promise<{ token: number; count: number }>;
-  previewNewestIds?: (limit: number) => string[] | Promise<string[]>;
   idAt?: (token: number, index: number) => string;
   startCachingRange?: (
     token: number,
@@ -235,29 +234,6 @@ export async function expandPhotokitLibraryFull(
       return session;
     } catch {
       return null;
-    }
-  });
-}
-
-/** Fast Recents reverse-enum slice (TF 225). Empty if native API missing. */
-export async function previewPhotokitNewestIds(
-  limit: number,
-): Promise<string[]> {
-  const native = loadNativeModule();
-  if (!native?.previewNewestIds || limit < 1) {
-    return [];
-  }
-  return runExclusivePhotokitJob("previewNewestIds", async () => {
-    try {
-      const ids = await Promise.resolve(native.previewNewestIds!(limit));
-      if (!Array.isArray(ids)) {
-        return [];
-      }
-      return ids.filter(
-        (id): id is string => typeof id === "string" && id.length > 0,
-      );
-    } catch {
-      return [];
     }
   });
 }

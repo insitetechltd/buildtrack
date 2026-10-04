@@ -87,7 +87,6 @@ export function HybridLibraryPickerScreen() {
 
   const albumPicker = useLibraryAlbumPicker({
     enabled: true,
-    consumeWarmPage: true,
   });
 
   useEffect(() => {

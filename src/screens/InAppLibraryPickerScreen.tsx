@@ -115,7 +115,6 @@ export default function InAppLibraryPickerScreen({
 
   const albumPicker = useLibraryAlbumPicker({
     enabled: true,
-    consumeWarmPage: true,
   });
 
   const permissionPhase = permissionPhaseFrom(albumPicker.permission);

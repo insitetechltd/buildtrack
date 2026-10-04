@@ -4,7 +4,6 @@ import {
   View,
   Text,
   Pressable,
-  Image,
   StyleSheet,
   Alert,
 } from "react-native";
@@ -12,12 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { CameraView } from "expo-camera";
-import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 
-import {
-  peekWarmLibraryThumbUri,
-} from "../../utils/libraryWarmPrefetch";
 import { startLibraryCapturePrefetch } from "../../utils/libraryCapturePrefetch";
 import {
   peekCameraPermission,
@@ -46,7 +41,6 @@ export function CaptureSessionCameraScreen() {
   const autoOpenedLibraryRef = useRef(false);
   const [permission, setPermission] = useState(peekCameraPermission);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [libraryThumbUri, setLibraryThumbUri] = useState<string | null>(null);
   const [cameraNativeError, setCameraNativeError] = useState<string | null>(null);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
   const [zoom, setZoom] = useState(0);
@@ -92,36 +86,8 @@ export function CaptureSessionCameraScreen() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        startLibraryCapturePrefetch();
-        if (cancelled) return;
-
-        const warmUri = peekWarmLibraryThumbUri();
-        if (warmUri) {
-          setLibraryThumbUri(warmUri);
-          return;
-        }
-
-        const current = await MediaLibrary.getPermissionsAsync();
-        if (!current.granted || cancelled) return;
-
-        const page = await MediaLibrary.getAssetsAsync({
-          first: 1,
-          mediaType: MediaLibrary.MediaType.photo,
-          sortBy: [[MediaLibrary.SortBy.creationTime, false]],
-        });
-        if (!cancelled && page.assets[0]?.uri) {
-          setLibraryThumbUri(page.assets[0].uri);
-        }
-      } catch {
-        // Peek is optional — camera still works without library access.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    // Permission only. A sorted getAssetsAsync here would run beside the walk.
+    startLibraryCapturePrefetch();
   }, []);
 
   const handleShutter = useCallback(async () => {
@@ -423,17 +389,9 @@ export function CaptureSessionCameraScreen() {
           style={[styles.libraryPeek, isCapturing && styles.shutterDisabled]}
           accessibilityLabel="Choose from library"
         >
-          {libraryThumbUri ? (
-            <Image
-              source={{ uri: libraryThumbUri }}
-              resizeMode="cover"
-              style={styles.libraryThumb}
-            />
-          ) : (
-            <View style={[styles.libraryThumb, styles.libraryThumbEmpty]}>
-              <Ionicons name="images-outline" size={22} color="#fff" />
-            </View>
-          )}
+          <View style={[styles.libraryThumb, styles.libraryThumbEmpty]}>
+            <Ionicons name="images-outline" size={22} color="#fff" />
+          </View>
         </Pressable>
 
         <Pressable

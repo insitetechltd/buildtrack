@@ -2,25 +2,16 @@ import {
   expandPhotokitLibraryFull,
   isPhotokitLibrary2bAvailable,
   isPhotokitLibraryIndexAvailable,
-  isPhotokitLibraryWithIdsAvailable,
   openPhotokitLibrary,
   openPhotokitLibraryLimited,
-  openPhotokitLibraryWithIds,
-  photokitIdAt,
   type PhotokitLibrarySession,
 } from "@/modules/mediaLibrary/PhotokitThumbView";
 import { ALL_PHOTOS_ALBUM_ID } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import {
   LIBRARY_FIRST_PHOTO_BUDGET_MS,
   LIBRARY_PICKER_2B_FIRST_BATCH,
-  isLibraryPickerNative2b,
 } from "@/utils/libraryPickerPerf";
 import { subscribeLibraryPickerTiming } from "@/utils/libraryPickerTiming";
-import {
-  hydratePhotokitPreviewIds,
-  peekPhotokitPreviewIds,
-  persistPhotokitPreviewIds,
-} from "@/utils/libraryPreviewIds";
 
 /** Normalized album key for prefetch cache (`null` = Recents / all photos). */
 export function photokitLibraryAlbumKey(
@@ -33,6 +24,8 @@ let cachedSession: PhotokitLibrarySession | null = null;
 let cachedAlbumKey: string | null | undefined;
 let inFlight: Promise<PhotokitLibrarySession | null> | null = null;
 let inFlightAlbumKey: string | null | undefined;
+let pickerOpenGeneration = 0;
+let inFlightGeneration = 0;
 let expandInFlight: Promise<PhotokitLibrarySession | null> | null = null;
 let expandPaused = false;
 let scheduledExpandCancel: (() => void) | null = null;
@@ -61,24 +54,22 @@ function cacheSession(
   return session;
 }
 
-function persistPreviewFromSession(session: PhotokitLibrarySession): void {
-  const n = Math.min(session.count, LIBRARY_PICKER_2B_FIRST_BATCH);
-  const ids: string[] = [];
-  for (let i = 0; i < n; i += 1) {
-    const id = photokitIdAt(session.token, i);
-    if (id) {
-      ids.push(id);
-    }
-  }
-  if (ids.length > 0) {
-    void persistPhotokitPreviewIds(ids);
-  }
+/**
+ * Bump when the library overlay opens. A walk started before this open
+ * is not the grid, even if it is still running.
+ */
+export function markLibraryPickerOpen(): void {
+  pickerOpenGeneration += 1;
 }
 
 /**
- * Start index early (camera tab). Path depends on A/B flag:
- * - warm: full openLibrary
- * - native2b: persisted ids (if any) then limited Library — expand after first screen
+ * Start a live library query for the current open.
+ * User-library walk when that API exists — scroll continues that walk.
+ * Named albums, oldest-first, and date filters pass sort and bounds into the
+ * same open. If the walk API is missing, a sorted openLibrary fetch.
+ *
+ * Join only a walk started for this same open. A finished walk is not the next grid.
+ * If an older walk is still running, return null so the caller can wait, then start fresh.
  */
 export function prefetchPhotokitLibraryIndex(
   albumKey: string | null = null,
@@ -95,35 +86,23 @@ export function prefetchPhotokitLibraryIndex(
     afterEpochSeconds,
     beforeEpochSeconds,
   );
-  if (cachedSession && cachedAlbumKey === cacheKey) {
-    return Promise.resolve(cachedSession);
-  }
-  if (inFlight && inFlightAlbumKey === cacheKey) {
+  if (
+    inFlight &&
+    inFlightAlbumKey === cacheKey &&
+    inFlightGeneration === pickerOpenGeneration
+  ) {
     return inFlight;
   }
+  if (inFlight) {
+    return null;
+  }
   inFlightAlbumKey = cacheKey;
-  const use2b = isLibraryPickerNative2b() && isPhotokitLibrary2bAvailable();
+  inFlightGeneration = pickerOpenGeneration;
+  const use2b = isPhotokitLibrary2bAvailable();
   inFlight = (async () => {
     try {
       if (use2b) {
-        if (!peekPhotokitPreviewIds()) {
-          await hydratePhotokitPreviewIds();
-        }
-        const persisted = peekPhotokitPreviewIds();
-        // Skip warm-id path when filters are active — persisted IDs assume default sort/date.
         const hasActiveFilters = ascending || afterEpochSeconds !== null || beforeEpochSeconds !== null;
-        if (
-          albumKey == null &&
-          persisted &&
-          persisted.length >= LIBRARY_PICKER_2B_FIRST_BATCH &&
-          isPhotokitLibraryWithIdsAvailable() &&
-          !hasActiveFilters
-        ) {
-          const preview = await openPhotokitLibraryWithIds(persisted);
-          if (preview) {
-            return cacheSession(cacheKey, preview);
-          }
-        }
         const limited = await openPhotokitLibraryLimited(
           albumKey,
           LIBRARY_PICKER_2B_FIRST_BATCH,
@@ -132,10 +111,11 @@ export function prefetchPhotokitLibraryIndex(
           beforeEpochSeconds,
         );
         if (!limited) {
+          // Default first paint must not fall through to a sorted full-library fetch.
+          if (albumKey == null && !hasActiveFilters) {
+            return null;
+          }
           return cacheSession(cacheKey, await openPhotokitLibrary(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds));
-        }
-        if (!hasActiveFilters) {
-          persistPreviewFromSession(limited);
         }
         return cacheSession(cacheKey, limited);
       }
@@ -147,7 +127,7 @@ export function prefetchPhotokitLibraryIndex(
   return inFlight;
 }
 
-/** Await limited or full session; kicks expand if 2b and still limited. */
+/** Await this open's walk. An older in-flight walk is finished and discarded first. */
 export async function awaitPhotokitLibraryIndex(
   albumKey: string | null,
   ascending = false,
@@ -157,16 +137,41 @@ export async function awaitPhotokitLibraryIndex(
   if (!isPhotokitLibraryIndexAvailable()) {
     return null;
   }
+  const generation = pickerOpenGeneration;
   const cacheKey = libraryIndexCacheKey(
     albumKey,
     ascending,
     afterEpochSeconds,
     beforeEpochSeconds,
   );
-  if (cachedSession && cachedAlbumKey === cacheKey) {
-    return cachedSession;
+  while (inFlight && inFlightGeneration !== generation) {
+    const stale = inFlight;
+    try {
+      await stale;
+    } catch {
+      // The stale walk is not this open's grid.
+    }
+    if (inFlight === stale) {
+      break;
+    }
   }
-  const run = prefetchPhotokitLibraryIndex(albumKey, ascending, afterEpochSeconds, beforeEpochSeconds);
+  if (
+    inFlight &&
+    inFlightGeneration === generation &&
+    inFlightAlbumKey !== cacheKey
+  ) {
+    try {
+      await inFlight;
+    } catch {
+      // Different album for this open; start the requested one next.
+    }
+  }
+  const run = prefetchPhotokitLibraryIndex(
+    albumKey,
+    ascending,
+    afterEpochSeconds,
+    beforeEpochSeconds,
+  );
   if (!run) {
     return null;
   }
@@ -206,7 +211,7 @@ export async function awaitPhotokitLibraryExpand(
     if (expandInFlight) {
       return expandInFlight;
     }
-    if (isLibraryPickerNative2b() && isPhotokitLibrary2bAvailable()) {
+    if (isPhotokitLibrary2bAvailable()) {
       expandInFlight = expandPhotokitLibraryFull(token, ascending, afterEpochSeconds, beforeEpochSeconds).then((full) => {
         expandInFlight = null;
         if (expandPaused) {
@@ -287,9 +292,6 @@ export function requestPhotokitLibraryExpandIfScrolled(
   if (expandPaused || !userScrolled || token < 1 || sessionCount < 1) {
     return;
   }
-  if (sessionCount > LIBRARY_PICKER_2B_FIRST_BATCH) {
-    return;
-  }
   if (lastVisibleIndex < sessionCount - 3) {
     return;
   }
@@ -321,6 +323,8 @@ export function clearPhotokitLibraryIndexPrefetch(): void {
   cachedAlbumKey = undefined;
   inFlight = null;
   inFlightAlbumKey = undefined;
+  pickerOpenGeneration = 0;
+  inFlightGeneration = 0;
   expandInFlight = null;
   expandPaused = false;
   scheduledExpandCancel?.();

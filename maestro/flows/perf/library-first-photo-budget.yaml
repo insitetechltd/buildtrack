@@ -16,7 +16,7 @@ appId: com.buildtrack.app.local
     id: "root-tab__camera_icon_surface"
 - waitForAnimationToEnd:
     timeout: 2000
-# Prefer camera-tab library entry (starts limited Recents index prefetch on native2b).
+# Library button opens the overlay. That open starts the user-library walk.
 - runFlow:
     when:
       visible:
@@ -28,7 +28,7 @@ appId: com.buildtrack.app.local
     visible:
       id: "capture-session__hybrid_library"
     timeout: 8000
-# Product budget: first assets (warm bridge or limited index) ≤ 3s.
+# Product budget: first assets from this open's walk ≤ 3s.
 - extendedWaitUntil:
     visible:
       id: "capture-session__library_first_ready"

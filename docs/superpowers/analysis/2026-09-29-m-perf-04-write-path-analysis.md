@@ -1,13 +1,15 @@
 # M-PERF-04: Field Write-Path Performance Analysis
 **Date**: 2026-09-29  
-**Phase**: Phase 1 closed 2026-10-04 — B1 (all submit paths) + B2. Phase 2 (B3/B4/B5) deferred for stability. Milestone stays Pipeline, not Closed. No phone retest and no PROD prove in this slice.
+**Phase**: Phase 1 is in TestFlight 294 (`2005c53`) — B1 (all submit paths) + B2. Milestone stays Pipeline, not Closed.
+
+> **Phase 2 shelved 2026-10-04 by user; reopen only if phone submit is still slow.**
 
 ## Status (2026-10-04)
 
 - **B1 done** on every submit path that uploads chosen photos: Create Task (`normalizeAttachmentsForSubmission`, already in TF 293), Update Progress (`uploadPhotoObjects`), Task Detail reply/progress dock (`uploadReplyPhotos`), and Photo Selection (`handleUploadPhotos`). Each photo's compress + upload runs under `Promise.all`. Result order follows input order.
 - Fail-closed paths still abort the submit when any chosen photo is missing or fails (Create rolls back via `deleteTaskById`; Update and the detail dock alert and keep the draft). Photo Selection stays best-effort: a partial success still continues, with successful URLs in input order.
 - **B2 done.** `uploadFile` returns after the Storage upload and the `task_files` insert. Signed URL minting runs in the background and a mint failure does not fail the upload. `public_url` on new uploads is the storage object path. Display resolves it through `getFileUrl` / `attachmentPreviewUri` (lists already did; the file-upload preview tile subscribes to the signed-URL cache).
-- **B3, B4, B5 stay deferred.** No JPEG quality/resize change, no base64→binary upload body change, no optimistic create / navigate-away-before-upload.
+- **B3, B4, B5 are shelved** (see banner). No JPEG quality/resize change, no base64→binary upload body change, no optimistic create / navigate-away-before-upload.
 
 ## Executive Summary
 
@@ -172,7 +174,7 @@ Creates task, uploads photos, then **updates task again** with photo URLs. This 
 - Jest: concurrent uploads, input order, fail-closed single-photo failure, signed URL not required for `uploadFile` success. Create parallel behavior still covered.
 - Phone retest and PROD prove were not part of this slice.
 
-### Deferred to Phase 2 (stability — do not ship with the current binary)
+### Phase 2 shelved (2026-10-04) — reopen only if a phone submit is still slow
 - **B3**: Smarter compression quality (needs real device profiling)
 - **B4**: Binary upload (needs Supabase API research + compatibility check)
 - **B5**: Optimistic create (needs broader UX + error handling design)

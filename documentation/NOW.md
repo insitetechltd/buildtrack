@@ -4,7 +4,13 @@
 
 ---
 
-**This session — M-PERF-04 Phase 1 (2026-10-04):** B1 parallel photo upload on Update Progress, Task Detail reply/dock, and Photo Selection (Create was already parallel). B2: `uploadFile` returns after Storage + `task_files` insert; signed URL warms in the background; new `public_url` is the storage path. B3/B4/B5 stay deferred. Jest only. No phone retest, no PROD prove, no version bump, no CBP. Milestone stays Pipeline.
+**Next work (user-ordered 2026-10-04):** **`M-REPORT-01`** Report resolve-with-reply audit (still no DDL), then **`M-AUTHZ-02`** multi-company (Human Gate before invite/RLS DDL). Then **`M-OPS-03`** owner HQ destination contract, then **`M-AI-01`**, then Wave 2. App Store **1.1.4 (build 284)** is READY_FOR_SALE in Hong Kong as of 2026-10-01; **1.1.3/280** is also approved. ASC unblock is not the current gate. **`M-PERF-04` Phase 2** (B3 compression retries, B4 binary upload, B5 optimistic create) stays shelved. **Assumption:** the ledger does not make `M-OPS-03` a prerequisite of `M-AUTHZ-02` (`M-OPS-02` is Closed; Human Gate before invite/RLS DDL remains). This order follows the user anyway.
+
+**This session — CBP TF 294 submitted (2026-10-04):** Gate 0 waived (user-ordered CBP for on-phone testing of M-PERF-04 Phase 1). App `2005c53`. Local `./build-local.sh ios production` → IPA **v1.1.5 (294)** `.eas/artifacts/build-1791120485148.ipa` (CFBundleVersion 294; bundle `com.buildtrack.app.local`; S4 PASS sha256 `96349cc159bbb6c0f1ef5ef1e0f403b0b2e63a9ca053f07bb30c30eec3084e11`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/f505c96e-6137-45ed-b560-5a4997401a48 (✔ Uploaded ASC; Apple processing). Evidence: `docs/superpowers/evidence/2026-10-04-cbp-tf-294/`. ASC Public / Submit for Review untouched. **Next:** install TF **294**. Multi-photo Update, report reply, and Photo Selection should finish in about the slowest photo, then those photos appear in the same order. A gray tile that never fills in is a fail. One failed photo on Update or the reply dock still aborts the submit. This is not a picker retest.
+
+**This session — M-PERF-04 Phase 2 shelved (2026-10-04):** Phase 2 (B3 compression retries, B4 binary upload, B5 optimistic create) is shelved. Return only if a phone submit is still slow after the Phase 1 binary. Phase 1 is in TestFlight 294 (`2005c53`). Milestone stays Pipeline, not Closed.
+
+**This session — M-PERF-04 Phase 1 (2026-10-04):** B1 parallel photo upload on Update Progress, Task Detail reply/dock, and Photo Selection (Create was already parallel). B2: `uploadFile` returns after Storage + `task_files` insert; signed URL warms in the background; new `public_url` is the storage path. Phase 2 is shelved (see above). Jest only. No phone retest, no PROD prove, no version bump, no CBP. Milestone stays Pipeline.
 
 ---
 
@@ -297,16 +303,20 @@
 - **Play listing API (2026-09-02):** committed EN + zh-HK copy + contact from `documentation/MARKETING.md` (replaced stale “across companies” EN). Icon, feature graphic, and screenshots were already on the listing. Production draft still **FAILED_PRECONDITION** via API (no error detail) — App content questionnaires are Console-only. Not a public listing GO. Do not claim Android on `documentation/MARKETING.md` until live.
 - **Sideload APK (2026-09-02):** universal APK from Play AAB vc **41** → Desktop `Taskr-1.1.3-vc41.apk` (145 MB, signed, target 36). Not the debug APK. If the phone already has Taskr from Play, uninstall first (upload-key vs Play signing).
 
-**You (Human-only — agent cannot click ASC / Public):** wait for Apple on **1.1.3 / build 280** (WAITING_FOR_REVIEW; Public off). Reply only if rejected. Do **not** tick Public unless asked. (Pre-280 ASC paste / TF 257 attach / Stripe promo checklist **superseded** — listing already submitted.)
+**Store:** App Store **1.1.4 (build 284)** READY_FOR_SALE in Hong Kong as of 2026-10-01; **1.1.3/280** also approved. ASC unblock is not the current gate. Do **not** tick a new Public release unless asked.
 
 ## Next (definitive)
 
-1. **ASC Taskr 1.1.3 build 280** — **REJECTED / UNRESOLVED_ISSUES**. **Public off.** Human: unblock required (reply to Apple / address rejection reasons). Do not tick Public unless asked.
-2. **Closed on tip (do not re-open):** blind-spot S0–S10; `stripe-webhook` redeployed DEV+PROD (`4bf51de`); Maestro path drift (`e55c685`); P04d + signup insert-if-missing (`d2e3200`); taxonomy path hygiene (`c8423c2`); S5 last-admin guard GO (O4 promote gate). **PR cleanup done** (superseded PRs closed); **Tahoe on main** (build plugin integrated); **migration history backfilled** — 38 applied DEV+PROD 2026-09-29 (mops03 excluded).
-3. **After ASC unblock:** resubmit → wait for approval → tick Public when asked.
-4. **Roadmap after ASC clear:** `M-OPS-03` (Destination Contract Builder Phase A1 ready; DDL human-gated) → **`M-AUTHZ-02`**. Do not jump.
+1. **Next:** **`M-REPORT-01`** Report resolve-with-reply audit. Still no DDL. Closing a report with a typed reply must persist `tasks.status=resolved`, `task_activities` `issue_resolved` (actor/note), and a timeline-visible reply on the same task id.
+2. **Then:** **`M-AUTHZ-02`** multi-company. Human Gate before invite/RLS DDL.
+3. **Then:** **`M-OPS-03`** owner HQ destination contract, then **`M-AI-01`**, then Wave 2.
+4. **Store:** App Store **1.1.4 (build 284)** READY_FOR_SALE in Hong Kong as of 2026-10-01; **1.1.3/280** also approved. ASC unblock is not the current gate.
+5. **Shelved:** **`M-PERF-04` Phase 2** (B3 compression retries, B4 binary upload, B5 optimistic create). Phase 1 stays landed.
+6. **Closed on tip (do not re-open):** blind-spot S0–S10; `stripe-webhook` redeployed DEV+PROD (`4bf51de`); Maestro path drift (`e55c685`); P04d + signup insert-if-missing (`d2e3200`); taxonomy path hygiene (`c8423c2`); S5 last-admin guard GO (O4 promote gate). **PR cleanup done** (superseded PRs closed); **Tahoe on main** (build plugin integrated); **migration history backfilled** — 38 applied DEV+PROD 2026-09-29 (mops03 excluded).
 
-**Parked by design:** E3b; E3c / `M-REPORT-01`; web-billing seats (Gate A NO-GO); A-D01. Also parked: soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → `M-OPS-03` future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** / **voice-mic on dock** — future enhancement.
+**Assumption:** moving `M-OPS-03` after `M-AUTHZ-02` does not contradict a hard dependency. The `M-AUTHZ-02` ledger prerequisite is `M-OPS-02` (Closed) plus a Human Gate before invite/RLS DDL. Working order still follows the user.
+
+**Parked by design:** E3b (promote; not this order); web-billing seats (Gate A NO-GO); A-D01. Also parked: soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → `M-OPS-03` future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build** until after `M-AUTHZ-02`; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**. **Subtask create UI** / **voice-mic on dock** — future enhancement.
 
 ## Recently closed / shipped this session
 

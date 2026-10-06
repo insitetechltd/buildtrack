@@ -4,7 +4,9 @@
 
 ---
 
-**Next work (user-ordered 2026-10-04):** **`M-REPORT-01`** Report resolve-with-reply audit (still no DDL), then **`M-AUTHZ-02`** multi-company (Human Gate before invite/RLS DDL). Then **`M-OPS-03`** owner HQ destination contract, then **`M-AI-01`**, then Wave 2. App Store **1.1.4 (build 284)** is READY_FOR_SALE in Hong Kong as of 2026-10-01; **1.1.3/280** is also approved. ASC unblock is not the current gate. **`M-PERF-04` Phase 2** (B3 compression retries, B4 binary upload, B5 optimistic create) stays shelved. **Assumption:** the ledger does not make `M-OPS-03` a prerequisite of `M-AUTHZ-02` (`M-OPS-02` is Closed; Human Gate before invite/RLS DDL remains). This order follows the user anyway.
+**This session — M-REPORT-01 Closed (2026-10-06):** A close requires a typed note from the manager or the worker. Photos stay with that note and never close a report alone. Empty text shows Comment required and does not upload. The manager close line stays “Issue resolved by {name}: Resolved with reply”; the note is the comment. The worker close line is “Issue acknowledged and closed by {name}”; the note is the comment. A retry of the same note does not insert a second comment. Headed DEV: Carol on `R01-qa-20261006-close-text` — empty Resolve showed Comment required; the text close stored the reply and “Issue resolved by Carol Admin A: Resolved with reply”. Worker sentence covered by the store test. No schema. No PROD prove.
+
+**Next work (user-ordered 2026-10-04, report slice closed 2026-10-06):** **`M-AUTHZ-02`** multi-company (Human Gate before invite/RLS DDL). **Locked 2026-10-06:** the report close record (manager close stands; notify the filer; one append-only final comment) ships with multi-company reporting, not inside `M-REPORT-01`. Then **`M-OPS-03`** owner HQ destination contract, then **`M-AI-01`**, then Wave 2. App Store **1.1.4 (build 284)** is READY_FOR_SALE in Hong Kong as of 2026-10-01; **1.1.3/280** is also approved. ASC unblock is not the current gate. **`M-PERF-04` Phase 2** (B3 compression retries, B4 binary upload, B5 optimistic create) stays shelved. **Assumption:** the ledger does not make `M-OPS-03` a prerequisite of `M-AUTHZ-02` (`M-OPS-02` is Closed; Human Gate before invite/RLS DDL remains). This order follows the user anyway.
 
 **This session — CBP TF 294 submitted (2026-10-04):** Gate 0 waived (user-ordered CBP for on-phone testing of M-PERF-04 Phase 1). App `2005c53`. Local `./build-local.sh ios production` → IPA **v1.1.5 (294)** `.eas/artifacts/build-1791120485148.ipa` (CFBundleVersion 294; bundle `com.buildtrack.app.local`; S4 PASS sha256 `96349cc159bbb6c0f1ef5ef1e0f403b0b2e63a9ca053f07bb30c30eec3084e11`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/f505c96e-6137-45ed-b560-5a4997401a48 (✔ Uploaded ASC; Apple processing). Evidence: `docs/superpowers/evidence/2026-10-04-cbp-tf-294/`. ASC Public / Submit for Review untouched. **Next:** install TF **294**. Multi-photo Update, report reply, and Photo Selection should finish in about the slowest photo, then those photos appear in the same order. A gray tile that never fills in is a fail. One failed photo on Update or the reply dock still aborts the submit. This is not a picker retest.
 
@@ -308,7 +310,7 @@
 ## Next (definitive)
 
 1. **Next:** **`M-REPORT-01`** Report resolve-with-reply audit. Still no DDL. Closing a report with a typed reply must persist `tasks.status=resolved`, `task_activities` `issue_resolved` (actor/note), and a timeline-visible reply on the same task id.
-2. **Then:** **`M-AUTHZ-02`** multi-company. Human Gate before invite/RLS DDL.
+2. **Then:** **`M-AUTHZ-02`** multi-company. Human Gate before invite/RLS DDL. **Locked 2026-10-06:** report close record ships with multi-company reporting (manager close stands; notify the filer; one append-only final comment). Not an `M-REPORT-01` slice. Not built. No PROD prove.
 3. **Then:** **`M-OPS-03`** owner HQ destination contract, then **`M-AI-01`**, then Wave 2.
 4. **Store:** App Store **1.1.4 (build 284)** READY_FOR_SALE in Hong Kong as of 2026-10-01; **1.1.3/280** also approved. ASC unblock is not the current gate.
 5. **Shelved:** **`M-PERF-04` Phase 2** (B3 compression retries, B4 binary upload, B5 optimistic create). Phase 1 stays landed.
@@ -343,6 +345,7 @@
 - **HK billing:** charge HKD; no grandfathering
 - **ACL:** CA authority; default seat Worker; PA on CA|PM only
 - **AUTHZ-RC construct:** Closed
+- **M-AUTHZ-02 report close record (locked 2026-10-06):** when multi-company reporting ships, the manager's close is the close; notify the filer; the filer may add exactly one append-only final comment. Not an `M-REPORT-01` slice. Not built. No PROD prove. Ledger: `documentation/ROADMAP.md` `M-AUTHZ-02` row. Pointer: `documentation/multi-company-project-membership.md` § Report close record.
 - **Project status `on_hold`:** dormant reserved DB CHECK slot
 - **Subtasks:** create / drill-in UI **off** until a dedicated future enhancement; do not restore Add Subtask on Task Detail Other-actions or dock. Store + `parentTaskId` may remain for existing data.
 - **Voice/mic on Task Detail dock:** shelved (future enhancement).

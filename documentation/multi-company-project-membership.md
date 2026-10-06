@@ -113,6 +113,14 @@ Assignment rows — not the global `users` table — are the source of truth for
 
 ---
 
+## Report close record (locked 2026-10-06)
+
+In scope when multi-company reporting ships with this milestone. Not an `M-REPORT-01` slice. Locked wording is on the `M-AUTHZ-02` row in `documentation/ROADMAP.md`.
+
+The manager's close is the close (`resolved` immediately; worker silence does not block it or erase the close timestamp). Notify the filing worker (closer's name, plus the acknowledgement or the written reason and photos already on the timeline). After close, the filer may add exactly one final comment — objection, acceptance, or liability note — with name, time, company, and an optional photo. That comment does not change status or ownership, does not reopen the report, and does not start a thread. Both companies must be able to read both rows. If the worker never writes the comment, the close still stands.
+
+---
+
 ## Explicit non-goals (this lock)
 
 - Partner company admin as a **required** gate before Path B accept (notify optional later; not blocking).

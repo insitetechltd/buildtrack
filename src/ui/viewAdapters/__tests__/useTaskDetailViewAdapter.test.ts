@@ -2329,4 +2329,41 @@ describe("useTaskDetailViewAdapter", () => {
     expect(replyRow?.photoUrls).toEqual(["https://example.com/reply-photo.jpg"]);
     expect(replyRow?.progressLabel).toBe("—");
   });
+
+  it("resolveReportWithReply closes through the store then refreshes the task once", async () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const baseline = useTaskStore();
+    const resolveReportWithReply = jest.fn().mockResolvedValue(undefined);
+    const fetchTaskById = jest.fn().mockResolvedValue(undefined);
+    useTaskStore.mockReturnValue({
+      ...baseline,
+      resolveReportWithReply,
+      fetchTaskById,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    fetchTaskById.mockClear();
+
+    await act(async () => {
+      await result.current.actions.resolveReportWithReply({
+        description: "Fixed it",
+        photos: ["company-1/tasks/task-parent/a.jpg"],
+      });
+    });
+
+    expect(resolveReportWithReply).toHaveBeenCalledWith("task-parent", "user-1", {
+      description: "Fixed it",
+      photos: ["company-1/tasks/task-parent/a.jpg"],
+    });
+    expect(fetchTaskById).toHaveBeenCalledTimes(1);
+    expect(fetchTaskById).toHaveBeenCalledWith("task-parent");
+    expect(resolveReportWithReply.mock.invocationCallOrder[0]).toBeLessThan(
+      fetchTaskById.mock.invocationCallOrder[0],
+    );
+  });
 });

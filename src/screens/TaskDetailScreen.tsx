@@ -242,46 +242,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     });
   }, [navigation, props.subTaskId, props.taskId, user?.companyId, user?.id]);
 
-  const handleWorkerResolveWithComment = useCallback(() => {
-    const note = replyDraft.trim();
-    if (!note) {
-      Alert.alert(
-        "Comment required",
-        "Write a short note in the field, then open + and tap Resolve.",
-      );
-      return;
-    }
-    if (isReplySubmittingRef.current) {
-      return;
-    }
-    isReplySubmittingRef.current = true;
-    setIsReplySubmitting(true);
-    void actions
-      .resolveReport(note)
-      .then(() => {
-        setReplyDraft("");
-        setReplyPhotos([]);
-        isReplySubmittingRef.current = false;
-        setIsReplySubmitting(false);
-        props.onNavigateBack?.();
-      })
-      .catch(() => {
-        isReplySubmittingRef.current = false;
-        setIsReplySubmitting(false);
-        Alert.alert(
-          t.errors?.error || "Error",
-          t.createTask?.resolveReportConfirmBody ||
-            "Unable to resolve this report. Try again.",
-        );
-      });
-  }, [
-    actions,
-    props,
-    replyDraft,
-    t.createTask?.resolveReportConfirmBody,
-    t.errors?.error,
-  ]);
-
   const handleRemoveReplyPhoto = useCallback((index: number) => {
     setReplyPhotos((prev) => prev.filter((_, i) => i !== index));
   }, []);
@@ -326,6 +286,116 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     },
     [props.taskId, user?.companyId, user?.id],
   );
+
+  const closeReportWithReply = useCallback(
+    async (description: string, options?: { leaveAfter?: boolean }) => {
+      if (isReplySubmittingRef.current) {
+        return;
+      }
+      isReplySubmittingRef.current = true;
+      setIsReplySubmitting(true);
+      try {
+        let photoUrls: string[] = [];
+        if (replyPhotos.length > 0) {
+          photoUrls = await uploadReplyPhotos(replyPhotos);
+          if (!chosenPhotosAllUploaded(replyPhotos.length, photoUrls.length)) {
+            Alert.alert(
+              "Photos did not upload",
+              evidencePhotosFailedMessage(photoUrls.length, replyPhotos.length),
+            );
+            return;
+          }
+        }
+        await actions.resolveReportWithReply({
+          description,
+          photos: photoUrls,
+        });
+        setReplyDraft("");
+        setReplyPhotos([]);
+        if (options?.leaveAfter) {
+          props.onNavigateBack?.();
+        }
+      } catch {
+        // Comment may already exist. Keep the draft so the closer can retry.
+        Alert.alert(
+          t.errors?.error || "Error",
+          t.createTask?.resolveReportConfirmBody ||
+            "Unable to resolve this report. Try again.",
+        );
+      } finally {
+        isReplySubmittingRef.current = false;
+        setIsReplySubmitting(false);
+      }
+    },
+    [
+      actions,
+      props,
+      replyPhotos,
+      t.createTask?.resolveReportConfirmBody,
+      t.errors?.error,
+      uploadReplyPhotos,
+    ],
+  );
+
+  const handleWorkerResolveWithComment = useCallback(() => {
+    const note = replyDraft.trim();
+    if (!note) {
+      Alert.alert(
+        "Comment required",
+        "Write a short note in the field, then open + and tap Resolve.",
+      );
+      return;
+    }
+    void closeReportWithReply(note, { leaveAfter: true });
+  }, [closeReportWithReply, replyDraft]);
+
+  const handlePmResolve = useCallback(() => {
+    const description = replyDraft.trim();
+    if (!description) {
+      Alert.alert(
+        t.createTask?.resolveReportConfirmTitle || "Resolve without reply?",
+        t.createTask?.resolveReportConfirmBody ||
+          "Closes this report for triage. The report and full history stay in the project forever.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: t.createTask?.resolveReportConfirmAction || "Resolve without reply",
+            onPress: () => {
+              const parentNav = navigation.getParent?.() as
+                | { getState?: () => unknown }
+                | undefined;
+              navigateReportTriageAction(parentNav?.getState?.() as any, "resolve");
+            },
+          },
+        ],
+      );
+      return;
+    }
+    Alert.alert(
+      t.createTask?.resolveReportWithReplyConfirmTitle || "Resolve with reply?",
+      t.createTask?.resolveReportWithReplyConfirmBody ||
+        "Sends your reply, then closes this report. The report and full history stay in the project forever.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: t.createTask?.resolveReportWithReplyConfirmAction || "Resolve with reply",
+          onPress: () => {
+            void closeReportWithReply(description);
+          },
+        },
+      ],
+    );
+  }, [
+    closeReportWithReply,
+    navigation,
+    replyDraft,
+    t.createTask?.resolveReportConfirmAction,
+    t.createTask?.resolveReportConfirmBody,
+    t.createTask?.resolveReportConfirmTitle,
+    t.createTask?.resolveReportWithReplyConfirmAction,
+    t.createTask?.resolveReportWithReplyConfirmBody,
+    t.createTask?.resolveReportWithReplyConfirmTitle,
+  ]);
 
   const handleSubmitReply = useCallback(async () => {
     const description = replyDraft.trim();
@@ -900,6 +970,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           onResolveWithComment={
             showWorkerReportFab ? handleWorkerResolveWithComment : undefined
           }
+          onPmResolve={isPmReportTriage ? handlePmResolve : undefined}
           onChoose={(action) => {
             const parentNav = navigation.getParent?.() as
               | { getState?: () => unknown }

@@ -16,6 +16,7 @@ import { getSessionScopedSupabase, waitForSessionScopedSupabase } from "../api/s
 import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType, TaskCategory } from "../types/buildtrack";
 import { isArchivableLifecycleStatus } from "../utils/taskLifecycleStatus";
+import { fillTemplate, getTranslations } from "../utils/useTranslation";
 import { isManagerOrAdmin, type User } from "../types/buildtrack";
 import {
   assertValidTaskCreateInput,
@@ -361,6 +362,15 @@ interface TaskStore {
   ) => Promise<void>;
   /** Close report without promotion; keeps row for audit (status resolved). */
   resolveReport: (taskId: string, userId: string, note?: string) => Promise<void>;
+  /**
+   * Reply then close. Writes assigner_comment first, then resolveReport("Resolved with reply").
+   * Does not change assignees. Empty description must not call this.
+   */
+  resolveReportWithReply: (
+    taskId: string,
+    userId: string,
+    payload: { description: string; photos?: string[] },
+  ) => Promise<void>;
   /** @deprecated Prefer resolveReport */
   dismissIssue: (taskId: string, userId: string, reason?: string) => Promise<void>;
   
@@ -2950,6 +2960,12 @@ export const useTaskStore = create<TaskStore>()(
           })();
 
           const resolveNote = note?.trim() || 'Resolved without reply';
+          const description =
+            resolveNote === 'Resolved without reply'
+              ? fillTemplate(getTranslations().createTask.acknowledgedAndClosedBy, {
+                  name: resolvingUser,
+                })
+              : `Issue resolved by ${resolvingUser}: ${resolveNote}`;
           const resolvedAt = new Date().toISOString();
 
           const stripResult = await updateTaskStrippingEvolvedColumns(
@@ -2973,7 +2989,7 @@ export const useTaskStore = create<TaskStore>()(
               toStatus: 'resolved',
               reason: resolveNote,
             },
-            description: `Issue resolved by ${resolvingUser}: ${resolveNote}`,
+            description,
             completion_percentage: 0,
             status: 'resolved',
           });
@@ -2992,6 +3008,21 @@ export const useTaskStore = create<TaskStore>()(
           set({ error: error.message, isLoading: false });
           throw error;
         }
+      },
+
+      resolveReportWithReply: async (taskId, userId, payload) => {
+        const description = payload.description.trim();
+        if (!description) {
+          throw new Error('Reply text is required');
+        }
+        // Comment first. addAssignerComment does not change tasks.status.
+        // A later resolve failure leaves that comment; retry may add another.
+        await get().addAssignerComment(taskId, {
+          description,
+          photos: payload.photos || [],
+          userId,
+        });
+        await get().resolveReport(taskId, userId, 'Resolved with reply');
       },
 
       // Legacy alias — prefer resolveReport (does not delete the row)

@@ -146,6 +146,7 @@ export function navigateReportTriageAction(
         useTaskStore: {
           getState: () => {
             resolveReport: (taskId: string, userId: string, note?: string) => Promise<void>;
+            fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<unknown>;
           };
         };
       };
@@ -156,7 +157,13 @@ export function navigateReportTriageAction(
       if (!userId) {
         return;
       }
-      void useTaskStore.getState().resolveReport(shortcut.taskId, userId, "Resolved without reply");
+      const taskStore = useTaskStore.getState();
+      // resolveReport merges status only. Force a detail refetch so issue_resolved
+      // lands on the open timeline; an unforced fetch would keep the fresh cache.
+      return taskStore
+        .resolveReport(shortcut.taskId, userId, "Resolved without reply")
+        .then(() => useTaskStore.getState().fetchTaskById(shortcut.taskId, true))
+        .catch(() => undefined);
     } catch {
       // ignore — store unavailable in tests without mock
     }

@@ -23,6 +23,11 @@ export type ReportSpeedDialVariant = "pm_triage" | "worker_report";
 type ReportTriageSpeedDialProps = {
   onChoose: (action: ReportTriageDialAction) => void;
   /**
+   * PM Resolve. Task Detail reads the dock draft and chooses with-reply vs without-reply.
+   * When set, the dial does not show the without-reply alert itself.
+   */
+  onPmResolve?: () => void;
+  /**
    * Worker report dial: Resolve with the dock comment (required).
    * Opens when worker taps leading +.
    */
@@ -42,6 +47,7 @@ type ReportTriageSpeedDialProps = {
  */
 export function ReportTriageSpeedDial({
   onChoose,
+  onPmResolve,
   onResolveWithComment,
   variant = "pm_triage",
   dockHeight = 56,
@@ -61,6 +67,10 @@ export function ReportTriageSpeedDial({
 
   const handleResolve = useCallback(() => {
     collapse();
+    if (onPmResolve) {
+      onPmResolve();
+      return;
+    }
     Alert.alert(
       t.createTask?.resolveReportConfirmTitle || "Resolve without reply?",
       t.createTask?.resolveReportConfirmBody ||
@@ -73,7 +83,7 @@ export function ReportTriageSpeedDial({
         },
       ],
     );
-  }, [collapse, onChoose, t.createTask]);
+  }, [collapse, onChoose, onPmResolve, t.createTask]);
 
   const handleWorkerResolve = useCallback(() => {
     collapse();

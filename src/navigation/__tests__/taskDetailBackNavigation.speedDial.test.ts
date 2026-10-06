@@ -1,12 +1,15 @@
 import { Alert } from "react-native";
 import {
   handleCameraTabPress,
+  navigateReportTriageAction,
   navigateTasksCreateWithIntent,
 } from "../taskDetailBackNavigation";
 import {
   getTasksCreateDialExpanded,
   setTasksCreateDialExpanded,
 } from "../tasksCreateSpeedDialStore";
+import { useAuthStore } from "../../state/authStore";
+import { useTaskStore } from "../../state/taskStore.supabase";
 
 jest.mock("../captureFirstCameraFlow", () => ({
   promptCaptureFirstSource: jest.fn(),
@@ -73,5 +76,66 @@ describe("handleCameraTabPress tasks speed-dial", () => {
         }),
       }),
     );
+  });
+});
+
+const reportedDetailTabState = {
+  index: 2,
+  routes: [
+    { name: "Activity" },
+    { name: "Camera" },
+    {
+      name: "Tasks",
+      state: {
+        index: 1,
+        routes: [
+          { name: "TasksList" },
+          { name: "TaskDetail", params: { taskId: "task-9" } },
+        ],
+      },
+    },
+  ],
+};
+
+describe("navigateReportTriageAction empty resolve", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function mockOpenReport(resolveReport: jest.Mock, fetchTaskById: jest.Mock) {
+    jest.spyOn(useTaskStore, "getState").mockReturnValue({
+      tasks: [{ id: "task-9", status: "reported" }],
+      resolveReport,
+      fetchTaskById,
+    } as ReturnType<typeof useTaskStore.getState>);
+    jest.spyOn(useAuthStore, "getState").mockReturnValue({
+      user: { id: "manager-1", role: "manager" },
+    } as ReturnType<typeof useAuthStore.getState>);
+  }
+
+  it("refreshes task detail after an empty resolve succeeds", async () => {
+    const resolveReport = jest.fn().mockResolvedValue(undefined);
+    const fetchTaskById = jest.fn().mockResolvedValue(null);
+    mockOpenReport(resolveReport, fetchTaskById);
+
+    await navigateReportTriageAction(reportedDetailTabState, "resolve");
+
+    expect(resolveReport).toHaveBeenCalledWith("task-9", "manager-1", "Resolved without reply");
+    expect(fetchTaskById).toHaveBeenCalledTimes(1);
+    expect(fetchTaskById).toHaveBeenCalledWith("task-9", true);
+    expect(resolveReport.mock.invocationCallOrder[0]).toBeLessThan(
+      fetchTaskById.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("does not refresh task detail when empty resolve fails", async () => {
+    const resolveReport = jest.fn().mockRejectedValue(new Error("resolve failed"));
+    const fetchTaskById = jest.fn().mockResolvedValue(null);
+    mockOpenReport(resolveReport, fetchTaskById);
+
+    await navigateReportTriageAction(reportedDetailTabState, "resolve");
+
+    expect(resolveReport).toHaveBeenCalledWith("task-9", "manager-1", "Resolved without reply");
+    expect(fetchTaskById).not.toHaveBeenCalled();
   });
 });

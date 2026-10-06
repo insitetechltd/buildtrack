@@ -4,7 +4,10 @@ import { fireEvent, render, waitFor, act } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../TaskDetailScreen";
 import { uploadFileWithVerification } from "../../api/fileUploadService";
+import { navigateReportTriageAction } from "../../navigation/taskDetailBackNavigation";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
+
+const mockReportDialExpanded = { current: false };
 
 jest.mock("../../ui/viewAdapters/useTaskDetailViewAdapter", () => ({
   useTaskDetailViewAdapter: jest.fn(),
@@ -58,8 +61,10 @@ jest.mock("@react-navigation/native", () => ({
 }));
 
 jest.mock("../../navigation/reportTriageSpeedDialStore", () => ({
-  useReportTriageDialExpanded: () => false,
-  setReportTriageDialExpanded: jest.fn(),
+  useReportTriageDialExpanded: () => mockReportDialExpanded.current,
+  setReportTriageDialExpanded: jest.fn((next: boolean) => {
+    mockReportDialExpanded.current = next;
+  }),
   toggleReportTriageDialExpanded: jest.fn(),
 }));
 
@@ -98,6 +103,17 @@ jest.mock("expo-status-bar", () => ({
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
+
+jest.mock("react-native/Libraries/Modal/Modal", () => {
+  const MockModal = ({
+    visible,
+    children,
+  }: {
+    visible?: boolean;
+    children?: React.ReactNode;
+  }) => (visible ? children : null);
+  return { __esModule: true, default: MockModal };
+});
 
 jest.mock("../../components/ProfileMenu", () => ({
   __esModule: true,
@@ -144,11 +160,13 @@ describe("TaskDetailScreen sticky layout", () => {
   let alertSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    mockReportDialExpanded.current = false;
     mockAddListener.mockReset();
     mockDispatch.mockReset();
     mockAddListener.mockImplementation(() => jest.fn());
     alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
     (uploadFileWithVerification as jest.Mock).mockReset();
+    (navigateReportTriageAction as jest.Mock).mockClear();
   });
 
   afterEach(() => {
@@ -253,6 +271,8 @@ describe("TaskDetailScreen sticky layout", () => {
     archiveTask: jest.fn(),
     cancelTask: jest.fn(),
     replyToReport: jest.fn().mockResolvedValue(undefined),
+    resolveReport: jest.fn().mockResolvedValue(undefined),
+    resolveReportWithReply: jest.fn().mockResolvedValue(undefined),
     submitDockProgress: jest.fn().mockResolvedValue(undefined),
     cancelDockReview: jest.fn().mockResolvedValue(undefined),
     fetchTask: jest.fn(),
@@ -499,6 +519,185 @@ describe("TaskDetailScreen sticky layout", () => {
         photos: [],
       });
     });
+  });
+
+  const reportDockOutput = (reportTriage?: Record<string, unknown>) =>
+    createAdapterOutput({
+      reportTriage,
+      detailDock: {
+        mode: "report_reply",
+        completionPercentage: 0,
+      },
+    });
+
+  it("PM empty draft still resolves without reply and does not upload photos", () => {
+    mockReportDialExpanded.current = true;
+    const actions = createAdapterActions();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: reportDockOutput({
+        defaultAssigneeId: "worker-1",
+        title: "Leak under sink",
+        availableUsers: [],
+      }),
+      actions,
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={jest.fn()}
+        inboundSelectedPhotos={[
+          { uri: "file://staged.jpg", fileName: "staged.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("report-triage-speed-dial__resolve"));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Resolve without reply?",
+      expect.any(String),
+      expect.any(Array),
+    );
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+    buttons.find((button) => button.text === "Resolve without reply")?.onPress?.();
+
+    expect(navigateReportTriageAction).toHaveBeenCalledWith(expect.anything(), "resolve");
+    expect(uploadFileWithVerification).not.toHaveBeenCalled();
+    expect(actions.resolveReportWithReply).not.toHaveBeenCalled();
+    expect(actions.resolveReport).not.toHaveBeenCalled();
+  });
+
+  it("PM non-empty draft uploads storage paths and does not take the without-reply path", async () => {
+    mockReportDialExpanded.current = true;
+    (uploadFileWithVerification as jest.Mock).mockImplementation(
+      async (options: { file: { name: string; uri: string } }) => ({
+        success: true,
+        file: { public_url: `company-1/tasks/task-1/${options.file.name}` },
+      }),
+    );
+    const actions = createAdapterActions();
+    const onNavigateBack = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: reportDockOutput({
+        defaultAssigneeId: "worker-1",
+        title: "Leak under sink",
+        availableUsers: [],
+      }),
+      actions,
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={onNavigateBack}
+        inboundSelectedPhotos={[
+          { uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false },
+          { uri: "file://b.jpg", fileName: "b.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByTestId("report-reply-composer__input"), "  Sealed the leak  ");
+    fireEvent.press(screen.getByTestId("report-triage-speed-dial__resolve"));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Resolve with reply?",
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(navigateReportTriageAction).not.toHaveBeenCalled();
+    expect(uploadFileWithVerification).not.toHaveBeenCalled();
+
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+    await act(async () => {
+      buttons.find((button) => button.text === "Resolve with reply")?.onPress?.();
+    });
+
+    await waitFor(() => {
+      expect(actions.resolveReportWithReply).toHaveBeenCalledWith({
+        description: "Sealed the leak",
+        photos: ["company-1/tasks/task-1/a.jpg", "company-1/tasks/task-1/b.jpg"],
+      });
+    });
+    expect(actions.resolveReport).not.toHaveBeenCalled();
+    expect(actions.replyToReport).not.toHaveBeenCalled();
+    expect(navigateReportTriageAction).not.toHaveBeenCalled();
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    const uploadedUris = (uploadFileWithVerification as jest.Mock).mock.calls.map(
+      (call) => call[0].file.uri,
+    );
+    expect(uploadedUris).toEqual(["file://a.jpg", "file://b.jpg"]);
+    expect(
+      (uploadFileWithVerification as jest.Mock).mock.invocationCallOrder[0],
+    ).toBeLessThan((actions.resolveReportWithReply as jest.Mock).mock.invocationCallOrder[0]);
+    const savedPhotos = (actions.resolveReportWithReply as jest.Mock).mock.calls[0][0]
+      .photos as string[];
+    expect(savedPhotos.every((path) => !path.startsWith("file://") && !path.startsWith("https://"))).toBe(
+      true,
+    );
+  });
+
+  it("worker resolve requires text before upload", () => {
+    mockReportDialExpanded.current = true;
+    const actions = createAdapterActions();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: reportDockOutput(undefined),
+      actions,
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />,
+    );
+
+    fireEvent.press(screen.getByTestId("report-triage-speed-dial__resolve"));
+    expect(alertSpy).toHaveBeenCalledWith("Comment required", expect.any(String));
+    expect(actions.resolveReportWithReply).not.toHaveBeenCalled();
+    expect(actions.resolveReport).not.toHaveBeenCalled();
+    expect(uploadFileWithVerification).not.toHaveBeenCalled();
+  });
+
+  it("worker resolve uploads photos then calls resolveReportWithReply", async () => {
+    mockReportDialExpanded.current = true;
+    (uploadFileWithVerification as jest.Mock).mockResolvedValue({
+      success: true,
+      file: { public_url: "company-1/tasks/task-1/note.jpg" },
+    });
+    const actions = createAdapterActions();
+    const onNavigateBack = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: reportDockOutput(undefined),
+      actions,
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        onNavigateBack={onNavigateBack}
+        inboundSelectedPhotos={[
+          { uri: "file://note.jpg", fileName: "note.jpg", isAnnotated: false },
+        ]}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByTestId("report-reply-composer__input"), "Replaced the valve");
+    fireEvent.press(screen.getByTestId("report-triage-speed-dial__resolve"));
+
+    await waitFor(() => {
+      expect(actions.resolveReportWithReply).toHaveBeenCalledWith({
+        description: "Replaced the valve",
+        photos: ["company-1/tasks/task-1/note.jpg"],
+      });
+    });
+    expect(actions.resolveReport).not.toHaveBeenCalled();
+    expect(navigateReportTriageAction).not.toHaveBeenCalled();
+    expect(onNavigateBack).toHaveBeenCalled();
+    expect((uploadFileWithVerification as jest.Mock).mock.calls[0][0].file.uri).toBe(
+      "file://note.jpg",
+    );
+    expect(
+      (uploadFileWithVerification as jest.Mock).mock.invocationCallOrder[0],
+    ).toBeLessThan((actions.resolveReportWithReply as jest.Mock).mock.invocationCallOrder[0]);
   });
 
   it("opens CaptureSession add-photos flow from report reply camera button", () => {

@@ -423,7 +423,12 @@ export const en = {
     resolveReportConfirmBody:
       "Closes this report for triage. The report and full history stay in the project forever.",
     resolveReportConfirmAction: "Resolve without reply",
+    resolveReportWithReplyConfirmTitle: "Resolve with reply?",
+    resolveReportWithReplyConfirmBody:
+      "Sends your reply, then closes this report. The report and full history stay in the project forever.",
+    resolveReportWithReplyConfirmAction: "Resolve with reply",
     resolvedBy: "Issue resolved by {name}",
+    acknowledgedAndClosedBy: "Issue acknowledged and closed by {name}",
     reportedBy: "Issue reported by {name}",
     triagedBy: "Issue triaged by {name}",
     dismissedBy: "Issue dismissed by {name}",

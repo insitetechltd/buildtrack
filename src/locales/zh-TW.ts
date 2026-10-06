@@ -422,7 +422,12 @@ export const zhTW = {
     resolveReportConfirmTitle: "不回覆直接結案？",
     resolveReportConfirmBody: "會關閉此回報嘅待分派狀態。回報同完整紀錄會永久保留喺項目入面。",
     resolveReportConfirmAction: "不回覆結案",
+    resolveReportWithReplyConfirmTitle: "回覆並結案？",
+    resolveReportWithReplyConfirmBody:
+      "會送出你嘅回覆，然後關閉此回報嘅待分派狀態。回報同完整紀錄會永久保留喺項目入面。",
+    resolveReportWithReplyConfirmAction: "回覆並結案",
     resolvedBy: "{name} 結案了問題",
+    acknowledgedAndClosedBy: "{name} 已確認並結案問題",
     reportedBy: "{name} 回報了問題",
     triagedBy: "{name} 分派了問題",
     dismissedBy: "{name} 駁回了問題",

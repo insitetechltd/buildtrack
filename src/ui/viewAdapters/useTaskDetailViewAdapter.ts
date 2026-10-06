@@ -486,6 +486,7 @@ export function useTaskDetailViewAdapter({
       completionPercentage: number;
     }) => Promise<void>;
     cancelDockReview: () => Promise<void>;
+    resolveReportWithReply: (payload: { description: string; photos?: string[] }) => Promise<void>;
     resolveReport: (note?: string) => Promise<void>;
     /** @deprecated Prefer resolveReport */
     dismissIssue: (reason?: string) => Promise<void>;
@@ -781,6 +782,7 @@ export function useTaskDetailViewAdapter({
         replyToReport: async () => {},
         submitDockProgress: async () => {},
         cancelDockReview: async () => {},
+        resolveReportWithReply: async () => {},
         resolveReport: async () => {},
         dismissIssue: async () => {},
         fetchTask,
@@ -1638,6 +1640,13 @@ export function useTaskDetailViewAdapter({
         } else {
           await cancelTaskReviewSubmission(task.id);
         }
+        await fetchTask();
+      },
+      resolveReportWithReply: async (payload: { description: string; photos?: string[] }) => {
+        await taskStore.resolveReportWithReply(task.id, user.id, {
+          description: payload.description,
+          photos: payload.photos,
+        });
         await fetchTask();
       },
       resolveReport: async (note?: string) => {

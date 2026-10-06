@@ -857,4 +857,170 @@ describe('taskStore.supabase workflow tests', () => {
     expect(result.current.tasks[0].assignedBy).toBe(managerId);
     expect(result.current.tasks[0].originalAssignedBy).toBe(workerId);
   });
+
+  const installResolveReportSupabase = () => {
+    const updateEq = jest.fn().mockResolvedValue({ error: null });
+    const updateMock = jest.fn().mockReturnValue({ eq: updateEq });
+    const activityInsert = jest.fn().mockResolvedValue({ error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { name: 'Sam PM' },
+              error: null,
+            }),
+          })),
+        };
+      }
+      if (table === 'tasks') {
+        return { update: updateMock };
+      }
+      if (table === 'task_activities') {
+        return { insert: activityInsert };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    return { updateMock, activityInsert };
+  };
+
+  it('resolveReport("Resolved without reply") closes with issue_resolved only', async () => {
+    const { updateMock, activityInsert } = installResolveReportSupabase();
+    useTaskStore.setState({
+      tasks: [
+        createTaskState({
+          status: 'reported',
+          assignedBy: workerId,
+          assignedTo: [workerId],
+          primaryAssigneeId: workerId,
+        }),
+      ],
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.resolveReport('task-123', managerId, 'Resolved without reply');
+    });
+
+    expect(activityInsert).toHaveBeenCalledTimes(1);
+    expect(activityInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activity_type: 'issue_resolved',
+        user_id: managerId,
+        data: expect.objectContaining({
+          reason: 'Resolved without reply',
+          toStatus: 'resolved',
+          fromStatus: 'reported',
+        }),
+      }),
+    );
+    expect(activityInsert.mock.calls[0]?.[0].description).toBe(
+      'Issue acknowledged and closed by Sam PM',
+    );
+    expect(activityInsert.mock.calls[0]?.[0].data).not.toHaveProperty('photos');
+    expect(activityInsert.mock.calls[0]?.[0].activity_type).not.toBe('assigner_comment');
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'resolved' }),
+    );
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_by');
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_to');
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('primary_assignee_id');
+    expect(result.current.tasks[0]).toEqual(
+      expect.objectContaining({
+        status: 'resolved',
+        assignedBy: workerId,
+        assignedTo: [workerId],
+        primaryAssigneeId: workerId,
+      }),
+    );
+  });
+
+  it('resolveReportWithReply writes assigner_comment then issue_resolved without changing assignees', async () => {
+    const { updateMock, activityInsert } = installResolveReportSupabase();
+    const fetchTaskById = jest.fn().mockResolvedValue(null);
+    useTaskStore.setState({
+      tasks: [
+        createTaskState({
+          status: 'reported',
+          assignedBy: workerId,
+          assignedTo: [workerId],
+          primaryAssigneeId: workerId,
+        }),
+      ],
+      fetchTaskById: fetchTaskById as any,
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await expect(
+        result.current.resolveReportWithReply('task-123', managerId, {
+          description: '   ',
+          photos: ['company-1/tasks/task-123/ignored.jpg'],
+        }),
+      ).rejects.toThrow(/required/i);
+    });
+    expect(activityInsert).not.toHaveBeenCalled();
+    expect(updateMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.resolveReportWithReply('task-123', managerId, {
+        description: '  Leak is sealed  ',
+        photos: ['company-1/tasks/task-123/seal.jpg'],
+      });
+    });
+
+    expect(activityInsert).toHaveBeenCalledTimes(2);
+    const comment = activityInsert.mock.calls[0]?.[0];
+    const resolved = activityInsert.mock.calls[1]?.[0];
+    expect(comment).toEqual(
+      expect.objectContaining({
+        activity_type: 'assigner_comment',
+        user_id: managerId,
+        description: 'Leak is sealed',
+        data: expect.objectContaining({
+          description: 'Leak is sealed',
+          photos: ['company-1/tasks/task-123/seal.jpg'],
+        }),
+      }),
+    );
+    expect(comment).not.toHaveProperty('status');
+    expect(comment.data).not.toHaveProperty('status');
+    expect(resolved).toEqual(
+      expect.objectContaining({
+        activity_type: 'issue_resolved',
+        user_id: managerId,
+        data: expect.objectContaining({
+          reason: 'Resolved with reply',
+          toStatus: 'resolved',
+        }),
+      }),
+    );
+    expect(resolved.data).not.toHaveProperty('photos');
+    expect(resolved.description).toContain('Resolved with reply');
+    expect(activityInsert.mock.invocationCallOrder[0]).toBeLessThan(
+      updateMock.mock.invocationCallOrder[0],
+    );
+    expect(updateMock.mock.invocationCallOrder[0]).toBeLessThan(
+      activityInsert.mock.invocationCallOrder[1],
+    );
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'resolved' }),
+    );
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_by');
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_to');
+    expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('primary_assignee_id');
+    expect(result.current.tasks[0]).toEqual(
+      expect.objectContaining({
+        status: 'resolved',
+        assignedBy: workerId,
+        assignedTo: [workerId],
+        primaryAssigneeId: workerId,
+      }),
+    );
+  });
 });

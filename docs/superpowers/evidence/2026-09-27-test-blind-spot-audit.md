@@ -72,7 +72,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | UI-05 | Task-core live CRUD+photo | Mobile | manager | Live workflow break | DATA-LOSS | `test:e2e:maestro:task-core` | DEV-MAESTRO | WEAK‖ | No seed script; clearState false | UNKNOWN tip | PARTIAL |
 | UI-06 | QA01 rejection / overdue / isolation / viewport | Mobile | sandbox | Rubric miss | UX | `test:e2e:maestro:qa01` | DEV-MAESTRO | WEAK | Isolation = Sprint 7 **sandbox**, not live RLS | UNKNOWN tip | PARTIAL |
 | UI-07 | Org CA shell / create project / invite validation | Mobile | Carol CA | Org admin break | AUTH | `test:e2e:maestro:org-ca` | DEV-MAESTRO | WEAK‖ | Needs seed:dev-qa; A-D01 still OPEN debt | Stage D 2026-09-22 | PARTIAL |
-| UI-08 | Report resolve (+/− reply) | Mobile | field+CA | Missing audit | DATA-LOSS | `test:e2e:maestro:report` + DB readback | DEV-MAESTRO | STRONG¶ | logout teardown; M-REPORT-01 with-reply still OPEN | 2026-09-23 | PARTIAL |
+| UI-08 | Report resolve (+/− reply) | Mobile | field+CA | Missing audit | DATA-LOSS | `test:e2e:maestro:report` + DB readback | DEV-MAESTRO | STRONG¶ | logout teardown; product landed `c264ba2` (typed note required). R01 readback of stored note prepared; no DEV journey pass yet | 2026-10-06 | PARTIAL |
 | UI-09 | Photo-flow unit (picker/Accept) | Mobile | — | Blank tiles / hang | UX | `test:photo-flow` | J-MOCK | WEAK | Large Jest surface; not device taps | tip | PARTIAL |
 | UI-10 | Focus / keyboard / submit Gate C | Mobile | field | Dead fields | UX | `maestro/flows/smoke/gate-c-login-create-task.yaml` | DEV-MAESTRO | STRONG | s6-s10-prove/gate-c PNGs | 2026-09-27 | PROVEN |
 | UI-11 | Offline / kill mid-upload | Mobile | field | Lost draft | DATA-LOSS | drafts in OPS-02 Jest (partial) | J-MOCK | WEAK | No Maestro poor-network | — | UNPROVEN |
@@ -80,7 +80,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | HY-01 | Maestro path hygiene (scripts/package.json/runFlow) + registry completeness | Hygiene | ops | Suite calls missing YAML / unregistered suites | UX | `test:taxonomy` path-resolve + `--write` registry | J-MOCK | STRONG | registry picks recompute/subscriptionMetersMerge/ascReviewDemoGuard (2026-09-28) | 2026-09-28 @ tip | PROVEN |
 
 ‖ Maestro faith still requires Gate 0–8 + PNG read; `rc=0` alone is WEAK.  
-¶ Report without-reply has DB oracle; resolve-**with**-reply (E3c) OPEN.
+¶ Product landed `c264ba2` (every close needs a typed note). Leave PARTIAL until a DEV `test:e2e:maestro:report` pass stores `R01 close note`.
 
 ### B4. Zustand / business rules
 
@@ -151,7 +151,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | Capability | Gap | Plane | Smallest |
 |---|---|---|---|
 | UI-07 / A-D01 | CA Dashboard-only OPEN debt; org-ca ≠ product intent | HUMAN / product | Decide ship intent; then Maestro or accept Human |
-| UI-08 E3c | Report resolve-**with**-reply audit | DEV-MAESTRO | Extend report journey + DB oracle |
+| UI-08 E3c | Report resolve-with-note audit | DEV-MAESTRO | Product `c264ba2`. Run `test:e2e:maestro:report` (R01 note readback) |
 | UI-04 X02/X05 | Accept + creator-approve gaps on checklist | DEV-MAESTRO | Extend dual-user |
 | DB-11 | Observability not wired in store tests | J-MOCK | Assert `recordDeferredFallbackFire` in deferred strip tests |
 | Live suite pollution | Most Maestro suites lack row teardown | DEV-MAESTRO | Document accepted pollution OR add cleanup |
@@ -240,7 +240,7 @@ Do **not** start S1–S9 until S0 is green on the SHA you intend to trust.
 | U5 | Whether CI nightly `test:all` actually enforces coverageThreshold on this host/config: not executed here |
 | U6 | Owner Edge PROD smokes: DEV scripts exist; PROD owner allowlist prove UNKNOWN |
 | U7 | `invite-open` relies on Supabase Auth verify for `token_hash` — lifecycle coverage UNKNOWN beyond parser |
-| U8 | Report E3c (resolve-with-reply) still OPEN per ROADMAP/NOW — not re-proven |
+| U8 | Report product landed `c264ba2`; UI-08 Maestro note readback not yet run on DEV |
 
 ---
 

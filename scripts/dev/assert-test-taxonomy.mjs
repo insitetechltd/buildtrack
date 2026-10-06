@@ -313,6 +313,37 @@ function assertReferencedMaestroFlows() {
   return { checked: refs.length, missing };
 }
 
+/**
+ * Hygiene: node/tsx/python3/bash file targets under scripts/ in package.json
+ * must exist. Maestro YAML refs stay in assertReferencedMaestroFlows.
+ */
+function assertPackageJsonScriptFileTargets() {
+  const pkgPath = path.join(ROOT, "package.json");
+  /** @type {string[]} */
+  const missing = [];
+  let checked = 0;
+  if (!fs.existsSync(pkgPath)) {
+    return { checked, missing };
+  }
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  const re =
+    /\b(?:node|tsx|python3|bash)\s+(?!-lc\b)(["']?)(\.?\/?(?:scripts\/)[^"'\\\s]+)\1/g;
+  for (const [name, cmd] of Object.entries(pkg.scripts || {})) {
+    if (typeof cmd !== "string") continue;
+    let m;
+    const local = new RegExp(re.source, re.flags);
+    while ((m = local.exec(cmd))) {
+      const rel = m[2].replace(/^\.\//, "");
+      checked += 1;
+      const abs = path.join(ROOT, rel);
+      if (!fs.existsSync(abs)) {
+        missing.push(`${rel}  (from package.json scripts["${name}"])`);
+      }
+    }
+  }
+  return { checked, missing };
+}
+
 function main() {
   const reg = buildRegistry();
   const yaml = toYaml(reg);
@@ -354,6 +385,13 @@ function main() {
     );
   }
 
+  const scriptRefs = assertPackageJsonScriptFileTargets();
+  if (scriptRefs.missing.length) {
+    errors.push(
+      `package.json script file path(s) missing on disk (${scriptRefs.missing.length}/${scriptRefs.checked} refs):\n  - ${scriptRefs.missing.join("\n  - ")}`,
+    );
+  }
+
   // Enforce naming for tests/edge and tests/dual-plane only (greenfield homes)
   for (const f of reg.entries.filter((e) => e.kind === "jest")) {
     if (
@@ -387,6 +425,9 @@ function main() {
   console.log("test:taxonomy OK");
   console.log(
     `(maestro flow path refs checked=${flowRefs.checked} missing=0)`,
+  );
+  console.log(
+    `(package.json script file refs checked=${scriptRefs.checked} missing=0)`,
   );
   if (!WRITE) {
     console.log(

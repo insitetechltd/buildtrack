@@ -141,32 +141,8 @@ export function navigateReportTriageAction(
   }
 
   if (action === "resolve") {
-    try {
-      const { useTaskStore } = require("../state/taskStore.supabase") as {
-        useTaskStore: {
-          getState: () => {
-            resolveReport: (taskId: string, userId: string, note?: string) => Promise<void>;
-            fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<unknown>;
-          };
-        };
-      };
-      const { useAuthStore } = require("../state/authStore") as {
-        useAuthStore: { getState: () => { user?: { id?: string } | null } };
-      };
-      const userId = useAuthStore.getState().user?.id;
-      if (!userId) {
-        return;
-      }
-      const taskStore = useTaskStore.getState();
-      // resolveReport merges status only. Force a detail refetch so issue_resolved
-      // lands on the open timeline; an unforced fetch would keep the fresh cache.
-      return taskStore
-        .resolveReport(shortcut.taskId, userId, "Resolved without reply")
-        .then(() => useTaskStore.getState().fetchTaskById(shortcut.taskId, true))
-        .catch(() => undefined);
-    } catch {
-      // ignore — store unavailable in tests without mock
-    }
+    // M-REPORT-01: a close requires a typed dock note. PM UI uses onPmResolve.
+    // Do not call resolveReport(..., "Resolved without reply") from this path.
     return;
   }
 

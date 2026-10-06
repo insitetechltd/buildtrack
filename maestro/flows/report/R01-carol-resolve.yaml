@@ -1,6 +1,7 @@
 # Carol (admin) opens Alice's report by exact title/ID and resolves with a typed note.
 # Env: DU_TASK_TITLE, DU_TASK_ID
 # Hard PM discriminator: report-triage-speed-dial__create-task must be visible.
+# Empty dock must show "Comment required" and leave the report reported.
 appId: com.buildtrack.app.local
 tags:
   - stage-e
@@ -19,6 +20,28 @@ tags:
     visible:
       id: "report-reply-composer"
     timeout: 15000
+- tapOn:
+    id: "report-reply-composer__triage_action"
+- waitForAnimationToEnd:
+    timeout: 800
+- extendedWaitUntil:
+    visible:
+      id: "report-triage-speed-dial"
+    timeout: 10000
+- assertVisible:
+    id: "report-triage-speed-dial__create-task"
+- tapOn:
+    id: "report-triage-speed-dial__resolve"
+- extendedWaitUntil:
+    visible: "Comment required"
+    timeout: 10000
+- takeScreenshot: "R01-carol-empty-resolve"
+- tapOn: "OK"
+- waitForAnimationToEnd:
+    timeout: 800
+- assertVisible: ".*Reported.*"
+- assertNotVisible:
+    id: "report-reply-composer__archive"
 - tapOn:
     id: "report-reply-composer__input"
 - inputText: "R01 close note"

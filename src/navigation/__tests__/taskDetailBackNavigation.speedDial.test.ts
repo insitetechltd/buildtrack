@@ -97,7 +97,7 @@ const reportedDetailTabState = {
   ],
 };
 
-describe("navigateReportTriageAction empty resolve", () => {
+describe("navigateReportTriageAction refuse empty resolve", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -113,29 +113,14 @@ describe("navigateReportTriageAction empty resolve", () => {
     } as ReturnType<typeof useAuthStore.getState>);
   }
 
-  it("refreshes task detail after an empty resolve succeeds", async () => {
+  it("does not close a report without a typed note", async () => {
     const resolveReport = jest.fn().mockResolvedValue(undefined);
     const fetchTaskById = jest.fn().mockResolvedValue(null);
     mockOpenReport(resolveReport, fetchTaskById);
 
     await navigateReportTriageAction(reportedDetailTabState, "resolve");
 
-    expect(resolveReport).toHaveBeenCalledWith("task-9", "manager-1", "Resolved without reply");
-    expect(fetchTaskById).toHaveBeenCalledTimes(1);
-    expect(fetchTaskById).toHaveBeenCalledWith("task-9", true);
-    expect(resolveReport.mock.invocationCallOrder[0]).toBeLessThan(
-      fetchTaskById.mock.invocationCallOrder[0],
-    );
-  });
-
-  it("does not refresh task detail when empty resolve fails", async () => {
-    const resolveReport = jest.fn().mockRejectedValue(new Error("resolve failed"));
-    const fetchTaskById = jest.fn().mockResolvedValue(null);
-    mockOpenReport(resolveReport, fetchTaskById);
-
-    await navigateReportTriageAction(reportedDetailTabState, "resolve");
-
-    expect(resolveReport).toHaveBeenCalledWith("task-9", "manager-1", "Resolved without reply");
+    expect(resolveReport).not.toHaveBeenCalled();
     expect(fetchTaskById).not.toHaveBeenCalled();
   });
 });

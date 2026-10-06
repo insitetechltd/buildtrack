@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Stage E Report journey: Alice create Report → DB reported → Carol resolve → DB resolved.
+# Stage E Report journey: Alice create Report → DB reported → Carol resolve
+# with typed note ("R01 close note") → DB resolved + assigner_comment audit.
 # Sims: Carol triage = 17 Pro Max; Alice reporter = iPhone 16 (same pair as dual-user).
+# A close requires a note. There is no empty "Resolve without reply" manager path.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -127,6 +129,7 @@ collect_pngs() {
     R01-chooser-report
     R01-alice-form
     R01-alice-reported
+    R01-carol-empty-resolve
     R01-carol-resolve-confirm
     R01-carol-resolved-detail
   )
@@ -139,8 +142,8 @@ collect_pngs() {
       found=$((found + 1))
     fi
   done
-  log "PNG collected ${found}/5 → ${EVIDENCE_DIR}/headed"
-  [[ "${found}" -ge 5 ]] || die "PNG inventory incomplete (${found}/5)"
+  log "PNG collected ${found}/6 → ${EVIDENCE_DIR}/headed"
+  [[ "${found}" -ge 6 ]] || die "PNG inventory incomplete (${found}/6)"
 }
 
 run_flow "alice-create" "${UDID_ALICE}" "R01-alice-create-report.yaml"
@@ -153,14 +156,22 @@ source "${DU_TASK_ENV}"
 export DU_TASK_ID REPORT_TASK_ID="${DU_TASK_ID}"
 bash "${RESOURCE_LOCK}" claim "task:${DU_TASK_ID}" "title-prefix:${TITLE}" --purpose "stage-e-report" || true
 
-log "DB readback EXPECT reported"
-EXPECT_STATUS=reported EXPECT_ACTIVITY=issue_reported REPORT_TASK_ID="${DU_TASK_ID}" \
+log "DB readback EXPECT reported + assignment snapshot"
+SNAPSHOT_PATH="${ROOT}/.cache/maestro-report-assignment-${DU_TASK_ID}.json"
+WRITE_ASSIGNMENT_SNAPSHOT=1 ASSIGNMENT_SNAPSHOT_PATH="${SNAPSHOT_PATH}" \
+  EXPECT_STATUS=reported EXPECT_ACTIVITY=issue_reported REPORT_TASK_ID="${DU_TASK_ID}" \
   node "${READBACK}" || die "readback reported"
 
 run_flow "carol-resolve" "${UDID_CAROL}" "R01-carol-resolve.yaml"
 
-log "DB readback EXPECT resolved by Carol"
-EXPECT_STATUS=resolved EXPECT_ACTIVITY=issue_resolved EXPECT_ACTOR_EMAIL=carol.admina@test.com \
+log "DB readback EXPECT resolved by Carol with stored note"
+EXPECT_STATUS=resolved EXPECT_ACTIVITY=issue_resolved \
+  EXPECT_ACTOR_EMAIL=carol.admina@test.com \
+  EXPECT_ACTIVITY_REASON="Resolved with reply" \
+  EXPECT_ASSIGNER_COMMENT_TEXT="R01 close note" \
+  EXPECT_ASSIGNER_COMMENT_COUNT=1 \
+  EXPECT_ASSIGNMENT_UNCHANGED=1 \
+  ASSIGNMENT_SNAPSHOT_PATH="${SNAPSHOT_PATH}" \
   REPORT_TASK_ID="${DU_TASK_ID}" node "${READBACK}" || die "readback resolved"
 
 collect_pngs
@@ -183,11 +194,12 @@ manifest = {
     "R01-chooser-report",
     "R01-alice-form",
     "R01-alice-reported",
+    "R01-carol-empty-resolve",
     "R01-carol-resolve-confirm",
     "R01-carol-resolved-detail",
   ],
   "artifacts": "${ARTIFACT_DIR}",
-  "notes": "Alice worker Report → Carol admin Resolve; E3b promote OPEN",
+  "notes": "Alice worker Report → Carol admin Resolve with note (R01 close note); empty dock Comment required; UI-08 PARTIAL until DEV run",
 }
 Path("${MANIFEST}").write_text(json.dumps(manifest, indent=2) + "\\n")
 print("WROTE", "${MANIFEST}")

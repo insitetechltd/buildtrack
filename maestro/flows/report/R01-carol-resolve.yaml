@@ -1,4 +1,4 @@
-# Carol (admin) opens Alice's report by exact title/ID and Resolve without reply.
+# Carol (admin) opens Alice's report by exact title/ID and resolves with a typed note.
 # Env: DU_TASK_TITLE, DU_TASK_ID
 # Hard PM discriminator: report-triage-speed-dial__create-task must be visible.
 appId: com.buildtrack.app.local
@@ -20,6 +20,10 @@ tags:
       id: "report-reply-composer"
     timeout: 15000
 - tapOn:
+    id: "report-reply-composer__input"
+- inputText: "R01 close note"
+- hideKeyboard
+- tapOn:
     id: "report-reply-composer__triage_action"
 - waitForAnimationToEnd:
     timeout: 800
@@ -33,10 +37,10 @@ tags:
 - tapOn:
     id: "report-triage-speed-dial__resolve"
 - extendedWaitUntil:
-    visible: "Resolve without reply?"
+    visible: "Resolve with reply?"
     timeout: 10000
 - takeScreenshot: "R01-carol-resolve-confirm"
-- tapOn: "Resolve without reply"
+- tapOn: "Resolve with reply"
 - waitForAnimationToEnd:
     timeout: 2500
 # Status chip text ("Resolved · …") is painted but not in the a11y tree

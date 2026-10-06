@@ -530,7 +530,7 @@ describe("TaskDetailScreen sticky layout", () => {
       },
     });
 
-  it("PM empty draft still resolves without reply and does not upload photos", () => {
+  it("PM empty draft requires a note and keeps staged photos unsent", () => {
     mockReportDialExpanded.current = true;
     const actions = createAdapterActions();
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -554,18 +554,12 @@ describe("TaskDetailScreen sticky layout", () => {
 
     fireEvent.press(screen.getByTestId("report-triage-speed-dial__resolve"));
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      "Resolve without reply?",
-      expect.any(String),
-      expect.any(Array),
-    );
-    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
-    buttons.find((button) => button.text === "Resolve without reply")?.onPress?.();
-
-    expect(navigateReportTriageAction).toHaveBeenCalledWith(expect.anything(), "resolve");
+    expect(alertSpy).toHaveBeenCalledWith("Comment required", expect.any(String));
+    expect(navigateReportTriageAction).not.toHaveBeenCalled();
     expect(uploadFileWithVerification).not.toHaveBeenCalled();
     expect(actions.resolveReportWithReply).not.toHaveBeenCalled();
     expect(actions.resolveReport).not.toHaveBeenCalled();
+    expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
   });
 
   it("PM non-empty draft uploads storage paths and does not take the without-reply path", async () => {
@@ -687,6 +681,7 @@ describe("TaskDetailScreen sticky layout", () => {
       expect(actions.resolveReportWithReply).toHaveBeenCalledWith({
         description: "Replaced the valve",
         photos: ["company-1/tasks/task-1/note.jpg"],
+        closeLine: "acknowledgement",
       });
     });
     expect(actions.resolveReport).not.toHaveBeenCalled();

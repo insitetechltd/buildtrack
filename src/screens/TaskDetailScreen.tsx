@@ -288,7 +288,10 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   );
 
   const closeReportWithReply = useCallback(
-    async (description: string, options?: { leaveAfter?: boolean }) => {
+    async (
+      description: string,
+      options?: { leaveAfter?: boolean; closeLine?: "acknowledgement" | "reply" },
+    ) => {
       if (isReplySubmittingRef.current) {
         return;
       }
@@ -309,6 +312,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         await actions.resolveReportWithReply({
           description,
           photos: photoUrls,
+          ...(options?.closeLine ? { closeLine: options.closeLine } : {}),
         });
         setReplyDraft("");
         setReplyPhotos([]);
@@ -346,28 +350,15 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       );
       return;
     }
-    void closeReportWithReply(note, { leaveAfter: true });
+    void closeReportWithReply(note, { leaveAfter: true, closeLine: "acknowledgement" });
   }, [closeReportWithReply, replyDraft]);
 
   const handlePmResolve = useCallback(() => {
     const description = replyDraft.trim();
     if (!description) {
       Alert.alert(
-        t.createTask?.resolveReportConfirmTitle || "Resolve without reply?",
-        t.createTask?.resolveReportConfirmBody ||
-          "Closes this report for triage. The report and full history stay in the project forever.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: t.createTask?.resolveReportConfirmAction || "Resolve without reply",
-            onPress: () => {
-              const parentNav = navigation.getParent?.() as
-                | { getState?: () => unknown }
-                | undefined;
-              navigateReportTriageAction(parentNav?.getState?.() as any, "resolve");
-            },
-          },
-        ],
+        "Comment required",
+        "Write a short note in the field, then open + and tap Resolve.",
       );
       return;
     }
@@ -387,11 +378,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     );
   }, [
     closeReportWithReply,
-    navigation,
     replyDraft,
-    t.createTask?.resolveReportConfirmAction,
-    t.createTask?.resolveReportConfirmBody,
-    t.createTask?.resolveReportConfirmTitle,
     t.createTask?.resolveReportWithReplyConfirmAction,
     t.createTask?.resolveReportWithReplyConfirmBody,
     t.createTask?.resolveReportWithReplyConfirmTitle,

@@ -1023,4 +1023,89 @@ describe('taskStore.supabase workflow tests', () => {
       }),
     );
   });
+
+  it('resolveReportWithReply acknowledgement uses the acknowledgement sentence and keeps the note on the comment', async () => {
+    const { activityInsert } = installResolveReportSupabase();
+    const fetchTaskById = jest.fn().mockResolvedValue(null);
+    useTaskStore.setState({
+      tasks: [createTaskState({ status: 'reported', assignedBy: workerId })],
+      fetchTaskById: fetchTaskById as any,
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.resolveReportWithReply('task-123', workerId, {
+        description: 'I replaced the valve',
+        photos: ['company-1/tasks/task-123/valve.jpg'],
+        closeLine: 'acknowledgement',
+      });
+    });
+
+    const comment = activityInsert.mock.calls[0]?.[0];
+    const resolved = activityInsert.mock.calls[1]?.[0];
+    expect(comment.description).toBe('I replaced the valve');
+    expect(comment.data.photos).toEqual(['company-1/tasks/task-123/valve.jpg']);
+    expect(resolved.description).toBe('Issue acknowledged and closed by Sam PM');
+    expect(resolved.data.reason).toBe('Acknowledged and closed');
+    expect(resolved.description).not.toContain('Resolved with reply');
+  });
+
+  it('resolveReportWithReply retries a failed close without a second comment', async () => {
+    const updateEq = jest
+      .fn()
+      .mockResolvedValueOnce({ error: { message: 'resolve failed' } })
+      .mockResolvedValue({ error: null });
+    const updateMock = jest.fn().mockReturnValue({ eq: updateEq });
+    const activityInsert = jest.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: { name: 'Sam PM' }, error: null }),
+          })),
+        };
+      }
+      if (table === 'tasks') {
+        return { update: updateMock };
+      }
+      if (table === 'task_activities') {
+        return { insert: activityInsert };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+    useTaskStore.setState({
+      tasks: [createTaskState({ status: 'reported', assignedBy: workerId })],
+      fetchTaskById: jest.fn().mockResolvedValue(null) as any,
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+    const payload = {
+      description: 'Leak is sealed',
+      photos: ['company-1/tasks/task-123/seal.jpg'],
+    };
+
+    await act(async () => {
+      await expect(
+        result.current.resolveReportWithReply('task-123', managerId, payload),
+      ).rejects.toMatchObject({ message: 'resolve failed' });
+    });
+    expect(activityInsert).toHaveBeenCalledTimes(1);
+    expect(activityInsert.mock.calls[0]?.[0].activity_type).toBe('assigner_comment');
+
+    await act(async () => {
+      await result.current.resolveReportWithReply('task-123', managerId, payload);
+    });
+
+    const commentInserts = activityInsert.mock.calls.filter(
+      (call) => call[0]?.activity_type === 'assigner_comment',
+    );
+    const resolveInserts = activityInsert.mock.calls.filter(
+      (call) => call[0]?.activity_type === 'issue_resolved',
+    );
+    expect(commentInserts).toHaveLength(1);
+    expect(resolveInserts).toHaveLength(1);
+    expect(resolveInserts[0]?.[0].data.reason).toBe('Resolved with reply');
+  });
 });

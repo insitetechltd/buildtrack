@@ -363,13 +363,20 @@ interface TaskStore {
   /** Close report without promotion; keeps row for audit (status resolved). */
   resolveReport: (taskId: string, userId: string, note?: string) => Promise<void>;
   /**
-   * Reply then close. Writes assigner_comment first, then resolveReport("Resolved with reply").
-   * Does not change assignees. Empty description must not call this.
+   * Reply then close. Writes assigner_comment first, then resolveReport.
+   * Manager close line uses "Resolved with reply". Worker closeLine
+   * "acknowledgement" uses the acknowledgement sentence. A retry of the same
+   * note skips a second comment. Does not change assignees. Empty description
+   * must not call this.
    */
   resolveReportWithReply: (
     taskId: string,
     userId: string,
-    payload: { description: string; photos?: string[] },
+    payload: {
+      description: string;
+      photos?: string[];
+      closeLine?: 'acknowledgement' | 'reply';
+    },
   ) => Promise<void>;
   /** @deprecated Prefer resolveReport */
   dismissIssue: (taskId: string, userId: string, reason?: string) => Promise<void>;
@@ -448,6 +455,25 @@ interface TaskStore {
   trackTaskEdit: (taskId: string, userId: string, oldTask: Task, newTask: Partial<Task>, editReason?: string) => Promise<void>;
   fetchTaskEditHistory: (taskId: string) => Promise<TaskEditHistory[]>;
   notifyTaskEdit: (taskId: string, editedBy: string, changes: Partial<Task>) => Promise<void>;
+}
+
+/** Same-session close replies already saved, so a failed resolve can retry without a second comment. */
+const pendingReportCloseReplies = new Map<string, { userId: string; description: string }>();
+
+function taskHasMatchingOpenReply(
+  task: { status?: string; activities?: Array<{ activityType?: string; userId?: string; description?: string }> } | undefined,
+  userId: string,
+  description: string,
+): boolean {
+  if (!task || task.status === 'resolved') {
+    return false;
+  }
+  return (task.activities ?? []).some(
+    (activity) =>
+      activity.activityType === 'assigner_comment' &&
+      activity.userId === userId &&
+      (activity.description ?? '').trim() === description,
+  );
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -2961,7 +2987,7 @@ export const useTaskStore = create<TaskStore>()(
 
           const resolveNote = note?.trim() || 'Resolved without reply';
           const description =
-            resolveNote === 'Resolved without reply'
+            resolveNote === 'Resolved without reply' || resolveNote === 'Acknowledged and closed'
               ? fillTemplate(getTranslations().createTask.acknowledgedAndClosedBy, {
                   name: resolvingUser,
                 })
@@ -3015,14 +3041,23 @@ export const useTaskStore = create<TaskStore>()(
         if (!description) {
           throw new Error('Reply text is required');
         }
-        // Comment first. addAssignerComment does not change tasks.status.
-        // A later resolve failure leaves that comment; retry may add another.
-        await get().addAssignerComment(taskId, {
-          description,
-          photos: payload.photos || [],
-          userId,
-        });
-        await get().resolveReport(taskId, userId, 'Resolved with reply');
+        const pending = pendingReportCloseReplies.get(taskId);
+        const task = get().tasks.find((item) => item.id === taskId);
+        const alreadySaved =
+          (pending?.userId === userId && pending.description === description) ||
+          taskHasMatchingOpenReply(task, userId, description);
+        if (!alreadySaved) {
+          await get().addAssignerComment(taskId, {
+            description,
+            photos: payload.photos || [],
+            userId,
+          });
+          pendingReportCloseReplies.set(taskId, { userId, description });
+        }
+        const resolveNote =
+          payload.closeLine === 'acknowledgement' ? 'Acknowledged and closed' : 'Resolved with reply';
+        await get().resolveReport(taskId, userId, resolveNote);
+        pendingReportCloseReplies.delete(taskId);
       },
 
       // Legacy alias — prefer resolveReport (does not delete the row)

@@ -2361,7 +2361,7 @@ describe("useTaskDetailViewAdapter", () => {
       photos: ["company-1/tasks/task-parent/a.jpg"],
     });
     expect(fetchTaskById).toHaveBeenCalledTimes(1);
-    expect(fetchTaskById).toHaveBeenCalledWith("task-parent");
+    expect(fetchTaskById).toHaveBeenCalledWith("task-parent", true);
     expect(resolveReportWithReply.mock.invocationCallOrder[0]).toBeLessThan(
       fetchTaskById.mock.invocationCallOrder[0],
     );

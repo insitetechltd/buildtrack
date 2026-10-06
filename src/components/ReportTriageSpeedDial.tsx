@@ -23,8 +23,8 @@ export type ReportSpeedDialVariant = "pm_triage" | "worker_report";
 type ReportTriageSpeedDialProps = {
   onChoose: (action: ReportTriageDialAction) => void;
   /**
-   * PM Resolve. Task Detail reads the dock draft and chooses with-reply vs without-reply.
-   * When set, the dial does not show the without-reply alert itself.
+   * PM Resolve. Task Detail requires a dock note, then closes with that reply.
+   * When set, the dial does not show its own resolve alert.
    */
   onPmResolve?: () => void;
   /**

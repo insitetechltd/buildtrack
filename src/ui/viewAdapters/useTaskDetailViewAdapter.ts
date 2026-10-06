@@ -486,7 +486,11 @@ export function useTaskDetailViewAdapter({
       completionPercentage: number;
     }) => Promise<void>;
     cancelDockReview: () => Promise<void>;
-    resolveReportWithReply: (payload: { description: string; photos?: string[] }) => Promise<void>;
+    resolveReportWithReply: (payload: {
+      description: string;
+      photos?: string[];
+      closeLine?: 'acknowledgement' | 'reply';
+    }) => Promise<void>;
     resolveReport: (note?: string) => Promise<void>;
     /** @deprecated Prefer resolveReport */
     dismissIssue: (reason?: string) => Promise<void>;
@@ -1642,12 +1646,19 @@ export function useTaskDetailViewAdapter({
         }
         await fetchTask();
       },
-      resolveReportWithReply: async (payload: { description: string; photos?: string[] }) => {
+      resolveReportWithReply: async (payload: {
+        description: string;
+        photos?: string[];
+        closeLine?: 'acknowledgement' | 'reply';
+      }) => {
         await taskStore.resolveReportWithReply(task.id, user.id, {
           description: payload.description,
           photos: payload.photos,
+          ...(payload.closeLine ? { closeLine: payload.closeLine } : {}),
         });
-        await fetchTask();
+        // Comment insert refreshes a still-fresh cache, then resolve adds
+        // issue_resolved. An unforced fetch would skip that row.
+        await fetchTaskById(task.id, true);
       },
       resolveReport: async (note?: string) => {
         await taskStore.resolveReport(task.id, user.id, note);

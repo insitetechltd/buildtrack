@@ -887,7 +887,7 @@ describe('taskStore.supabase workflow tests', () => {
     return { updateMock, activityInsert };
   };
 
-  it('resolveReport("Resolved without reply") closes with issue_resolved only', async () => {
+  it('resolveReport("Acknowledged and closed") uses the worker close sentence', async () => {
     const { updateMock, activityInsert } = installResolveReportSupabase();
     useTaskStore.setState({
       tasks: [
@@ -903,16 +903,16 @@ describe('taskStore.supabase workflow tests', () => {
     const { result } = renderHook(() => useTaskStore());
 
     await act(async () => {
-      await result.current.resolveReport('task-123', managerId, 'Resolved without reply');
+      await result.current.resolveReport('task-123', workerId, 'Acknowledged and closed');
     });
 
     expect(activityInsert).toHaveBeenCalledTimes(1);
     expect(activityInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         activity_type: 'issue_resolved',
-        user_id: managerId,
+        user_id: workerId,
         data: expect.objectContaining({
-          reason: 'Resolved without reply',
+          reason: 'Acknowledged and closed',
           toStatus: 'resolved',
           fromStatus: 'reported',
         }),
@@ -929,6 +929,52 @@ describe('taskStore.supabase workflow tests', () => {
     expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_by');
     expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('assigned_to');
     expect(updateMock.mock.calls[0]?.[0]).not.toHaveProperty('primary_assignee_id');
+    expect(result.current.tasks[0]).toEqual(
+      expect.objectContaining({
+        status: 'resolved',
+        assignedBy: workerId,
+        assignedTo: [workerId],
+        primaryAssigneeId: workerId,
+      }),
+    );
+  });
+
+  it('resolveReport("Resolved with reply") writes the manager close line', async () => {
+    const { updateMock, activityInsert } = installResolveReportSupabase();
+    useTaskStore.setState({
+      tasks: [
+        createTaskState({
+          status: 'reported',
+          assignedBy: workerId,
+          assignedTo: [workerId],
+          primaryAssigneeId: workerId,
+        }),
+      ],
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.resolveReport('task-123', managerId, 'Resolved with reply');
+    });
+
+    expect(activityInsert).toHaveBeenCalledTimes(1);
+    expect(activityInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activity_type: 'issue_resolved',
+        user_id: managerId,
+        description: 'Issue resolved by Sam PM: Resolved with reply',
+        data: expect.objectContaining({
+          reason: 'Resolved with reply',
+          toStatus: 'resolved',
+          fromStatus: 'reported',
+        }),
+      }),
+    );
+    expect(activityInsert.mock.calls[0]?.[0].data).not.toHaveProperty('photos');
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'resolved' }),
+    );
     expect(result.current.tasks[0]).toEqual(
       expect.objectContaining({
         status: 'resolved',

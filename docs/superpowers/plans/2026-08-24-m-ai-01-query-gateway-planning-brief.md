@@ -1,7 +1,7 @@
 # M-AI-01 — Project Q&A & query gateway planning brief
 
 **Date:** 2026-08-24  
-**Status:** **Planning only — no build GO**  
+**Status:** **Planning only — no build GO.** Product PRD saved 2026-10-08: `docs/superpowers/specs/2026-10-08-m-ai-01-prd.md`. This brief’s checklist is still required before implementation.  
 **Milestone:** `WS-AI / M-AI-01` (ROADMAP Order 15.07)  
 **Trigger:** Re-read this document and complete the planning gate **before any M-AI-01 implementation** starts.
 

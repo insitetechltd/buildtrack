@@ -113,11 +113,11 @@ Assignment rows — not the global `users` table — are the source of truth for
 
 ---
 
-## Report close record (locked 2026-10-06)
+## Report close record (locked 2026-10-06, narrowed 2026-10-07)
 
-In scope when multi-company reporting ships with this milestone. Not an `M-REPORT-01` slice. Locked wording is on the `M-AUTHZ-02` row in `documentation/ROADMAP.md`.
+Build PRD: `docs/superpowers/specs/2026-10-07-m-authz-02-prd.md`. Same-company roster, company invite, Project Admin, team row, report visibility, and report close stay as shipped. The notice and one final comment apply only when the manager and the filer are in different companies.
 
-The manager's close is the close (`resolved` immediately; worker silence does not block it or erase the close timestamp). Notify the filing worker (closer's name, plus the acknowledgement or the written reason and photos already on the timeline). After close, the filer may add exactly one final comment — objection, acceptance, or liability note — with name, time, company, and an optional photo. That comment does not change status or ownership, does not reopen the report, and does not start a thread. Both companies must be able to read both rows. If the worker never writes the comment, the close still stands.
+The manager's close is the close (`resolved` immediately; worker silence does not block it or erase the close timestamp). On a cross-company close, notify the filing worker on the report and on Tasks → Outbox. The notice shows the closer's name and the disposition already stored by `M-REPORT-01` (“Issue resolved by {name}: Resolved with reply,” plus the note and photos). After that close, the filer may add exactly one text comment — objection, acceptance, or liability note — with name, time, company, and an optional photo. That comment does not change status or ownership, does not reopen the report, and does not start a thread. People who can already open the report can read both rows. If the worker never writes the comment, the close still stands. A same-company close writes no notice and offers no later comment. A worker's own close does not gain a second comment.
 
 ---
 

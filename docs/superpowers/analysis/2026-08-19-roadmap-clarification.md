@@ -153,4 +153,16 @@ Locked model: `docs/superpowers/plans/2026-08-24-company-user-project-model.md`.
 
 Dogfood: Create Task, Update Progress, and evidence photo uploads feel intolerably slow. Logged as **`WS-PERF / M-PERF-04`** (Order 15.0575) — Gate A idle-parallel / dogfood P0. Owns latency of the write path (capture → compress → Storage → task/activity insert → UI unblock). Distinct from **M-PERF-01** (list thumbs), **M-PERF-03** (library picker), **M-PERF-02** (upload byte policy). Must **not** jump App Store / Stripe commercial spine.
 
+### Addendum 2026-10-07 — M-AUTHZ-02 PRD parked; same-company behavior stays
+
+Build PRD: `docs/superpowers/specs/2026-10-07-m-authz-02-prd.md`. Product law pointer: `documentation/multi-company-project-membership.md` § Report close record.
+
+The user locked a narrower close record than the 2026-10-06 wording. Same-company roster, company invite, Project Admin, team row, who can open a report, and report close stay as shipped (`M-AUTHZ-RC`, `M-REPORT-01`). The notice and one append-only final comment apply only when the manager and the filer are in different companies. Paths A–C still wait on a Human Gate before invite/RLS DDL. The milestone is specced and parked for return. It remains the ordered next commercial slice. It is not started.
+
+### Addendum 2026-10-08 — M-AI-01 PRD saved; no build GO
+
+Product PRD: `docs/superpowers/specs/2026-10-08-m-ai-01-prd.md`. Field Q&A cites a task, activity, or photo on the open project, or abstains. Ask is not a fourth root tab. No model key in the app. Starter and Pro both ask; the monthly cap differs. Exact cap numbers stay a billing choice before build.
+
+This does not start implementation and does not move `M-AI-01` ahead of `M-AUTHZ-02`. The planning checklist in `docs/superpowers/plans/2026-08-24-m-ai-01-query-gateway-planning-brief.md` is still open. Live query tables and the meter still need a written go-ahead.
+
 *(Append dated bullets here when this discussion is revisited. Do not rewrite the locks above unless the user explicitly changes them.)*

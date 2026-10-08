@@ -1,10 +1,20 @@
 # Test Blind-Spot Audit — InsiteApp / Taskr
 
-**Date:** 2026-09-27  
+**Date:** 2026-09-27 (map body). **Pickup addendum:** 2026-10-09.  
 **Audit SHA:** `7d65e97` (`chore(asc): submit Taskr 1.1.3 build 280 for App Review`)  
 **Prompt:** `docs/superpowers/plans/2026-09-27-test-blind-spot-audit-prompt.md`  
 **Stance:** Adversarial. Green scripts cited only when their plane and oracle were inspected.  
 **Explorers:** Edge/Stripe inventory + Maestro/RLS/authz inventory (parallel).
+
+## Product delta the daily bot must load (2026-10-09)
+
+The map body below stops at the 2026-09-27 audit (`7d65e97`, build **280**). Load this delta before flagging drift. Full narrative: `documentation/NOW.md` § Current status (2026-10-09).
+
+- Git never recorded build **288**. After **280**, `app.json` is **286** then **287**, then submitted TestFlight **289, 290, 291, 292, 293, 294** (version **1.1.5**). Latest upload is **294** (`2005c53`): `M-PERF-04` Phase 1. Phase 2 is shelved.
+- Store is **1.1.4 (284)** READY_FOR_SALE in Hong Kong. **1.1.3 (280)** is approved. Do not treat 280 as rejected.
+- **`M-REPORT-01` Closed 2026-10-06** (`c264ba2`). Typed note required. Not in TF 294. UI-08 stays PARTIAL until a DEV report journey pass.
+- **Next build slice:** `M-AUTHZ-02` (PRD `docs/superpowers/specs/2026-10-07-m-authz-02-prd.md`). Same-company behavior unchanged. Then `M-OPS-03`, then `M-AI-01` (PRD saved 2026-10-08; no build GO).
+- Draft PRs **22, 23, 28, 29, 30** stay off `main`.
 
 ---
 

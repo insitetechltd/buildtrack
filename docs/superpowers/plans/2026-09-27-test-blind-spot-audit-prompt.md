@@ -254,7 +254,7 @@ Each finding: capability, risk, plane, script family, ADD/AMEND/NO-OP, human-gat
 | Item | Rule |
 |---|---|
 | Schedule | Once after the day’s last commit (or pre-ship), not a whole-repo re-audit |
-| Memory | Committed capability map required; without it, bot is invalid |
+| Memory | Committed capability map required, including its **2026-10-09 product delta** (TF 289–294, `M-REPORT-01` closed, `M-AUTHZ-02` next). Also read `documentation/NOW.md` § Current status. Without the map, the bot is invalid |
 | Cap | ≤5 findings/day; ≤3 ADD; NO-OP-heavy days = healthy |
 | Human gates | Bot proposes only; migrations/RLS/billing/authz/release need GO |
 | Health metrics | % days ending NO-OP; age of oldest open P0 |

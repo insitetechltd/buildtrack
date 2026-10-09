@@ -673,8 +673,7 @@ export const useProjectStore = create<ProjectStore>()(
                   users!created_by (
                     id,
                     name,
-                    email,
-                    role
+                    email
                   )
                 `)
                 .eq('company_id', companyId)
@@ -715,8 +714,7 @@ export const useProjectStore = create<ProjectStore>()(
                   users!created_by (
                     id,
                     name,
-                    email,
-                    role
+                    email
                   )
                 `)
                 .eq('company_id', companyId)

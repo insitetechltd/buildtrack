@@ -7,6 +7,16 @@ No TF / eas submit / ASC Public / PROD migrations / Stripe live unless Tristan G
 
 **Close bar (law):** A task is **not complete** until its PR is **closed** (merged or explicitly superseded/closed). `DRAFT_PR` / tip SHA / STATUS rows ≠ done.
 
+**Dig L1 batch (2026-10-12 evening):** evidence `.cache/insite-perf20/dig-batch-20261012/` · index `RESULT.md` · sim `B7B2640C` · Metro `:8082`.
+
+| Order | Item | Tip Digged | Dig RESULT |
+|---|---|---|---|
+| 1 | D #35 | `5e3d8fc` | **PASS** |
+| 2 | E #30 / main | `82e0b08` | **PASS** (PARTIAL +90 end; double-tap N/A — Reset SoT) |
+| 3 | B+C #34 | `b6ab19f` | **PARTIAL** (2-photo Update happy path; weak Wi-Fi not Digged) |
+| 4 | A #23 | `58ef7ea` | **PASS** |
+| 6 | F | — | WAITING_GO (not Dig) |
+
 ---
 
 ## Smoke-first priority (Dig L1 Metro→DEV)
@@ -15,23 +25,23 @@ Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Trist
 
 | Order | Item | Tip | PR | Smoke focus | Then close |
 |---|---|---|---|---|---|
-| 1 | **D** done-tray-thumb | `61cdd40` | [#35](https://github.com/insitetechltd/buildtrack/pull/35) | crop→tray; annotate→tray; cancel/discard unchanged | mark ready → merge #35 |
-| 2 | **E** straighten-dial | `82e0b08` (**main**, not stale #30 base) | [#30](https://github.com/insitetechltd/buildtrack/pull/30) handoff only | 1° / double-tap 0° / bowl / flush rim / ±90 / ~±30 rest / 15% inset / state unmount | Dig PASS on main → **close #30** (no merge of stale head) |
-| 3 | **B+C** upload-retry + back-off | `b6ab19f` | [#34](https://github.com/insitetechltd/buildtrack/pull/34) | weak Wi-Fi: siblings finish; successes kept; failed tile retry | mark ready → merge #34 |
-| 4 | **A** dead-role-select | `58ef7ea` | [#23](https://github.com/insitetechltd/buildtrack/pull/23) | company projects list; no `users_1.role` | mark ready → merge #23 |
-| 5 | **STATUS** docs | `eb36b11` | [#36](https://github.com/insitetechltd/buildtrack/pull/36) | n/a (docs) | merge #36 after A–E closes or earlier if Dig needs STATUS on main |
-| 6 | **F** note-required-on-TF | `82e0b08` | none | after Tristan bake GO only | WAITING_GO — not Dig; no smoke until IPA exists |
+| 1 | **D** done-tray-thumb | `5e3d8fc` | [#35](https://github.com/insitetechltd/buildtrack/pull/35) | crop→tray; annotate→tray; cancel/discard unchanged | Tristan GO → merge #35 |
+| 2 | **E** straighten-dial | `82e0b08` (**main**) | [#30](https://github.com/insitetechltd/buildtrack/pull/30) handoff only | bowl / flush / ±90 scrub / ~±30 rest / 15% inset / unmount | Dig PASS → **close #30** (no merge stale head) |
+| 3 | **B+C** upload-retry + back-off | `b6ab19f` | [#34](https://github.com/insitetechltd/buildtrack/pull/34) | weak Wi-Fi still open; happy path Digged | Tristan GO → merge #34 (or Dig weak-Wi-Fi first) |
+| 4 | **A** dead-role-select | `58ef7ea` | [#23](https://github.com/insitetechltd/buildtrack/pull/23) | company projects list; no `users_1.role` | Tristan GO → merge #23 |
+| 5 | **STATUS** docs | this tip | [#36](https://github.com/insitetechltd/buildtrack/pull/36) | n/a (docs) | merge #36 when useful |
+| 6 | **F** note-required-on-TF | `82e0b08` | none | after Tristan bake GO only | WAITING_GO |
 
 ---
 
 ## What's next — remaining until CLOSED
 
-- [ ] **D** Dig L1 smoke #35 @ `61cdd40` → Tristan GO → merge → mark CLOSED
-- [ ] **E** Dig L1 smoke dial on **main** `82e0b08` → close/supersede #30 → mark CLOSED
-- [ ] **B+C** Dig L1 smoke #34 @ `b6ab19f` → Tristan GO → merge → mark CLOSED
-- [ ] **A** Dig or Tristan L1 smoke #23 @ `58ef7ea` → Tristan GO → merge → mark CLOSED
-- [ ] **STATUS** merge #36 when useful for Dig (or after A–E) → mark CLOSED
-- [ ] **F** Tristan GO for TF bake of note-required tip → Dig/phone prove on that IPA → mark CLOSED (Public stays 292)
+- [ ] **D** Dig PASS @ `5e3d8fc` — Tristan GO → merge #35 → CLOSED
+- [ ] **E** Dig PASS on main — Tristan ack PARTIAL notes → **close #30** → CLOSED
+- [ ] **B+C** Dig PARTIAL (happy path only) — optional weak-Wi-Fi Dig or Tristan GO → merge #34 → CLOSED
+- [ ] **A** Dig PASS @ `58ef7ea` — Tristan GO → merge #23 → CLOSED
+- [ ] **STATUS** merge #36 → CLOSED
+- [ ] **F** Tristan GO for TF bake → Dig/phone on IPA → CLOSED (Public stays 292)
 
 **Agent stopping-point rule:** when work pauses mid-batch, rewrite this What's next list (unchecked = still open). Do not mark an ID complete until its PR/issue is closed.
 
@@ -40,6 +50,7 @@ Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Trist
 ## A) dead-role-select
 
 - status: DRAFT_PR
+- Dig RESULT: **PASS** (2026-10-12) — `.cache/insite-perf20/dig-batch-20261012/A-role/`
 - branch / tip SHA: `cursor/fix-users-role-column-error-fbdc` @ `58ef7ea`
 - PR number + URL: #23 — https://github.com/insitetechltd/buildtrack/pull/23
 - what changed:
@@ -47,21 +58,19 @@ Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Trist
   - Kept remove-`users.role` from `fetchProjectsByCompany` selects
   - Confirmed `transformProjectRow` does not need `role`
 - smoke checklist:
-  - Tristan / Dig: Metro→DEV open company projects list; no `users_1.role does not exist`
-  - Switch company / pull-to-refresh projects still loads
+  - Dig: Metro→DEV dashboard Project A loads; pull refresh OK; no `users_1.role` LogBox
 - Dig pickup:
   - tip SHA: `58ef7ea`
-  - suggested Dig ask: L1 Metro→DEV only
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: yes
+  - evidence: `A-role/RESULT.md` + `DIG-A-projects-ok.png`
 - open blockers: merge needs Tristan GO
-- next agent action: Tristan GO → merge #23 (or Dig L1 smoke first)
+- next agent action: Tristan GO → merge #23
 
 ---
 
 ## B) upload-retry
 
 - status: DRAFT_PR
+- Dig RESULT: **PARTIAL** (2026-10-12) — `.cache/insite-perf20/dig-batch-20261012/BC-upload/`
 - branch / tip SHA: `cursor/upload-retry-backoff-20261012` @ `b6ab19f`
 - PR number + URL: #34 — https://github.com/insitetechltd/buildtrack/pull/34
 - what changed:
@@ -69,22 +78,20 @@ Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Trist
   - Update Progress keeps successful tiles when one photo fails; failed tiles surface with retry
   - Same helper on Task Detail reply dock + Photo Selection accept
 - smoke checklist:
-  - Tristan / Dig: Update Progress 3 photos, disrupt Wi-Fi mid-upload → per-tile fail; successes remain; retry works
-  - Reply dock + Photo Selection: one fail does not cancel sibling in-flight uploads
-  - Submit still fail-closes until all chosen photos land
+  - Dig: Update Progress 2 photos happy path PASS (activity shows note + both photos)
+  - Dig: weak Wi-Fi mid-upload / per-tile fail / retry — **NOT DIGGED**
 - Dig pickup:
   - tip SHA: `b6ab19f`
-  - suggested Dig ask: L1 Metro→DEV first; named TF only when Tristan asks Dig
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: yes
-- open blockers: same PR as C; merge needs Tristan GO; no TF bake in this batch
-- next agent action: Dig L1 smoke (optional) → Tristan GO merge #34
+  - evidence: `BC-upload/RESULT.md` + `DIG-BC-*.png`
+- open blockers: same PR as C; weak-Wi-Fi Dig optional; merge needs Tristan GO
+- next agent action: Tristan GO merge #34 (or Dig weak-Wi-Fi first)
 
 ---
 
 ## C) upload-back-off
 
 - status: DRAFT_PR
+- Dig RESULT: **PARTIAL** (shared with B)
 - branch / tip SHA: `cursor/upload-retry-backoff-20261012` @ `b6ab19f` (same PR as B)
 - PR number + URL: #34 — https://github.com/insitetechltd/buildtrack/pull/34
 - what changed:
@@ -92,59 +99,53 @@ Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Trist
   - Non-retryable auth/permission errors stop immediately
   - Visible per-tile fail messaging lists filename + error
 - smoke checklist:
-  - Tristan / Dig: weak Wi-Fi / Storage 503 blip recovers within budget
-  - Persistent fail after 3 attempts → failed tile + note/photos still present
+  - Dig: Storage 503 blip / 3-attempt fail tile — **NOT DIGGED** (Jest covers helper)
 - Dig pickup:
   - tip SHA: `b6ab19f`
-  - suggested Dig ask: L1 Metro→DEV first; named TF only when Tristan asks Dig
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: yes
-- open blockers: paired with B in #34; no TF bake
-- next agent action: Dig L1 (shared with B) → Tristan GO
+  - evidence: shared `BC-upload/`
+- open blockers: paired with B in #34
+- next agent action: Tristan GO (shared with B)
 
 ---
 
 ## D) done-tray-thumb
 
 - status: DRAFT_PR
-- branch / tip SHA: `cursor/done-tray-thumb-20261012` @ `61cdd40`
+- Dig RESULT: **PASS** (2026-10-12) — `.cache/insite-perf20/dig-batch-20261012/D-done-tray/`
+- branch / tip SHA: `cursor/done-tray-thumb-20261012` @ `5e3d8fc` (was `61cdd40`; Dig found tray-open blocker)
 - PR number + URL: #35 — https://github.com/insitetechltd/buildtrack/pull/35
 - what changed:
   - Capture-session edit bake stores `annotatedUri` + refreshes `previewUri`
   - Accept mapping prefers bake; tray/thumb rebind via `recyclingKey`
+  - **Dig fix:** tray thumb opens fullscreen under photokit index session (`assetsByIdRef` empty); native thumb `pointerEvents="none"` for center-open
 - smoke checklist:
-  - Dig: crop → Done → tray thumb matches crop
-  - Dig: annotate → Done → tray thumb matches bake
-  - Dig: cancel/discard → tray unchanged
-  - Dig: deselect/reselect after edit → still bake; Accept → Select Photos matches
+  - Dig: crop → tray updates PASS
+  - Dig: annotate → tray shows red stroke PASS
+  - Dig: cancel second crop keeps prior bake PASS
 - Dig pickup:
-  - tip SHA: `61cdd40`
-  - suggested Dig ask: L1 Metro→DEV first; named TF only when Tristan asks Dig
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: yes
-- open blockers: Dig owns PASS/FAIL; Format A / film out of scope
-- next agent action: Dig L1 ask
+  - tip SHA: `5e3d8fc`
+  - evidence: `D-done-tray/RESULT.md` + `artifacts/` + `artifacts/thumb/`
+- open blockers: merge needs Tristan GO
+- next agent action: Tristan GO → merge #35
 
 ---
 
 ## E) straighten-dial
 
-- status: DRAFT_PR
-- branch / tip SHA: product on `origin/main` @ `82e0b08` (dial tip `a23bb2b` already ancestor via `c1a9288` / `7cf77e1`); stale draft #30 head `cursor/whatsapp-dial-phase-b-58e1` @ `a23bb2b`
+- status: DRAFT_PR (handoff — close without merge)
+- Dig RESULT: **PASS** with PARTIAL notes (2026-10-12) — `.cache/insite-perf20/dig-batch-20261012/E-dial/`
+- branch / tip SHA: product on `origin/main` @ `82e0b08`; stale draft #30 head unchanged
 - PR number + URL: #30 — https://github.com/insitetechltd/buildtrack/pull/30
 - what changed:
   - No new dial code in this batch — already on main
-  - Updated #30 title/body + comment for Dig handoff; cannot retarget base to main (0 unique commits)
 - smoke checklist:
-  - Dig: 1° snaps; double-tap → 0°; scale-while-rotating fills crop
-  - Dig: crop_overlay unmounts via state; bowl/smile; flush rim; ±90 continuous; ~±30 at rest with opaque mask; ~15% enter inset
+  - Dig: bowl + fixed △ PASS; ~±30 rest PASS (prior clip FAIL cleared); −90 scrub PASS; +90 end PARTIAL; Reset→0 PASS; double-tap N/A; unmount reopen PASS; 15% inset PASS
 - Dig pickup:
-  - tip SHA: `82e0b08` (prove against main CropOverlay — not the stale PR base)
-  - suggested Dig ask: L1 Metro→DEV first; named TF only when Tristan asks Dig
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: yes
-- open blockers: Format A dial VO out until Dig PASS on named TF + Tristan film GO; #30 base still old Maestro branch
-- next agent action: Dig L1 against main; Research/Marketing hold film/VO
+  - tip SHA: `82e0b08`
+  - evidence: `E-dial/RESULT.md` + `artifacts/dialcrop2/`
+  - note: Maestro `swipe from id: rotation_dial` is false scrub (hits stage); use point swipes ~82% Y
+- open blockers: Tristan ack PARTIAL → close #30
+- next agent action: close #30 after Tristan ack
 
 ---
 
@@ -160,11 +161,9 @@ Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Trist
   - Dig does **not** bake
 - Dig pickup:
   - tip SHA: `82e0b08` (bake-ready tip when Tristan GO)
-  - suggested Dig ask: none for bake; L1 Metro already proves product; named TF only after Tristan GO bake
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: no — blocker: WAITING_GO for TF bake (store 1.1.4/284 untouched; tip phones recently TF 294; Public aimed at 292 — do not retarget Public)
-- open blockers: any CBP / new IPA needs Tristan GO; do not run `build-local.sh` / eas in this batch
-- next agent action: Tristan GO (bake note) — suggested next build note: tip `82e0b08` (or later main) for note-required close; keep Public on 292 line
+  - ready for Dig ask: no — WAITING_GO for TF bake
+- open blockers: any CBP / new IPA needs Tristan GO
+- next agent action: Tristan GO (bake note)
 
 ---
 

@@ -1,9 +1,39 @@
 # STATUS — cursor idea-bank batch 2026-10-12
 
 Machine-readable pickup for InsiteAppDev / Dig / Research / Marketing.  
-Draft PRs only — do not merge. No TF / eas submit / ASC Public / PROD migrations / Stripe live.
+No TF / eas submit / ASC Public / PROD migrations / Stripe live unless Tristan GO.
 
 **Batch tip context:** `origin/main` = `82e0b08` at write time.
+
+**Close bar (law):** A task is **not complete** until its PR is **closed** (merged or explicitly superseded/closed). `DRAFT_PR` / tip SHA / STATUS rows ≠ done.
+
+---
+
+## Smoke-first priority (Dig L1 Metro→DEV)
+
+Do in this order. Evidence → `.cache/insite-perf20/`. Named TF only when Tristan asks Dig.
+
+| Order | Item | Tip | PR | Smoke focus | Then close |
+|---|---|---|---|---|---|
+| 1 | **D** done-tray-thumb | `61cdd40` | [#35](https://github.com/insitetechltd/buildtrack/pull/35) | crop→tray; annotate→tray; cancel/discard unchanged | mark ready → merge #35 |
+| 2 | **E** straighten-dial | `82e0b08` (**main**, not stale #30 base) | [#30](https://github.com/insitetechltd/buildtrack/pull/30) handoff only | 1° / double-tap 0° / bowl / flush rim / ±90 / ~±30 rest / 15% inset / state unmount | Dig PASS on main → **close #30** (no merge of stale head) |
+| 3 | **B+C** upload-retry + back-off | `b6ab19f` | [#34](https://github.com/insitetechltd/buildtrack/pull/34) | weak Wi-Fi: siblings finish; successes kept; failed tile retry | mark ready → merge #34 |
+| 4 | **A** dead-role-select | `58ef7ea` | [#23](https://github.com/insitetechltd/buildtrack/pull/23) | company projects list; no `users_1.role` | mark ready → merge #23 |
+| 5 | **STATUS** docs | `eb36b11` | [#36](https://github.com/insitetechltd/buildtrack/pull/36) | n/a (docs) | merge #36 after A–E closes or earlier if Dig needs STATUS on main |
+| 6 | **F** note-required-on-TF | `82e0b08` | none | after Tristan bake GO only | WAITING_GO — not Dig; no smoke until IPA exists |
+
+---
+
+## What's next — remaining until CLOSED
+
+- [ ] **D** Dig L1 smoke #35 @ `61cdd40` → Tristan GO → merge → mark CLOSED
+- [ ] **E** Dig L1 smoke dial on **main** `82e0b08` → close/supersede #30 → mark CLOSED
+- [ ] **B+C** Dig L1 smoke #34 @ `b6ab19f` → Tristan GO → merge → mark CLOSED
+- [ ] **A** Dig or Tristan L1 smoke #23 @ `58ef7ea` → Tristan GO → merge → mark CLOSED
+- [ ] **STATUS** merge #36 when useful for Dig (or after A–E) → mark CLOSED
+- [ ] **F** Tristan GO for TF bake of note-required tip → Dig/phone prove on that IPA → mark CLOSED (Public stays 292)
+
+**Agent stopping-point rule:** when work pauses mid-batch, rewrite this What's next list (unchecked = still open). Do not mark an ID complete until its PR/issue is closed.
 
 ---
 

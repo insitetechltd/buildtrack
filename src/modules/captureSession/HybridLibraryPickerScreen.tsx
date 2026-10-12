@@ -219,16 +219,24 @@ export function HybridLibraryPickerScreen() {
         openCameraViewer(assetId);
         return;
       }
+      // Index-session Recents walk keeps assetsByIdRef empty — do not require a
+      // MediaLibrary.Asset row to open the viewer from the Done tray.
+      if (albumPicker.indexSession) {
+        const { token, count } = albumPicker.indexSession;
+        for (let i = 0; i < count; i += 1) {
+          if (photokitIdAt(token, i) === assetId) {
+            setViewerInitialIndex(i);
+            setViewerOpen(true);
+            return;
+          }
+        }
+        return;
+      }
+
       const asset = albumPicker.assetsByIdRef.current.get(assetId);
-      if (!asset) return;
-
-      const index = albumPicker.indexSession
-        ? Array.from({ length: albumPicker.indexSession.count }, (_, i) => {
-            const id = photokitIdAt(albumPicker.indexSession!.token, i);
-            return id;
-          }).indexOf(assetId)
-        : albumPicker.assets.findIndex((a) => a.id === assetId);
-
+      const index = asset
+        ? albumPicker.assets.findIndex((a) => a.id === assetId)
+        : -1;
       if (index >= 0) {
         setViewerInitialIndex(index);
         setViewerOpen(true);

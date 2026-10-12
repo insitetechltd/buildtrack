@@ -166,7 +166,11 @@ const LibraryGridTile = memo(function LibraryGridTile({
       }}
     >
       {bindImage && NativeThumb ? (
-        <View collapsable={false} style={{ width: tileSize, height: tileSize }}>
+        <View
+          collapsable={false}
+          pointerEvents="none"
+          style={{ width: tileSize, height: tileSize }}
+        >
           <View
             testID={`${testIdPrefix}__tile_skeleton_${assetId}`}
             style={[

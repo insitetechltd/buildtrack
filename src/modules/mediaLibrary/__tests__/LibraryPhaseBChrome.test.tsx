@@ -95,6 +95,31 @@ describe("LibrarySelectedTray", () => {
     } as any);
     expect(onRemove).toHaveBeenCalledWith("asset-1");
   });
+
+  it("rebinds the thumb when the edited uri changes", () => {
+    const { rerender, getByTestId } = render(
+      <LibrarySelectedTray
+        selectedAssets={[
+          { assetId: "asset-1", uri: "ph://asset-1", order: 1 },
+        ]}
+        onRemove={jest.fn()}
+        onDeselectAll={jest.fn()}
+        testIdPrefix="tray"
+      />,
+    );
+    expect(getByTestId("tray__thumb_asset-1")).toBeTruthy();
+    rerender(
+      <LibrarySelectedTray
+        selectedAssets={[
+          { assetId: "asset-1", uri: "file://edited/asset-1.jpg", order: 1 },
+        ]}
+        onRemove={jest.fn()}
+        onDeselectAll={jest.fn()}
+        testIdPrefix="tray"
+      />,
+    );
+    expect(getByTestId("tray__thumb_asset-1")).toBeTruthy();
+  });
 });
 
 describe("LibraryFilterModal", () => {

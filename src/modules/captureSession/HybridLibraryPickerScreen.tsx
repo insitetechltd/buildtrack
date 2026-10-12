@@ -260,7 +260,7 @@ export function HybridLibraryPickerScreen() {
         (p) => p.id === assetId || p.mediaLibraryAssetId === assetId,
       );
       if (photo && annotation.annotatedUri) {
-        store.updatePhotoUri(photo.id, annotation.annotatedUri);
+        store.updatePhotoUri(photo.id, annotation.annotatedUri, { asEdit: true });
       }
     },
     [],
@@ -510,7 +510,8 @@ export function HybridLibraryPickerScreen() {
               if (!photo) {
                 return null;
               }
-              const editedUri = annotations.get(assetId)?.annotatedUri;
+              const editedUri =
+                annotations.get(assetId)?.annotatedUri || photo.annotatedUri;
               return {
                 assetId,
                 uri: editedUri || photo.uri,

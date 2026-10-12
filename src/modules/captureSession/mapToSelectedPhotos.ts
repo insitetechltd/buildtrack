@@ -8,13 +8,19 @@ export function mapSessionSelectionToSelectedPhotos(
   return photos
     .filter((p) => p.selected)
     .map((p) => {
+      const editedUri = p.annotatedUri?.startsWith("file://")
+        ? p.annotatedUri
+        : undefined;
       const photo: SelectedPhoto = {
-        uri: p.uri,
+        uri: editedUri || p.uri,
         fileName: p.fileName,
-        isAnnotated: false,
+        isAnnotated: Boolean(editedUri),
         mediaLibraryAssetId: p.mediaLibraryAssetId,
       };
-      if (p.previewUri) {
+      if (editedUri) {
+        photo.annotatedUri = editedUri;
+        photo.previewUri = editedUri;
+      } else if (p.previewUri) {
         photo.previewUri = p.previewUri;
       }
       return photo;

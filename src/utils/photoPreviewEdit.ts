@@ -443,8 +443,7 @@ export function defaultCropRectInImageLayout(imageLayout: Rect, insetFraction = 
 /**
  * After a crop drag stops: enlarge `crop` (aspect locked) until it hits
  * `maxBounds` width or height — whichever limit is reached first.
- * Center stays; result is clamped inside `maxBounds`. Further corner drags
- * may still grow/change aspect up to `maxBounds` (full photo).
+ * Center stays; result is clamped inside `maxBounds`.
  */
 export function enlargeCropToMaxEdge(crop: Rect, maxBounds: Rect): Rect {
   if (
@@ -469,4 +468,46 @@ export function enlargeCropToMaxEdge(crop: Rect, maxBounds: Rect): Rect {
   x = Math.max(maxBounds.x, Math.min(x, maxBounds.x + maxBounds.width - width));
   y = Math.max(maxBounds.y, Math.min(y, maxBounds.y + maxBounds.height - height));
   return { x, y, width, height };
+}
+
+/**
+ * Settle after corner drag: enlarge crop to max edge **and** zoom/pan the
+ * photo by the same factor so the framed content does not jump (no bounce).
+ * Further corner drags can still grow the rect to include more of the photo.
+ */
+export function settleCropToMaxEdge(
+  crop: Rect,
+  maxBounds: Rect,
+  coverScale: number,
+  imageOffset: { x: number; y: number },
+  imageLayout: Rect,
+): { crop: Rect; coverScale: number; imageOffset: { x: number; y: number } } {
+  const nextCrop = enlargeCropToMaxEdge(crop, maxBounds);
+  const s = nextCrop.width / crop.width;
+  if (!Number.isFinite(s) || s <= 1.001) {
+    return { crop: nextCrop, coverScale, imageOffset };
+  }
+
+  const oldCx = crop.x + crop.width / 2;
+  const oldCy = crop.y + crop.height / 2;
+  const newCx = nextCrop.x + nextCrop.width / 2;
+  const newCy = nextCrop.y + nextCrop.height / 2;
+
+  const icx = imageLayout.x + imageLayout.width / 2 + imageOffset.x;
+  const icy = imageLayout.y + imageLayout.height / 2 + imageOffset.y;
+  const vx = oldCx - icx;
+  const vy = oldCy - icy;
+
+  // Keep the same image point under the crop center after zooming by s.
+  const newIcx = newCx - s * vx;
+  const newIcy = newCy - s * vy;
+
+  return {
+    crop: nextCrop,
+    coverScale: coverScale * s,
+    imageOffset: {
+      x: newIcx - (imageLayout.x + imageLayout.width / 2),
+      y: newIcy - (imageLayout.y + imageLayout.height / 2),
+    },
+  };
 }

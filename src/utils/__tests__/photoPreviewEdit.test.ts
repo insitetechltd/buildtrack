@@ -12,6 +12,7 @@ import {
   cropRotationCoverScale,
   ratchetCoverScale,
   enlargeCropToMaxEdge,
+  settleCropToMaxEdge,
   rotationCoverScale,
 } from "../photoPreviewEdit";
 import { Image } from "react-native";
@@ -165,6 +166,26 @@ describe("photoPreviewEdit", () => {
     it("leaves a crop that already fills one edge unchanged in size", () => {
       const crop = { x: 0, y: 50, width: 200, height: 100 };
       expect(enlargeCropToMaxEdge(crop, max)).toEqual(crop);
+    });
+  });
+
+  describe("settleCropToMaxEdge", () => {
+    const max = { x: 0, y: 0, width: 200, height: 200 };
+    const layout = max;
+
+    it("zooms cover scale with the crop so content does not jump", () => {
+      const crop = { x: 50, y: 50, width: 100, height: 100 };
+      const settled = settleCropToMaxEdge(crop, max, 1, { x: 0, y: 0 }, layout);
+      expect(settled.crop.width).toBeCloseTo(200, 5);
+      expect(settled.coverScale).toBeCloseTo(2, 5);
+      expect(settled.imageOffset).toEqual({ x: 0, y: 0 });
+    });
+
+    it("is a no-op when already maxed on one edge", () => {
+      const crop = { x: 0, y: 50, width: 200, height: 100 };
+      const settled = settleCropToMaxEdge(crop, max, 1.5, { x: 0, y: 0 }, layout);
+      expect(settled.crop).toEqual(crop);
+      expect(settled.coverScale).toBe(1.5);
     });
   });
 

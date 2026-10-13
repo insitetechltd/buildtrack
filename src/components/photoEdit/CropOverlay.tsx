@@ -23,7 +23,7 @@ import {
   cropRectForImageOffset,
   cropRotationCoverScale,
   ratchetCoverScale,
-  enlargeCropToMaxEdge,
+  settleCropToMaxEdge,
   type Rect,
   type SourceCrop,
 } from "../../utils/photoPreviewEdit";
@@ -220,18 +220,28 @@ export function CropOverlay({
         onPanResponderRelease: () => {
           const current = cropRef.current;
           if (!current || !imageLayout) return;
-          // Aspect locked → grow until original frame width or height hits first.
-          // Later corner drags may still expand toward the full photo.
-          const enlarged = enlargeCropToMaxEdge(current, imageLayout);
-          cropRef.current = enlarged;
-          setCrop(enlarged);
-        },
-        onPanResponderTerminate: () => {
-          const current = cropRef.current;
-          if (!current || !imageLayout) return;
-          const enlarged = enlargeCropToMaxEdge(current, imageLayout);
-          cropRef.current = enlarged;
-          setCrop(enlarged);
+          // Grow frame to max edge + zoom/pan so content stays put (no corner bounce).
+          const settled = settleCropToMaxEdge(
+            current,
+            imageLayout,
+            coverScaleRef.current,
+            imageOffsetRef.current,
+            imageLayout,
+          );
+          const rotation = panContextRef.current.totalRotation;
+          const offset = clampImagePan(
+            imageLayout,
+            settled.crop,
+            rotation,
+            settled.coverScale,
+            settled.imageOffset,
+          );
+          cropRef.current = settled.crop;
+          coverScaleRef.current = settled.coverScale;
+          imageOffsetRef.current = offset;
+          setCoverScale(settled.coverScale);
+          setImageOffset(offset);
+          setCrop(settled.crop);
         },
       }),
     [clampCrop, disabled, imageLayout],

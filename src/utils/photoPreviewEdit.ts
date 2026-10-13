@@ -439,3 +439,34 @@ export function defaultCropRectInImageLayout(imageLayout: Rect, insetFraction = 
     height: Math.max(1, imageLayout.height - insetY * 2),
   };
 }
+
+/**
+ * After a crop drag stops: enlarge `crop` (aspect locked) until it hits
+ * `maxBounds` width or height — whichever limit is reached first.
+ * Center stays; result is clamped inside `maxBounds`. Further corner drags
+ * may still grow/change aspect up to `maxBounds` (full photo).
+ */
+export function enlargeCropToMaxEdge(crop: Rect, maxBounds: Rect): Rect {
+  if (
+    crop.width <= 0 ||
+    crop.height <= 0 ||
+    maxBounds.width <= 0 ||
+    maxBounds.height <= 0
+  ) {
+    return crop;
+  }
+
+  const scaleW = maxBounds.width / crop.width;
+  const scaleH = maxBounds.height / crop.height;
+  const scale = Math.min(scaleW, scaleH);
+  const width = Math.min(maxBounds.width, crop.width * Math.max(1, scale));
+  const height = Math.min(maxBounds.height, crop.height * Math.max(1, scale));
+
+  const cx = crop.x + crop.width / 2;
+  const cy = crop.y + crop.height / 2;
+  let x = cx - width / 2;
+  let y = cy - height / 2;
+  x = Math.max(maxBounds.x, Math.min(x, maxBounds.x + maxBounds.width - width));
+  y = Math.max(maxBounds.y, Math.min(y, maxBounds.y + maxBounds.height - height));
+  return { x, y, width, height };
+}

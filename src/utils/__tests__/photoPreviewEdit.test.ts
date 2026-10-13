@@ -11,6 +11,7 @@ import {
   cropRectForImageOffset,
   cropRotationCoverScale,
   ratchetCoverScale,
+  enlargeCropToMaxEdge,
   rotationCoverScale,
 } from "../photoPreviewEdit";
 import { Image } from "react-native";
@@ -139,6 +140,31 @@ describe("photoPreviewEdit", () => {
 
     it("never drops below 1", () => {
       expect(ratchetCoverScale(0.5, 0.2)).toBe(1);
+    });
+  });
+
+  describe("enlargeCropToMaxEdge", () => {
+    const max = { x: 0, y: 0, width: 200, height: 300 };
+
+    it("grows a square until width hits the original frame first", () => {
+      const crop = { x: 75, y: 125, width: 50, height: 50 };
+      const next = enlargeCropToMaxEdge(crop, max);
+      expect(next.width).toBeCloseTo(200, 5);
+      expect(next.height).toBeCloseTo(200, 5);
+      expect(next.x).toBeCloseTo(0, 5);
+      expect(next.y).toBeCloseTo(50, 5);
+    });
+
+    it("grows a wide crop until height would exceed — width wins first", () => {
+      const crop = { x: 50, y: 125, width: 100, height: 50 };
+      const next = enlargeCropToMaxEdge(crop, max);
+      expect(next.width).toBeCloseTo(200, 5);
+      expect(next.height).toBeCloseTo(100, 5);
+    });
+
+    it("leaves a crop that already fills one edge unchanged in size", () => {
+      const crop = { x: 0, y: 50, width: 200, height: 100 };
+      expect(enlargeCropToMaxEdge(crop, max)).toEqual(crop);
     });
   });
 

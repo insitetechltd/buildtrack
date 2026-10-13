@@ -23,6 +23,7 @@ import {
   cropRectForImageOffset,
   cropRotationCoverScale,
   ratchetCoverScale,
+  enlargeCropToMaxEdge,
   type Rect,
   type SourceCrop,
 } from "../../utils/photoPreviewEdit";
@@ -212,10 +213,28 @@ export function CropOverlay({
               height: start.height + dy,
             };
           }
-          setCrop(clampCrop(next));
+          const clamped = clampCrop(next);
+          cropRef.current = clamped;
+          setCrop(clamped);
+        },
+        onPanResponderRelease: () => {
+          const current = cropRef.current;
+          if (!current || !imageLayout) return;
+          // Aspect locked → grow until original frame width or height hits first.
+          // Later corner drags may still expand toward the full photo.
+          const enlarged = enlargeCropToMaxEdge(current, imageLayout);
+          cropRef.current = enlarged;
+          setCrop(enlarged);
+        },
+        onPanResponderTerminate: () => {
+          const current = cropRef.current;
+          if (!current || !imageLayout) return;
+          const enlarged = enlargeCropToMaxEdge(current, imageLayout);
+          cropRef.current = enlarged;
+          setCrop(enlarged);
         },
       }),
-    [clampCrop, disabled],
+    [clampCrop, disabled, imageLayout],
   );
 
   const tl = useMemo(() => makeCornerResponder("tl"), [makeCornerResponder]);

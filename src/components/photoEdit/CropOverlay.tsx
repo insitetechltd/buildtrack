@@ -33,6 +33,8 @@ const HANDLE_SIZE = 44;
 const HANDLE_THICKNESS = 3;
 const HANDLE_LENGTH = 23;
 const MAX_ROTATION = 90;
+/** Wait after corner lift before max-edge settle (avoids snap-while-adjusting). */
+const CROP_SETTLE_DELAY_MS = 300;
 const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 180;
 const SNAP_DEGREE = 1;
@@ -88,10 +90,18 @@ export function CropOverlay({
   const fineRotationRef = useRef(0);
   const fineRotationStartRef = useRef(0);
   const isHidingRef = useRef(false);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
   const topBarHeight = insets.top + TOP_BAR_HEIGHT;
 
   const photoHeight = containerHeight - topBarHeight - BOTTOM_BAR_HEIGHT;
+
+  const clearSettleTimer = useCallback(() => {
+    if (settleTimerRef.current != null) {
+      clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     cropRef.current = crop;
@@ -111,6 +121,7 @@ export function CropOverlay({
 
   useEffect(() => {
     let cancelled = false;
+    clearSettleTimer();
     setSourceSize(null);
     setCrop(null);
     setBaseRotation(0);
@@ -136,8 +147,9 @@ export function CropOverlay({
 
     return () => {
       cancelled = true;
+      clearSettleTimer();
     };
-  }, [uri]);
+  }, [uri, clearSettleTimer]);
 
   const imageLayout = useMemo(() => {
     if (!sourceSize) return null;
@@ -176,9 +188,11 @@ export function CropOverlay({
         onStartShouldSetPanResponder: () => !disabled,
         onMoveShouldSetPanResponder: () => !disabled,
         onPanResponderGrant: () => {
+          clearSettleTimer();
           cropStartRef.current = cropRef.current;
         },
         onPanResponderMove: (_evt, gesture) => {
+          clearSettleTimer();
           const start = cropStartRef.current;
           if (!start) return;
           const dx = gesture.dx;
@@ -218,33 +232,38 @@ export function CropOverlay({
           setCrop(clamped);
         },
         onPanResponderRelease: () => {
-          const current = cropRef.current;
-          if (!current || !imageLayout) return;
-          // Grow frame to max edge + zoom/pan so content stays put (no corner bounce).
-          const settled = settleCropToMaxEdge(
-            current,
-            imageLayout,
-            coverScaleRef.current,
-            imageOffsetRef.current,
-            imageLayout,
-          );
-          const rotation = panContextRef.current.totalRotation;
-          const offset = clampImagePan(
-            imageLayout,
-            settled.crop,
-            rotation,
-            settled.coverScale,
-            settled.imageOffset,
-          );
-          cropRef.current = settled.crop;
-          coverScaleRef.current = settled.coverScale;
-          imageOffsetRef.current = offset;
-          setCoverScale(settled.coverScale);
-          setImageOffset(offset);
-          setCrop(settled.crop);
+          if (!imageLayout) return;
+          clearSettleTimer();
+          settleTimerRef.current = setTimeout(() => {
+            settleTimerRef.current = null;
+            const current = cropRef.current;
+            if (!current || !imageLayout) return;
+            // Grow frame to max edge + zoom/pan so content stays put (no corner bounce).
+            const settled = settleCropToMaxEdge(
+              current,
+              imageLayout,
+              coverScaleRef.current,
+              imageOffsetRef.current,
+              imageLayout,
+            );
+            const rotation = panContextRef.current.totalRotation;
+            const offset = clampImagePan(
+              imageLayout,
+              settled.crop,
+              rotation,
+              settled.coverScale,
+              settled.imageOffset,
+            );
+            cropRef.current = settled.crop;
+            coverScaleRef.current = settled.coverScale;
+            imageOffsetRef.current = offset;
+            setCoverScale(settled.coverScale);
+            setImageOffset(offset);
+            setCrop(settled.crop);
+          }, CROP_SETTLE_DELAY_MS);
         },
       }),
-    [clampCrop, disabled, imageLayout],
+    [clampCrop, clearSettleTimer, disabled, imageLayout],
   );
 
   const tl = useMemo(() => makeCornerResponder("tl"), [makeCornerResponder]);
@@ -279,6 +298,7 @@ export function CropOverlay({
   }, []);
 
   const handleReset = useCallback(() => {
+    clearSettleTimer();
     setBaseRotation(0);
     setFineRotation(0);
     setImageOffset({ x: 0, y: 0 });
@@ -287,7 +307,7 @@ export function CropOverlay({
     if (imageLayout && imageLayout.width > 0) {
       setCrop(defaultCropRectInImageLayout(imageLayout, 0));
     }
-  }, [imageLayout]);
+  }, [clearSettleTimer, imageLayout]);
 
   const totalRotation = baseRotation + fineRotation;
   panContextRef.current = {

@@ -1,25 +1,22 @@
 # STATUS — cursor idea-bank batch 2026-10-12
 
 > **CORRECTION (2026-10-13 HKT — InsiteApp Debug Bot + Dev Bot):**  
-> Dig did **NOT** dig this batch. Dig stays **STOP** until Tristan asks Dig **and** tristans-mini is connected.  
 > Cloud-agent smoke claims written as Dig PASS/PARTIAL on tip `269af13` are **struck**. They are **not** Dig’s PASS ledger.  
-> Local paths under `.cache/insite-perf20/dig-batch-20261012/` are **not** Dig evidence until Dig digs.
+> Dig RESULT rows below are only from Tristan Dig (or Dig when Tristan asks Dig + tristans-mini).
 
 Machine-readable pickup for InsiteAppDev / Dig / Research / Marketing.  
 No TF / eas submit / ASC Public / PROD migrations / Stripe live unless Tristan GO.
 
 **Batch tip context:** `origin/main` = `82e0b08` at write time.
 
-**Close bar (law):** A task is **not complete** until its PR is **closed** (merged or explicitly superseded/closed). `DRAFT_PR` / tip SHA / STATUS rows ≠ done.
-
-~~**Dig L1 batch (2026-10-12 evening):** … Dig RESULT PASS/PARTIAL …~~ **STRUCK** — not Dig.
+**Close bar (law):** A task is **not complete** until its PR is **closed** (merged or explicitly superseded/closed). Dig PASS ≠ CLOSED.
 
 | Order | Item | Draft tip (pickup fact only) | Dig RESULT |
 |---|---|---|---|
-| 1 | D #35 | `5e3d8fc` | **NOT DIGGED** (cloud-agent claim struck — pending Dig) |
-| 2 | E #30 / main | `82e0b08` | **NOT DIGGED** (cloud-agent claim struck — pending Dig) |
-| 3 | B+C #34 | `b6ab19f` | **NOT DIGGED** (cloud-agent claim struck — pending Dig) |
-| 4 | A #23 | `58ef7ea` | **NOT DIGGED** (cloud-agent claim struck — pending Dig) |
+| 1 | D #35 | `5e3d8fc` | **PASS** (Tristan Dig 2026-10-13 — Done-tray) |
+| 2 | E #30 / main | `82e0b08` | **NOT DIGGED** (pending Dig) |
+| 3 | B+C #34 | `b6ab19f` | **NOT DIGGED** (pending Dig) |
+| 4 | A #23 | `58ef7ea` | **NOT DIGGED** (pending Dig) |
 | 6 | F | `82e0b08` | WAITING_GO (not Dig; bake GO only) |
 
 ---
@@ -30,7 +27,7 @@ Do in this order **after** Tristan asks Dig and tristans-mini is connected. Evid
 
 | Order | Item | Tip (draft pickup) | PR | Smoke focus | Then close |
 |---|---|---|---|---|---|
-| 1 | **D** done-tray-thumb | `5e3d8fc` | [#35](https://github.com/insitetechltd/buildtrack/pull/35) | crop→tray; annotate→tray; cancel/discard unchanged | Dig digs first → then Tristan GO → merge |
+| 1 | **D** done-tray-thumb | `5e3d8fc` | [#35](https://github.com/insitetechltd/buildtrack/pull/35) | crop→tray; annotate→tray; cancel/discard unchanged | Dig **PASS** → Tristan GO → merge |
 | 2 | **E** straighten-dial | `82e0b08` (**main**) | [#30](https://github.com/insitetechltd/buildtrack/pull/30) handoff only | 1° / double-tap 0° / bowl / flush rim / ±90 / ~±30 rest / 15% inset / state unmount | Dig digs main first → then close #30 (no merge of stale head) |
 | 3 | **B+C** upload-retry + back-off | `b6ab19f` | [#34](https://github.com/insitetechltd/buildtrack/pull/34) | weak Wi-Fi: siblings finish; successes kept; failed tile retry | Dig digs first → then Tristan GO → merge |
 | 4 | **A** dead-role-select | `58ef7ea` | [#23](https://github.com/insitetechltd/buildtrack/pull/23) | company projects list; no `users_1.role` | Dig digs first → then Tristan GO → merge |
@@ -41,18 +38,12 @@ Do in this order **after** Tristan asks Dig and tristans-mini is connected. Evid
 
 ## What's next — remaining until CLOSED
 
-Dig is **STOP** until Tristan asks Dig + tristans-mini connected. No Dig-proven merge GOs from cloud-agent smoke.
-
-- [ ] **D** Dig digs #35 @ `5e3d8fc` (when Tristan asks Dig) → then Tristan GO → merge → CLOSED  
-  ~~Dig PASS~~ **STRUCK**
-- [ ] **E** Dig digs dial on **main** `82e0b08` (when Tristan asks Dig) → then close/supersede #30 → CLOSED  
-  ~~Dig PASS / PARTIAL~~ **STRUCK**
-- [ ] **B+C** Dig digs #34 @ `b6ab19f` (when Tristan asks Dig) → then Tristan GO → merge → CLOSED  
-  ~~Dig PARTIAL~~ **STRUCK**
-- [ ] **A** Dig digs #23 @ `58ef7ea` (when Tristan asks Dig) → then Tristan GO → merge → CLOSED  
-  ~~Dig PASS~~ **STRUCK**
+- [x] **D** Dig **PASS** (Tristan Dig 2026-10-13) @ `5e3d8fc` — still need Tristan GO → merge #35 → CLOSED
+- [ ] **E** Dig dial on **main** `82e0b08` → then close/supersede #30 → CLOSED
+- [ ] **B+C** Dig #34 @ `b6ab19f` (incl. Wi‑Fi off/on mid-upload) → then Tristan GO → merge → CLOSED
+- [ ] **A** Dig #23 @ `58ef7ea` → then Tristan GO → merge → CLOSED
 - [ ] **STATUS** merge #36 when useful → CLOSED
-- [ ] **F** Tristan GO for TF bake → Dig/phone prove on that IPA (only after bake GO) → CLOSED (Public stays 292)
+- [ ] **F** Tristan GO for TF bake → Dig/phone on IPA → CLOSED (Public stays 292)
 
 **Agent stopping-point rule:** when work pauses mid-batch, rewrite this What's next list (unchecked = still open). Do not mark an ID complete until its PR/issue is closed. Do not write Dig PASS/FAIL/PARTIAL unless Dig digs.
 
@@ -134,26 +125,22 @@ Dig is **STOP** until Tristan asks Dig + tristans-mini connected. No Dig-proven 
 ## D) done-tray-thumb
 
 - status: DRAFT_PR
-- Dig RESULT: **NOT DIGGED** (cloud-agent claim struck — pending Dig)  
-  ~~**PASS** (2026-10-12)~~ **STRUCK**
-- branch / tip SHA: `cursor/done-tray-thumb-20261012` @ `5e3d8fc` (draft pickup fact only; earlier tip `61cdd40`)
+- Dig RESULT: **PASS** (Tristan Dig 2026-10-13 — Done-tray)
+- branch / tip SHA: `cursor/done-tray-thumb-20261012` @ `5e3d8fc`
 - PR number + URL: #35 — https://github.com/insitetechltd/buildtrack/pull/35
 - what changed:
   - Capture-session edit bake stores `annotatedUri` + refreshes `previewUri`
   - Accept mapping prefers bake; tray/thumb rebind via `recyclingKey`
-  - Tip also includes tray fullscreen open under photokit index session + native thumb hit-through (draft tip fact — not Dig-proven)
-- smoke checklist (for Dig when asked):
-  - crop → Done → tray thumb matches crop
-  - annotate → Done → tray thumb matches bake
-  - cancel/discard → tray unchanged
-  - deselect/reselect after edit → still bake; Accept → Select Photos matches
+  - Tray fullscreen open under photokit index session + native thumb hit-through
+- smoke checklist:
+  - crop → Done → tray thumb matches crop — Dig PASS
+  - annotate → Done → tray thumb matches bake — Dig PASS
+  - cancel/discard → tray unchanged — Dig PASS (per Tristan Dig)
 - Dig pickup:
   - tip SHA: `5e3d8fc`
-  - suggested Dig ask: L1 Metro→DEV first; named TF only when Tristan asks Dig
-  - evidence folder Dig will write: `.cache/insite-perf20/`
-  - ready for Dig ask: yes — Dig STOP until Tristan asks Dig + tristans-mini
-- open blockers: Dig has not dug; Format A / film out of scope; no Dig-proven merge GO
-- next agent action: wait for Tristan Dig ask → Dig digs → then Tristan GO merge #35
+  - Dig RESULT recorded from Tristan Dig report 2026-10-13
+- open blockers: merge needs Tristan GO (Dig PASS ≠ CLOSED)
+- next agent action: Tristan GO → merge #35; continue Dig **E** next
 
 ---
 

@@ -234,6 +234,8 @@ export function rotationCoverScale(
 /**
  * Smallest scale ≥ 1 so the rotated photo still covers `crop`.
  * Stays at 1 when every crop corner is already on the picture.
+ * Instantaneous only — UI must ratchet with `ratchetCoverScale` so
+ * counter-rotation does not shrink a magnification the user already paid for.
  */
 export function cropRotationCoverScale(
   imageLayout: Rect,
@@ -261,6 +263,16 @@ export function cropRotationCoverScale(
     scale = Math.max(scale, Math.abs(local.x) / halfW, Math.abs(local.y) / halfH);
   }
   return Math.abs(scale - 1) < 1e-6 ? 1 : scale;
+}
+
+/**
+ * Session cover scale: only magnify when the current angle needs more cover;
+ * never shrink when the user rotates back toward a looser angle.
+ */
+export function ratchetCoverScale(peakScale: number, requiredScale: number): number {
+  const peak = Number.isFinite(peakScale) ? peakScale : 1;
+  const required = Number.isFinite(requiredScale) ? requiredScale : 1;
+  return Math.max(1, peak, required);
 }
 
 /**

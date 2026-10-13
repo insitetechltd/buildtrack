@@ -10,6 +10,7 @@ import {
   clampImagePan,
   cropRectForImageOffset,
   cropRotationCoverScale,
+  ratchetCoverScale,
   rotationCoverScale,
 } from "../photoPreviewEdit";
 import { Image } from "react-native";
@@ -123,6 +124,21 @@ describe("photoPreviewEdit", () => {
 
     it("returns to 1 when a square is turned a full 90°", () => {
       expect(cropRotationCoverScale(image, image, 90)).toBe(1);
+    });
+  });
+
+  describe("ratchetCoverScale", () => {
+    it("grows when the required cover rises", () => {
+      expect(ratchetCoverScale(1, Math.SQRT2)).toBeCloseTo(Math.SQRT2, 5);
+    });
+
+    it("keeps the peak when counter-rotating to a looser angle", () => {
+      const peak = ratchetCoverScale(1, Math.SQRT2);
+      expect(ratchetCoverScale(peak, 1)).toBeCloseTo(Math.SQRT2, 5);
+    });
+
+    it("never drops below 1", () => {
+      expect(ratchetCoverScale(0.5, 0.2)).toBe(1);
     });
   });
 

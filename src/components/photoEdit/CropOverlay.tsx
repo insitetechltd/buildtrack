@@ -22,6 +22,7 @@ import {
   clampImagePan,
   cropRectForImageOffset,
   cropRotationCoverScale,
+  ratchetCoverScale,
   type Rect,
   type SourceCrop,
 } from "../../utils/photoPreviewEdit";
@@ -66,6 +67,8 @@ export function CropOverlay({
   const [baseRotation, setBaseRotation] = useState(0);
   const [fineRotation, setFineRotation] = useState(0);
   const [imageOffset, setImageOffset] = useState({ x: 0, y: 0 });
+  /** Peak cover scale this crop session — grows only; Reset clears it. */
+  const [coverScale, setCoverScale] = useState(1);
   const [loadError, setLoadError] = useState(false);
   const [originalAngle, setOriginalAngle] = useState(0);
   const [isHiding, setIsHiding] = useState(false);
@@ -74,10 +77,12 @@ export function CropOverlay({
   const cropStartRef = useRef<Rect | null>(null);
   const imageOffsetRef = useRef({ x: 0, y: 0 });
   const imageOffsetStartRef = useRef({ x: 0, y: 0 });
+  const coverScaleRef = useRef(1);
   const panContextRef = useRef({
     imageLayout: null as Rect | null,
     crop: null as Rect | null,
     totalRotation: 0,
+    coverScale: 1,
   });
   const fineRotationRef = useRef(0);
   const fineRotationStartRef = useRef(0);
@@ -100,12 +105,18 @@ export function CropOverlay({
   }, [imageOffset]);
 
   useEffect(() => {
+    coverScaleRef.current = coverScale;
+  }, [coverScale]);
+
+  useEffect(() => {
     let cancelled = false;
     setSourceSize(null);
     setCrop(null);
     setBaseRotation(0);
     setFineRotation(0);
     setImageOffset({ x: 0, y: 0 });
+    coverScaleRef.current = 1;
+    setCoverScale(1);
     setOriginalAngle(0);
     setLoadError(false);
 
@@ -242,18 +253,32 @@ export function CropOverlay({
     setBaseRotation(0);
     setFineRotation(0);
     setImageOffset({ x: 0, y: 0 });
+    coverScaleRef.current = 1;
+    setCoverScale(1);
     if (imageLayout && imageLayout.width > 0) {
       setCrop(defaultCropRectInImageLayout(imageLayout, 0));
     }
   }, [imageLayout]);
 
   const totalRotation = baseRotation + fineRotation;
-  panContextRef.current = { imageLayout, crop, totalRotation };
+  panContextRef.current = {
+    imageLayout,
+    crop,
+    totalRotation,
+    coverScale,
+  };
 
   useEffect(() => {
     if (!imageLayout || !crop) return;
-    const scale = cropRotationCoverScale(imageLayout, crop, totalRotation);
-    setImageOffset((prev) => clampImagePan(imageLayout, crop, totalRotation, scale, prev));
+    const required = cropRotationCoverScale(imageLayout, crop, totalRotation);
+    const nextScale = ratchetCoverScale(coverScaleRef.current, required);
+    if (nextScale !== coverScaleRef.current) {
+      coverScaleRef.current = nextScale;
+      setCoverScale(nextScale);
+    }
+    setImageOffset((prev) =>
+      clampImagePan(imageLayout, crop, totalRotation, nextScale, prev),
+    );
   }, [imageLayout, crop, totalRotation]);
 
   const imagePanResponder = useMemo(
@@ -268,11 +293,16 @@ export function CropOverlay({
         onPanResponderMove: (_evt, gesture) => {
           const ctx = panContextRef.current;
           if (!ctx.imageLayout || !ctx.crop) return;
-          const scale = cropRotationCoverScale(ctx.imageLayout, ctx.crop, ctx.totalRotation);
-          const next = clampImagePan(ctx.imageLayout, ctx.crop, ctx.totalRotation, scale, {
-            x: imageOffsetStartRef.current.x + gesture.dx,
-            y: imageOffsetStartRef.current.y + gesture.dy,
-          });
+          const next = clampImagePan(
+            ctx.imageLayout,
+            ctx.crop,
+            ctx.totalRotation,
+            ctx.coverScale,
+            {
+              x: imageOffsetStartRef.current.x + gesture.dx,
+              y: imageOffsetStartRef.current.y + gesture.dy,
+            },
+          );
           imageOffsetRef.current = next;
           setImageOffset(next);
         },
@@ -284,7 +314,7 @@ export function CropOverlay({
     if (!crop || !imageLayout || !sourceSize) return;
     const hasRotation = Math.abs(totalRotation) > 0.1;
     const frame = cropRectForImageOffset(crop, imageOffset);
-    const displayScale = cropRotationCoverScale(imageLayout, crop, totalRotation);
+    const displayScale = coverScale;
     const mapped = hasRotation
       ? mapCoverCropAfterRotation(
           frame,
@@ -504,7 +534,7 @@ export function CropOverlay({
               height: imageLayout.height,
               transform: [
                 { rotate: `${totalRotation}deg` },
-                { scale: cropRotationCoverScale(imageLayout, crop, totalRotation) },
+                { scale: coverScale },
               ],
             }}
             contentFit="contain"

@@ -10,9 +10,11 @@ import {
   clampImagePan,
   cropRectForImageOffset,
   cropRotationCoverScale,
+  offsetAfterRotate90CwAboutPivot,
   ratchetCoverScale,
   enlargeCropToMaxEdge,
   settleCropToMaxEdge,
+  applyCornerCropDrag,
   rotationCoverScale,
 } from "../photoPreviewEdit";
 import { Image } from "react-native";
@@ -144,6 +146,33 @@ describe("photoPreviewEdit", () => {
     });
   });
 
+  describe("offsetAfterRotate90CwAboutPivot", () => {
+    const layout = { x: 0, y: 0, width: 200, height: 200 };
+
+    it("keeps an off-center crop pivot fixed after +90° CW", () => {
+      const offset = { x: 0, y: 0 };
+      const pivot = { x: 150, y: 100 };
+      const next = offsetAfterRotate90CwAboutPivot(layout, offset, pivot);
+      // Image center moves from (100,100) → (150,50); pivot stays at (150,100)
+      expect(next.x).toBeCloseTo(50, 5);
+      expect(next.y).toBeCloseTo(-50, 5);
+      const icx = layout.x + layout.width / 2 + next.x;
+      const icy = layout.y + layout.height / 2 + next.y;
+      // Content vector (50,0) from old center, after R90_CW is (0,50) from new center → pivot
+      expect(icx).toBeCloseTo(150, 5);
+      expect(icy + 50).toBeCloseTo(pivot.y, 5);
+      expect(icx).toBeCloseTo(pivot.x, 5);
+    });
+
+    it("leaves a centered pivot with zero offset", () => {
+      const pivot = { x: 100, y: 100 };
+      expect(offsetAfterRotate90CwAboutPivot(layout, { x: 0, y: 0 }, pivot)).toEqual({
+        x: 0,
+        y: 0,
+      });
+    });
+  });
+
   describe("enlargeCropToMaxEdge", () => {
     const max = { x: 0, y: 0, width: 200, height: 300 };
 
@@ -186,6 +215,64 @@ describe("photoPreviewEdit", () => {
       const settled = settleCropToMaxEdge(crop, max, 1.5, { x: 0, y: 0 }, layout);
       expect(settled.crop).toEqual(crop);
       expect(settled.coverScale).toBe(1.5);
+    });
+  });
+
+  describe("applyCornerCropDrag", () => {
+    const layout = { x: 0, y: 0, width: 200, height: 200 };
+
+    it("grows the crop inside bounds without changing cover scale", () => {
+      const start = { x: 40, y: 40, width: 80, height: 80 };
+      const next = applyCornerCropDrag({
+        startCrop: start,
+        corner: "br",
+        dx: 20,
+        dy: 20,
+        maxBounds: layout,
+        minSize: 48,
+        coverScale: 1,
+        imageOffset: { x: 0, y: 0 },
+        imageLayout: layout,
+      });
+      expect(next.crop).toEqual({ x: 40, y: 40, width: 100, height: 100 });
+      expect(next.coverScale).toBe(1);
+    });
+
+    it("after max-edge settle, outward drag zooms out pinning the opposite corner", () => {
+      const start = { x: 0, y: 0, width: 200, height: 200 };
+      const next = applyCornerCropDrag({
+        startCrop: start,
+        corner: "br",
+        dx: 100,
+        dy: 100,
+        maxBounds: layout,
+        minSize: 48,
+        coverScale: 2,
+        imageOffset: { x: 0, y: 0 },
+        imageLayout: layout,
+      });
+      expect(next.crop).toEqual(start);
+      expect(next.coverScale).toBeCloseTo(2 / 1.5, 5); // expand = 300/200 = 1.5
+      // Opposite TL (0,0) stays pinned: zoom-out pulls image center toward TL
+      expect(next.imageOffset.x).toBeCloseTo(-100 / 3, 5);
+      expect(next.imageOffset.y).toBeCloseTo(-100 / 3, 5);
+    });
+
+    it("does not zoom out below minCoverScale", () => {
+      const start = { x: 0, y: 0, width: 200, height: 200 };
+      const next = applyCornerCropDrag({
+        startCrop: start,
+        corner: "br",
+        dx: 200,
+        dy: 200,
+        maxBounds: layout,
+        minSize: 48,
+        coverScale: 1.2,
+        imageOffset: { x: 0, y: 0 },
+        imageLayout: layout,
+        minCoverScale: 1.2,
+      });
+      expect(next.coverScale).toBeCloseTo(1.2, 5);
     });
   });
 

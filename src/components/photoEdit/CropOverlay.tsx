@@ -19,11 +19,14 @@ import {
   mapCoverCropAfterRotation,
   mapCropRectToSourcePixels,
   resolveImageDimensions,
+  applyCornerCropDrag,
   clampImagePan,
   cropRectForImageOffset,
   cropRotationCoverScale,
+  offsetAfterRotate90CwAboutPivot,
   ratchetCoverScale,
   settleCropToMaxEdge,
+  type CropCorner,
   type Rect,
   type SourceCrop,
 } from "../../utils/photoPreviewEdit";
@@ -55,8 +58,6 @@ type CropOverlayProps = {
   onApply: (crop: SourceCrop, rotation?: number) => void;
 };
 
-type Corner = "tl" | "tr" | "bl" | "br";
-
 export function CropOverlay({
   uri,
   containerWidth,
@@ -81,6 +82,8 @@ export function CropOverlay({
   const imageOffsetRef = useRef({ x: 0, y: 0 });
   const imageOffsetStartRef = useRef({ x: 0, y: 0 });
   const coverScaleRef = useRef(1);
+  const coverScaleStartRef = useRef(1);
+  const cornerOffsetStartRef = useRef({ x: 0, y: 0 });
   const panContextRef = useRef({
     imageLayout: null as Rect | null,
     crop: null as Rect | null,
@@ -169,67 +172,52 @@ export function CropOverlay({
     }
   }, [imageLayout]);
 
-  const clampCrop = useCallback(
-    (next: Rect): Rect => {
-      if (!imageLayout) return next;
-      let { x, y, width, height } = next;
-      width = Math.max(MIN_CROP_PX, Math.min(width, imageLayout.width));
-      height = Math.max(MIN_CROP_PX, Math.min(height, imageLayout.height));
-      x = Math.max(imageLayout.x, Math.min(x, imageLayout.x + imageLayout.width - width));
-      y = Math.max(imageLayout.y, Math.min(y, imageLayout.y + imageLayout.height - height));
-      return { x, y, width, height };
-    },
-    [imageLayout],
-  );
-
   const makeCornerResponder = useCallback(
-    (corner: Corner) =>
+    (corner: CropCorner) =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => !disabled,
         onMoveShouldSetPanResponder: () => !disabled,
         onPanResponderGrant: () => {
           clearSettleTimer();
           cropStartRef.current = cropRef.current;
+          coverScaleStartRef.current = coverScaleRef.current;
+          cornerOffsetStartRef.current = { ...imageOffsetRef.current };
         },
         onPanResponderMove: (_evt, gesture) => {
           clearSettleTimer();
           const start = cropStartRef.current;
-          if (!start) return;
-          const dx = gesture.dx;
-          const dy = gesture.dy;
-          let next: Rect;
-          if (corner === "tl") {
-            next = {
-              x: start.x + dx,
-              y: start.y + dy,
-              width: start.width - dx,
-              height: start.height - dy,
-            };
-          } else if (corner === "tr") {
-            next = {
-              x: start.x,
-              y: start.y + dy,
-              width: start.width + dx,
-              height: start.height - dy,
-            };
-          } else if (corner === "bl") {
-            next = {
-              x: start.x + dx,
-              y: start.y,
-              width: start.width - dx,
-              height: start.height + dy,
-            };
-          } else {
-            next = {
-              x: start.x,
-              y: start.y,
-              width: start.width + dx,
-              height: start.height + dy,
-            };
-          }
-          const clamped = clampCrop(next);
-          cropRef.current = clamped;
-          setCrop(clamped);
+          if (!start || !imageLayout) return;
+          const rotation = panContextRef.current.totalRotation;
+          const minCover = cropRotationCoverScale(
+            imageLayout,
+            start,
+            rotation,
+          );
+          const next = applyCornerCropDrag({
+            startCrop: start,
+            corner,
+            dx: gesture.dx,
+            dy: gesture.dy,
+            maxBounds: imageLayout,
+            minSize: MIN_CROP_PX,
+            coverScale: coverScaleStartRef.current,
+            imageOffset: cornerOffsetStartRef.current,
+            imageLayout,
+            minCoverScale: minCover,
+          });
+          const offset = clampImagePan(
+            imageLayout,
+            next.crop,
+            rotation,
+            next.coverScale,
+            next.imageOffset,
+          );
+          cropRef.current = next.crop;
+          coverScaleRef.current = next.coverScale;
+          imageOffsetRef.current = offset;
+          setCrop(next.crop);
+          setCoverScale(next.coverScale);
+          setImageOffset(offset);
         },
         onPanResponderRelease: () => {
           if (!imageLayout) return;
@@ -263,7 +251,7 @@ export function CropOverlay({
           }, CROP_SETTLE_DELAY_MS);
         },
       }),
-    [clampCrop, clearSettleTimer, disabled, imageLayout],
+    [clearSettleTimer, disabled, imageLayout],
   );
 
   const tl = useMemo(() => makeCornerResponder("tl"), [makeCornerResponder]);
@@ -294,8 +282,36 @@ export function CropOverlay({
   );
 
   const handleRotate90 = useCallback(() => {
+    if (imageLayout && crop) {
+      const pivot = {
+        x: crop.x + crop.width / 2,
+        y: crop.y + crop.height / 2,
+      };
+      const nextOffset = offsetAfterRotate90CwAboutPivot(
+        imageLayout,
+        imageOffsetRef.current,
+        pivot,
+      );
+      const nextBase = (baseRotation + 90) % 360;
+      const nextTotal = nextBase + fineRotation;
+      const required = cropRotationCoverScale(imageLayout, crop, nextTotal);
+      const nextScale = ratchetCoverScale(coverScaleRef.current, required);
+      const clamped = clampImagePan(
+        imageLayout,
+        crop,
+        nextTotal,
+        nextScale,
+        nextOffset,
+      );
+      coverScaleRef.current = nextScale;
+      imageOffsetRef.current = clamped;
+      setCoverScale(nextScale);
+      setImageOffset(clamped);
+      setBaseRotation(nextBase);
+      return;
+    }
     setBaseRotation((prev) => (prev + 90) % 360);
-  }, []);
+  }, [imageLayout, crop, baseRotation, fineRotation]);
 
   const handleReset = useCallback(() => {
     clearSettleTimer();

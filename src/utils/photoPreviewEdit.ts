@@ -276,6 +276,29 @@ export function ratchetCoverScale(peakScale: number, requiredScale: number): num
 }
 
 /**
+ * Image offset after a +90° clockwise rotate about `pivot` (usually crop center).
+ * The visual still rotates about the image center; this shifts the photo so the
+ * content under `pivot` stays put — same effect as rotating around the crop frame.
+ */
+export function offsetAfterRotate90CwAboutPivot(
+  imageLayout: Rect,
+  offset: { x: number; y: number },
+  pivot: { x: number; y: number },
+): { x: number; y: number } {
+  const icx = imageLayout.x + imageLayout.width / 2 + offset.x;
+  const icy = imageLayout.y + imageLayout.height / 2 + offset.y;
+  const vx = pivot.x - icx;
+  const vy = pivot.y - icy;
+  // R90_CW(v) = (-vy, vx); Ic' = pivot - R90_CW(pivot - Ic)
+  const newIcx = pivot.x + vy;
+  const newIcy = pivot.y - vx;
+  return {
+    x: newIcx - (imageLayout.x + imageLayout.width / 2),
+    y: newIcy - (imageLayout.y + imageLayout.height / 2),
+  };
+}
+
+/**
  * Largest pan that keeps every crop corner on the scaled, rotated photo.
  * `scale` is the cover scale already applied on screen. Offset is in screen pixels.
  */
@@ -505,6 +528,162 @@ export function settleCropToMaxEdge(
   return {
     crop: nextCrop,
     coverScale: coverScale * s,
+    imageOffset: {
+      x: newIcx - (imageLayout.x + imageLayout.width / 2),
+      y: newIcy - (imageLayout.y + imageLayout.height / 2),
+    },
+  };
+}
+
+export type CropCorner = "tl" | "tr" | "bl" | "br";
+
+function rawCropFromCornerDrag(
+  start: Rect,
+  corner: CropCorner,
+  dx: number,
+  dy: number,
+): Rect {
+  if (corner === "tl") {
+    return {
+      x: start.x + dx,
+      y: start.y + dy,
+      width: start.width - dx,
+      height: start.height - dy,
+    };
+  }
+  if (corner === "tr") {
+    return {
+      x: start.x,
+      y: start.y + dy,
+      width: start.width + dx,
+      height: start.height - dy,
+    };
+  }
+  if (corner === "bl") {
+    return {
+      x: start.x + dx,
+      y: start.y,
+      width: start.width - dx,
+      height: start.height + dy,
+    };
+  }
+  return {
+    x: start.x,
+    y: start.y,
+    width: start.width + dx,
+    height: start.height + dy,
+  };
+}
+
+function oppositeCornerPoint(crop: Rect, corner: CropCorner): { x: number; y: number } {
+  if (corner === "tl") return { x: crop.x + crop.width, y: crop.y + crop.height };
+  if (corner === "tr") return { x: crop.x, y: crop.y + crop.height };
+  if (corner === "bl") return { x: crop.x + crop.width, y: crop.y };
+  return { x: crop.x, y: crop.y };
+}
+
+/**
+ * Corner drag: grow/shrink the frame inside `maxBounds`. When the drag pushes
+ * past a max edge (typical after settle), zoom the photo out so the framed
+ * area enlarges in the drag direction while the opposite corner stays pinned.
+ */
+export function applyCornerCropDrag(args: {
+  startCrop: Rect;
+  corner: CropCorner;
+  dx: number;
+  dy: number;
+  maxBounds: Rect;
+  minSize: number;
+  coverScale: number;
+  imageOffset: { x: number; y: number };
+  imageLayout: Rect;
+  minCoverScale?: number;
+}): { crop: Rect; coverScale: number; imageOffset: { x: number; y: number } } {
+  const {
+    startCrop,
+    corner,
+    dx,
+    dy,
+    maxBounds,
+    minSize,
+    coverScale,
+    imageOffset,
+    imageLayout,
+  } = args;
+  const minCover = Math.max(1, args.minCoverScale ?? 1);
+
+  let desired = rawCropFromCornerDrag(startCrop, corner, dx, dy);
+  // Enforce min size on the dragged corner.
+  if (desired.width < minSize) {
+    if (corner === "tl" || corner === "bl") {
+      desired = {
+        ...desired,
+        x: desired.x + desired.width - minSize,
+        width: minSize,
+      };
+    } else {
+      desired = { ...desired, width: minSize };
+    }
+  }
+  if (desired.height < minSize) {
+    if (corner === "tl" || corner === "tr") {
+      desired = {
+        ...desired,
+        y: desired.y + desired.height - minSize,
+        height: minSize,
+      };
+    } else {
+      desired = { ...desired, height: minSize };
+    }
+  }
+
+  let width = Math.min(desired.width, maxBounds.width);
+  let height = Math.min(desired.height, maxBounds.height);
+  let x = desired.x;
+  let y = desired.y;
+  // Keep the opposite corner fixed when clamping into maxBounds.
+  if (corner === "br") {
+    x = startCrop.x;
+    y = startCrop.y;
+  } else if (corner === "bl") {
+    x = startCrop.x + startCrop.width - width;
+    y = startCrop.y;
+  } else if (corner === "tr") {
+    x = startCrop.x;
+    y = startCrop.y + startCrop.height - height;
+  } else {
+    x = startCrop.x + startCrop.width - width;
+    y = startCrop.y + startCrop.height - height;
+  }
+  x = Math.max(maxBounds.x, Math.min(x, maxBounds.x + maxBounds.width - width));
+  y = Math.max(maxBounds.y, Math.min(y, maxBounds.y + maxBounds.height - height));
+  const crop = { x, y, width, height };
+
+  const expand = Math.max(
+    1,
+    desired.width / Math.max(width, 1e-6),
+    desired.height / Math.max(height, 1e-6),
+  );
+  if (expand <= 1.001 || coverScale <= minCover + 1e-6) {
+    return { crop, coverScale, imageOffset };
+  }
+
+  const nextScale = Math.max(minCover, coverScale / expand);
+  if (nextScale >= coverScale - 1e-6) {
+    return { crop, coverScale, imageOffset };
+  }
+
+  // Pin the opposite corner of the start crop so enlarge feels directional.
+  const pin = oppositeCornerPoint(startCrop, corner);
+  const icx = imageLayout.x + imageLayout.width / 2 + imageOffset.x;
+  const icy = imageLayout.y + imageLayout.height / 2 + imageOffset.y;
+  const ratio = nextScale / coverScale;
+  const newIcx = pin.x - ratio * (pin.x - icx);
+  const newIcy = pin.y - ratio * (pin.y - icy);
+
+  return {
+    crop,
+    coverScale: nextScale,
     imageOffset: {
       x: newIcx - (imageLayout.x + imageLayout.width / 2),
       y: newIcy - (imageLayout.y + imageLayout.height / 2),

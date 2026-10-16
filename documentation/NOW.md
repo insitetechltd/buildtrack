@@ -4,9 +4,9 @@
 
 ---
 
-## Current status (2026-10-09) — read this first
+## Current status (2026-10-16) — read this first
 
-**App on `main`:** Taskr **1.1.5**, `app.json` build **294**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove.
+**App on `main`:** Taskr **1.1.5**, `app.json` build **295**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove.
 
 **Binary gap a bot misses if it stops at “TF 288”:** git never recorded build **288**. After store build **280**, `app.json` jumps to **286** (`dad38e3`, version **1.1.5**) then **287** (`20f2db6`, library opens newest-first). The next committed bake is **TestFlight 289** (parent build 287). Session notes below the 289 entry are the 1.1.3 line. ASC **280 is approved**, not rejected. **`M-REPORT-01` is Closed.**
 
@@ -20,6 +20,7 @@
 | 292 | Library opens on a live newest-image walk | `5bb4787` |
 | 293 | Warm MediaLibrary shortcut removed; the native walk is the only picker path | `affed7b` |
 | 294 | `M-PERF-04` Phase 1: parallel photo upload; signed URL does not block the write | `2005c53` |
+| 295 | Crop: ratchet cover scale, max-edge settle, crop-center 90°, outward-corner zoom-out | `2cce080` |
 
 **On `main` after TF 294 (not in any binary):** `M-REPORT-01` Closed 2026-10-06 (`c264ba2`, ledger `732c123`). A close needs a typed note. Photos stay with that note. Manager line: “Issue resolved by {name}: Resolved with reply”. Worker line: “Issue acknowledged and closed by {name}”. UI-08 Maestro note readback is prepared and still PARTIAL (no DEV journey pass).
 
@@ -30,6 +31,8 @@
 **Shelved:** `M-PERF-04` Phase 2. **Left off `main` on purpose:** draft PRs 22, 23, 28, 29, 30.
 
 ---
+
+**This session — CBP TF 295 submitted (2026-10-16):** Gate 0 waived (user-ordered merge+TF after headed crop dig PASS on tip). App merge `2cce080` (crop ratchet / settle / crop-center 90° / outward-corner zoom-out). Local `./build-local.sh ios production` → IPA **v1.1.5 (295)** `.eas/artifacts/build-1792123796098.ipa` (CFBundleVersion 295; bundle `com.buildtrack.app.local`; S4 PASS sha256 `674f218699dc4b1d39829fe8fee76af701f1cbb341fb062260b0829f6fdf8171`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/55a65c2d-8059-4525-b6d3-0d2356493fc2 (✔ Uploaded ASC; Apple processing). ASC Public / Submit for Review untouched. **Next:** install TF **295**. Crop: cover scale only grows while rotating out of frame; after corner release wait ~0.3s then settle to max edge; +90° pivots on crop center; after settle, drag a corner outward to zoom out and include more photo.
 
 **This session — M-REPORT-01 Closed (2026-10-06):** A close requires a typed note from the manager or the worker. Photos stay with that note and never close a report alone. Empty text shows Comment required and does not upload. The manager close line stays “Issue resolved by {name}: Resolved with reply”; the note is the comment. The worker close line is “Issue acknowledged and closed by {name}”; the note is the comment. A retry of the same note does not insert a second comment. Headed DEV: Carol on `R01-qa-20261006-close-text` — empty Resolve showed Comment required; the text close stored the reply and “Issue resolved by Carol Admin A: Resolved with reply”. Worker sentence covered by the store test. No schema. No PROD prove.
 

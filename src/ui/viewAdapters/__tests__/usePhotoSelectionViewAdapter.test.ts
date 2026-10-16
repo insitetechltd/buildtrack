@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { usePhotoSelectionViewAdapter } from "../usePhotoSelectionViewAdapter";
 
-const mockUploadFileWithVerification = jest.fn();
+const mockUploadFileWithRetry = jest.fn();
 const mockAddBatch = jest.fn();
 const mockGetTasksByProject = jest.fn();
 const mockDismissBatch = jest.fn();
@@ -29,8 +29,8 @@ jest.mock("../../../utils/ensureCappedLocalPhoto", () => ({
   ensureCappedLocalPhoto: (...args: unknown[]) => mockEnsureCappedLocalPhoto(...args),
 }));
 
-jest.mock("../../../api/fileUploadService", () => ({
-  uploadFileWithVerification: (...args: unknown[]) => mockUploadFileWithVerification(...args),
+jest.mock("../../../api/uploadRetry", () => ({
+  uploadFileWithRetry: (...args: unknown[]) => mockUploadFileWithRetry(...args),
 }));
 
 jest.mock("../../../state/unattachedPhotoBatchStore", () => ({
@@ -83,7 +83,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUploadFileWithVerification.mockResolvedValue({
+    mockUploadFileWithRetry.mockResolvedValue({
       success: true,
       file: { public_url: "https://cdn.example.com/u/1.jpg" },
     });
@@ -449,7 +449,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
   it("saveIntent=project_unattached + handleUploadPhotos calls upload with entityType=project and addBatch", async () => {
     const onPhotosUploaded = jest.fn();
     const onSaveUnattachedDone = jest.fn();
-    mockUploadFileWithVerification.mockResolvedValue({
+    mockUploadFileWithRetry.mockResolvedValue({
       success: true,
       file: { public_url: "https://cdn.example.com/unattached-1.jpg" },
     });
@@ -476,7 +476,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       await result.current.handleUploadPhotos();
     });
 
-    const uploadArgs = mockUploadFileWithVerification.mock.calls[0][0];
+    const uploadArgs = mockUploadFileWithRetry.mock.calls[0][0];
     expect(uploadArgs.entityType).toBe("project");
     expect(uploadArgs.entityId).toBe("proj-9");
 
@@ -493,7 +493,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
   it("selectedTaskId set → handleUploadPhotos uses entityType=task-update and fires onAttachedToExistingTask", async () => {
     const onAttachedToExistingTask = jest.fn();
     const onPhotosUploaded = jest.fn();
-    mockUploadFileWithVerification.mockResolvedValue({
+    mockUploadFileWithRetry.mockResolvedValue({
       success: true,
       file: { public_url: "https://cdn.example.com/attached-1.jpg" },
     });
@@ -524,7 +524,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       await result.current.handleUploadPhotos();
     });
 
-    const uploadArgs = mockUploadFileWithVerification.mock.calls[0][0];
+    const uploadArgs = mockUploadFileWithRetry.mock.calls[0][0];
     expect(uploadArgs.entityType).toBe("task-update");
     expect(uploadArgs.entityId).toBe("task-existing-42");
     expect(onAttachedToExistingTask).toHaveBeenCalledWith("task-existing-42", [
@@ -535,7 +535,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
 
   it("caption on a photo passes through to upload description option", async () => {
     const onAttachedToExistingTask = jest.fn();
-    mockUploadFileWithVerification.mockResolvedValue({
+    mockUploadFileWithRetry.mockResolvedValue({
       success: true,
       file: { public_url: "https://cdn.example.com/d.jpg" },
     });
@@ -569,8 +569,8 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       await result.current.handleUploadPhotos();
     });
 
-    expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(1);
-    const options = mockUploadFileWithVerification.mock.calls[0][0];
+    expect(mockUploadFileWithRetry).toHaveBeenCalledTimes(1);
+    const options = mockUploadFileWithRetry.mock.calls[0][0];
     expect(options.description).toBe("Front door jamb misalignment");
   });
 
@@ -579,7 +579,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     const resolvers: Array<() => void> = [];
     let inFlight = 0;
     let maxInFlight = 0;
-    mockUploadFileWithVerification.mockImplementation((options: { file: { name: string } }) => {
+    mockUploadFileWithRetry.mockImplementation((options: { file: { name: string } }) => {
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
       return new Promise((resolve) => {
@@ -620,7 +620,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     });
 
     await waitFor(() => {
-      expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(3);
+      expect(mockUploadFileWithRetry).toHaveBeenCalledTimes(3);
     });
     expect(maxInFlight).toBe(3);
 
@@ -650,7 +650,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       )?.find((button) => button.text === "Continue");
       continueButton?.onPress?.();
     });
-    mockUploadFileWithVerification.mockImplementation(async (options: { file: { name: string } }) => {
+    mockUploadFileWithRetry.mockImplementation(async (options: { file: { name: string } }) => {
       if (options.file.name === "b.jpg") {
         return { success: false, error: "network" };
       }

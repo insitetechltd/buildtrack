@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { uploadFileWithVerification } from '../../api/fileUploadService';
+import { uploadFileWithRetry } from '../../api/uploadRetry';
 import { pinDraftMedia } from '../../utils/draftMediaCache';
 import { ensureCappedLocalPhoto } from '../../utils/ensureCappedLocalPhoto';
 import type { SourceCrop } from '../../utils/photoPreviewEdit';
@@ -558,7 +558,7 @@ export function usePhotoSelectionViewAdapter({
               return { ok: false, error: `File not found: ${photo.fileName}` };
             }
 
-            const result = await uploadFileWithVerification({
+            const result = await uploadFileWithRetry({
               file: {
                 uri: uriToUpload,
                 name: photo.fileName,

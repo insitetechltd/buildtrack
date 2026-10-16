@@ -37,7 +37,7 @@ import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
 import type { SelectedPhoto } from "@/utils/usePhotoSelection";
 import { useAuthStore } from "@/state/authStore";
-import { uploadFileWithVerification } from "@/api/fileUploadService";
+import { uploadFileWithRetry } from "@/api/uploadRetry";
 import { ensureCappedLocalPhoto } from "@/utils/ensureCappedLocalPhoto";
 import {
   chosenPhotosAllUploaded,
@@ -261,7 +261,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             if (!fileInfo.exists) {
               return null;
             }
-            const result = await uploadFileWithVerification({
+            const result = await uploadFileWithRetry({
               file: {
                 uri: uriToUpload,
                 name: photo.fileName,

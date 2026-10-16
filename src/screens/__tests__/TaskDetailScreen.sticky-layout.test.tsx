@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 import { fireEvent, render, waitFor, act } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../TaskDetailScreen";
-import { uploadFileWithVerification } from "../../api/fileUploadService";
+import { uploadFileWithRetry } from "../../api/uploadRetry";
 import { navigateReportTriageAction } from "../../navigation/taskDetailBackNavigation";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
 
@@ -78,9 +78,8 @@ jest.mock("../../navigation/captureFirstCameraFlow", () => ({
     mockNavigateToAddPhotosCaptureSession(...args),
 }));
 
-jest.mock("../../api/fileUploadService", () => ({
-  ...jest.requireActual("../../api/fileUploadService"),
-  uploadFileWithVerification: jest.fn(),
+jest.mock("../../api/uploadRetry", () => ({
+  uploadFileWithRetry: jest.fn(),
 }));
 
 jest.mock("../../utils/ensureCappedLocalPhoto", () => ({
@@ -165,7 +164,7 @@ describe("TaskDetailScreen sticky layout", () => {
     mockDispatch.mockReset();
     mockAddListener.mockImplementation(() => jest.fn());
     alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
-    (uploadFileWithVerification as jest.Mock).mockReset();
+    (uploadFileWithRetry as jest.Mock).mockReset();
     (navigateReportTriageAction as jest.Mock).mockClear();
   });
 
@@ -556,7 +555,7 @@ describe("TaskDetailScreen sticky layout", () => {
 
     expect(alertSpy).toHaveBeenCalledWith("Comment required", expect.any(String));
     expect(navigateReportTriageAction).not.toHaveBeenCalled();
-    expect(uploadFileWithVerification).not.toHaveBeenCalled();
+    expect(uploadFileWithRetry).not.toHaveBeenCalled();
     expect(actions.resolveReportWithReply).not.toHaveBeenCalled();
     expect(actions.resolveReport).not.toHaveBeenCalled();
     expect(screen.getByTestId("report-reply-composer__input")).toBeTruthy();
@@ -564,7 +563,7 @@ describe("TaskDetailScreen sticky layout", () => {
 
   it("PM non-empty draft uploads storage paths and does not take the without-reply path", async () => {
     mockReportDialExpanded.current = true;
-    (uploadFileWithVerification as jest.Mock).mockImplementation(
+    (uploadFileWithRetry as jest.Mock).mockImplementation(
       async (options: { file: { name: string; uri: string } }) => ({
         success: true,
         file: { public_url: `company-1/tasks/task-1/${options.file.name}` },
@@ -601,7 +600,7 @@ describe("TaskDetailScreen sticky layout", () => {
       expect.any(Array),
     );
     expect(navigateReportTriageAction).not.toHaveBeenCalled();
-    expect(uploadFileWithVerification).not.toHaveBeenCalled();
+    expect(uploadFileWithRetry).not.toHaveBeenCalled();
 
     const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
     await act(async () => {
@@ -618,12 +617,12 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(actions.replyToReport).not.toHaveBeenCalled();
     expect(navigateReportTriageAction).not.toHaveBeenCalled();
     expect(onNavigateBack).not.toHaveBeenCalled();
-    const uploadedUris = (uploadFileWithVerification as jest.Mock).mock.calls.map(
+    const uploadedUris = (uploadFileWithRetry as jest.Mock).mock.calls.map(
       (call) => call[0].file.uri,
     );
     expect(uploadedUris).toEqual(["file://a.jpg", "file://b.jpg"]);
     expect(
-      (uploadFileWithVerification as jest.Mock).mock.invocationCallOrder[0],
+      (uploadFileWithRetry as jest.Mock).mock.invocationCallOrder[0],
     ).toBeLessThan((actions.resolveReportWithReply as jest.Mock).mock.invocationCallOrder[0]);
     const savedPhotos = (actions.resolveReportWithReply as jest.Mock).mock.calls[0][0]
       .photos as string[];
@@ -648,12 +647,12 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(alertSpy).toHaveBeenCalledWith("Comment required", expect.any(String));
     expect(actions.resolveReportWithReply).not.toHaveBeenCalled();
     expect(actions.resolveReport).not.toHaveBeenCalled();
-    expect(uploadFileWithVerification).not.toHaveBeenCalled();
+    expect(uploadFileWithRetry).not.toHaveBeenCalled();
   });
 
   it("worker resolve uploads photos then calls resolveReportWithReply", async () => {
     mockReportDialExpanded.current = true;
-    (uploadFileWithVerification as jest.Mock).mockResolvedValue({
+    (uploadFileWithRetry as jest.Mock).mockResolvedValue({
       success: true,
       file: { public_url: "company-1/tasks/task-1/note.jpg" },
     });
@@ -687,11 +686,11 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(actions.resolveReport).not.toHaveBeenCalled();
     expect(navigateReportTriageAction).not.toHaveBeenCalled();
     expect(onNavigateBack).toHaveBeenCalled();
-    expect((uploadFileWithVerification as jest.Mock).mock.calls[0][0].file.uri).toBe(
+    expect((uploadFileWithRetry as jest.Mock).mock.calls[0][0].file.uri).toBe(
       "file://note.jpg",
     );
     expect(
-      (uploadFileWithVerification as jest.Mock).mock.invocationCallOrder[0],
+      (uploadFileWithRetry as jest.Mock).mock.invocationCallOrder[0],
     ).toBeLessThan((actions.resolveReportWithReply as jest.Mock).mock.invocationCallOrder[0]);
   });
 
@@ -753,7 +752,7 @@ describe("TaskDetailScreen sticky layout", () => {
   });
 
   it("does not persist dock progress when a chosen photo fails to upload", async () => {
-    (uploadFileWithVerification as jest.Mock).mockResolvedValue({
+    (uploadFileWithRetry as jest.Mock).mockResolvedValue({
       success: false,
       error: "Photo upload failed",
     });
@@ -804,7 +803,7 @@ describe("TaskDetailScreen sticky layout", () => {
     const resolvers: Array<() => void> = [];
     let inFlight = 0;
     let maxInFlight = 0;
-    (uploadFileWithVerification as jest.Mock).mockImplementation(
+    (uploadFileWithRetry as jest.Mock).mockImplementation(
       (options: { file: { name: string } }) => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
@@ -852,7 +851,7 @@ describe("TaskDetailScreen sticky layout", () => {
     fireEvent.press(screen.getByTestId("report-reply-composer__send"));
 
     await waitFor(() => {
-      expect(uploadFileWithVerification).toHaveBeenCalledTimes(3);
+      expect(uploadFileWithRetry).toHaveBeenCalledTimes(3);
     });
     expect(maxInFlight).toBe(3);
 
@@ -874,7 +873,7 @@ describe("TaskDetailScreen sticky layout", () => {
   });
 
   it("does not persist dock progress when one of several reply photos fails", async () => {
-    (uploadFileWithVerification as jest.Mock).mockImplementation(
+    (uploadFileWithRetry as jest.Mock).mockImplementation(
       async (options: { file: { name: string } }) => {
         if (options.file.name === "b.jpg") {
           return { success: false, error: "Photo upload failed" };

@@ -8,6 +8,8 @@ export type CaptureSessionPhoto = {
   source: "camera" | "library";
   mediaLibraryAssetId?: string;
   previewUri?: string;
+  /** Local bake after crop/annotate — Done-tray + Accept must prefer this. */
+  annotatedUri?: string;
   /** Highlighted for Accept in hybrid picker. */
   selected: boolean;
 };

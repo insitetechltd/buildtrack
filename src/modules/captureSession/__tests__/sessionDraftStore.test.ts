@@ -89,6 +89,10 @@ describe("captureSession sessionDraftStore", () => {
 });
 
 describe("mapSessionSelectionToSelectedPhotos", () => {
+  beforeEach(() => {
+    resetCaptureSession();
+  });
+
   it("maps only selected rows into SelectedPhoto shape", () => {
     const input: CaptureSessionPhoto[] = [
       {
@@ -146,6 +150,32 @@ describe("mapSessionSelectionToSelectedPhotos", () => {
         isAnnotated: false,
         mediaLibraryAssetId: "keep",
         previewUri: "file://preview/keep.jpg",
+      },
+    ]);
+  });
+
+  it("maps crop/annotate bake onto annotatedUri and refreshes previewUri", () => {
+    const store = useCaptureSessionStore.getState();
+    store.addOrSelectLibraryPhoto({
+      id: "lib-1",
+      uri: "ph://lib-1",
+      fileName: "lib-1.jpg",
+      mediaLibraryAssetId: "lib-1",
+      previewUri: "file://preview/lib-1.jpg",
+    });
+    store.updatePhotoUri("lib-1", "file://edited/lib-1.jpg", { asEdit: true });
+    const row = useCaptureSessionStore.getState().photos[0];
+    expect(row.uri).toBe("file://edited/lib-1.jpg");
+    expect(row.annotatedUri).toBe("file://edited/lib-1.jpg");
+    expect(row.previewUri).toBe("file://edited/lib-1.jpg");
+    expect(mapSessionSelectionToSelectedPhotos([row!])).toEqual([
+      {
+        uri: "file://edited/lib-1.jpg",
+        fileName: "lib-1.jpg",
+        isAnnotated: true,
+        annotatedUri: "file://edited/lib-1.jpg",
+        previewUri: "file://edited/lib-1.jpg",
+        mediaLibraryAssetId: "lib-1",
       },
     ]);
   });

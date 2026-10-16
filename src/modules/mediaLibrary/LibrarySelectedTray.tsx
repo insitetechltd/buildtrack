@@ -73,7 +73,7 @@ export function LibrarySelectedTray({
       >
         {selectedAssets.map((item) => (
           <View
-            key={item.assetId}
+            key={`${item.assetId}:${item.uri}`}
             testID={`${testIdPrefix}__thumb_${item.assetId}`}
             style={{ position: "relative" }}
           >
@@ -88,6 +88,7 @@ export function LibrarySelectedTray({
             >
               <ExpoImage
                 source={{ uri: item.uri }}
+                recyclingKey={`${item.assetId}:${item.uri}`}
                 cachePolicy="memory-disk"
                 contentFit="cover"
                 style={{

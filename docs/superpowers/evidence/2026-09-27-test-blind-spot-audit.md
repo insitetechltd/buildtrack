@@ -16,6 +16,12 @@ The map body below stops at the 2026-09-27 audit (`7d65e97`, build **280**). Loa
 - **Next build slice:** `M-AUTHZ-02` (PRD `docs/superpowers/specs/2026-10-07-m-authz-02-prd.md`). Same-company behavior unchanged. Then `M-OPS-03`, then `M-AI-01` (PRD saved 2026-10-08; no build GO).
 - Draft PRs **22, 23, 28, 29, 30** stay off `main`.
 
+### Pickup addendum (2026-10-16) — WEB-05 / M-WEB-01
+
+- TestFlight tip is **295** (`2cce080` crop). **1.1.5** line still has **no PROD prove**.
+- Idle-parallel **`M-WEB-01`** localhost Expo Web company/project desk spike exists on Mac WT / branch `cursor/m-web-01-spike-20261016` (not on `origin/main` until Tristan pushes). Acceptance: `docs/superpowers/plans/2026-10-16-m-web-01-spike-acceptance.md`.
+- Capability map row **WEB-05** added below (was missing — WEB-01..04 are signup/billing Pages only). **`M-AUTHZ-02` stays primary** commercial next. No PROD web desk / auth productization without Tristan GO.
+
 ---
 
 ## A. Verdict
@@ -111,6 +117,9 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | WEB-02 | billing.html cancel / portal | Web | CA | Stuck paid / false cancel | MONEY | billing.js + cancel Edge | HUMAN | WEAK | NOW cancel smoke 2026-09-12 | dated | HUMAN-ONLY |
 | WEB-03 | Non-IAP / web-only signup (ASC) | Compliance | Reviewer | App Review reject | MONEY | ASC notes + paste pack | HUMAN | WEAK | ASC submit 280 | 2026-09-27 | HUMAN-ONLY |
 | WEB-04 | Seat add-ons sync (web↔Stripe↔app) | Web/Edge | CA | Cap drift | MONEY | seatUsage.test.ts (client math) | J-MOCK | WEAK | No live Stripe quantity assert | tip | UNPROVEN |
+| WEB-05 | Expo Web company/project desk (`M-WEB-01`) — CA users/projects, project tasks list; access helpers UX-hide only (RLS enforces) | Web (localhost Expo) | CA / PA / PM / Worker | Seat-gated desk routes grow untracked; wrong seat sees company admin; blank/wrong project tasks | AUTH / UX | Jest `src/web/**` + `src/webRouter/**` (access, companyDesk, projectTasks, webTaskPresentation, WebApp.gate) | J-MOCK | WEAK‖ | Mac spike WT + acceptance plan 2026-10-16; headed localhost smoke claimed on Mac (not CI). CSV/CRUD/invite/detail still stubs. No `app.insiteworks.co` deploy | 2026-10-16 spike (unpushed) | PARTIAL — map row only until spike on `main`; PROD desk = HUMAN Gate |
+
+‖ WEB-05 Jest covers gates/mappers/loaders, not headed interaction or RLS. Access helpers must not be treated as authorization proof.
 
 ### B6. Authz / seats
 
@@ -168,6 +177,7 @@ Verdict: `PROVEN` | `PARTIAL` | `UNPROVEN` | `HUMAN-ONLY` | `NO-PLANE`
 | Flake / quarantine | N≥3 ledger landed; N≥5 weekly job still owed | Process | Keep `MAESTRO_QUARANTINE.md`; measure tip flake |
 | UI-12 | Activity evidence strip Jest-only | J-MOCK | Headed/Maestro frame when Activity UI next touched |
 | HY-01 | Path resolve in taxonomy | J-MOCK | Keep assert; extend if new runners invent path vars |
+| WEB-05 / M-WEB-01 | Expo Web desk missing from map (signup/billing WEB-01..04 only); seat UX-hide ≠ RLS; CSV/CRUD stubs | J-MOCK | Keep WEB-05 row; when spike lands on `main`, re-run `npx jest src/web src/webRouter`; headed localhost smoke optional; **no PROD desk / auth productization without Tristan GO** |
 
 ### Nice-to-have
 

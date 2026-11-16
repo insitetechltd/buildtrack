@@ -4,6 +4,16 @@
 
 ---
 
+## Current status (2026-11-16) — JEB demo accounts
+
+**JEB demo (2026-11-16, 21:55 HKT):** Company **JEB** (subcontractor, office partitions) is on **DEV** `zusulknbhaumougqckec`, not on the App Store / TestFlight database. Logins that work against a DEV build: `lily@jeb.com` (company admin), `rob@jeb.com` (PM seat), `dennis@jeb.com` and `jacky@jeb.com` (workers). Password is the one set for this demo; it is not stored in git. Project **JEB Office Partitions — Demo Site** (`ca4181e4-93b2-4ddc-bccd-1189ad39d5eb`). Sample task **Install reception partition** is assigned to Dennis and readable by him. Trial entitlements: 1 PM seat, 5 worker seats, 1 project, `subscription_status=trialing`. Company id `b173526f-b97f-4f97-bb9f-2bcf0d88e5f9`.
+
+**PROD block:** Auth, billing, invite, Stripe webhook, and storage on `jcnzjigxgkzhjsaekoqz` answered. PROD requires email confirmation (`mailer_autoconfirm=false`). `lily@jeb.com` was created there at 21:55 HKT and cannot sign in until that email is confirmed. No company was created on PROD. This environment has no service-role key, so the four accounts were finished on DEV only. The store binary will not see them.
+
+**Health:** PROD anon is denied on companies/users/projects/tasks (42501). DEV anon still has the table grant and RLS returns an empty list (no rows leaked). No Maestro and no Jest this session (Linux cloud agent, no iOS sim, no local `.env`).
+
+---
+
 ## Current status (2026-10-16) — read this first
 
 **App on `main`:** Taskr **1.1.5**, `app.json` build **295**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove.

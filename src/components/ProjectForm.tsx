@@ -74,6 +74,39 @@ type ProjectFormFieldId =
   | "clientPhone"
   | "submit";
 
+function ProjectDateCalendar({
+  value,
+  minimumDate,
+  onChange,
+  onClose,
+}: {
+  value: Date;
+  minimumDate?: Date;
+  onChange: (date: Date) => void;
+  onClose: () => void;
+}) {
+  return (
+    <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <DateTimePicker
+        value={value}
+        mode="date"
+        display={Platform.OS === "ios" ? "inline" : "default"}
+        minimumDate={minimumDate}
+        themeVariant="light"
+        onChange={(event, selectedDate) => {
+          if (Platform.OS !== "ios") {
+            onClose();
+          }
+          if (event.type === "dismissed" || !selectedDate) {
+            return;
+          }
+          onChange(selectedDate);
+        }}
+      />
+    </View>
+  );
+}
+
 export default function ProjectForm({
   mode,
   project,
@@ -537,8 +570,14 @@ export default function ProjectForm({
             <View className="flex-1">
               <Text className="text-lg font-semibold text-slate-900 mb-2">Start Date</Text>
               <Pressable
-                onPress={() => setShowStartDatePicker(true)}
-                className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
+                onPress={() => {
+                  setShowEndDatePicker(false);
+                  setShowStartDatePicker((open) => !open);
+                }}
+                className={cn(
+                  "border rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between",
+                  showStartDatePicker ? "border-blue-600" : "border-gray-300",
+                )}
               >
                 <Text className="text-gray-900 text-lg">
                   {dateFormatter.formatDateShort(formData.startDate)}
@@ -551,10 +590,17 @@ export default function ProjectForm({
               <Text className="text-lg font-semibold text-slate-900 mb-2">Estimated End Date</Text>
               <Pressable
                 testID="project-form-end-date"
-                onPress={() => setShowEndDatePicker(true)}
+                onPress={() => {
+                  setShowStartDatePicker(false);
+                  setShowEndDatePicker((open) => !open);
+                }}
                 className={cn(
                   "border rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between",
-                  errors.endDate ? "border-red-300" : "border-gray-300"
+                  errors.endDate
+                    ? "border-red-300"
+                    : showEndDatePicker
+                      ? "border-blue-600"
+                      : "border-gray-300",
                 )}
               >
                 <Text className="text-gray-900 text-lg">
@@ -567,6 +613,25 @@ export default function ProjectForm({
               )}
             </View>
           </View>
+          {showStartDatePicker ? (
+            <ProjectDateCalendar
+              value={formData.startDate}
+              onClose={() => setShowStartDatePicker(false)}
+              onChange={(selectedDate) => {
+                setFormData((prev) => ({ ...prev, startDate: selectedDate }));
+              }}
+            />
+          ) : null}
+          {showEndDatePicker ? (
+            <ProjectDateCalendar
+              value={formData.endDate}
+              minimumDate={formData.startDate}
+              onClose={() => setShowEndDatePicker(false)}
+              onChange={(selectedDate) => {
+                setFormData((prev) => ({ ...prev, endDate: selectedDate }));
+              }}
+            />
+          ) : null}
         </View>
 
         {mode === "create" ? (
@@ -746,34 +811,6 @@ export default function ProjectForm({
         </View>
       </ScrollView>
 
-      {/* Date Pickers */}
-      {showStartDatePicker && (
-        <DateTimePicker
-          value={formData.startDate}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartDatePicker(false);
-            if (selectedDate) {
-              setFormData(prev => ({ ...prev, startDate: selectedDate }));
-            }
-          }}
-        />
-      )}
-
-      {showEndDatePicker && (
-        <DateTimePicker
-          value={formData.endDate}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowEndDatePicker(false);
-            if (selectedDate) {
-              setFormData(prev => ({ ...prev, endDate: selectedDate }));
-            }
-          }}
-        />
-      )}
     </KeyboardAvoidingView>
   );
 }

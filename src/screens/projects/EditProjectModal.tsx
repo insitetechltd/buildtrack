@@ -482,8 +482,14 @@ export function EditProjectModal({
                 <View className="flex-1">
                   <Text className="mb-2 text-lg font-semibold text-slate-900">Start Date</Text>
                   <Pressable
-                    onPress={() => setShowStartDatePicker(true)}
-                    className="flex-row items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3"
+                    onPress={() => {
+                      setShowEndDatePicker(false);
+                      setShowStartDatePicker((open) => !open);
+                    }}
+                    className={cn(
+                      "flex-row items-center justify-between rounded-lg border bg-gray-50 px-4 py-3",
+                      showStartDatePicker ? "border-blue-600" : "border-gray-300",
+                    )}
                   >
                     <Text className="text-lg text-gray-900">
                       {dateFormatter.formatDateShort(formData.startDate)}
@@ -497,8 +503,14 @@ export function EditProjectModal({
                     Estimated End Date
                   </Text>
                   <Pressable
-                    onPress={() => setShowEndDatePicker(true)}
-                    className="flex-row items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3"
+                    onPress={() => {
+                      setShowStartDatePicker(false);
+                      setShowEndDatePicker((open) => !open);
+                    }}
+                    className={cn(
+                      "flex-row items-center justify-between rounded-lg border bg-gray-50 px-4 py-3",
+                      showEndDatePicker ? "border-blue-600" : "border-gray-300",
+                    )}
                   >
                     <Text className="text-lg text-gray-900">
                       {dateFormatter.formatDateShort(formData.endDate)}
@@ -507,6 +519,45 @@ export function EditProjectModal({
                   </Pressable>
                 </View>
               </View>
+              {showStartDatePicker ? (
+                <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                  <DateTimePicker
+                    value={formData.startDate}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    themeVariant="light"
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS !== "ios") {
+                        setShowStartDatePicker(false);
+                      }
+                      if (event.type === "dismissed" || !selectedDate) {
+                        return;
+                      }
+                      setFormData((prev) => ({ ...prev, startDate: selectedDate }));
+                    }}
+                  />
+                </View>
+              ) : null}
+              {showEndDatePicker ? (
+                <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                  <DateTimePicker
+                    value={formData.endDate}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    minimumDate={formData.startDate}
+                    themeVariant="light"
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS !== "ios") {
+                        setShowEndDatePicker(false);
+                      }
+                      if (event.type === "dismissed" || !selectedDate) {
+                        return;
+                      }
+                      setFormData((prev) => ({ ...prev, endDate: selectedDate }));
+                    }}
+                  />
+                </View>
+              ) : null}
             </View>
 
             <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
@@ -589,34 +640,6 @@ export function EditProjectModal({
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {showStartDatePicker ? (
-          <DateTimePicker
-            value={formData.startDate}
-            mode="date"
-            display="default"
-            onChange={(_event, selectedDate) => {
-              setShowStartDatePicker(false);
-              if (selectedDate) {
-                setFormData((prev) => ({ ...prev, startDate: selectedDate }));
-              }
-            }}
-          />
-        ) : null}
-
-        {showEndDatePicker ? (
-          <DateTimePicker
-            value={formData.endDate}
-            mode="date"
-            display="default"
-            minimumDate={formData.startDate}
-            onChange={(_event, selectedDate) => {
-              setShowEndDatePicker(false);
-              if (selectedDate) {
-                setFormData((prev) => ({ ...prev, endDate: selectedDate }));
-              }
-            }}
-          />
-        ) : null}
       </SafeAreaView>
     </Modal>
   );

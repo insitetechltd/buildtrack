@@ -6,7 +6,7 @@
 
 ## Current status (2026-11-18) — read this first
 
-**App on `main`:** Taskr **1.1.5**, `app.json` build **296**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove. Latest TestFlight upload is **296** (calendar opens on the first tap).
+**App on `main`:** Taskr **1.1.5**, `app.json` build **297**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove. Latest TestFlight upload is **297** (file attach, centered photo viewer, due-this-week activity).
 
 **Binary gap a bot misses if it stops at “TF 288”:** git never recorded build **288**. After store build **280**, `app.json` jumps to **286** (`dad38e3`, version **1.1.5**) then **287** (`20f2db6`, library opens newest-first). The next committed bake is **TestFlight 289** (parent build 287). Session notes below the 289 entry are the 1.1.3 line. ASC **280 is approved**, not rejected. **`M-REPORT-01` is Closed.**
 
@@ -22,6 +22,7 @@
 | 294 | `M-PERF-04` Phase 1: parallel photo upload; signed URL does not block the write | `2005c53` |
 | 295 | Crop: ratchet cover scale, max-edge settle, crop-center 90°, outward-corner zoom-out | `2cce080` |
 | 296 | Project date calendar opens on the first tap | `73b7ac0` |
+| 297 | File attach on Create Task; photo viewer centered; due-this-week activity | `e87dbc0` |
 
 **On `main` after TF 294 (not in any binary):** `M-REPORT-01` Closed 2026-10-06 (`c264ba2`, ledger `732c123`). A close needs a typed note. Photos stay with that note. Manager line: “Issue resolved by {name}: Resolved with reply”. Worker line: “Issue acknowledged and closed by {name}”. UI-08 Maestro note readback is prepared and still PARTIAL (no DEV journey pass).
 
@@ -32,6 +33,8 @@
 **Shelved:** `M-PERF-04` Phase 2. **Left off `main` on purpose:** draft PRs 22, 23, 28, 29, 30.
 
 ---
+
+**This session — CBP TF 297 submitted (2026-11-18):** Gate 0 waived (user-ordered CBP; no new Metro→PROD prove). App `e87dbc0`. Local `./build-local.sh ios production` → IPA **v1.1.5 (297)** `.eas/artifacts/build-1795003706611.ipa` (CFBundleVersion 297; bundle `com.buildtrack.app.local`; S4 PASS sha256 `640b653f95ea8a1daa9c6651e85a84bd249f162181b1a472d564d886ecff50ef`; PROD host present; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/728b773e-9add-4c2f-9b50-a488ce88bcdd (✔ Uploaded ASC; Apple processing). Signing team `JPU897T6JS`. ASC Public / Submit for Review untouched. **Next:** install TF **297**. Create Task has a camera tile and a file tile; the file tile opens the native Files browser. Task detail photo viewer centers the picture. Due this week empty state reads “No task is due this week.” Project list no longer selects `users.role`.
 
 **This session — CBP TF 296 submitted (2026-11-18):** Calendar fix `73b7ac0`. Local `./build-local.sh ios production` → IPA **v1.1.5 (296)** `.eas/artifacts/build-1794977247807.ipa` (CFBundleVersion 296; bundle `com.buildtrack.app.local`; S4 PASS sha256 `a0290276c5c0703c6ba94f666a5e3b9d67fdcf923c8d1014cbec82cde8860372`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/25140984-34e2-472c-b3a1-e79fa3f52581 (✔ Uploaded ASC; Apple processing). Signing team `JPU897T6JS`. ASC Public / Submit for Review untouched. **Next:** install TF **296**. Create or edit a project, tap Start Date or Estimated End Date once, and the calendar opens under the field.
 

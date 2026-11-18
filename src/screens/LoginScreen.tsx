@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   NativeSyntheticEvent,
   View,
@@ -39,61 +39,104 @@ export default function LoginScreen() {
   const { output, actions } = useLoginViewAdapter();
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
+  const submitInputRef = useRef<TextInput>(null);
+  const tabMoveLock = useRef(false);
+  const [activeFormFocusTarget, setActiveFormFocusTarget] = useState<
+    "emailOrPhone" | "password" | "submit" | null
+  >(null);
   const formNavigationRegistry = useMemo(
     () =>
       createFormNavigationRegistry([
         { fieldId: "emailOrPhone", isFocusable: true },
-        { fieldId: "password", isFocusable: true },
+        { fieldId: "password", isFocusable: output.isPasswordEnabled },
         { fieldId: "submit", isFocusable: true },
       ]),
-    [],
+    [output.isPasswordEnabled],
   );
 
   const focusFormField = useCallback((fieldId: "emailOrPhone" | "password" | "submit" | null) => {
-    if (!fieldId || fieldId === "submit") {
-      emailInputRef.current?.blur?.();
-      passwordInputRef.current?.blur?.();
+    if (!fieldId) {
       return;
     }
+
+    setActiveFormFocusTarget(fieldId);
 
     const focusTargetMap = {
       emailOrPhone: emailInputRef,
       password: passwordInputRef,
-    } satisfies Record<"emailOrPhone" | "password", React.RefObject<TextInput | null>>;
+      submit: submitInputRef,
+    } satisfies Record<"emailOrPhone" | "password" | "submit", React.RefObject<TextInput | null>>;
 
+    (Object.keys(focusTargetMap) as Array<keyof typeof focusTargetMap>).forEach((id) => {
+      if (id !== fieldId) {
+        focusTargetMap[id].current?.blur?.();
+      }
+    });
     focusTargetMap[fieldId].current?.focus?.();
   }, []);
   const moveFormFocus = useCallback(
-    (activeFieldId: "emailOrPhone" | "password", direction: "next" | "previous" = "next") => {
+    (
+      activeFieldId: "emailOrPhone" | "password" | "submit",
+      direction: "next" | "previous" = "next",
+    ) => {
+      if (tabMoveLock.current) {
+        return;
+      }
+      tabMoveLock.current = true;
       const targetFieldId =
         direction === "previous"
           ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
           : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
 
       focusFormField((targetFieldId as "emailOrPhone" | "password" | "submit" | null) ?? null);
+      setTimeout(() => {
+        tabMoveLock.current = false;
+      }, 0);
     },
     [focusFormField, formNavigationRegistry],
-  );
-  const handleFieldKeyPress = useCallback(
-    (
-      activeFieldId: "emailOrPhone" | "password",
-      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
-    ) => {
-      if (event.nativeEvent.key !== "Tab") {
-        return;
-      }
-
-      moveFormFocus(activeFieldId, getTabNavigationDirection(event));
-    },
-    [moveFormFocus],
   );
 
   const handleSubmitPress = useCallback(() => {
     Keyboard.dismiss();
     emailInputRef.current?.blur?.();
     passwordInputRef.current?.blur?.();
+    submitInputRef.current?.blur?.();
+    setActiveFormFocusTarget(null);
     void actions.submitLogin();
   }, [actions]);
+
+  const handleFieldKeyPress = useCallback(
+    (
+      activeFieldId: "emailOrPhone" | "password" | "submit",
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      const key = event.nativeEvent.key;
+      if (key === "Tab") {
+        moveFormFocus(activeFieldId, getTabNavigationDirection(event));
+        return;
+      }
+      if (activeFieldId === "submit" && (key === "Enter" || key === " ")) {
+        handleSubmitPress();
+      }
+    },
+    [handleSubmitPress, moveFormFocus],
+  );
+
+  const handleTabbedTextChange = useCallback(
+    (
+      fieldId: "emailOrPhone" | "password",
+      value: string,
+      commit: (next: string) => void,
+    ) => {
+      if (!value.includes("\t")) {
+        commit(value);
+        return;
+      }
+      commit(value.replace(/\t/g, ""));
+      moveFormFocus(fieldId, "next");
+    },
+    [moveFormFocus],
+  );
 
   const emailContract = useMemo(
     () =>
@@ -196,7 +239,8 @@ export default function LoginScreen() {
                     color={output.validationErrors.emailOrPhone ? "#ef4444" : "#6b7280"}
                   />
                 }
-                onChangeText={actions.setEmailOrPhone}
+                onChangeText={(value) => handleTabbedTextChange("emailOrPhone", value, actions.setEmailOrPhone)}
+                accessibilityState={{ selected: activeFormFocusTarget === "emailOrPhone" }}
                 keyboardType="default"
                 autoCapitalize="none"
                 autoComplete="off"
@@ -244,8 +288,9 @@ export default function LoginScreen() {
                   if (!output.isPasswordEnabled) {
                     return;
                   }
-                  actions.setPassword(value);
+                  handleTabbedTextChange("password", value, actions.setPassword);
                 }}
+                accessibilityState={{ selected: activeFormFocusTarget === "password" }}
                 secureTextEntry={!output.isPasswordVisible}
                 autoComplete="password"
                 autoCorrect={false}
@@ -259,13 +304,28 @@ export default function LoginScreen() {
                 testID="login-submit"
                 accessibilityRole="button"
                 accessibilityLabel={output.primaryButtonLabel}
+                accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
                 onPress={handleSubmitPress}
                 disabled={output.isLoading || output.primaryAction === "disabled"}
                 className={cn(
-                  "bg-blue-600 py-4 rounded-lg items-center mt-6",
+                  "bg-blue-600 py-4 rounded-lg items-center mt-6 border-2",
+                  activeFormFocusTarget === "submit" ? "border-white" : "border-transparent",
                   (output.isLoading || output.primaryAction === "disabled") && "opacity-50",
                 )}
               >
+                <TextInput
+                  ref={submitInputRef}
+                  testID="login-submit-focus"
+                  accessible={false}
+                  caretHidden
+                  showSoftInputOnFocus={false}
+                  value=""
+                  onChangeText={() => {}}
+                  onKeyPress={(event) => handleFieldKeyPress("submit", event)}
+                  onSubmitEditing={handleSubmitPress}
+                  blurOnSubmit={false}
+                  style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
+                />
                 <Text className="text-white font-semibold text-xl">
                   {output.primaryButtonLabel}
                 </Text>

@@ -1278,7 +1278,7 @@ export function useTaskDetailViewAdapter({
       isReviewerApprovalState ||
       isContributorUpdateLocked)
   ) {
-    if (isAssignedToMe || isReviewerApprovalState) {
+    if (isAssignedToMe || isReviewerApprovalState || (isTaskCreator && isActiveWorkState)) {
       addActionItem({
         actionId: 'update_progress',
         label: 'Update',

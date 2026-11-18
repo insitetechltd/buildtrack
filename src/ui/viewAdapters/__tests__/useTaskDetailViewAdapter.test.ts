@@ -1574,6 +1574,10 @@ describe("useTaskDetailViewAdapter", () => {
     );
 
     expect(result.current.output.actionItems.map((item) => item.actionId)).toContain("edit_task");
+    expect(result.current.output.detailDock).toEqual({
+      mode: "progress",
+      completionPercentage: 50,
+    });
   });
 
   it("allows edit_task for PM who is not the creator", () => {

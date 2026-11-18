@@ -1,20 +1,16 @@
 import React, { useState } from "react";
 import {
-  Modal,
+  Modal as RNModal,
   View,
   Pressable,
   Text,
   ScrollView,
   Dimensions,
-  StatusBar as RNStatusBar,
-  Platform,
+  StyleSheet,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const Modal = RNModal || View;
 
 interface FullScreenImageViewerProps {
   visible: boolean;
@@ -30,207 +26,97 @@ export default function FullScreenImageViewer({
   onClose,
 }: FullScreenImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [gallerySize, setGallerySize] = useState({
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  });
-  const scrollViewRef = React.useRef<ScrollView>(null);
-  const insets = useSafeAreaInsets();
-  
-  // Calculate top padding same as StandardHeader
-  const topPadding = insets.top > 0 ? insets.top + 8 : 16;
+  const scrollRef = React.useRef<ScrollView>(null);
+  const pageWidth = Dimensions.get("window").width;
 
-  // Reset to initial index when modal opens
   React.useEffect(() => {
-    if (visible) {
-      setCurrentIndex(initialIndex);
-      // Scroll to the initial image after a short delay to ensure layout is complete
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({
-          x: initialIndex * gallerySize.width,
-          animated: false,
-        });
-      }, 100);
+    if (!visible) {
+      return;
     }
-  }, [visible, initialIndex, gallerySize.width]);
+    setCurrentIndex(initialIndex);
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ x: pageWidth * initialIndex, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [visible, initialIndex, pageWidth]);
 
-  const handleScroll = (event: any) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const pageWidth = Math.max(gallerySize.width, 1);
-    const newIndex = Math.round(contentOffsetX / pageWidth);
-    setCurrentIndex(newIndex);
-  };
-
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      setCurrentIndex(newIndex);
-      scrollViewRef.current?.scrollTo({
-        x: newIndex * gallerySize.width,
-        animated: true,
-      });
-    }
-  };
-
-  const goToNext = () => {
-    if (currentIndex < images.length - 1) {
-      const newIndex = currentIndex + 1;
-      setCurrentIndex(newIndex);
-      scrollViewRef.current?.scrollTo({
-        x: newIndex * gallerySize.width,
-        animated: true,
-      });
-    }
+  const showIndex = (index: number) => {
+    const nextIndex = Math.max(0, Math.min(images.length - 1, index));
+    setCurrentIndex(nextIndex);
+    scrollRef.current?.scrollTo({ x: pageWidth * nextIndex, animated: true });
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={false}
-      onRequestClose={onClose}
-    >
-      <View className="bg-gray-50" style={{ height: '90%', marginTop: 'auto' }}>
-        <StatusBar style="dark" />
-        {/* Top Handle */}
-        <View className="w-full items-center pt-2 pb-1">
-          <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
-        </View>
-        <SafeAreaView className="flex-1 bg-gray-50" edges={['bottom', 'left', 'right']}>
-          <View className="flex-1 bg-gray-50">
-          {/* Header Banner with Back Arrow - Same pattern as StandardHeader */}
-          <View 
-            className="flex-row items-center justify-between px-6 pb-4 bg-white border-b border-gray-200"
-            style={{ paddingTop: topPadding }}
-          >
-            <Pressable
-              onPress={onClose}
-              className="flex-row items-center"
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-              <Text className="text-gray-700 text-base font-medium ml-2">Back</Text>
-            </Pressable>
-            
-            {images.length > 1 && (
-              <View className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <Text className="text-gray-700 text-sm font-medium">
-                  {currentIndex + 1} / {images.length}
-                </Text>
-              </View>
-            )}
-          </View>
-
-        {/* Image Gallery - Swipe horizontally to navigate */}
-        <View
-          className="flex-1 bg-white"
-          onLayout={(event) => {
-            const { width, height } = event.nativeEvent.layout;
-            if (
-              width > 0 &&
-              height > 0 &&
-              (width !== gallerySize.width || height !== gallerySize.height)
-            ) {
-              setGallerySize({ width, height });
-            }
-          }}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View
+        testID="fullscreen-image-viewer"
+        className="flex-1 items-center justify-center bg-black/90"
+      >
+        <Pressable
+          testID="fullscreen-image-viewer__close"
+          accessibilityRole="button"
+          className="absolute top-12 right-6 z-10 rounded-full bg-white/10 px-3 py-2"
+          onPress={onClose}
         >
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            style={{ flex: 1 }}
-            directionalLockEnabled={false}
-            scrollEnabled={true}
+          <Text className="text-sm font-semibold text-white">Close</Text>
+        </Pressable>
+
+        {currentIndex > 0 ? (
+          <Pressable
+            testID="fullscreen-image-viewer__previous"
+            accessibilityRole="button"
+            className="absolute left-4 z-10 rounded-full bg-white/15 px-4 py-3"
+            onPress={() => showIndex(currentIndex - 1)}
           >
+            <Text className="text-sm font-semibold text-white">Previous</Text>
+          </Pressable>
+        ) : null}
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(event) => {
+            const nextIndex = Math.round(
+              event.nativeEvent.contentOffset.x /
+                Math.max(event.nativeEvent.layoutMeasurement.width, 1),
+            );
+            setCurrentIndex(nextIndex);
+          }}
+          className="h-full w-full"
+        >
           {images.map((imageUri, index) => (
-            <View
-              key={index}
-              style={{ 
-                width: gallerySize.width, 
-                height: gallerySize.height,
-                paddingHorizontal: 20,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#ffffff',
-              }}
-            >
+            <View key={`${imageUri}-${index}`} style={{ width: pageWidth, height: "100%" }}>
               <ExpoImage
+                testID={index === currentIndex ? "fullscreen-image-viewer__image" : undefined}
                 source={{ uri: imageUri }}
-                cachePolicy="memory-disk"
                 contentFit="contain"
-                transition={120}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                }}
+                cachePolicy="memory-disk"
+                style={StyleSheet.absoluteFillObject}
               />
             </View>
           ))}
         </ScrollView>
 
-        {images.length > 1 && (
-          <>
-            {currentIndex > 0 && (
-              <Pressable
-                onPress={goToPrevious}
-                className="absolute left-4 top-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
-                style={{ transform: [{ translateY: -24 }] }}
-              >
-                <Ionicons name="chevron-back" size={28} color="#374151" />
-              </Pressable>
-            )}
-
-            {currentIndex < images.length - 1 && (
-              <Pressable
-                onPress={goToNext}
-                className="absolute right-4 top-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
-                style={{ transform: [{ translateY: -24 }] }}
-              >
-                <Ionicons name="chevron-forward" size={28} color="#374151" />
-              </Pressable>
-            )}
-          </>
-        )}
-        </View>
-
-        {images.length > 1 && (
-          <View className="bg-white border-t border-gray-200 px-4 py-3">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 4 }}
-            >
-              {images.map((imageUri, index) => (
-                <Pressable
-                  key={index}
-                  onPress={() => {
-                    setCurrentIndex(index);
-                    scrollViewRef.current?.scrollTo({
-                      x: index * gallerySize.width,
-                      animated: true,
-                    });
-                  }}
-                  className={`mr-2 rounded-lg overflow-hidden border-2 ${
-                    index === currentIndex ? "border-white" : "border-transparent"
-                  }`}
-                >
-                  <ExpoImage
-                    source={{ uri: imageUri }}
-                    cachePolicy="memory-disk"
-                    contentFit="cover"
-                    transition={120}
-                    style={{ width: 60, height: 60 }}
-                  />
-                </Pressable>
-              ))}
-            </ScrollView>
+        {images.length > 1 ? (
+          <View className="absolute bottom-10 z-10 rounded-full bg-black/45 px-3 py-1.5">
+            <Text className="text-sm font-semibold text-white">
+              {currentIndex + 1} / {images.length}
+            </Text>
           </View>
-        )}
-        </View>
-        </SafeAreaView>
+        ) : null}
+
+        {currentIndex < images.length - 1 ? (
+          <Pressable
+            testID="fullscreen-image-viewer__next"
+            accessibilityRole="button"
+            className="absolute right-4 z-10 rounded-full bg-white/15 px-4 py-3"
+            onPress={() => showIndex(currentIndex + 1)}
+          >
+            <Text className="text-sm font-semibold text-white">Next</Text>
+          </Pressable>
+        ) : null}
       </View>
     </Modal>
   );

@@ -79,4 +79,24 @@ describe("TaskDetailFilesSection", () => {
     expect(screen.getByText("Files")).toBeTruthy();
     expect(screen.getByText("spec.pdf")).toBeTruthy();
   });
+
+  it("opens the black photo viewer and moves between photos", () => {
+    const screen = render(
+      <TaskDetailFilesSection
+        photosTitle="Photos"
+        filesTitle="Files"
+        files={[photo("a"), photo("b")]}
+      />,
+    );
+
+    layoutStrip(screen);
+    fireEvent.press(screen.getByTestId("task-detail__files__photo-a"));
+
+    expect(screen.getByTestId("fullscreen-image-viewer").props.className).toContain("bg-black/90");
+    expect(screen.getByText("1 / 2")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("fullscreen-image-viewer__next"));
+    expect(screen.getByText("2 / 2")).toBeTruthy();
+    expect(screen.getByTestId("fullscreen-image-viewer__image").props.contentFit).toBe("contain");
+  });
 });

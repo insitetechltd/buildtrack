@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet } from "react-native";
-import { fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 
 import LoginScreen from "@/screens/LoginScreen";
 
@@ -106,6 +106,33 @@ describe("LoginScreen", () => {
     expect(mockSetPassword).toHaveBeenCalledWith("secret123");
     expect(mockTogglePasswordVisibility).toHaveBeenCalledTimes(1);
     expect(mockSubmitLogin).toHaveBeenCalledTimes(1);
+  });
+
+  it("tabs from email to password to Sign In, and shift-tab returns to password", async () => {
+    const screen = render(<LoginScreen />);
+    const email = screen.getByTestId("login-emailOrPhone");
+    const password = screen.getByTestId("login-password");
+    const submit = screen.getByTestId("login-submit");
+
+    await act(async () => {
+      fireEvent(email, "onKeyPress", { nativeEvent: { key: "Tab", shiftKey: false } });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(password.props.accessibilityState?.selected).toBe(true);
+
+    await act(async () => {
+      fireEvent(password, "onKeyPress", { nativeEvent: { key: "Tab", shiftKey: false } });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(submit.props.accessibilityState?.selected).toBe(true);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId("login-submit-focus"), "onKeyPress", {
+        nativeEvent: { key: "Tab", shiftKey: true },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(password.props.accessibilityState?.selected).toBe(true);
   });
 
   it("shows Sign Up as the primary action when the email is not registered", () => {

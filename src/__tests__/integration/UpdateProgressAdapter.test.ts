@@ -94,14 +94,14 @@ jest.mock('../../utils/useTranslation', () => ({
   }),
 }));
 
-const mockUploadFileWithVerification = jest.fn().mockResolvedValue({
+const mockUploadFileWithRetry = jest.fn().mockResolvedValue({
   success: true,
   file: { public_url: 'https://example.com/photo.jpg' },
+  attempts: 1,
 });
 
-jest.mock('../../api/fileUploadService', () => ({
-  uploadFileWithVerification: (...args: unknown[]) =>
-    mockUploadFileWithVerification(...args),
+jest.mock('../../api/uploadRetry', () => ({
+  uploadFileWithRetry: (...args: unknown[]) => mockUploadFileWithRetry(...args),
 }));
 
 jest.mock('../../utils/ensureCappedLocalPhoto', () => ({
@@ -129,10 +129,11 @@ describe('useUpdateProgressViewAdapter', () => {
     mockAddTaskUpdate.mockClear();
     mockAddAssignerComment.mockClear();
     mockFetchTaskById.mockClear();
-    mockUploadFileWithVerification.mockReset();
-    mockUploadFileWithVerification.mockResolvedValue({
+    mockUploadFileWithRetry.mockReset();
+    mockUploadFileWithRetry.mockResolvedValue({
       success: true,
       file: { public_url: 'https://example.com/photo.jpg' },
+      attempts: 1,
     });
     mockReturnToTaskDetail.mockClear();
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
@@ -274,9 +275,10 @@ describe('useUpdateProgressViewAdapter', () => {
   });
 
   it('does not save an update when a chosen photo fails to upload', async () => {
-    mockUploadFileWithVerification.mockResolvedValue({
+    mockUploadFileWithRetry.mockResolvedValue({
       success: false,
       error: 'Photo upload failed',
+      attempts: 3,
     });
 
     const { result } = renderHook(
@@ -307,11 +309,60 @@ describe('useUpdateProgressViewAdapter', () => {
     );
   });
 
+  it('keeps successful tiles when one photo fails after retries', async () => {
+    mockUploadFileWithRetry.mockImplementation((options: { file: { name: string } }) => {
+      if (options.file.name === 'b.jpg') {
+        return Promise.resolve({
+          success: false,
+          error: 'Storage congested',
+          attempts: 3,
+        });
+      }
+      return Promise.resolve({
+        success: true,
+        file: { public_url: `https://cdn.example.com/${options.file.name}` },
+        attempts: 1,
+      });
+    });
+
+    const { result } = renderHook(
+      (props: { selectedPhotos: Array<{ uri: string; fileName: string }> }) =>
+        useUpdateProgressViewAdapter(props),
+      {
+        initialProps: {
+          selectedPhotos: [
+            { uri: 'file:///a.jpg', fileName: 'a.jpg' },
+            { uri: 'file:///b.jpg', fileName: 'b.jpg' },
+          ],
+        },
+      },
+    );
+
+    act(() => {
+      result.current.actions.setDescription('Slab pour complete');
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmitUpdate();
+    });
+
+    expect(mockAddTaskUpdate).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Photos did not upload',
+      expect.stringContaining('1 photo(s) uploaded'),
+    );
+    const uploaded = result.current.output.photos.filter((p) => p.isUploaded);
+    const failed = result.current.output.photos.filter((p) => p.isFailed);
+    expect(uploaded.map((p) => p.uri)).toEqual(['https://cdn.example.com/a.jpg']);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.onRetry).toBeTruthy();
+  });
+
   it('uploads chosen photos concurrently and keeps URL order', async () => {
     const resolvers: Array<() => void> = [];
     let inFlight = 0;
     let maxInFlight = 0;
-    mockUploadFileWithVerification.mockImplementation((options: { file: { name: string } }) => {
+    mockUploadFileWithRetry.mockImplementation((options: { file: { name: string } }) => {
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
       return new Promise((resolve) => {
@@ -320,6 +371,7 @@ describe('useUpdateProgressViewAdapter', () => {
           resolve({
             success: true,
             file: { public_url: `https://cdn.example.com/${options.file.name}` },
+            attempts: 1,
           });
         });
       });
@@ -349,7 +401,7 @@ describe('useUpdateProgressViewAdapter', () => {
     });
 
     await waitFor(() => {
-      expect(mockUploadFileWithVerification).toHaveBeenCalledTimes(3);
+      expect(mockUploadFileWithRetry).toHaveBeenCalledTimes(3);
     });
     expect(maxInFlight).toBe(3);
 
@@ -374,13 +426,14 @@ describe('useUpdateProgressViewAdapter', () => {
   });
 
   it('does not save an update when one of several chosen photos fails', async () => {
-    mockUploadFileWithVerification.mockImplementation(async (options: { file: { name: string } }) => {
+    mockUploadFileWithRetry.mockImplementation(async (options: { file: { name: string } }) => {
       if (options.file.name === 'b.jpg') {
-        return { success: false, error: 'Photo upload failed' };
+        return { success: false, error: 'Photo upload failed', attempts: 3 };
       }
       return {
         success: true,
         file: { public_url: `https://cdn.example.com/${options.file.name}` },
+        attempts: 1,
       };
     });
 
@@ -408,7 +461,7 @@ describe('useUpdateProgressViewAdapter', () => {
     expect(mockAddTaskUpdate).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
       'Photos did not upload',
-      expect.stringContaining('still here'),
+      expect.stringContaining('1 photo(s) uploaded'),
     );
   });
 
@@ -441,7 +494,7 @@ describe('useUpdateProgressViewAdapter', () => {
     expect(mockAddTaskUpdate).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
       'Photos did not upload',
-      expect.stringContaining('still here'),
+      expect.stringContaining('1 photo(s) uploaded'),
     );
   });
 });

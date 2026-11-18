@@ -6,7 +6,7 @@ import { useAuthStore } from "../../state/authStore";
 import { useTaskStore } from "../../state/taskStore.supabase";
 import { useTranslation } from "../../utils/useTranslation";
 import { TaskStatus } from "../../types/buildtrack";
-import { uploadFileWithVerification } from "../../api/fileUploadService";
+import { uploadFileWithRetry } from "../../api/uploadRetry";
 import { ensureCappedLocalPhoto } from "../../utils/ensureCappedLocalPhoto";
 import { mergeUniqueAttachments } from "../../utils/mergeTaskAttachments";
 import {
@@ -149,7 +149,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
     if (!user || !task) return;
 
     try {
-      const result = await uploadFileWithVerification({
+      const result = await uploadFileWithRetry({
         file: failedUpload.originalFile,
         entityType: 'task-update',
         entityId: task.id,
@@ -169,42 +169,57 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
     }
   };
 
-  const uploadPhotoObjects = async (photosToUpload: SelectedPhoto[], tId: string): Promise<string[]> => {
+  type ParallelUploadSlot =
+    | { ok: true; url: string; photo: SelectedPhoto }
+    | { ok: false; photo: SelectedPhoto; error: string };
+
+  const uploadPhotoObjects = async (
+    photosToUpload: SelectedPhoto[],
+    tId: string,
+  ): Promise<ParallelUploadSlot[]> => {
     if (!user || photosToUpload.length === 0) return [];
 
-    // M-PERF-04 B1: compress+upload each photo independently. Promise.all keeps input order.
-    // Missing files and failed uploads stay out of the list; the caller fail-closes on the count.
-    const uploaded = await Promise.all(
-      photosToUpload.map(async (photo): Promise<string | null> => {
+    // M-PERF-04 B1 + idea-bank B/C: each photo has its own Storage retry budget.
+    // Promise.all keeps order and does not cancel siblings when one tile fails.
+    return Promise.all(
+      photosToUpload.map(async (photo): Promise<ParallelUploadSlot> => {
         try {
           const uriToUpload = await ensureCappedLocalPhoto(photo);
           const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
-          if (!fileInfo.exists) return null;
+          if (!fileInfo.exists) {
+            return { ok: false, photo, error: "Local photo file missing" };
+          }
 
-          const result = await uploadFileWithVerification({
+          const result = await uploadFileWithRetry({
             file: {
               uri: uriToUpload,
               name: photo.fileName,
-              type: 'image/jpeg',
+              type: "image/jpeg",
             },
-            entityType: 'task-update',
+            entityType: "task-update",
             entityId: tId,
             companyId: user.companyId,
             userId: user.id,
           });
 
           if (result.success && result.file?.public_url) {
-            return result.file.public_url;
+            return { ok: true, url: result.file.public_url, photo };
           }
-          return null;
+          return {
+            ok: false,
+            photo,
+            error: result.error || "Upload failed",
+          };
         } catch (error: any) {
           console.error(error);
-          return null;
+          return {
+            ok: false,
+            photo,
+            error: error?.message || "Upload failed",
+          };
         }
       }),
     );
-
-    return uploaded.filter((url): url is string => Boolean(url));
   };
 
   const handleSubmitUpdate = async () => {
@@ -224,15 +239,54 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
     try {
       let uploadedPhotoUrls: string[] = [];
       if (photoObjects.length > 0) {
-        uploadedPhotoUrls = await uploadPhotoObjects(photoObjects, task.id);
-        
-        if (!chosenPhotosAllUploaded(photoObjects.length, uploadedPhotoUrls.length)) {
+        const pending = [...photoObjects];
+        const slots = await uploadPhotoObjects(pending, task.id);
+        const succeeded = slots.filter(
+          (slot): slot is Extract<ParallelUploadSlot, { ok: true }> => slot.ok,
+        );
+        const failed = slots.filter(
+          (slot): slot is Extract<ParallelUploadSlot, { ok: false }> => !slot.ok,
+        );
+        uploadedPhotoUrls = succeeded.map((slot) => slot.url);
+
+        if (failed.length > 0) {
+          // Keep successes so a single weak tile does not abandon the batch.
+          if (succeeded.length > 0) {
+            setPhotos((prev) => [...prev, ...uploadedPhotoUrls]);
+          }
+          // Failed tiles surface via failedUploadsInSession (retry), not as pending objs.
+          setPhotoObjects([]);
+          setFailedUploadsInSession(
+            failed.map((slot) => ({
+              fileName: slot.photo.fileName,
+              error: slot.error,
+              originalFile: {
+                uri: slot.photo.annotatedUri || slot.photo.uri,
+                name: slot.photo.fileName,
+                type: "image/jpeg",
+              },
+            })),
+          );
           Alert.alert(
             "Photos did not upload",
-            evidencePhotosFailedMessage(uploadedPhotoUrls.length, photoObjects.length),
+            succeeded.length > 0
+              ? `${succeeded.length} photo(s) uploaded. ${failed.length} failed — retry the failed tiles below.\n\n${failed
+                  .map((slot) => `• ${slot.photo.fileName}: ${slot.error}`)
+                  .join("\n")}`
+              : evidencePhotosFailedMessage(0, pending.length),
           );
           return;
         }
+
+        if (!chosenPhotosAllUploaded(pending.length, uploadedPhotoUrls.length)) {
+          Alert.alert(
+            "Photos did not upload",
+            evidencePhotosFailedMessage(uploadedPhotoUrls.length, pending.length),
+          );
+          return;
+        }
+        setPhotoObjects([]);
+        setFailedUploadsInSession([]);
       }
 
       const allPhotoUrls = [...photos, ...uploadedPhotoUrls];

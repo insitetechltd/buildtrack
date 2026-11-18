@@ -996,6 +996,45 @@ describe("useCreateTaskViewAdapter", () => {
     expect(mockDeleteTaskById).not.toHaveBeenCalled();
   });
 
+  it("uploads a picked document without treating it as a photo", async () => {
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    act(() => {
+      result.current.actions.updateField("title", "Spec task");
+      result.current.actions.updateField("description", "Attach the drawing");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("assignedTo", ["user-2"]);
+      result.current.actions.updateField("attachments", [
+        {
+          uri: "file:///spec.pdf",
+          fileName: "spec.pdf",
+          mimeType: "application/pdf",
+          kind: "file",
+        },
+      ]);
+    });
+
+    await act(async () => {
+      expect(await result.current.actions.submit()).toBe(true);
+    });
+
+    expect(mockUploadFileWithVerification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: {
+          uri: "file:///spec.pdf",
+          name: "spec.pdf",
+          type: "application/pdf",
+        },
+      }),
+    );
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        attachments: ["https://cdn.example.com/company-1/tasks/task-1/uploaded-photo.jpg"],
+      }),
+    );
+  });
+
   it("rolls back the created task when a chosen photo fails to upload", async () => {
     mockUploadFileWithVerification.mockResolvedValue({
       success: false,

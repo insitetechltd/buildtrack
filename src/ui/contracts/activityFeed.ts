@@ -43,6 +43,8 @@ export interface ActivityFeedRow {
   dotTone: ActivityFeedDotTone;
   activityType?: ActivityType | string;
   actorUserId?: string;
+  /** Snapshot on this event, 0–100. Shown after the date on every row. */
+  completionPercentage?: number;
 }
 
 export interface ActivityFeedGroup {
@@ -204,8 +206,16 @@ function taskHasCreatePhotos(
   });
 }
 
+function completionSnapshot(
+  value: number | undefined,
+): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function buildCreationFeedRow(
-  task: Pick<Task, "id" | "status" | "title" | "createdAt" | "assignedBy">,
+  task: Pick<Task, "id" | "status" | "title" | "createdAt" | "assignedBy"> & {
+    completionPercentage?: number;
+  },
 ): ActivityFeedRow {
   return {
     id: `activity-task:${task.id}`,
@@ -221,13 +231,21 @@ function buildCreationFeedRow(
     }),
     activityType: "creation",
     actorUserId: task.assignedBy ? String(task.assignedBy) : undefined,
+    completionPercentage: completionSnapshot(task.completionPercentage),
   };
 }
 
 function buildTaskActivityRows(
   task: Pick<
     Task,
-    "id" | "status" | "title" | "createdAt" | "updates" | "attachments" | "assignedBy"
+    | "id"
+    | "status"
+    | "title"
+    | "createdAt"
+    | "updates"
+    | "attachments"
+    | "assignedBy"
+    | "completionPercentage"
   >,
 ): ActivityFeedRow[] {
   const updates = Array.isArray(task.updates) ? task.updates : [];
@@ -251,6 +269,7 @@ function buildTaskActivityRows(
             }),
             activityType: "creation",
             actorUserId: task.assignedBy ? String(task.assignedBy) : undefined,
+            completionPercentage: completionSnapshot(task.completionPercentage),
           }
         : buildCreationFeedRow(task),
     );
@@ -279,6 +298,7 @@ function buildTaskActivityRows(
         }),
         activityType,
         actorUserId: update.userId ? String(update.userId) : undefined,
+        completionPercentage: completionSnapshot(update.completionPercentage),
       };
     }),
   );
@@ -316,6 +336,7 @@ export function buildActivityFeedRows(params: {
       | "updates"
       | "attachments"
       | "assignedBy"
+      | "completionPercentage"
     >
   >;
   photoBatches?: ActivityFeedPhotoBatch[];

@@ -627,6 +627,9 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(screen.getByTestId('createTask-add-photos').props.className).toContain('w-24 h-24');
     expect(screen.getByTestId('create-task__attachments_cta_plus_icon').props.className).toContain('border');
+    expect(screen.getByTestId('createTask-add-files').props.className).toContain('w-24 h-24');
+    expect(screen.getByTestId('createTask-add-files').props.className).toContain('border-dashed');
+    expect(screen.getByTestId('create-task__attachments_cta_file_icon')).toBeTruthy();
     expect(screen.queryByText('Tap to add files')).toBeNull();
   });
 

@@ -582,6 +582,8 @@ export const zhTW = {
     updates: "進度更新",
     noUpdates: "暫無進度更新",
     attachedFiles: "附加檔案",
+    photos: "照片",
+    files: "檔案",
     noAttachments: "暫無附件",
     children: "子工序",
     noChildren: "暫無子工序",
@@ -833,7 +835,7 @@ export const zhTW = {
   activity: {
     siteActivity: "工地動態",
     recentActivity: "近期動態",
-    criticalThisWeek: "本週緊急工項",
+    criticalThisWeek: "本週到期：",
     myQueue: "我的佇列",
     teamQueue: "團隊佇列",
     myQueueShort: "我的",

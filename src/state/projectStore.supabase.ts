@@ -194,6 +194,16 @@ export function buildProjectDerivedState(
   };
 }
 
+/** Creator embed. Do not select `users.role` — tenants expose `system_permission` only (42703). */
+export const PROJECT_WITH_CREATOR_COLUMNS = `
+  *,
+  users!created_by (
+    id,
+    name,
+    email
+  )
+`;
+
 function transformProjectRow(project: any): Project {
   return {
     ...project,
@@ -668,15 +678,7 @@ export const useProjectStore = create<ProjectStore>()(
             async () => {
               const { data, error } = await supabaseClient
                 .from('projects')
-                .select(`
-                  *,
-                  users!created_by (
-                    id,
-                    name,
-                    email,
-                    role
-                  )
-                `)
+                .select(PROJECT_WITH_CREATOR_COLUMNS)
                 .eq('company_id', companyId)
                 .order('created_at', { ascending: false });
 
@@ -710,15 +712,7 @@ export const useProjectStore = create<ProjectStore>()(
             async () => {
               const { data, error } = await supabaseClient
                 .from('projects')
-                .select(`
-                  *,
-                  users!created_by (
-                    id,
-                    name,
-                    email,
-                    role
-                  )
-                `)
+                .select(PROJECT_WITH_CREATOR_COLUMNS)
                 .eq('company_id', companyId)
                 .order('created_at', { ascending: false });
 

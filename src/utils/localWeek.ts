@@ -1,6 +1,6 @@
 /**
  * Local calendar week helpers (Monday–Sunday).
- * Shared by Dashboard "This Week's Critical Tasks" and Task Detail red due date.
+ * Shared by Dashboard "Due this week:" and Task Detail red due date.
  */
 
 export function startOfLocalWeek(date: Date): Date {

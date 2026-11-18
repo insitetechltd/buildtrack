@@ -45,7 +45,7 @@ import { waitForSessionScopedSupabase } from '../../api/supabaseSessionGate';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { resolveWorkspaceProjectId } from '../contracts/workspaceProject';
 import { useTranslation, getNestedTranslation } from '../../utils/useTranslation';
-import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
+import { mergeUniqueAttachments, type SelectedTaskFile } from '../../utils/mergeTaskAttachments';
 import { taskRequiresAssignees } from '../../utils/taskUpdateValidation';
 import { resolveInitialTaskCreateStatus } from '../../utils/taskCreateValidation';
 import {
@@ -143,10 +143,21 @@ function buildRedesignMetadataPayload(formData: CreateTaskFormModel) {
   };
 }
 
+function isSelectedFileAttachment(attachment: unknown): attachment is SelectedTaskFile {
+  return Boolean(
+    attachment &&
+      typeof attachment === 'object' &&
+      (attachment as { kind?: string }).kind === 'file' &&
+      typeof (attachment as { uri?: unknown }).uri === 'string' &&
+      typeof (attachment as { fileName?: unknown }).fileName === 'string',
+  );
+}
+
 function isSelectedPhotoAttachment(attachment: unknown): attachment is SelectedPhoto {
   return Boolean(
     attachment &&
       typeof attachment === 'object' &&
+      !isSelectedFileAttachment(attachment) &&
       'uri' in (attachment as Record<string, unknown>) &&
       'fileName' in (attachment as Record<string, unknown>)
   );
@@ -1018,8 +1029,10 @@ export function useCreateTaskViewAdapter({
       (attachment): attachment is string => typeof attachment === 'string',
     );
     const localPhotos = attachments.filter(isSelectedPhotoAttachment);
+    const localFiles = attachments.filter(isSelectedFileAttachment);
+    const localUploadCount = localPhotos.length + localFiles.length;
 
-    if (localPhotos.length === 0) {
+    if (localUploadCount === 0) {
       return {
         baseAttachments: durableAttachments,
         uploadedAttachments: [] as string[],
@@ -1027,19 +1040,12 @@ export function useCreateTaskViewAdapter({
     }
 
     if (!entityId || !user?.companyId || !user?.id) {
-      throw new Error(evidencePhotosFailedMessage(0, localPhotos.length));
+      throw new Error(evidencePhotosFailedMessage(0, localUploadCount));
     }
 
-    // M-PERF-04: Parallel photo uploads (60-80% faster for multi-photo submissions)
-    const uploadPromises = localPhotos.map(async (photo) => {
-      // ensureCappedLocalPhoto handles compression
-      const uri = await ensureCappedLocalPhoto(photo);
+    const uploadOne = async (file: { uri: string; name: string; type: string }) => {
       const result = await uploadFileWithVerification({
-        file: {
-          uri,
-          name: photo.fileName,
-          type: 'image/jpeg',
-        },
+        file,
         entityType: 'task',
         entityId,
         companyId: user.companyId!,
@@ -1047,17 +1053,36 @@ export function useCreateTaskViewAdapter({
       });
 
       if (!result.success || !result.file?.public_url) {
-        throw new Error(result.error || 'Photo upload failed');
+        throw new Error(result.error || 'File upload failed');
       }
 
       return result.file.public_url;
-    });
+    };
+
+    // M-PERF-04: Parallel photo uploads (60-80% faster for multi-photo submissions)
+    const uploadPromises = [
+      ...localPhotos.map(async (photo) => {
+        const uri = await ensureCappedLocalPhoto(photo);
+        return uploadOne({
+          uri,
+          name: photo.fileName,
+          type: 'image/jpeg',
+        });
+      }),
+      ...localFiles.map((file) =>
+        uploadOne({
+          uri: file.uri,
+          name: file.fileName,
+          type: file.mimeType || 'application/octet-stream',
+        }),
+      ),
+    ];
 
     const uploadedAttachments = await Promise.all(uploadPromises);
 
-    if (!chosenPhotosAllUploaded(localPhotos.length, uploadedAttachments.length)) {
+    if (!chosenPhotosAllUploaded(localUploadCount, uploadedAttachments.length)) {
       throw new Error(
-        evidencePhotosFailedMessage(uploadedAttachments.length, localPhotos.length),
+        evidencePhotosFailedMessage(uploadedAttachments.length, localUploadCount),
       );
     }
 
@@ -1111,7 +1136,9 @@ export function useCreateTaskViewAdapter({
     perf.mark(perfKey, 'validation-complete');
     setIsSubmitting(true);
     let createdEntityId: string | undefined;
-    const hadLocalPhotos = formData.attachments.some(isSelectedPhotoAttachment);
+    const hadLocalPhotos = formData.attachments.some(
+      (attachment) => isSelectedPhotoAttachment(attachment) || isSelectedFileAttachment(attachment),
+    );
     try {
       const submitProjectId = activeProjectId;
       const trimmedLocationOnSite = formData.locationOnSite.trim() || undefined;

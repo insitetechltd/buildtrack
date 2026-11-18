@@ -308,7 +308,7 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("bg-[#08576E]");
     expect(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_team_queue_wip")).toBeTruthy();
-    expect(screen.getByText("This Week's Critical Tasks")).toBeTruthy();
+    expect(screen.getByText("Due this week:")).toBeTruthy();
     expect(screen.getByText("Saturday · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Active Project")).toBeNull();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();

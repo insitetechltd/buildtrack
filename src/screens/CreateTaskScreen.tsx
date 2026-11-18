@@ -44,6 +44,8 @@ import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
 import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
 import { uploadFileWithVerification } from "../api/fileUploadService";
+import * as DocumentPicker from "expo-document-picker";
+import type { SelectedTaskFile } from "../utils/mergeTaskAttachments";
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
@@ -377,6 +379,38 @@ function CreateTaskEditorScreen({
   const isSubmitting = activity.isSubmitting;
 
   const handleOpenPhotoSelection = () => {};
+  const handleAddFiles = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "*/*",
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets?.length) {
+      return;
+    }
+
+    const maxBytes = 50 * 1024 * 1024;
+    const oversized = result.assets.filter((asset) => (asset.size || 0) > maxBytes);
+    const accepted = result.assets.filter((asset) => (asset.size || 0) <= maxBytes);
+    if (oversized.length > 0) {
+      Alert.alert(
+        "File Too Large",
+        `${oversized.length} file(s) exceed the 50MB limit and were not added.`,
+      );
+    }
+    if (accepted.length === 0) {
+      return;
+    }
+
+    const incoming: SelectedTaskFile[] = accepted.map((asset) => ({
+      uri: asset.uri,
+      fileName: asset.name || "file",
+      mimeType: asset.mimeType || "application/octet-stream",
+      kind: "file",
+    }));
+    mergeIncomingAttachments(incoming);
+  };
+
   const handleAddPhotos = async () => {
     if (!user || !navigation) return;
 
@@ -826,6 +860,7 @@ function CreateTaskEditorScreen({
               asyncStoragePhotoCount={asyncStoragePhotoCount}
               onRemoveAttachment={removeAttachment}
               onAddPhotos={handleAddPhotos}
+              onAddFiles={handleAddFiles}
               embedded
             />
 

@@ -642,6 +642,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
           actorUserId,
           dotTone: row.dotTone,
           photoUris: previewPhotoUris.length > 0 ? previewPhotoUris : undefined,
+          completionPercentage: row.completionPercentage,
         };
       });
 

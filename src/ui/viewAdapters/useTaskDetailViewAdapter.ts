@@ -43,6 +43,7 @@ import type {
   TaskDetailAssigneeModel,
   TaskDetailDelegationSummaryModel,
   TaskDetailEvidenceSummaryModel,
+  TaskDetailFileModel,
   TaskDetailInfoCardModel,
   TasksScreenRowItem,
   TaskDetailActionItem,
@@ -307,16 +308,65 @@ function collectTaskPhotoAttachments(task: Task): string[] {
     : [];
 }
 
-function collectCreationPhotoUrls(task: Task): string[] {
-  return collectTaskPhotoAttachments(task);
+function attachmentDisplayName(value: unknown, uri: string): string {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        return attachmentDisplayName(JSON.parse(trimmed), uri);
+      } catch {
+        // Fall through to the URI filename.
+      }
+    }
+  }
+
+  if (value && typeof value === "object") {
+    const named = value as { fileName?: string; name?: string };
+    const name = named.fileName?.trim() || named.name?.trim();
+    if (name) {
+      return name;
+    }
+  }
+
+  return getAttachmentFileName(uri) ?? "File";
 }
 
-/** Origin rows that carry the task's initial evidence attachments. */
-function isOriginEvidenceActivity(activity: TaskActivity): boolean {
-  return (
-    activity.activityType === "creation" ||
-    activity.activityType === "issue_reported"
-  );
+function taskFileKind(uri: string): TaskDetailFileModel["kind"] {
+  if (isPdfAssetUri(uri)) {
+    return "pdf";
+  }
+  if (/\.(jpe?g|png|gif|webp|heic|heif)(?:$|[?#])/i.test(uri)) {
+    return "image";
+  }
+  if (!/\.[a-z0-9]{2,8}(?:$|[?#])/i.test(uri)) {
+    return "image";
+  }
+  return "file";
+}
+
+function collectTaskFiles(task: Task): TaskDetailFileModel[] {
+  const raw = Array.isArray(task.attachments) ? task.attachments : [];
+  const files: TaskDetailFileModel[] = [];
+  const seen = new Set<string>();
+
+  raw.forEach((item, index) => {
+    const uri = resolveAssetUri(item);
+    if (!uri || seen.has(uri)) {
+      return;
+    }
+    seen.add(uri);
+    files.push({
+      id: `${task.id}:file:${index}`,
+      name: attachmentDisplayName(item, uri),
+      uri,
+      kind: taskFileKind(uri),
+    });
+  });
+
+  return files;
 }
 
 function shouldHideActivityProgressLabel(activity: TaskActivity): boolean {
@@ -749,6 +799,7 @@ export function useTaskDetailViewAdapter({
           emptyLabel: '',
         },
         activityThread: [],
+        files: [],
         subtaskSummary: {
           id: 'subtask-summary',
           density: 'standard',
@@ -816,7 +867,7 @@ export function useTaskDetailViewAdapter({
     taskStatus: displayStatus,
   });
   const isCriticalThisWeek = hasCriticalThisWeekTag(task.tags);
-  /** Same membership rule as Dashboard "This Week's Critical Tasks" (due in local Mon–Sun week). */
+  /** Same membership rule as Dashboard "Due this week:" (due in local Mon–Sun week). */
   const isDueThisWeekOnCriticalList =
     Boolean(task.dueDate) &&
     !task.archivedAt &&
@@ -1064,21 +1115,11 @@ export function useTaskDetailViewAdapter({
     combinedActivities.map(({ activity }) => activity),
   );
 
-  const creationPhotoUrls = collectCreationPhotoUrls(task);
-  let hasAssignedCreationPhotos = false;
+  const files = collectTaskFiles(task);
 
   const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => {
-    const intrinsicPhotoUrls = collectActivityPhotoUrls(activity);
     const photoUrls =
-      !hasAssignedCreationPhotos &&
-      !childTask &&
-      isOriginEvidenceActivity(activity) &&
-      creationPhotoUrls.length > 0
-        ? (() => {
-            hasAssignedCreationPhotos = true;
-            return creationPhotoUrls;
-          })()
-        : intrinsicPhotoUrls;
+      activity.activityType === "creation" ? [] : collectActivityPhotoUrls(activity);
 
     return {
       id: activity.id,
@@ -1387,6 +1428,7 @@ export function useTaskDetailViewAdapter({
       activeStage,
       evidenceSummary,
       activityThread,
+      files,
       subtaskSummary,
       detailSections,
       actionItems,

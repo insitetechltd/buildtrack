@@ -6,7 +6,6 @@ import { cn } from "@/utils/cn";
 
 /** Lane Tally Board type / color tokens. My + Team share equal weight (PM). */
 export const QUEUE_TALLY_TOKENS = {
-  sectionTitle: "#497080",
   columnHeader: "#497080",
   laneLabel: "#0D2630",
   liveCount: "#0D2630",
@@ -28,7 +27,6 @@ export type QueueOverviewNavigatePayload = {
 
 type QueueOverviewBoardProps = {
   model: DashboardQueueDashboard;
-  sectionTitle?: string;
   /** Header above the lane label column (e.g. Queue / 佇列). */
   queueColumnHeader?: string;
   /** Short row labels keyed by queue id. Falls back to shortLaneLabel(group.title). */
@@ -76,7 +74,6 @@ function resolveShortLaneLabel(
 
 export default function QueueOverviewBoard({
   model,
-  sectionTitle = "Queue Overview",
   queueColumnHeader = "Queue",
   shortLaneLabels,
   onCellPress,
@@ -87,13 +84,6 @@ export default function QueueOverviewBoard({
 
   return (
     <View className="mb-5" testID="dashboard-screen__queue_dashboard">
-      <Text
-        className="mb-3 text-lg font-semibold uppercase tracking-wider"
-        style={{ color: QUEUE_TALLY_TOKENS.sectionTitle }}
-      >
-        {sectionTitle}
-      </Text>
-
       <View
         className="overflow-hidden rounded-2xl border bg-white"
         style={{ borderColor: QUEUE_TALLY_TOKENS.border }}

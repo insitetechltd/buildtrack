@@ -583,6 +583,8 @@ export const en = {
     updates: "Updates",
     noUpdates: "No updates yet",
     attachedFiles: "Attached Files",
+    photos: "Photos",
+    files: "Files",
     noAttachments: "No attachments",
     children: "Children",
     noChildren: "No sub-tasks",
@@ -834,7 +836,7 @@ export const en = {
   activity: {
     siteActivity: "Site activity",
     recentActivity: "Recent Activity",
-    criticalThisWeek: "This Week's Critical Tasks",
+    criticalThisWeek: "Due this week:",
     myQueue: "My Queue",
     teamQueue: "Team Queue",
     myQueueShort: "My",

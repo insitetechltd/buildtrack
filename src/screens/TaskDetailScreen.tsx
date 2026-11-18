@@ -21,6 +21,7 @@ import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
+import TaskDetailFilesSection from "@/components/taskDetail/TaskDetailFilesSection";
 import {
   IPAD_TASK_DETAIL_META_FLEX,
   IPAD_TASK_DETAIL_THREAD_FLEX,
@@ -799,6 +800,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       <TaskActivityTimeline
         testID="task-detail__activity_thread"
         thread={output.activityThread}
+      />
+      <TaskDetailFilesSection
+        photosTitle={t?.taskDetail?.photos || "Photos"}
+        filesTitle={t?.taskDetail?.files || "Files"}
+        files={output.files ?? []}
       />
     </ScrollView>
   );

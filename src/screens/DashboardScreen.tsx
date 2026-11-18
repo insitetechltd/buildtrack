@@ -223,7 +223,6 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           {output.projectSummaryCard && output.queueDashboard ? (
             <QueueOverviewBoard
               model={output.queueDashboard}
-              sectionTitle={t?.activity?.queueOverview || "Queue Overview"}
               queueColumnHeader={t?.activity?.queueColumn || "Queue"}
               shortLaneLabels={{
                 my_queue: t?.activity?.myQueueShort || "My",
@@ -236,7 +235,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           {output.projectSummaryCard ? (
             <View className="mb-5">
               <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-                {t?.activity?.criticalThisWeek || "This Week's Critical Tasks"}
+                {t?.activity?.criticalThisWeek || "Due this week:"}
               </Text>
               {output.projectSummaryCard.criticalDates.length > 0 ? (
                 <View
@@ -275,7 +274,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               ) : (
                 <View className="rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4">
                   <Text className="text-lg leading-6 text-[#577783]">
-                    No critical tasks flagged for this week yet.
+                    No task is due this week.
                   </Text>
                 </View>
               )}

@@ -33,6 +33,8 @@ export type ActivityStylePostEvent = {
   actorUserId?: string;
   timestampLabel: string;
   dotTone: ActivityFeedDotTone;
+  /** Snapshot on this event, 0–100. Shown after the date on every row. */
+  completionPercentage?: number;
 };
 
 interface ActivityStyleRowCardProps {
@@ -120,6 +122,32 @@ export const ACTIVITY_EVIDENCE_STRIP_INDENT =
  * Event meta (avatar + dd/mm/yy): left of the action, wide enough for full date.
  */
 export const EVENT_META_COLUMN_WIDTH = 92;
+/** 30% narrower than the 52-point slot. "100%" is the widest label. */
+const EVENT_COMPLETION_WIDTH = 36;
+const EVENT_SEPARATOR_COLOR = "#D3E0E6";
+
+function EventFieldSeparator({ testID }: { testID: string }) {
+  return (
+    <View
+      testID={testID}
+      className="shrink-0"
+      style={{
+        width: 1,
+        height: 12,
+        marginTop: 5,
+        backgroundColor: EVENT_SEPARATOR_COLOR,
+      }}
+    />
+  );
+}
+
+function formatCompletionLabel(value: number | undefined): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  return `${clamped}%`;
+}
 const EVENT_AVATAR_SIZE = 18;
 /**
  * Tablet grid post cards (Recent Activity) — fillHeight path only.
@@ -346,6 +374,8 @@ export default function ActivityStyleRowCard({
       actorName?: string;
       actorId?: string;
       dateLabel?: string;
+      /** Sit against the following separator instead of the fixed 92-point column. */
+      hug?: boolean;
     }) => {
       const name = (params.actorName ?? "").trim();
       const date = (params.dateLabel ?? "").trim();
@@ -363,7 +393,7 @@ export default function ActivityStyleRowCard({
       return (
         <View
           testID={`${params.leafTestID}:meta-column`}
-          style={{ width: EVENT_META_COLUMN_WIDTH }}
+          style={params.hug ? undefined : { width: EVENT_META_COLUMN_WIDTH }}
           className="shrink-0 flex-row items-center gap-1.5"
         >
           <View
@@ -401,6 +431,7 @@ export default function ActivityStyleRowCard({
       actorName?: string;
       actorId?: string;
       dateLabel?: string;
+      completionLabel?: string;
       emphasize: boolean;
       withBullet: boolean;
     }) => {
@@ -431,7 +462,23 @@ export default function ActivityStyleRowCard({
             actorName: params.actorName,
             actorId: params.actorId,
             dateLabel: params.dateLabel,
+            hug: Boolean(params.completionLabel),
           })}
+          {params.completionLabel ? (
+            <>
+              <EventFieldSeparator testID={`${params.leafTestID}:sep-after-date`} />
+              <Text
+                testID={`${params.leafTestID}:completion`}
+                className="shrink-0 text-center text-base font-semibold text-[#0D2630]"
+                style={{ width: EVENT_COMPLETION_WIDTH }}
+              >
+                {params.completionLabel}
+              </Text>
+              <EventFieldSeparator
+                testID={`${params.leafTestID}:sep-after-completion`}
+              />
+            </>
+          ) : null}
           {params.action ? (
             <Text
               testID={`${params.leafTestID}:subtitle`}
@@ -495,6 +542,9 @@ export default function ActivityStyleRowCard({
                     actorName: latestEvent.actorLabel,
                     actorId: latestEvent.actorUserId,
                     dateLabel: latestEvent.timestampLabel,
+                    completionLabel: formatCompletionLabel(
+                      latestEvent.completionPercentage,
+                    ),
                     emphasize: true,
                     withBullet: true,
                   })
@@ -605,6 +655,7 @@ export default function ActivityStyleRowCard({
                       actorName: event.actorLabel,
                       actorId: event.actorUserId,
                       dateLabel: event.timestampLabel,
+                      completionLabel: formatCompletionLabel(event.completionPercentage),
                       emphasize: false,
                       withBullet: true,
                     })}

@@ -69,6 +69,36 @@ describe("activityFeed", () => {
     expect(rows[0]?.id).toBe("update-recent");
     expect(rows[0]?.title).toBe("Progress photo added");
     expect(rows[0]?.dotTone).toBe("caution");
+    expect(rows[0]?.completionPercentage).toBeUndefined();
+  });
+
+  it("keeps the update completion snapshot on the feed row", () => {
+    const recentTimestamp = new Date(now - 60_000).toISOString();
+    const rows = buildActivityFeedRows({
+      projectId: "project-1",
+      tasks: [
+        {
+          id: "task-pct",
+          projectId: "project-1",
+          status: "in_progress",
+          title: "Sino Center",
+          createdAt: recentTimestamp,
+          completionPercentage: 40,
+          updates: [
+            {
+              id: "update-pct",
+              timestamp: recentTimestamp,
+              status: "in_progress",
+              description: "Another angle",
+              completionPercentage: 40,
+            },
+          ],
+        },
+      ],
+      now,
+    });
+
+    expect(rows.find((row) => row.id === "update-pct")?.completionPercentage).toBe(40);
   });
 
   it("includes a create row when create-time photos exist alongside later updates", () => {

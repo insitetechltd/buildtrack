@@ -137,8 +137,8 @@ describe("Activity home integration", () => {
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("pb-2");
-    expect(screen.getByText("This Week's Critical Tasks")).toBeTruthy();
-    expect(screen.getByText("Queue Overview")).toBeTruthy();
+    expect(screen.getByText("Due this week:")).toBeTruthy();
+    expect(screen.queryByText("Queue Overview")).toBeNull();
     expect(screen.getByText("Queue")).toBeTruthy();
     expect(screen.getByText("My")).toBeTruthy();
     expect(screen.getByText("Team")).toBeTruthy();

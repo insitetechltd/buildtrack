@@ -1646,7 +1646,7 @@ describe("useTaskDetailViewAdapter", () => {
     });
   });
 
-  it("anchors task-level creation photos to the first created event only", () => {
+  it("keeps the task file list off the created timeline row", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     useTaskStore.mockReturnValue({
@@ -1724,11 +1724,7 @@ describe("useTaskDetailViewAdapter", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "created-1",
-          photoUrls: [
-            "https://example.com/create-photo-1.jpg",
-            "https://example.com/create-photo-2.jpg",
-            "https://example.com/create-photo-3.jpg",
-          ],
+          photoUrls: [],
         }),
         expect.objectContaining({
           id: "progress-1",
@@ -1736,6 +1732,11 @@ describe("useTaskDetailViewAdapter", () => {
         }),
       ]),
     );
+    expect(result.current.output.files.map((file) => file.uri)).toEqual([
+      "https://example.com/create-photo-1.jpg",
+      "https://example.com/create-photo-2.jpg",
+      "https://example.com/create-photo-3.jpg",
+    ]);
   });
 
   it("normalizes object-shaped creation attachments into renderable photo URLs", () => {
@@ -1801,10 +1802,15 @@ describe("useTaskDetailViewAdapter", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "created-object-1",
-          photoUrls: ["file:///create-photo-object.jpg"],
+          photoUrls: [],
         }),
       ]),
     );
+    expect(result.current.output.files[0]).toMatchObject({
+      uri: "file:///create-photo-object.jpg",
+      name: "create-photo-object.jpg",
+      kind: "image",
+    });
   });
 
   it("normalizes JSON-stringified creation attachments into renderable photo URLs", () => {
@@ -1870,10 +1876,15 @@ describe("useTaskDetailViewAdapter", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "created-stringified-1",
-          photoUrls: ["file:///create-photo-stringified.jpg"],
+          photoUrls: [],
         }),
       ]),
     );
+    expect(result.current.output.files[0]).toMatchObject({
+      uri: "file:///create-photo-stringified.jpg",
+      name: "create-photo-stringified.jpg",
+      kind: "image",
+    });
   });
 
   it("marks child-task activity rows with lightweight subtask context inside the main activity thread", () => {
@@ -2201,7 +2212,7 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.header.title).toBe("Task Details");
   });
 
-  it("shows report attachments on issue_reported rows and hides 0% progress", () => {
+  it("keeps report file attachments in Files and hides 0% progress", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
     const { useAuthStore } = require("@/state/authStore");
     const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
@@ -2322,7 +2333,8 @@ describe("useTaskDetailViewAdapter", () => {
       (row) => row.id === "activity-reply",
     );
 
-    expect(reportRow?.photoUrls).toEqual([
+    expect(reportRow?.photoUrls).toEqual([]);
+    expect(result.current.output.files.map((file) => file.uri)).toEqual([
       "https://cdn.example.com/company-1/tasks/report-1/site-photo.jpg",
     ]);
     expect(reportRow?.progressLabel).toBe("—");

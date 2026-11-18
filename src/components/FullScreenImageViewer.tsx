@@ -30,6 +30,10 @@ export default function FullScreenImageViewer({
   onClose,
 }: FullScreenImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [gallerySize, setGallerySize] = useState({
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  });
   const scrollViewRef = React.useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   
@@ -43,16 +47,17 @@ export default function FullScreenImageViewer({
       // Scroll to the initial image after a short delay to ensure layout is complete
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
-          x: initialIndex * SCREEN_WIDTH,
+          x: initialIndex * gallerySize.width,
           animated: false,
         });
       }, 100);
     }
-  }, [visible, initialIndex]);
+  }, [visible, initialIndex, gallerySize.width]);
 
   const handleScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const newIndex = Math.round(contentOffsetX / SCREEN_WIDTH);
+    const pageWidth = Math.max(gallerySize.width, 1);
+    const newIndex = Math.round(contentOffsetX / pageWidth);
     setCurrentIndex(newIndex);
   };
 
@@ -61,7 +66,7 @@ export default function FullScreenImageViewer({
       const newIndex = currentIndex - 1;
       setCurrentIndex(newIndex);
       scrollViewRef.current?.scrollTo({
-        x: newIndex * SCREEN_WIDTH,
+        x: newIndex * gallerySize.width,
         animated: true,
       });
     }
@@ -72,7 +77,7 @@ export default function FullScreenImageViewer({
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
       scrollViewRef.current?.scrollTo({
-        x: newIndex * SCREEN_WIDTH,
+        x: newIndex * gallerySize.width,
         animated: true,
       });
     }
@@ -116,7 +121,19 @@ export default function FullScreenImageViewer({
           </View>
 
         {/* Image Gallery - Swipe horizontally to navigate */}
-        <View className="flex-1">
+        <View
+          className="flex-1 bg-white"
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            if (
+              width > 0 &&
+              height > 0 &&
+              (width !== gallerySize.width || height !== gallerySize.height)
+            ) {
+              setGallerySize({ width, height });
+            }
+          }}
+        >
           <ScrollView
             ref={scrollViewRef}
             horizontal
@@ -124,7 +141,7 @@ export default function FullScreenImageViewer({
             showsHorizontalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            className="flex-1"
+            style={{ flex: 1 }}
             directionalLockEnabled={false}
             scrollEnabled={true}
           >
@@ -132,8 +149,8 @@ export default function FullScreenImageViewer({
             <View
               key={index}
               style={{ 
-                width: SCREEN_WIDTH, 
-                height: SCREEN_HEIGHT,
+                width: gallerySize.width, 
+                height: gallerySize.height,
                 paddingHorizontal: 20,
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -153,27 +170,23 @@ export default function FullScreenImageViewer({
             </View>
           ))}
         </ScrollView>
-        </View>
 
-        {/* Navigation Arrows */}
         {images.length > 1 && (
           <>
-            {/* Left Arrow */}
             {currentIndex > 0 && (
               <Pressable
                 onPress={goToPrevious}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
+                className="absolute left-4 top-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
                 style={{ transform: [{ translateY: -24 }] }}
               >
                 <Ionicons name="chevron-back" size={28} color="#374151" />
               </Pressable>
             )}
 
-            {/* Right Arrow */}
             {currentIndex < images.length - 1 && (
               <Pressable
                 onPress={goToNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
+                className="absolute right-4 top-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
                 style={{ transform: [{ translateY: -24 }] }}
               >
                 <Ionicons name="chevron-forward" size={28} color="#374151" />
@@ -181,10 +194,10 @@ export default function FullScreenImageViewer({
             )}
           </>
         )}
+        </View>
 
-        {/* Bottom Thumbnail Bar (optional, for multiple images) */}
         {images.length > 1 && (
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
+          <View className="bg-white border-t border-gray-200 px-4 py-3">
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -196,7 +209,7 @@ export default function FullScreenImageViewer({
                   onPress={() => {
                     setCurrentIndex(index);
                     scrollViewRef.current?.scrollTo({
-                      x: index * SCREEN_WIDTH,
+                      x: index * gallerySize.width,
                       animated: true,
                     });
                   }}

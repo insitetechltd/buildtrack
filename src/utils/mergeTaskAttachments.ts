@@ -1,13 +1,20 @@
 import type { SelectedPhoto } from "./usePhotoSelection";
 
-export type TaskAttachment = string | SelectedPhoto;
+export interface SelectedTaskFile {
+  uri: string;
+  fileName: string;
+  mimeType?: string;
+  kind: "file";
+}
+
+export type TaskAttachment = string | SelectedPhoto | SelectedTaskFile;
 
 /** Stable identity for draft photos vs durable URLs. */
 export function taskAttachmentKey(attachment: TaskAttachment): string {
   if (typeof attachment === "string") {
     return `url:${attachment}`;
   }
-  if (attachment.mediaLibraryAssetId) {
+  if ("mediaLibraryAssetId" in attachment && attachment.mediaLibraryAssetId) {
     return `ml:${attachment.mediaLibraryAssetId}`;
   }
   return `uri:${attachment.uri}`;

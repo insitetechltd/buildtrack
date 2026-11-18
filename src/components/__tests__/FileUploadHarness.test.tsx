@@ -32,6 +32,21 @@ describe("FileUploadHarness", () => {
 
     fireEvent.press(screen.getByTestId(FILE_UPLOAD_HARNESS_ADD_TEST_ID));
     expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("file-upload-harness__add_files")).toBeNull();
+  });
+
+  it("renders a matching file tile that opens the file picker callback", () => {
+    const onAddFiles = jest.fn();
+    const screen = render(<FileUploadHarness onAdd={jest.fn()} onAddFiles={onAddFiles} />);
+
+    const fileTile = screen.getByTestId("file-upload-harness__add_files");
+    expect(fileTile.props.className).toContain("border-dashed");
+    expect(fileTile.props.className).toContain("w-24");
+    expect(fileTile.props.className).toContain("h-24");
+    expect(screen.getByTestId("file-upload-harness__file_icon")).toBeTruthy();
+
+    fireEvent.press(fileTile);
+    expect(onAddFiles).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the dashed Add tile in the first grid slot when items are attached", () => {

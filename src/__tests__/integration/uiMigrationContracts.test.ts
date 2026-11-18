@@ -289,6 +289,7 @@ describe("Sprint 4 UI migration contracts", () => {
         emptyLabel: "No photo evidence yet.",
       },
       activityThread: [],
+      files: [],
       subtaskSummary: {
         id: "subtask-summary",
         density: "standard",

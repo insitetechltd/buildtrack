@@ -364,6 +364,44 @@ describe("ActivityStyleRowCard", () => {
     );
   });
 
+  it("shows each event's completion percent after its date", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:pct"
+        variant="activity"
+        layout="post"
+        title="Another angle"
+        subtitle="Sino Center"
+        activityEvents={[
+          {
+            id: "latest",
+            action: "Another angle",
+            actorLabel: "J",
+            actorUserId: "u-j",
+            timestampLabel: "18/11/26",
+            dotTone: "info",
+            completionPercentage: 40,
+          },
+          {
+            id: "prior",
+            action: "Current snapshot",
+            actorLabel: "J",
+            timestampLabel: "18/11/26",
+            dotTone: "info",
+            completionPercentage: 10,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:pct:completion")).toHaveTextContent("40%");
+    expect(screen.getByTestId("shared-card:pct:sep-after-date")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:pct:sep-after-completion")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:pct:prior-0:completion")).toHaveTextContent("10%");
+    expect(screen.getByTestId("shared-card:pct:prior-0:sep-after-date")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:pct:prior-0:sep-after-completion")).toBeTruthy();
+  });
+
   it("Recipe B: stacks priors with dots and expands +N without navigating", () => {
     const onPress = jest.fn();
     const screen = render(

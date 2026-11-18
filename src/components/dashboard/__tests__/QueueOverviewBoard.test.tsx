@@ -118,7 +118,7 @@ describe("QueueOverviewBoard", () => {
   });
 
   it("mutes zero counts and underlines non-zero Review", () => {
-    const { getByTestId, getByText } = render(
+    const { getByTestId, queryByText } = render(
       <QueueOverviewBoard model={MODEL} onCellPress={jest.fn()} />,
     );
 
@@ -138,7 +138,7 @@ describe("QueueOverviewBoard", () => {
       }),
     );
 
-    expect(getByText("Queue Overview")).toBeTruthy();
+    expect(queryByText("Queue Overview")).toBeNull();
   });
 
   it("uses equal count size for My and Team lanes", () => {

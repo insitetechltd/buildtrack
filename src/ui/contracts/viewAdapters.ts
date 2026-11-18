@@ -58,6 +58,8 @@ export interface DashboardActivityEvent {
   /** red / green / yellow / blue */
   dotTone: "negative" | "positive" | "caution" | "info";
   photoUris?: string[];
+  /** Snapshot on this event, 0–100. Shown after the date on every row. */
+  completionPercentage?: number;
 }
 
 export interface DashboardActivityItem extends PrimitiveReadyItemBase {
@@ -517,6 +519,14 @@ export interface TaskDetailScalarMetrics {
   completionPercentage: number;
 }
 
+export interface TaskDetailFileModel {
+  id: string;
+  name: string;
+  uri: string;
+  /** Photos open in the viewer. PDF and other files stay read-only rows. */
+  kind: "image" | "pdf" | "file";
+}
+
 export interface TaskDetailScreenViewAdapterOutput {
   screenId: "TaskDetailScreen";
   readiness: NavigationScreenReadiness;
@@ -529,6 +539,8 @@ export interface TaskDetailScreenViewAdapterOutput {
   activeStage: TaskDetailActiveStageModel;
   evidenceSummary: TaskDetailEvidenceSummaryModel;
   activityThread: TaskDetailActivityThreadRow[];
+  /** Task file cabinet. Not part of the timeline. */
+  files: TaskDetailFileModel[];
   subtaskSummary: TaskDetailSubtaskSummaryModel;
   detailSections: TaskDetailSectionModel[];
   actionItems: TaskDetailActionItem[];

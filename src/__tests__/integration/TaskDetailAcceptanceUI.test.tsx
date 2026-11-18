@@ -716,9 +716,23 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByText("2 / 2")).toBeTruthy();
   });
 
-  it("anchors creation-time photos to the created event only in the rendered thread contract", () => {
+  it("lists task files below the timeline instead of on the created event", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
+        files: [
+          {
+            id: "file-1",
+            name: "create-photo-1.jpg",
+            uri: "https://example.com/create-photo-1.jpg",
+            kind: "image",
+          },
+          {
+            id: "file-2",
+            name: "spec.pdf",
+            uri: "https://example.com/spec.pdf",
+            kind: "pdf",
+          },
+        ],
         activityThread: [
           {
             id: "created-1",
@@ -727,11 +741,7 @@ describe("TaskDetailScreen acceptance UI", () => {
             timestampLabel: "Jul 1, 08:00",
             progressLabel: "0%",
             detailLabel: "Created the task with initial site photos.",
-            photoUrls: [
-              "https://example.com/create-photo-1.jpg",
-              "https://example.com/create-photo-2.jpg",
-              "https://example.com/create-photo-3.jpg",
-            ],
+            photoUrls: [],
             density: "standard",
             structuralState: "ready",
           },
@@ -754,9 +764,12 @@ describe("TaskDetailScreen acceptance UI", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-activity-timeline__entry-created-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo_stack-created-1")).toBeTruthy();
-    expect(screen.queryByTestId("task-activity-timeline__photo_caption-created-1")).toBeNull();
-    expect(screen.queryByText("Added 3 photos")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__photo_stack-created-1")).toBeNull();
+    expect(screen.getByTestId("task-detail__files__photos")).toBeTruthy();
+    expect(screen.getByText("Photos")).toBeTruthy();
+    expect(screen.queryByText("create-photo-1.jpg")).toBeNull();
+    expect(screen.getByText("Files")).toBeTruthy();
+    expect(screen.getByText("spec.pdf")).toBeTruthy();
     expect(screen.queryByTestId("task-activity-timeline__photo_caption-progress-1")).toBeNull();
   });
 

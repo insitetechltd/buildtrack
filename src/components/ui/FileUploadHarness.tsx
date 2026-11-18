@@ -18,6 +18,8 @@ export const FILE_UPLOAD_HARNESS_ROOT_TEST_ID = "file-upload-harness__root";
 export const FILE_UPLOAD_HARNESS_CTA_TEST_ID = "file-upload-harness__cta";
 export const FILE_UPLOAD_HARNESS_ADD_TEST_ID = "file-upload-harness__add";
 export const FILE_UPLOAD_HARNESS_PLUS_TEST_ID = "file-upload-harness__plus_icon";
+export const FILE_UPLOAD_HARNESS_ADD_FILES_TEST_ID = "file-upload-harness__add_files";
+export const FILE_UPLOAD_HARNESS_FILE_ICON_TEST_ID = "file-upload-harness__file_icon";
 export const FILE_UPLOAD_HARNESS_DEFAULT_TITLE = "Add photos / files";
 
 /** Matches photo preview tiles so the dashed Add cell always occupies the first grid slot. */
@@ -30,6 +32,9 @@ export interface FileUploadItem {
   uri: string;
   status?: FileUploadItemStatus;
   onRemove?: () => void;
+  /** Documents render a file tile instead of an image preview. */
+  previewKind?: "image" | "file";
+  name?: string;
 }
 
 export interface FileUploadHarnessProps {
@@ -37,11 +42,14 @@ export interface FileUploadHarnessProps {
   countLabel?: string;
   items?: FileUploadItem[];
   onAdd: () => void;
+  onAddFiles?: () => void;
   embedded?: boolean;
   testID?: string;
   ctaTestID?: string;
   addTestID?: string;
+  addFilesTestID?: string;
   plusIconTestID?: string;
+  fileIconTestID?: string;
   previewTestIDPrefix?: string;
   removeTestIDPrefix?: string;
   accessibilityLabel?: string;
@@ -52,11 +60,14 @@ export default function FileUploadHarness({
   countLabel,
   items = [],
   onAdd,
+  onAddFiles,
   embedded = false,
   testID = FILE_UPLOAD_HARNESS_ROOT_TEST_ID,
   ctaTestID = FILE_UPLOAD_HARNESS_CTA_TEST_ID,
   addTestID = FILE_UPLOAD_HARNESS_ADD_TEST_ID,
+  addFilesTestID = FILE_UPLOAD_HARNESS_ADD_FILES_TEST_ID,
   plusIconTestID = FILE_UPLOAD_HARNESS_PLUS_TEST_ID,
+  fileIconTestID = FILE_UPLOAD_HARNESS_FILE_ICON_TEST_ID,
   previewTestIDPrefix = "file-upload-harness__preview",
   removeTestIDPrefix = "file-upload-harness__preview_remove",
   accessibilityLabel = "Add attachments",
@@ -95,9 +106,26 @@ export default function FileUploadHarness({
             testID={plusIconTestID}
             className="h-11 w-11 items-center justify-center rounded-full bg-white border border-gray-200"
           >
-            <Ionicons name="add" size={24} color="#08576E" />
+            <Ionicons name="camera-outline" size={22} color="#08576E" />
           </View>
         </Pressable>
+
+        {onAddFiles ? (
+          <Pressable
+            testID={addFilesTestID}
+            accessibilityLabel="Add files"
+            accessibilityRole="button"
+            onPress={onAddFiles}
+            className={`${TILE_CLASS} items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-slate-50`}
+          >
+            <View
+              testID={fileIconTestID}
+              className="h-11 w-11 items-center justify-center rounded-full bg-white border border-gray-200"
+            >
+              <Ionicons name="document-outline" size={22} color="#08576E" />
+            </View>
+          </Pressable>
+        ) : null}
 
         {items.map((item, index) => {
           const displayUri =
@@ -110,7 +138,16 @@ export default function FileUploadHarness({
             testID={`${previewTestIDPrefix}_${index}`}
             className={`${TILE_CLASS} relative`}
           >
-            {displayUri ? (
+            {item.previewKind === "file" ? (
+              <View className={`${TILE_CLASS} items-center justify-center rounded-lg bg-[#E7F4F8] px-2`}>
+                <Ionicons name="document-text-outline" size={28} color="#0A728F" />
+                {item.name ? (
+                  <Text className="mt-1 text-center text-xs text-[#0D2630]" numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                ) : null}
+              </View>
+            ) : displayUri ? (
               <Image
                 source={{
                   uri: displayUri,

@@ -192,6 +192,7 @@ function createTaskDetailOutput(): TaskDetailScreenViewAdapterOutput {
       emptyLabel: "No photo evidence yet.",
     },
     activityThread: [],
+    files: [],
     subtaskSummary: {
       id: "subtask-summary",
       density: "standard",

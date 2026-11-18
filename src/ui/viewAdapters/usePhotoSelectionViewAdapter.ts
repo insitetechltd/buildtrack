@@ -271,6 +271,8 @@ export function usePhotoSelectionViewAdapter({
         ...updated[index],
         isAnnotated: true,
         annotatedUri: finalUri,
+        // Done-tray / grid must not keep the pre-edit Accept pin.
+        previewUri: finalUri,
       };
       return updated;
     });

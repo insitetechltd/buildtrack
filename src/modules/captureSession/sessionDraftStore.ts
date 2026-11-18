@@ -17,7 +17,11 @@ type CaptureSessionState = {
   toggleSelected: (id: string) => void;
   setSelected: (id: string, selected: boolean) => void;
   selectAllSessionCamera: () => void;
-  updatePhotoUri: (id: string, uri: string) => void;
+  updatePhotoUri: (
+    id: string,
+    uri: string,
+    options?: { asEdit?: boolean },
+  ) => void;
   removePhoto: (id: string) => void;
   reset: () => void;
 };
@@ -149,13 +153,29 @@ export const useCaptureSessionStore = create<CaptureSessionState>((set, get) => 
   removePhoto: (id) =>
     set({ photos: get().photos.filter((p) => p.id !== id) }),
 
-  updatePhotoUri: (id, uri) => {
+  updatePhotoUri: (id, uri, options) => {
     const row = get().photos.find((p) => p.id === id);
-    if (!row || row.uri === uri) {
+    if (!row) {
+      return;
+    }
+    const asEdit = Boolean(options?.asEdit);
+    if (!asEdit && row.uri === uri) {
       return;
     }
     set({
-      photos: get().photos.map((p) => (p.id === id ? { ...p, uri } : p)),
+      photos: get().photos.map((p) => {
+        if (p.id !== id) return p;
+        if (asEdit) {
+          return {
+            ...p,
+            uri,
+            annotatedUri: uri,
+            // Done-tray / Select Photos prefer previewUri; refresh off the bake.
+            previewUri: uri.startsWith("file://") ? uri : p.previewUri,
+          };
+        }
+        return { ...p, uri };
+      }),
     });
   },
 

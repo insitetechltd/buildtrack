@@ -44,6 +44,7 @@ export function SelectedPhotoThumb({
         <ExpoImage
           testID={testID ? `${testID}__image` : undefined}
           source={{ uri: paintUri }}
+          recyclingKey={paintUri}
           cachePolicy="memory-disk"
           contentFit={contentFit}
           style={{ width, height }}

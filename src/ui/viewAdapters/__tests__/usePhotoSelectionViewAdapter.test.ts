@@ -202,6 +202,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       expect.objectContaining({ format: "jpeg" }),
     );
     expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
+    expect(result.current.output.photos[0].previewUri).toBe("pinned:file://edited.jpg");
   });
 
   it("handleApplyCrop prepends rotate before crop when rotation is nonzero", async () => {

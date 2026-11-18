@@ -4,9 +4,9 @@
 
 ---
 
-## Current status (2026-10-16) — read this first
+## Current status (2026-11-18) — read this first
 
-**App on `main`:** Taskr **1.1.5**, `app.json` build **295**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove.
+**App on `main`:** Taskr **1.1.5**, `app.json` build **296**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove. Latest TestFlight upload is **296** (calendar opens on the first tap).
 
 **Binary gap a bot misses if it stops at “TF 288”:** git never recorded build **288**. After store build **280**, `app.json` jumps to **286** (`dad38e3`, version **1.1.5**) then **287** (`20f2db6`, library opens newest-first). The next committed bake is **TestFlight 289** (parent build 287). Session notes below the 289 entry are the 1.1.3 line. ASC **280 is approved**, not rejected. **`M-REPORT-01` is Closed.**
 
@@ -21,16 +21,31 @@
 | 293 | Warm MediaLibrary shortcut removed; the native walk is the only picker path | `affed7b` |
 | 294 | `M-PERF-04` Phase 1: parallel photo upload; signed URL does not block the write | `2005c53` |
 | 295 | Crop: ratchet cover scale, max-edge settle, crop-center 90°, outward-corner zoom-out | `2cce080` |
+| 296 | Project date calendar opens on the first tap | `73b7ac0` |
 
 **On `main` after TF 294 (not in any binary):** `M-REPORT-01` Closed 2026-10-06 (`c264ba2`, ledger `732c123`). A close needs a typed note. Photos stay with that note. Manager line: “Issue resolved by {name}: Resolved with reply”. Worker line: “Issue acknowledged and closed by {name}”. UI-08 Maestro note readback is prepared and still PARTIAL (no DEV journey pass).
 
-**Next:** `M-AUTHZ-02`. PRD parked 2026-10-07: `docs/superpowers/specs/2026-10-07-m-authz-02-prd.md`. Same-company behavior stays as shipped. Notice and one final comment only when the manager and the filer are different companies. Human Gate before invite/RLS DDL. Not started.
+**Next:** `M-AUTHZ-02` remains primary. **Idle-parallel:** `M-WEB-01` + `M-WEB-02` localhost spike implementation complete on `cursor/m-web-01-spike-20261016` (invite, project CRUD/archive, team/settings, task light edit, CSV import, workspace KPIs). Acceptance: `docs/superpowers/plans/2026-10-16-m-web-01-spike-acceptance.md`. No `app.insiteworks.co` deploy. Do not jump AUTHZ-02 Human Gate.
 
 **Then:** `M-OPS-03`, then `M-AI-01` (PRD saved 2026-10-08: `docs/superpowers/specs/2026-10-08-m-ai-01-prd.md`; no build GO), then Wave 2.
 
 **Shelved:** `M-PERF-04` Phase 2. **Left off `main` on purpose:** draft PRs 22, 23, 28, 29, 30.
 
 ---
+
+**This session — CBP TF 296 submitted (2026-11-18):** Calendar fix `73b7ac0`. Local `./build-local.sh ios production` → IPA **v1.1.5 (296)** `.eas/artifacts/build-1794977247807.ipa` (CFBundleVersion 296; bundle `com.buildtrack.app.local`; S4 PASS sha256 `a0290276c5c0703c6ba94f666a5e3b9d67fdcf923c8d1014cbec82cde8860372`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/25140984-34e2-472c-b3a1-e79fa3f52581 (✔ Uploaded ASC; Apple processing). Signing team `JPU897T6JS`. ASC Public / Submit for Review untouched. **Next:** install TF **296**. Create or edit a project, tap Start Date or Estimated End Date once, and the calendar opens under the field.
+
+**This session — M-WEB-01 + M-WEB-02 spike finish (2026-10-16):** Closed grilled M-WEB-01 gaps + M-WEB-02 workspace. Users: Edge invite + copy pending link. Projects: create/edit/archive (`status=cancelled`). Team: add/PA/remove. Settings: general + DMS placeholder. Tasks: light edit. CSV: ≤200 good/bad review → Import valid only. Workspace: KPI cards. Jest `src/web` + `src/webRouter` 9 suites / 24 PASS; tsc web rc=0. Branch `cursor/m-web-01-spike-20261016`. AUTHZ-02 stays primary. No PROD desk.
+
+**This session — M-WEB-01 projects UI parity (2026-10-16):** `/a/projects` rebuilt like mobile ProjectsScreen — search, status chips, shared `ProjectsScreenProjectCard`. Superseded by spike finish above.
+
+**This session — M-WEB-01 tasks UI parity (2026-10-16):** `/p/:id/tasks` rebuilt like mobile TasksScreen. Superseded by spike finish above.
+
+**This session — M-WEB-01 project task list (2026-10-16):** `/p/:id/tasks` live load. Superseded.
+
+**This session — M-WEB-01 company read lists (2026-10-16):** CA live lists. Superseded by spike finish above.
+
+**This session — M-WEB-01 spike kickoff (2026-10-16):** Grilled cut locked. Superseded by spike finish above.
 
 **This session — CBP TF 295 submitted (2026-10-16):** Gate 0 waived (user-ordered merge+TF after headed crop dig PASS on tip). App merge `2cce080` (crop ratchet / settle / crop-center 90° / outward-corner zoom-out). Local `./build-local.sh ios production` → IPA **v1.1.5 (295)** `.eas/artifacts/build-1792123796098.ipa` (CFBundleVersion 295; bundle `com.buildtrack.app.local`; S4 PASS sha256 `674f218699dc4b1d39829fe8fee76af701f1cbb341fb062260b0829f6fdf8171`; PROD host `jcnzjigxgkzhjsaekoqz`; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/55a65c2d-8059-4525-b6d3-0d2356493fc2 (✔ Uploaded ASC; Apple processing). ASC Public / Submit for Review untouched. **Next:** install TF **295**. Crop: cover scale only grows while rotating out of frame; after corner release wait ~0.3s then settle to max edge; +90° pivots on crop center; after settle, drag a corner outward to zoom out and include more photo.
 

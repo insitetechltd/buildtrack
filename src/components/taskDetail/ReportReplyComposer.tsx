@@ -86,25 +86,38 @@ const DOCK_CIRCLE_LOCKED = {
   ...DOCK_CIRCLE_IDLE,
   opacity: 0.5,
 };
-/** Closed circle whose next tap posts the update. */
-const DOCK_CIRCLE_SEND = {
-  ...DOCK_CIRCLE,
-  borderWidth: 2,
-  borderColor: "#059669",
+/** Completion control is larger than the peer dock circles so a fat press lands. */
+const COMPLETION_BUTTON_SIZE = 64;
+const COMPLETION_CIRCLE = {
+  height: COMPLETION_BUTTON_SIZE,
+  width: COMPLETION_BUTTON_SIZE,
+  borderRadius: COMPLETION_BUTTON_SIZE / 2,
+  borderWidth: 1,
+  alignItems: "center" as const,
+  justifyContent: "center" as const,
+  borderColor: "#cbd5e1",
   backgroundColor: "#f1f5f9",
 };
-/** Tall enough for multi-step scrubbing; stay open across strokes until tap. */
+/** Closed circle whose next tap posts the update. */
+const COMPLETION_CIRCLE_SEND = {
+  ...COMPLETION_CIRCLE,
+  borderWidth: 2,
+  borderColor: "#059669",
+};
+/** Tall enough for multi-step scrubbing; stay open across strokes until a tap. */
 const SCRUB_TRACK_HEIGHT = 200;
-const TAP_MOVE_SLOP = 8;
+/** A shaky press still counts as a tap. A longer drag scrubs. */
+const TAP_MOVE_SLOP = 12;
 /** Vertical pixels per 5% step while scrubbing. */
 const PX_PER_STEP = 8;
 /** Larger percent readout, kept clear of the fingertip while scrubbing. */
 const MAGNIFIER_SIZE = 72;
 const MAGNIFIER_GAP = 12;
-/** Touches this close above the circle still start a scrub. */
-const NEAR_TRACK_SLOP = 28;
-/** Side slop stays inside the dock gap so the open track does not cover Send. */
-const TRACK_SIDE_SLOP = 4;
+/**
+ * Slop stays inside the gap above the circle (photo row) and beside it (Send).
+ * The painted circle is already 64pt; this only catches a near miss.
+ */
+const COMPLETION_HIT_SLOP = { top: 12, bottom: 16, left: 6, right: 6 };
 
 function snapCompletion(value: number): number {
   const snapped = Math.round(value / 5) * 5;
@@ -138,21 +151,22 @@ export function tapHitsCompletionThumb(
   percentage: number,
   hitHeight: number,
 ): boolean {
-  if (x < 0 || x > BUTTON_SIZE) return false;
-  const travel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+  const slop = COMPLETION_HIT_SLOP.top;
+  if (x < -slop || x > COMPLETION_BUTTON_SIZE + slop) return false;
+  const travel = SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE;
   const thumbBottom = completionThumbOffset(percentage, travel);
-  const thumbTop = hitHeight - thumbBottom - BUTTON_SIZE;
-  return y >= thumbTop && y <= thumbTop + BUTTON_SIZE;
+  const thumbTop = hitHeight - thumbBottom - COMPLETION_BUTTON_SIZE;
+  return y >= thumbTop - slop && y <= thumbTop + COMPLETION_BUTTON_SIZE + slop;
 }
 
 export function completionThumbTapPoint(
   percentage: number,
   hitHeight: number = SCRUB_TRACK_HEIGHT,
 ): { x: number; y: number } {
-  const travel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+  const travel = SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE;
   const thumbBottom = completionThumbOffset(percentage, travel);
-  const thumbTop = hitHeight - thumbBottom - BUTTON_SIZE;
-  return { x: BUTTON_SIZE / 2, y: thumbTop + BUTTON_SIZE / 2 };
+  const thumbTop = hitHeight - thumbBottom - COMPLETION_BUTTON_SIZE;
+  return { x: COMPLETION_BUTTON_SIZE / 2, y: thumbTop + COMPLETION_BUTTON_SIZE / 2 };
 }
 
 /**
@@ -270,11 +284,11 @@ type CompletionScrubButtonProps = {
  *
  * A press on the circle opens the track (base 0%, top 100%) with the button
  * already at the current percent. That finger can scrub. Lift keeps the track
- * open so another press along it can scrub, including down from 100%. A tap
- * on the circle that sits on the track closes it. A tap at the dock slot does
- * not. After the percent has changed, that closed circle gets a green outline
- * and a single tap sends. A vertical drag on the outlined circle opens the
- * track again instead of sending.
+ * open so another press can scrub, including down from 100%. A tap that does
+ * not drag closes the track, including a press on the dock slot while the
+ * circle sits at 100%. After the percent has changed, that closed circle gets
+ * a green outline and a single tap sends. Send stays beside the note. A
+ * vertical drag on the outlined circle opens the track again instead of sending.
  */
 function CompletionScrubButton({
   value,
@@ -384,12 +398,7 @@ function CompletionScrubButton({
       .shouldCancelWhenOutside(false)
       .cancelsTouchesInView(true)
       .blocksExternalGesture()
-      .hitSlop({
-        top: NEAR_TRACK_SLOP,
-        bottom: 12,
-        left: TRACK_SIDE_SLOP,
-        right: TRACK_SIDE_SLOP,
-      })
+      .hitSlop(COMPLETION_HIT_SLOP)
       .runOnJS(true)
       .onBegin(() => {
         if (disabledRef.current) {
@@ -428,14 +437,16 @@ function CompletionScrubButton({
         changedRef.current = true;
         const next = completionFromVerticalDrag(startPctRef.current, event.translationY);
         onChangeRef.current(next);
-        const hitHeight = trackArmedRef.current ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE;
+        const hitHeight = trackArmedRef.current
+          ? SCRUB_TRACK_HEIGHT
+          : COMPLETION_BUTTON_SIZE;
         setMagnifier({
-          x: event.x ?? BUTTON_SIZE / 2,
-          y: (event.y ?? BUTTON_SIZE / 2) + (BUTTON_SIZE - hitHeight),
+          x: event.x ?? COMPLETION_BUTTON_SIZE / 2,
+          y: (event.y ?? COMPLETION_BUTTON_SIZE / 2) + (COMPLETION_BUTTON_SIZE - hitHeight),
           percent: next,
         });
       })
-      .onFinalize((event) => {
+      .onFinalize(() => {
         setMagnifier(null);
         if (pendingSendRef.current && !didMoveRef.current) {
           pendingSendRef.current = false;
@@ -450,20 +461,11 @@ function CompletionScrubButton({
           return;
         }
         // First press, or a scrub, leaves the track up for another stroke.
+        // A later tap with no drag retracts, even when the circle is at the
+        // top (100%) and the finger lands on the dock slot.
         if (didMoveRef.current || !trackArmedRef.current) {
           trackArmedRef.current = true;
           setTrackArmed(true);
-          return;
-        }
-        const point = event ?? { x: -1, y: -1 };
-        if (
-          !tapHitsCompletionThumb(
-            point.x ?? -1,
-            point.y ?? -1,
-            valueRef.current,
-            SCRUB_TRACK_HEIGHT,
-          )
-        ) {
           return;
         }
         retractScrubber();
@@ -472,17 +474,16 @@ function CompletionScrubButton({
   ).current;
 
   // 0% at the base, 100% at the top. Reopening at 75% starts the button there.
-  const thumbTravel = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+  const thumbTravel = SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE;
   const thumbBottom = isOpen ? completionThumbOffset(value, thumbTravel) : 0;
   const showSendOutline = sendArmed && !isOpen && canSend;
 
   return (
-    // Layout slot always matches peer dock circles — scrub overlays upward.
     <View
       testID="report-reply-composer__completion"
       accessibilityLabel={
         isOpen
-          ? `Completion ${value} percent. Slide anywhere on the track. Tap the note or Send to close.`
+          ? `Completion ${value} percent. Slide to adjust. Tap to close.`
           : `Completion ${value} percent. Press and drag to adjust.`
       }
       accessibilityRole="adjustable"
@@ -492,8 +493,8 @@ function CompletionScrubButton({
       collapsable={false}
       pointerEvents="box-none"
       style={{
-        width: BUTTON_SIZE,
-        height: BUTTON_SIZE,
+        width: COMPLETION_BUTTON_SIZE,
+        height: COMPLETION_BUTTON_SIZE,
         overflow: "visible",
       }}
     >
@@ -505,7 +506,7 @@ function CompletionScrubButton({
           style={{
             bottom: 0,
             left: 0,
-            width: BUTTON_SIZE,
+            width: COMPLETION_BUTTON_SIZE,
             height: SCRUB_TRACK_HEIGHT,
             zIndex: 40,
           }}
@@ -513,19 +514,19 @@ function CompletionScrubButton({
           <View
             className="absolute rounded-full bg-slate-200"
             style={{
-              bottom: BUTTON_SIZE / 2,
+              bottom: COMPLETION_BUTTON_SIZE / 2,
               width: 5,
-              height: SCRUB_TRACK_HEIGHT - BUTTON_SIZE,
-              left: (BUTTON_SIZE - 5) / 2,
+              height: SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE,
+              left: (COMPLETION_BUTTON_SIZE - 5) / 2,
             }}
           />
           <View
             className="absolute rounded-full bg-[#08576E]"
             style={{
-              bottom: BUTTON_SIZE / 2,
+              bottom: COMPLETION_BUTTON_SIZE / 2,
               width: 5,
               height: Math.max(4, thumbBottom),
-              left: (BUTTON_SIZE - 5) / 2,
+              left: (COMPLETION_BUTTON_SIZE - 5) / 2,
             }}
           />
         </View>
@@ -562,9 +563,9 @@ function CompletionScrubButton({
             position: "absolute",
             bottom: 0,
             left: 0,
-            width: BUTTON_SIZE,
-            // 44 while the opening finger is down. Full track only after lift.
-            height: trackArmed ? SCRUB_TRACK_HEIGHT : BUTTON_SIZE,
+            width: COMPLETION_BUTTON_SIZE,
+            // Button-sized while the opening finger is down. Full track only after lift.
+            height: trackArmed ? SCRUB_TRACK_HEIGHT : COMPLETION_BUTTON_SIZE,
             justifyContent: "flex-end",
             zIndex: 50,
           }}
@@ -580,10 +581,10 @@ function CompletionScrubButton({
                     left: 0,
                   }
                 : null),
-              ...(showSendOutline ? DOCK_CIRCLE_SEND : DOCK_CIRCLE_IDLE),
+              ...(showSendOutline ? COMPLETION_CIRCLE_SEND : COMPLETION_CIRCLE),
             }}
           >
-            <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
+            <Text className="text-sm font-bold text-[#08576E]">{value}%</Text>
           </View>
         </View>
       </GestureDetector>
@@ -669,7 +670,6 @@ export default function ReportReplyComposer({
   const showLeadingFab = Boolean(onPressTriageActions) || showReportFab;
 
   const [scrubCloseToken, setScrubCloseToken] = useState(0);
-  const [circleSendArmed, setCircleSendArmed] = useState(false);
   const closeProgressScrubber = useCallback(() => {
     setScrubCloseToken((token) => token + 1);
   }, []);
@@ -815,7 +815,6 @@ export default function ReportReplyComposer({
         closeToken={scrubCloseToken}
         canSend={canSend}
         onSend={handleSubmit}
-        onSendArmedChange={setCircleSendArmed}
       />
     ) : null;
 
@@ -1045,7 +1044,7 @@ export default function ReportReplyComposer({
         {isProgressMode ? (
           <>
             {progressScrubTrailing}
-            {circleSendArmed && noteHasText ? null : sendButton}
+            {sendButton}
           </>
         ) : !isReviewDecision ? (
           <>

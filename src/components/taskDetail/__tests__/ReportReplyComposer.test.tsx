@@ -245,32 +245,32 @@ describe("ReportReplyComposer", () => {
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
 
-    // Finger-down expands. The pan target stays 44 until this finger lifts,
+    // Finger-down expands. The pan target stays button-sized until this finger lifts,
     // so iOS does not cancel the gesture by resizing the responder.
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
+      expect.objectContaining({ height: 64, width: 64 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
+      expect.objectContaining({ height: 64, width: 64 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_scrubber").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 44 }),
+      expect.objectContaining({ height: 200, width: 64 }),
     );
 
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 44 }),
+      expect.objectContaining({ height: 200, width: 64 }),
     );
 
     grantCompletion();
     releaseCompletion(completionThumbTapPoint(40));
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 44, width: 44 }),
+      expect.objectContaining({ height: 64, width: 64 }),
     );
   });
 
@@ -296,7 +296,7 @@ describe("ReportReplyComposer", () => {
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
-      expect.objectContaining({ bottom: 200 - 44 }),
+      expect.objectContaining({ bottom: 200 - 64 }),
     );
   });
 
@@ -743,7 +743,7 @@ describe("ReportReplyComposer", () => {
 
   it("second slide opens with the button at the posted percent", () => {
     const onChange = jest.fn();
-    const travel = 200 - 44;
+    const travel = 200 - 64;
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -786,7 +786,7 @@ describe("ReportReplyComposer", () => {
 
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 44 }),
+      expect.objectContaining({ height: 64 }),
     );
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
@@ -794,12 +794,44 @@ describe("ReportReplyComposer", () => {
       expect.objectContaining({ height: 200 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
-      expect.objectContaining({ bottom: 200 - 44 }),
+      expect.objectContaining({ bottom: 200 - 64 }),
     );
 
     grantCompletion();
     moveCompletion(16);
     expect(onChange).toHaveBeenLastCalledWith(90);
+  });
+
+  it("open at 100%: a tap on the dock slot retracts and Send still posts", () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <ReportReplyComposer
+        mode="progress"
+        draft="done"
+        photos={[]}
+        onChangeDraft={jest.fn()}
+        onAddPhotos={jest.fn()}
+        onRemovePhoto={jest.fn()}
+        onSubmit={onSubmit}
+        completionPercentage={100}
+        savedCompletionPercentage={80}
+        onChangeCompletionPercentage={jest.fn()}
+      />,
+    );
+
+    grantCompletion();
+    releaseCompletion();
+    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
+    expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
+      expect.objectContaining({ height: 64, width: 64 }),
+    );
+
+    grantCompletion();
+    releaseCompletion({ x: 32, y: 180 });
+    expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("report-reply-composer__send"));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it("shows a magnified percent above-left of the finger while scrubbing", () => {
@@ -864,15 +896,11 @@ describe("ReportReplyComposer", () => {
 
     grantCompletion();
     releaseCompletion({ x: 22, y: 190 });
-    expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
-
-    grantCompletion();
-    releaseCompletion(completionThumbTapPoint(40));
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
       expect.objectContaining({ borderColor: "#059669", borderWidth: 2 }),
     );
-    expect(screen.queryByTestId("report-reply-composer__send")).toBeNull();
+    expect(screen.getByTestId("report-reply-composer__send")).toBeTruthy();
 
     grantCompletion();
     moveCompletion(-16);

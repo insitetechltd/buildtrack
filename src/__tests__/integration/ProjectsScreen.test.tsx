@@ -877,14 +877,63 @@ describe("ProjectsScreen", () => {
       />,
     );
 
-    fireEvent.press(screen.getByText("2026-12-31"));
-    fireEvent(screen.UNSAFE_getByType("DateTimePicker"), "onChange", undefined, new Date("2025-12-31T00:00:00.000Z"));
+    fireEvent.press(screen.getByTestId("edit-project-end-date"));
+    fireEvent(
+      screen.UNSAFE_getByType("DateTimePicker"),
+      "onChange",
+      { type: "set" },
+      new Date("2025-12-31T00:00:00.000Z"),
+    );
     fireEvent.press(screen.getByText("Save"));
 
     expect(Alert.alert).toHaveBeenCalledWith("Error", "End date must be after start date");
     expect(mockSaveEditedProject).not.toHaveBeenCalled();
     expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
     expect(mockAssignUserToProject).not.toHaveBeenCalled();
+  });
+
+  it("opens MonthDateCalendar on the first tap and keeps it open after a set on iOS", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("month-date-calendar")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("edit-project-end-date"));
+    expect(screen.getByTestId("month-date-calendar")).toBeTruthy();
+    expect(screen.UNSAFE_getByType("DateTimePicker").props.display).toBe("inline");
+
+    fireEvent.press(screen.getByTestId("edit-project-start-date"));
+    expect(screen.getAllByTestId("month-date-calendar")).toHaveLength(1);
+
+    fireEvent(
+      screen.UNSAFE_getByType("DateTimePicker"),
+      "onChange",
+      { type: "set" },
+      new Date("2026-02-01T00:00:00.000Z"),
+    );
+    // iOS month calendar stays mounted after a day tap.
+    expect(screen.getByTestId("month-date-calendar")).toBeTruthy();
+    expect(screen.getByText("2026-02-01")).toBeTruthy();
+
+    fireEvent(
+      screen.UNSAFE_getByType("DateTimePicker"),
+      "onChange",
+      { type: "dismissed" },
+      new Date("2026-03-01T00:00:00.000Z"),
+    );
+    expect(screen.getByText("2026-02-01")).toBeTruthy();
+    expect(screen.queryByText("2026-03-01")).toBeNull();
   });
 
   it("lists host company admin next to PMs in the Project Admin picker", async () => {

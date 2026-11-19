@@ -1,4 +1,5 @@
 import React from "react";
+import { Platform } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import ProjectForm from "../ProjectForm";
@@ -23,10 +24,16 @@ jest.mock("@expo/vector-icons", () => {
 });
 
 jest.mock("@react-native-community/datetimepicker", () => {
+  const React = require("react");
   const { View } = require("react-native");
   return {
     __esModule: true,
-    default: (props: unknown) => <View {...(props as object)} />,
+    default: function MockDateTimePicker(props: Record<string, unknown>) {
+      return React.createElement(View, {
+        ...props,
+        testID: "project-form-datetime-picker",
+      });
+    },
   };
 });
 
@@ -70,5 +77,54 @@ describe("ProjectForm status dropdown stacking", () => {
     expect(screen.getByTestId("project-form-info-card").props.style).toEqual(
       expect.objectContaining({ zIndex: 1, elevation: 0 }),
     );
+  });
+});
+
+describe("ProjectForm MonthDateCalendar (create)", () => {
+  const originalOS = Platform.OS;
+
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", { configurable: true, value: originalOS });
+  });
+
+  it("shows the month calendar on the first end-date tap and keeps start/end mutually exclusive", () => {
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
+
+    const screen = render(
+      <ProjectForm
+        mode="create"
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        submitButtonText="Create Project"
+      />,
+    );
+
+    expect(screen.queryByTestId("month-date-calendar")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("project-form-end-date"));
+    expect(screen.getByTestId("month-date-calendar")).toBeTruthy();
+    expect(screen.getByTestId("project-form-datetime-picker").props.display).toBe("inline");
+
+    fireEvent.press(screen.getByTestId("project-form-start-date"));
+    expect(screen.getAllByTestId("month-date-calendar")).toHaveLength(1);
+
+    fireEvent(
+      screen.getByTestId("project-form-datetime-picker"),
+      "onChange",
+      { type: "set" },
+      new Date("2026-04-15T00:00:00.000Z"),
+    );
+    // iOS: month calendar stays open after a day tap.
+    expect(screen.getByTestId("month-date-calendar")).toBeTruthy();
+    expect(screen.getByText("2026-04-15")).toBeTruthy();
+
+    fireEvent(
+      screen.getByTestId("project-form-datetime-picker"),
+      "onChange",
+      { type: "dismissed" },
+      new Date("2026-05-01T00:00:00.000Z"),
+    );
+    expect(screen.getByText("2026-04-15")).toBeTruthy();
+    expect(screen.queryByText("2026-05-01")).toBeNull();
   });
 });

@@ -19,7 +19,7 @@ const Modal = RNModal || View;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import MonthDateCalendar from "@/components/MonthDateCalendar";
 import {
   type NavigationProp,
   NavigationContext,
@@ -1139,31 +1139,13 @@ function CreateTaskEditorScreen({
               )}
 
               {showDatePicker && (
-                <View className="overflow-hidden rounded-xl border border-blue-600 bg-white">
-                  <DateTimePicker
-                    value={formData.dueDate}
-                    mode="date"
-                    display="spinner"
-                    minimumDate={new Date()}
-                    locale={dateFormatter.locale}
-                    onChange={(_event, selectedDate) => {
-                      if (selectedDate) {
-                        handleDateChange(selectedDate);
-                      }
-                    }}
-                    textColor="#000000"
-                    style={{ height: 200 }}
-                  />
-                  <View className="flex-row justify-end border-t border-gray-200 p-3">
-                    <Pressable
-                      testID="create-task__due-date-done"
-                      onPress={() => setShowDatePicker(false)}
-                      className="rounded-lg bg-blue-600 px-6 py-2"
-                    >
-                      <Text className="font-semibold text-white">{t.common.done}</Text>
-                    </Pressable>
-                  </View>
-                </View>
+                <MonthDateCalendar
+                  value={formData.dueDate}
+                  minimumDate={new Date()}
+                  locale={dateFormatter.locale}
+                  onClose={() => setShowDatePicker(false)}
+                  onChange={handleDateChange}
+                />
               )}
 
               <CreateTaskInputField label={t.tasks.category} required>

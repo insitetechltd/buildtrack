@@ -35,7 +35,7 @@ const UPDATE_ERROR_MESSAGES: Record<
   string
 > = {
   SELF_ASSIGNED_MUST_BE_IN_PROGRESS:
-    "Self-assigned tasks must be in progress, not waiting for acceptance",
+    "Self-assigned tasks must be active, not waiting for acceptance",
 };
 
 /** Prefer shared lifecycle terminal set (includes resolved/dismissed). */

@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import MonthDateCalendar from "@/components/MonthDateCalendar";
 
 import ModalHandle from "@/components/ModalHandle";
 import TextField from "@/components/primitives/input/TextField";
@@ -520,43 +520,23 @@ export function EditProjectModal({
                 </View>
               </View>
               {showStartDatePicker ? (
-                <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                  <DateTimePicker
-                    value={formData.startDate}
-                    mode="date"
-                    display={Platform.OS === "ios" ? "inline" : "default"}
-                    themeVariant="light"
-                    onChange={(event, selectedDate) => {
-                      if (Platform.OS !== "ios") {
-                        setShowStartDatePicker(false);
-                      }
-                      if (event.type === "dismissed" || !selectedDate) {
-                        return;
-                      }
-                      setFormData((prev) => ({ ...prev, startDate: selectedDate }));
-                    }}
-                  />
-                </View>
+                <MonthDateCalendar
+                  value={formData.startDate}
+                  onClose={() => setShowStartDatePicker(false)}
+                  onChange={(selectedDate) => {
+                    setFormData((prev) => ({ ...prev, startDate: selectedDate }));
+                  }}
+                />
               ) : null}
               {showEndDatePicker ? (
-                <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                  <DateTimePicker
-                    value={formData.endDate}
-                    mode="date"
-                    display={Platform.OS === "ios" ? "inline" : "default"}
-                    minimumDate={formData.startDate}
-                    themeVariant="light"
-                    onChange={(event, selectedDate) => {
-                      if (Platform.OS !== "ios") {
-                        setShowEndDatePicker(false);
-                      }
-                      if (event.type === "dismissed" || !selectedDate) {
-                        return;
-                      }
-                      setFormData((prev) => ({ ...prev, endDate: selectedDate }));
-                    }}
-                  />
-                </View>
+                <MonthDateCalendar
+                  value={formData.endDate}
+                  minimumDate={formData.startDate}
+                  onClose={() => setShowEndDatePicker(false)}
+                  onChange={(selectedDate) => {
+                    setFormData((prev) => ({ ...prev, endDate: selectedDate }));
+                  }}
+                />
               ) : null}
             </View>
 

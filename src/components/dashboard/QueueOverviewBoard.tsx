@@ -80,7 +80,7 @@ export default function QueueOverviewBoard({
 }: QueueOverviewBoardProps) {
   const columnHeaders =
     model.groups[0]?.cells.map((cell) => cell.title) ??
-    (["New", "Doing", "Review"] as const);
+    (["New", "Active", "Review"] as const);
 
   return (
     <View className="mb-5" testID="dashboard-screen__queue_dashboard">

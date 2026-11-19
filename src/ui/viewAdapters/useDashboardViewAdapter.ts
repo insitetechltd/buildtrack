@@ -16,6 +16,7 @@ import {
 } from "@/ui/contracts/activityFeed";
 import { useActivityFeedReadStore } from "@/state/activityFeedReadStore";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
+import { formatVisibleTaskStatus } from "@/utils/taskStatusLabel";
 import {
   extractBuildtrackStoragePath,
   getFileUrl,
@@ -101,7 +102,7 @@ function formatWeekdayLabel(date: Date): string {
 }
 
 function formatStatusLabel(status: string): string {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return formatVisibleTaskStatus(status);
 }
 
 function formatElapsedDayLabel(startDate?: string): string {

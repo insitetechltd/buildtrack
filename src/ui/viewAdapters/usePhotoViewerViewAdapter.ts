@@ -4,6 +4,7 @@ import { useUserStore } from "@/state/userStore.supabase";
 import type { ActivityType, TaskActivity } from "@/types/buildtrack";
 import type { PhotoViewerScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 import { useDateFormatter } from "@/utils/dateFormatter";
+import { formatVisibleTaskStatus } from "@/utils/taskStatusLabel";
 
 export interface PhotoViewerViewAdapterProps {
   photos: string[];
@@ -211,7 +212,7 @@ export function usePhotoViewerViewAdapter(
                 ? `Progress: ${activityInfo.completionPercentage}%`
                 : undefined,
             statusLabel: activityInfo?.status
-              ? activityInfo.status.replace(/_/g, " ")
+              ? formatVisibleTaskStatus(activityInfo.status, "plain")
               : undefined,
           }
         : null,

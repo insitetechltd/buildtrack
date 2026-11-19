@@ -10,6 +10,7 @@ import type {
 } from "@/ui/contracts/viewAdapters";
 import type { Task } from "@/types/buildtrack";
 import { useDateFormatter } from "@/utils/dateFormatter";
+import { formatVisibleTaskStatus } from "@/utils/taskStatusLabel";
 import { useTranslation } from "@/utils/useTranslation";
 
 export interface ReportsViewAdapterHookResult {
@@ -46,7 +47,7 @@ function collectDescendantTasks(
 }
 
 function formatStatusLabel(status: string): string {
-  return status.replace(/_/g, " ");
+  return formatVisibleTaskStatus(status, "plain");
 }
 
 function getStatusTone(status: string): "neutral" | "info" | "success" | "danger" {
@@ -432,12 +433,17 @@ export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
     output,
     actions: {
       selectReportType: setReportType,
-      openFromDatePicker: () => setIsShowingFromPicker(true),
-      openToDatePicker: () => setIsShowingToPicker(true),
+      openFromDatePicker: () => {
+        setIsShowingToPicker(false);
+        setIsShowingFromPicker((open) => !open);
+      },
+      openToDatePicker: () => {
+        setIsShowingFromPicker(false);
+        setIsShowingToPicker((open) => !open);
+      },
       dismissFromDatePicker: () => setIsShowingFromPicker(false),
       dismissToDatePicker: () => setIsShowingToPicker(false),
       setFromDate: (date?: Date) => {
-        setIsShowingFromPicker(false);
         if (!date) {
           return;
         }
@@ -448,7 +454,6 @@ export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
         }));
       },
       setToDate: (date?: Date) => {
-        setIsShowingToPicker(false);
         if (!date) {
           return;
         }

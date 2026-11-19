@@ -20,7 +20,7 @@ jest.mock('react/jsx-runtime', () => {
 });
 
 import React from 'react';
-import { Alert, Keyboard } from 'react-native';
+import { Alert, Keyboard, Platform } from 'react-native';
 
 const originalCreateElement = React.createElement;
 React.createElement = function (type, ...args) {
@@ -604,14 +604,18 @@ describe('CreateTaskScreen Integration', () => {
       expect(screen.getByTestId('DateTimePicker')).toBeTruthy();
     });
 
+    const picker = screen.getByTestId('DateTimePicker');
+    expect(picker.props.display).toBe(Platform.OS === 'ios' ? 'inline' : 'default');
+    expect(picker.props.mode).toBe('date');
+
     fireEvent(
-      screen.getByTestId('DateTimePicker'),
+      picker,
       'onChange',
       { type: 'set' },
       new Date('2099-02-01T00:00:00.000Z')
     );
 
-    fireEvent.press(screen.getByTestId('create-task__due-date-done'));
+    fireEvent.press(screen.getByTestId('create-task__due-date-trigger'));
 
     await waitFor(() => {
       expect(screen.queryByTestId('DateTimePicker')).toBeNull();

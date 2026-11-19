@@ -7,6 +7,7 @@ import { useTaskStore } from "@/state/taskStore.supabase";
 import { type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { isArchivableLifecycleStatus } from "@/utils/taskLifecycleStatus";
+import { formatVisibleTaskStatus } from "@/utils/taskStatusLabel";
 import { mergeAssignedToIds } from "@/ui/contracts/taskDelegation";
 import {
   filterTasksForViewer,
@@ -110,7 +111,7 @@ const LEGACY_QUEUE_CYCLE: TasksQueueFilterValue[] = ["inbox", "outbox"];
 const LEGACY_STATUS_CYCLE: TasksStatusFilterValue[] = ["new", "doing", "review"];
 
 function formatTaskStatusLabel(status: TaskStatus): string {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return formatVisibleTaskStatus(status);
 }
 
 function mapTaskStatusToToken(status: TaskStatus): StatusSemanticToken {
@@ -522,7 +523,7 @@ function getStatusFilterLabel(status: TasksStatusFilterValue): string {
     case "new":
       return "New";
     case "doing":
-      return "Doing";
+      return "Active";
     case "review":
       return "Review";
     case "overdue":
@@ -1146,7 +1147,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
             {
               id: "status:wip",
               value: "wip" as const,
-              label: "Doing",
+              label: "Active",
               count: bucketCounts.wip,
               isSelected: appliedFilters.status === "doing",
             },

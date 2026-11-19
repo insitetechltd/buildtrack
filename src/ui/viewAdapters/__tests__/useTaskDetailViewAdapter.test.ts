@@ -1646,7 +1646,7 @@ describe("useTaskDetailViewAdapter", () => {
       timestampLabel: "Oct 9, 2026, 9:30 AM",
       detailLabel: undefined,
       photoUrls: ["https://example.com/progress-photo-1.jpg"],
-      statusLabel: "In Progress",
+      statusLabel: "Active",
     });
   });
 
@@ -2189,7 +2189,7 @@ describe("useTaskDetailViewAdapter", () => {
 
     expect(result.current.output.taskHero).toMatchObject({
       title: "Parent Task",
-      statusLabel: "In Progress",
+      statusLabel: "Active",
       categoryLabel: "General",
       projectLabel: "project-1",
       completionLabel: "50% complete",
@@ -2207,7 +2207,7 @@ describe("useTaskDetailViewAdapter", () => {
 
     expect(result.current.output.infoCard).toMatchObject({
       title: "Parent Task",
-      statusLabel: "In Progress",
+      statusLabel: "Active",
       categoryLabel: "General",
       completionLabel: "50% complete",
       dueDateLabel: "Oct 10, 2026",

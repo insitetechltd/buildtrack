@@ -1,4 +1,5 @@
 import React from "react";
+import { Platform } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import ReportsScreen from "@/screens/ReportsScreen";
@@ -234,5 +235,26 @@ describe("ReportsScreen", () => {
     expect(mockOpenFromDatePicker).toHaveBeenCalledTimes(1);
     expect(mockOpenToDatePicker).toHaveBeenCalledTimes(1);
     expect(mockGenerateReportSummary).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the from date as a month calendar under the range", () => {
+    const { useReportsViewAdapter } = require("../../ui/viewAdapters/useReportsViewAdapter");
+    const current = useReportsViewAdapter();
+    useReportsViewAdapter.mockReturnValue({
+      ...current,
+      output: {
+        ...current.output,
+        dateRange: {
+          ...current.output.dateRange,
+          isShowingFromPicker: true,
+        },
+      },
+    });
+
+    const screen = render(<ReportsScreen onNavigateBack={jest.fn()} />);
+    const picker = screen.UNSAFE_getByType("DateTimePicker");
+
+    expect(picker.props.display).toBe(Platform.OS === "ios" ? "inline" : "default");
+    expect(picker.props.mode).toBe("date");
   });
 });

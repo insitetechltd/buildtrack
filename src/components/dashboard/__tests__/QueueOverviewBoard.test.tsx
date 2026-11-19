@@ -24,7 +24,7 @@ const MODEL: DashboardQueueDashboard = {
           id: "dashboard-queue:my_queue:wip",
           queue: "my_queue",
           bucket: "wip",
-          title: "Doing",
+          title: "Active",
           countLabel: "6",
         },
         {
@@ -51,7 +51,7 @@ const MODEL: DashboardQueueDashboard = {
           id: "dashboard-queue:team_queue:wip",
           queue: "team_queue",
           bucket: "wip",
-          title: "Doing",
+          title: "Active",
           countLabel: "4",
         },
         {
@@ -74,7 +74,7 @@ describe("QueueOverviewBoard", () => {
     expect(shortLaneLabel("我的佇列")).toBe("我的");
   });
 
-  it("renders Queue | New | Doing | Review with short My/Team rows", () => {
+  it("renders Queue | New | Active | Review with short My/Team rows", () => {
     const { getByTestId, getByText } = render(
       <QueueOverviewBoard
         model={MODEL}
@@ -89,7 +89,7 @@ describe("QueueOverviewBoard", () => {
     expect(getByText("My")).toBeTruthy();
     expect(getByText("Team")).toBeTruthy();
     expect(getByText("New")).toBeTruthy();
-    expect(getByText("Doing")).toBeTruthy();
+    expect(getByText("Active")).toBeTruthy();
     expect(getByText("Review")).toBeTruthy();
   });
 

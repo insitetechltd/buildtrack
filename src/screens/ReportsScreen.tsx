@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import MonthDateCalendar from "@/components/MonthDateCalendar";
 
 import ReportsOverviewHero from "../components/reports/ReportsOverviewHero";
 import type {
@@ -155,6 +155,23 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
                     <Text className="text-center text-gray-900">{output.dateRange.toLabel}</Text>
                   </Pressable>
                 </View>
+                {output.dateRange.isShowingFromPicker ? (
+                  <MonthDateCalendar
+                    value={output.dateRange.from}
+                    maximumDate={output.dateRange.to}
+                    onClose={actions.dismissFromDatePicker}
+                    onChange={actions.setFromDate}
+                  />
+                ) : null}
+                {output.dateRange.isShowingToPicker ? (
+                  <MonthDateCalendar
+                    value={output.dateRange.to}
+                    minimumDate={output.dateRange.from}
+                    maximumDate={new Date()}
+                    onClose={actions.dismissToDatePicker}
+                    onChange={actions.setToDate}
+                  />
+                ) : null}
               </View>
             </View>
           </ScreenSection>
@@ -202,28 +219,6 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
           </ScreenSection>
         </View>
       </ScrollView>
-
-      {/* Date Pickers */}
-      {output.dateRange.isShowingFromPicker && (
-        <DateTimePicker
-          value={output.dateRange.from}
-          mode="date"
-          display="default"
-          maximumDate={output.dateRange.to}
-          onChange={(_event, selectedDate) => actions.setFromDate(selectedDate)}
-        />
-      )}
-
-      {output.dateRange.isShowingToPicker && (
-        <DateTimePicker
-          value={output.dateRange.to}
-          mode="date"
-          display="default"
-          minimumDate={output.dateRange.from}
-          maximumDate={new Date()}
-          onChange={(_event, selectedDate) => actions.setToDate(selectedDate)}
-        />
-      )}
     </SafeAreaView>
   );
 }

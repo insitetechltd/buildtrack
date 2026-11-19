@@ -12,6 +12,7 @@ import {
   subscribeSignedUrlCache,
 } from "../../api/fileUploadService";
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
+import { formatVisibleTaskStatus } from '../../utils/taskStatusLabel';
 import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
 import {
   getCustomTaskTags,
@@ -938,8 +939,7 @@ export function useTaskDetailViewAdapter({
     }
   };
 
-  const getStatusLabel = (status: TaskStatus) =>
-    status?.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) || 'New';
+  const getStatusLabel = (status: TaskStatus) => formatVisibleTaskStatus(status);
 
   const isTriageState = displayStatus === 'reported';
   const isReportReporter = String(task.assignedBy || "") === String(user.id);

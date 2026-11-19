@@ -17,6 +17,7 @@ import { resolveWorkspaceProjectId } from "@/ui/contracts/workspaceProject";
 import { getFileUrl, extractBuildtrackStoragePath } from "@/api/fileUploadService";
 import type { SelectedPhoto } from "@/navigation/navigationTypes";
 import { isCompletedLifecycleStatus } from "@/utils/taskLifecycleStatus";
+import { formatVisibleTaskStatus } from "@/utils/taskStatusLabel";
 
 type CaptureTaskPickerScreenProps = {
   selectedPhotos: SelectedPhoto[];
@@ -25,7 +26,7 @@ type CaptureTaskPickerScreenProps = {
 };
 
 function formatStatusLabel(status: string): string {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return formatVisibleTaskStatus(status);
 }
 
 export default function CaptureTaskPickerScreen({

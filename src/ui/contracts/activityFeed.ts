@@ -5,6 +5,7 @@ import {
   localizeStoredActivityDescription,
 } from "@/ui/contracts/localizeActivityText";
 import { getTranslations } from "@/utils/useTranslation";
+import { formatVisibleTaskStatus } from "@/utils/taskStatusLabel";
 
 export const RECENT_ACTIVITY_WINDOW_MS = 1000 * 60 * 60 * 24 * 5;
 /** Hard cap for Dashboard Recent Activity groups (most recent first). */
@@ -57,7 +58,7 @@ export interface ActivityFeedGroup {
 }
 
 function formatStatusLabel(status: string): string {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return formatVisibleTaskStatus(status);
 }
 
 /** Activity-row lead line: clearer than a bare status token like "New". */

@@ -128,7 +128,7 @@ describe("useReportsViewAdapter", () => {
     expect(inProgressCard?.value).toBe(1);
     expect(result.current.output.visibleTaskRows.map((row) => row.statusLabel)).toEqual([
       "completed",
-      "in progress",
+      "Active",
     ]);
   });
 

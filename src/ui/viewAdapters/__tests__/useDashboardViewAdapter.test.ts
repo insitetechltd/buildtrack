@@ -445,7 +445,7 @@ describe("useDashboardViewAdapter", () => {
             id: "dashboard-queue:my_queue:wip",
             queue: "my_queue",
             bucket: "wip",
-            title: "Doing",
+            title: "Active",
             countLabel: "1",
           },
           {
@@ -472,7 +472,7 @@ describe("useDashboardViewAdapter", () => {
             id: "dashboard-queue:team_queue:wip",
             queue: "team_queue",
             bucket: "wip",
-            title: "Doing",
+            title: "Active",
             countLabel: "0",
           },
           {

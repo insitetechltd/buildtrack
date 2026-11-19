@@ -100,7 +100,7 @@ function getActiveChipClasses(
       };
     }
 
-    if (chipLabel.includes("Doing")) {
+    if (chipLabel.includes("Active")) {
       return {
         container: "border-[#FED7AA] bg-[#FFF7ED]",
         text: "text-[#C2410C]",

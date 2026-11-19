@@ -183,7 +183,7 @@ export default function TasksFiltersBottomSheet(props: TasksFiltersBottomSheetPr
               />
               <FilterOption
                 testID="tasks-filters-sheet__status_doing"
-                label="Doing"
+                label="Active"
                 selected={props.stagedStatus === "doing"}
                 tone="orange"
                 onPress={() => props.onStageStatus("doing")}

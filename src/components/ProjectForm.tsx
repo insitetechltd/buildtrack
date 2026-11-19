@@ -12,7 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import MonthDateCalendar from "@/components/MonthDateCalendar";
 import TextField from "@/components/primitives/input/TextField";
 import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
 import { useAuthStore } from "../state/authStore";
@@ -73,39 +73,6 @@ type ProjectFormFieldId =
   | "clientEmail"
   | "clientPhone"
   | "submit";
-
-function ProjectDateCalendar({
-  value,
-  minimumDate,
-  onChange,
-  onClose,
-}: {
-  value: Date;
-  minimumDate?: Date;
-  onChange: (date: Date) => void;
-  onClose: () => void;
-}) {
-  return (
-    <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <DateTimePicker
-        value={value}
-        mode="date"
-        display={Platform.OS === "ios" ? "inline" : "default"}
-        minimumDate={minimumDate}
-        themeVariant="light"
-        onChange={(event, selectedDate) => {
-          if (Platform.OS !== "ios") {
-            onClose();
-          }
-          if (event.type === "dismissed" || !selectedDate) {
-            return;
-          }
-          onChange(selectedDate);
-        }}
-      />
-    </View>
-  );
-}
 
 export default function ProjectForm({
   mode,
@@ -614,7 +581,7 @@ export default function ProjectForm({
             </View>
           </View>
           {showStartDatePicker ? (
-            <ProjectDateCalendar
+            <MonthDateCalendar
               value={formData.startDate}
               onClose={() => setShowStartDatePicker(false)}
               onChange={(selectedDate) => {
@@ -623,7 +590,7 @@ export default function ProjectForm({
             />
           ) : null}
           {showEndDatePicker ? (
-            <ProjectDateCalendar
+            <MonthDateCalendar
               value={formData.endDate}
               minimumDate={formData.startDate}
               onClose={() => setShowEndDatePicker(false)}

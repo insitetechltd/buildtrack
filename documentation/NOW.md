@@ -6,7 +6,7 @@
 
 ## Current status (2026-11-19) — read this first
 
-**App on `main`:** Taskr **1.1.5**, `app.json` build **299**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove. Latest TestFlight upload is **299** (month calendar on date fields; Doing and In Progress read Active).
+**App on `main`:** Taskr **1.1.5**, `app.json` build **300**. **Store:** **1.1.4 (284)** READY_FOR_SALE in Hong Kong (2026-10-01). **1.1.3 (280)** is also approved. Public and Submit for Review stay off. The 1.1.5 line has no PROD prove. Latest TestFlight upload is **300** (larger completion button; a tap closes the open track; Send stays beside the note).
 
 **Binary gap a bot misses if it stops at “TF 288”:** git never recorded build **288**. After store build **280**, `app.json` jumps to **286** (`dad38e3`, version **1.1.5**) then **287** (`20f2db6`, library opens newest-first). The next committed bake is **TestFlight 289** (parent build 287). Session notes below the 289 entry are the 1.1.3 line. ASC **280 is approved**, not rejected. **`M-REPORT-01` is Closed.**
 
@@ -25,6 +25,7 @@
 | 297 | File attach on Create Task; photo viewer centered; due-this-week activity | `e87dbc0` |
 | 298 | Assigner progress dock; login Tab to Sign In; black photo viewer | `6d42351` |
 | 299 | Month calendar on date fields; Doing and In Progress read Active | `7548a87` |
+| 300 | Larger completion button; a tap closes the open track; Send stays beside the note | `a31d022` |
 
 **On `main` after TF 294 (not in any binary):** `M-REPORT-01` Closed 2026-10-06 (`c264ba2`, ledger `732c123`). A close needs a typed note. Photos stay with that note. Manager line: “Issue resolved by {name}: Resolved with reply”. Worker line: “Issue acknowledged and closed by {name}”. UI-08 Maestro note readback is prepared and still PARTIAL (no DEV journey pass).
 
@@ -35,6 +36,8 @@
 **Shelved:** `M-PERF-04` Phase 2. **Left off `main` on purpose:** draft PRs 22, 23, 28, 29, 30.
 
 ---
+
+**This session — CBP TF 300 submitted (2026-11-19):** Gate 0 waived (user-ordered CBP; no new Metro→PROD prove). App `a31d022`. Local `./build-local.sh ios production` → IPA **v1.1.5 (300)** `.eas/artifacts/build-1795082606763.ipa` (CFBundleVersion 300; bundle `com.buildtrack.app.local`; S4 PASS sha256 `7703ffb88a4dd4498484f880672f71ca6c278924762d324f3d929d0dc7e82bb6`; PROD host present; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/629583cd-fa45-4187-9231-2eed7f1104e0 (✔ Uploaded ASC; Apple processing). Signing team `JPU897T6JS`. ASC Public / Submit for Review untouched. **Next:** install TF **300**. The completion circle is 64pt. A steady tap on the open track, including the dock slot at 100%, closes it. Send stays beside the note.
 
 **This session — CBP TF 299 submitted (2026-11-19):** Gate 0 waived (user-ordered CBP; no new Metro→PROD prove). App `7548a87`. Local `./build-local.sh ios production` → IPA **v1.1.5 (299)** `.eas/artifacts/build-1795067656781.ipa` (CFBundleVersion 299; bundle `com.buildtrack.app.local`; S4 PASS sha256 `f7524e5f97db30e9f264d662f981bf4c1791747358848ef54975c43106ba22d7`; PROD host present; DEV host absent). EAS submit https://expo.dev/accounts/insitetech/projects/buildtrack/submissions/1b244e7e-3873-4a7f-8a4c-43bf1c9fab5b (✔ Uploaded ASC; Apple processing). Signing team `JPU897T6JS`. ASC Public / Submit for Review untouched. **Next:** install TF **299**. Date fields open the month calendar. Doing and In Progress read Active.
 

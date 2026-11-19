@@ -1,9 +1,35 @@
 // Metro configuration with NativeWind
+const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
+
+// Expo getDefaultConfig platforms are ios/android only; web needs explicit
+// inclusion so App.web.tsx / *.web.* resolve when serving Expo Web.
+config.resolver.platforms = Array.from(
+  new Set([...(config.resolver.platforms || []), "native", "web", "ios", "android"]),
+);
+
+/**
+ * Web is served as a classic <script>. Zustand's ESM middleware uses
+ * `import.meta.env`, which throws SyntaxError → blank page. Force the CJS
+ * build on web (same file react-native already gets via package exports).
+ */
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === "web" && moduleName === "zustand/middleware") {
+    return {
+      type: "sourceFile",
+      filePath: path.resolve(__dirname, "node_modules/zustand/middleware.js"),
+    };
+  }
+  if (typeof defaultResolveRequest === "function") {
+    return defaultResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
 
 /**
  * Skip machine-local junk during Metro file-map crawl + resolve.

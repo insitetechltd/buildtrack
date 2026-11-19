@@ -336,6 +336,7 @@ describe("ActivityStyleRowCard", () => {
   });
 
   it("renders a compact 2-thumb evidence strip without an encapsulating frame", () => {
+    const onPress = jest.fn();
     const screen = render(
       <ActivityStyleRowCard
         testID="shared-card:multi"
@@ -345,6 +346,7 @@ describe("ActivityStyleRowCard", () => {
         subtitle="Install corridor lighting"
         actorLabel="Alex Chen"
         metaLabel="04/07/26"
+        onPress={onPress}
         imageUris={[
           "https://example.com/progress-1.jpg",
           "https://example.com/progress-2.jpg",
@@ -362,6 +364,8 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByTestId("shared-card:multi:evidence-strip-more")).toHaveTextContent(
       "+1",
     );
+    fireEvent.press(screen.getByTestId("shared-card:multi:evidence-strip-more"));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   it("shows each event's completion percent after its date", () => {
@@ -476,6 +480,10 @@ describe("ActivityStyleRowCard", () => {
       "+2 earlier",
     );
     expect(screen.queryByTestId("shared-card:stack:hero")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("shared-card:stack:prior-0"));
+    expect(onPress).toHaveBeenCalledTimes(1);
+    onPress.mockClear();
 
     fireEvent.press(screen.getByTestId("shared-card:stack:expand-earlier"));
     expect(onPress).not.toHaveBeenCalled();

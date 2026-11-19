@@ -17,8 +17,11 @@ module.exports = function (api) {
       ...(isTest ? [] : ['nativewind/babel']),
     ],
     plugins: [
+      // Classic <script> web bundles cannot parse import.meta (blank page).
+      require('./scripts/babel/rewrite-import-meta.js'),
       // Explicitly add reanimated plugin to ensure it's available
       // This will be added even if babel-preset-expo doesn't add it
+      // Must remain last.
       'react-native-reanimated/plugin',
     ],
   };

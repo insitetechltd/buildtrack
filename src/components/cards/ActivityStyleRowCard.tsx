@@ -495,8 +495,11 @@ export default function ActivityStyleRowCard({
     };
 
     return (
-      <View
+      <Pressable
         testID={testID}
+        accessibilityRole="button"
+        onPress={onPress}
+        disabled={disabled}
         className="overflow-hidden rounded-2xl bg-white"
         style={fillHeight ? { height: TABLET_POST_CARD_HEIGHT } : undefined}
         accessibilityState={{ disabled: Boolean(disabled) }}
@@ -696,7 +699,7 @@ export default function ActivityStyleRowCard({
             <View className="pb-3" />
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   }
 

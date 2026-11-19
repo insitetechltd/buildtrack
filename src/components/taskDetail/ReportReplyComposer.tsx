@@ -86,52 +86,46 @@ const DOCK_CIRCLE_LOCKED = {
   ...DOCK_CIRCLE_IDLE,
   opacity: 0.5,
 };
-/** Completion control is larger than the peer dock circles so a fat press lands. */
-const COMPLETION_BUTTON_SIZE = 64;
-const COMPLETION_CIRCLE = {
-  height: COMPLETION_BUTTON_SIZE,
-  width: COMPLETION_BUTTON_SIZE,
-  borderRadius: COMPLETION_BUTTON_SIZE / 2,
-  borderWidth: 1,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-  borderColor: "#cbd5e1",
-  backgroundColor: "#f1f5f9",
-};
-/** Closed circle whose next tap posts the update. */
-const COMPLETION_CIRCLE_SEND = {
-  ...COMPLETION_CIRCLE,
+/** Closed circle whose next tap posts the update. Same painted size as the camera button. */
+const DOCK_CIRCLE_SEND = {
+  ...DOCK_CIRCLE,
   borderWidth: 2,
   borderColor: "#059669",
+  backgroundColor: "#f1f5f9",
 };
 /** Tall enough for multi-step scrubbing; stay open across strokes until a tap. */
 const SCRUB_TRACK_HEIGHT = 200;
-/** A shaky press still counts as a tap. A longer drag scrubs. */
-const TAP_MOVE_SLOP = 12;
-/** Vertical pixels per 5% step while scrubbing. */
-const PX_PER_STEP = 8;
+/** Finger travel from 0% at the base to 100% at the top. */
+const TRACK_TRAVEL = SCRUB_TRACK_HEIGHT - BUTTON_SIZE;
+/**
+ * Invisible pad around the 44pt circle. The figure stays peer-sized;
+ * this is the area that accepts the press.
+ */
+const HIT_OUTSET_X = 14;
+const HIT_OUTSET_Y = 18;
+const COMPLETION_HIT_WIDTH = BUTTON_SIZE + HIT_OUTSET_X * 2;
+const COMPLETION_HIT_HEIGHT = BUTTON_SIZE + HIT_OUTSET_Y * 2;
+/** A shaky press still counts as a tap. Anything longer scrubs. */
+const TAP_MOVE_SLOP = 4;
 /** Larger percent readout, kept clear of the fingertip while scrubbing. */
 const MAGNIFIER_SIZE = 72;
 const MAGNIFIER_GAP = 12;
-/**
- * Slop stays inside the gap above the circle (photo row) and beside it (Send).
- * The painted circle is already 64pt; this only catches a near miss.
- */
-const COMPLETION_HIT_SLOP = { top: 12, bottom: 16, left: 6, right: 6 };
-
 function snapCompletion(value: number): number {
   const snapped = Math.round(value / 5) * 5;
   return Math.max(0, Math.min(100, snapped));
 }
 
-/** Pure helper for vertical scrub math (up = more done). */
+/**
+ * Finger pixels map onto the track 1:1 (up = more done), then snap to 5%.
+ * The circle can follow the finger between those steps.
+ */
 export function completionFromVerticalDrag(
   startPercentage: number,
   dy: number,
-  pxPerStep: number = PX_PER_STEP,
+  travel: number = TRACK_TRAVEL,
 ): number {
-  const deltaSteps = Math.round(-dy / pxPerStep);
-  return snapCompletion(startPercentage + deltaSteps * 5);
+  if (travel <= 0) return snapCompletion(startPercentage);
+  return snapCompletion(startPercentage + (-dy / travel) * 100);
 }
 
 /**
@@ -151,22 +145,20 @@ export function tapHitsCompletionThumb(
   percentage: number,
   hitHeight: number,
 ): boolean {
-  const slop = COMPLETION_HIT_SLOP.top;
-  if (x < -slop || x > COMPLETION_BUTTON_SIZE + slop) return false;
-  const travel = SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE;
-  const thumbBottom = completionThumbOffset(percentage, travel);
-  const thumbTop = hitHeight - thumbBottom - COMPLETION_BUTTON_SIZE;
-  return y >= thumbTop - slop && y <= thumbTop + COMPLETION_BUTTON_SIZE + slop;
+  const slop = HIT_OUTSET_Y;
+  if (x < -slop || x > BUTTON_SIZE + slop) return false;
+  const thumbBottom = completionThumbOffset(percentage, TRACK_TRAVEL);
+  const thumbTop = hitHeight - thumbBottom - BUTTON_SIZE;
+  return y >= thumbTop - slop && y <= thumbTop + BUTTON_SIZE + slop;
 }
 
 export function completionThumbTapPoint(
   percentage: number,
   hitHeight: number = SCRUB_TRACK_HEIGHT,
 ): { x: number; y: number } {
-  const travel = SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE;
-  const thumbBottom = completionThumbOffset(percentage, travel);
-  const thumbTop = hitHeight - thumbBottom - COMPLETION_BUTTON_SIZE;
-  return { x: COMPLETION_BUTTON_SIZE / 2, y: thumbTop + COMPLETION_BUTTON_SIZE / 2 };
+  const thumbBottom = completionThumbOffset(percentage, TRACK_TRAVEL);
+  const thumbTop = hitHeight - thumbBottom - BUTTON_SIZE;
+  return { x: BUTTON_SIZE / 2, y: thumbTop + BUTTON_SIZE / 2 };
 }
 
 /**
@@ -320,6 +312,8 @@ function CompletionScrubButton({
   const onSendArmedChangeRef = useRef(onSendArmedChange);
   const [sendArmed, setSendArmed] = useState(false);
   const sendArmedRef = useRef(false);
+  const dragStartPctRef = useRef(value);
+  const [dragDy, setDragDy] = useState<number | null>(null);
   const changedRef = useRef(false);
   const pendingSendRef = useRef(false);
   const [magnifier, setMagnifier] = useState<{
@@ -398,7 +392,7 @@ function CompletionScrubButton({
       .shouldCancelWhenOutside(false)
       .cancelsTouchesInView(true)
       .blocksExternalGesture()
-      .hitSlop(COMPLETION_HIT_SLOP)
+      .hitSlop(0)
       .runOnJS(true)
       .onBegin(() => {
         if (disabledRef.current) {
@@ -408,6 +402,8 @@ function CompletionScrubButton({
         didMoveRef.current = false;
         setMagnifier(null);
         startPctRef.current = valueRef.current;
+        dragStartPctRef.current = valueRef.current;
+        setDragDy(0);
         onSessionStartRef.current?.();
         const tapWillSend =
           sendArmedRef.current && canSendRef.current && !isOpenRef.current;
@@ -421,7 +417,9 @@ function CompletionScrubButton({
         if (disabledRef.current) {
           return;
         }
-        const vertical = Math.abs(event.translationY) > TAP_MOVE_SLOP;
+        const dy = event.translationY;
+        setDragDy(dy);
+        const vertical = Math.abs(dy) > TAP_MOVE_SLOP;
         if (!vertical) {
           setMagnifier(null);
           return;
@@ -435,19 +433,18 @@ function CompletionScrubButton({
         }
         didMoveRef.current = true;
         changedRef.current = true;
-        const next = completionFromVerticalDrag(startPctRef.current, event.translationY);
+        const next = completionFromVerticalDrag(startPctRef.current, dy);
         onChangeRef.current(next);
-        const hitHeight = trackArmedRef.current
-          ? SCRUB_TRACK_HEIGHT
-          : COMPLETION_BUTTON_SIZE;
+        const hitHeight = trackArmedRef.current ? SCRUB_TRACK_HEIGHT : COMPLETION_HIT_HEIGHT;
         setMagnifier({
-          x: event.x ?? COMPLETION_BUTTON_SIZE / 2,
-          y: (event.y ?? COMPLETION_BUTTON_SIZE / 2) + (COMPLETION_BUTTON_SIZE - hitHeight),
+          x: event.x ?? BUTTON_SIZE / 2,
+          y: (event.y ?? BUTTON_SIZE / 2) + (COMPLETION_HIT_HEIGHT - hitHeight),
           percent: next,
         });
       })
       .onFinalize(() => {
         setMagnifier(null);
+        setDragDy(null);
         if (pendingSendRef.current && !didMoveRef.current) {
           pendingSendRef.current = false;
           sendArmedRef.current = false;
@@ -473,9 +470,20 @@ function CompletionScrubButton({
       }),
   ).current;
 
-  // 0% at the base, 100% at the top. Reopening at 75% starts the button there.
-  const thumbTravel = SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE;
-  const thumbBottom = isOpen ? completionThumbOffset(value, thumbTravel) : 0;
+  // 0% at the base, 100% at the top. While the finger is down the circle
+  // sits on the finger; the stored percent still snaps to 5%.
+  const parkedBottom = isOpen ? completionThumbOffset(value, TRACK_TRAVEL) : 0;
+  const fingerBottom =
+    dragDy == null
+      ? parkedBottom
+      : Math.max(
+          0,
+          Math.min(
+            TRACK_TRAVEL,
+            completionThumbOffset(dragStartPctRef.current, TRACK_TRAVEL) - dragDy,
+          ),
+        );
+  const thumbBottom = isOpen ? fingerBottom : 0;
   const showSendOutline = sendArmed && !isOpen && canSend;
 
   return (
@@ -493,8 +501,8 @@ function CompletionScrubButton({
       collapsable={false}
       pointerEvents="box-none"
       style={{
-        width: COMPLETION_BUTTON_SIZE,
-        height: COMPLETION_BUTTON_SIZE,
+        width: BUTTON_SIZE,
+        height: BUTTON_SIZE,
         overflow: "visible",
       }}
     >
@@ -506,7 +514,7 @@ function CompletionScrubButton({
           style={{
             bottom: 0,
             left: 0,
-            width: COMPLETION_BUTTON_SIZE,
+            width: BUTTON_SIZE,
             height: SCRUB_TRACK_HEIGHT,
             zIndex: 40,
           }}
@@ -514,19 +522,19 @@ function CompletionScrubButton({
           <View
             className="absolute rounded-full bg-slate-200"
             style={{
-              bottom: COMPLETION_BUTTON_SIZE / 2,
+              bottom: BUTTON_SIZE / 2,
               width: 5,
-              height: SCRUB_TRACK_HEIGHT - COMPLETION_BUTTON_SIZE,
-              left: (COMPLETION_BUTTON_SIZE - 5) / 2,
+              height: TRACK_TRAVEL,
+              left: (BUTTON_SIZE - 5) / 2,
             }}
           />
           <View
             className="absolute rounded-full bg-[#08576E]"
             style={{
-              bottom: COMPLETION_BUTTON_SIZE / 2,
+              bottom: BUTTON_SIZE / 2,
               width: 5,
               height: Math.max(4, thumbBottom),
-              left: (COMPLETION_BUTTON_SIZE - 5) / 2,
+              left: (BUTTON_SIZE - 5) / 2,
             }}
           />
         </View>
@@ -561,11 +569,13 @@ function CompletionScrubButton({
           collapsable={false}
           style={{
             position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: COMPLETION_BUTTON_SIZE,
-            // Button-sized while the opening finger is down. Full track only after lift.
-            height: trackArmed ? SCRUB_TRACK_HEIGHT : COMPLETION_BUTTON_SIZE,
+            width: COMPLETION_HIT_WIDTH,
+            left: -HIT_OUTSET_X,
+            bottom: -HIT_OUTSET_Y,
+            // Closed pad while the opening finger is down. Full track only after lift.
+            height: trackArmed
+              ? SCRUB_TRACK_HEIGHT + HIT_OUTSET_Y * 2
+              : COMPLETION_HIT_HEIGHT,
             justifyContent: "flex-end",
             zIndex: 50,
           }}
@@ -574,17 +584,13 @@ function CompletionScrubButton({
             testID="report-reply-composer__completion_thumb"
             pointerEvents="none"
             style={{
-              ...(isOpen
-                ? {
-                    position: "absolute" as const,
-                    bottom: thumbBottom,
-                    left: 0,
-                  }
-                : null),
-              ...(showSendOutline ? COMPLETION_CIRCLE_SEND : COMPLETION_CIRCLE),
+              position: "absolute",
+              left: HIT_OUTSET_X,
+              bottom: thumbBottom + HIT_OUTSET_Y,
+              ...(showSendOutline ? DOCK_CIRCLE_SEND : DOCK_CIRCLE_IDLE),
             }}
           >
-            <Text className="text-sm font-bold text-[#08576E]">{value}%</Text>
+            <Text className="text-[11px] font-bold text-[#08576E]">{value}%</Text>
           </View>
         </View>
       </GestureDetector>

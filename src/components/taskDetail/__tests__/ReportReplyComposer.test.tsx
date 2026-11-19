@@ -251,26 +251,26 @@ describe("ReportReplyComposer", () => {
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
-      expect.objectContaining({ height: 64, width: 64 }),
+      expect.objectContaining({ height: 44, width: 44 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 64, width: 64 }),
+      expect.objectContaining({ height: 80, width: 72 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_scrubber").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 64 }),
+      expect.objectContaining({ height: 200, width: 44 }),
     );
 
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 200, width: 64 }),
+      expect.objectContaining({ height: 236, width: 72 }),
     );
 
     grantCompletion();
     releaseCompletion(completionThumbTapPoint(40));
     expect(screen.queryByTestId("report-reply-composer__completion_scrubber")).toBeNull();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 64, width: 64 }),
+      expect.objectContaining({ height: 80, width: 72 }),
     );
   });
 
@@ -296,7 +296,7 @@ describe("ReportReplyComposer", () => {
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
-      expect.objectContaining({ bottom: 200 - 64 }),
+      expect.objectContaining({ bottom: 200 - 44 + 18 }),
     );
   });
 
@@ -733,7 +733,7 @@ describe("ReportReplyComposer", () => {
     );
 
     grantCompletion();
-    // Slop is 8px; first applied move must exceed it. Same grant-time 40%.
+    // Tap slop is 4px. Same grant-time 40%, mapped onto the 156pt track.
     moveCompletion(-16);
     moveCompletion(-40);
     moveCompletion(-80);
@@ -743,7 +743,7 @@ describe("ReportReplyComposer", () => {
 
   it("second slide opens with the button at the posted percent", () => {
     const onChange = jest.fn();
-    const travel = 200 - 64;
+    const travel = 200 - 44;
     const screen = render(
       <ReportReplyComposer
         mode="progress"
@@ -761,7 +761,7 @@ describe("ReportReplyComposer", () => {
 
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
-      expect.objectContaining({ bottom: (75 / 100) * travel }),
+      expect.objectContaining({ bottom: (75 / 100) * travel + 18 }),
     );
     moveCompletion(-16);
     expect(onChange).toHaveBeenLastCalledWith(85);
@@ -786,15 +786,15 @@ describe("ReportReplyComposer", () => {
 
     grantCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 64 }),
+      expect.objectContaining({ height: 80, width: 72 }),
     );
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion_hit").props.style).toEqual(
-      expect.objectContaining({ height: 200 }),
+      expect.objectContaining({ height: 236, width: 72 }),
     );
     expect(screen.getByTestId("report-reply-composer__completion_thumb").props.style).toEqual(
-      expect.objectContaining({ bottom: 200 - 64 }),
+      expect.objectContaining({ bottom: 200 - 44 + 18 }),
     );
 
     grantCompletion();
@@ -823,7 +823,7 @@ describe("ReportReplyComposer", () => {
     releaseCompletion();
     expect(screen.getByTestId("report-reply-composer__completion_scrubber")).toBeTruthy();
     expect(screen.getByTestId("report-reply-composer__completion").props.style).toEqual(
-      expect.objectContaining({ height: 64, width: 64 }),
+      expect.objectContaining({ height: 44, width: 44 }),
     );
 
     grantCompletion();

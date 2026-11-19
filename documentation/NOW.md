@@ -30,6 +30,8 @@
 
 **On `main` after TF 294 (not in any binary):** `M-REPORT-01` Closed 2026-10-06 (`c264ba2`, ledger `732c123`). A close needs a typed note. Photos stay with that note. Manager line: “Issue resolved by {name}: Resolved with reply”. Worker line: “Issue acknowledged and closed by {name}”. UI-08 Maestro note readback is prepared and still PARTIAL (no DEV journey pass).
 
+**Restore point:** tag `restore/pre-m-authz-02` is this clean tree (TestFlight **301**, `a5d1705`, plus this note and the `M-AUTHZ-02` review). If multi-company implementation fails, check out that tag and stop. Do not keep going from the broken tree. Parked off this point, not part of the return: branch `preserve/pre-m-authz-02-wip` (web spike and the uncommitted activity-card press).
+
 **Next:** `M-AUTHZ-02` remains primary. **Idle-parallel:** `M-WEB-01` + `M-WEB-02` localhost spike implementation complete on `cursor/m-web-01-spike-20261016` (invite, project CRUD/archive, team/settings, task light edit, CSV import, workspace KPIs). Acceptance: `docs/superpowers/plans/2026-10-16-m-web-01-spike-acceptance.md`. No `app.insiteworks.co` deploy. Do not jump AUTHZ-02 Human Gate.
 
 **Then:** `M-OPS-03`, then `M-AI-01` (PRD saved 2026-10-08: `docs/superpowers/specs/2026-10-08-m-ai-01-prd.md`; no build GO), then Wave 2.

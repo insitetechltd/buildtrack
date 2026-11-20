@@ -482,6 +482,7 @@ export function EditProjectModal({
                 <View className="flex-1">
                   <Text className="mb-2 text-lg font-semibold text-slate-900">Start Date</Text>
                   <Pressable
+                    testID="edit-project-start-date"
                     onPress={() => {
                       setShowEndDatePicker(false);
                       setShowStartDatePicker((open) => !open);
@@ -503,6 +504,7 @@ export function EditProjectModal({
                     Estimated End Date
                   </Text>
                   <Pressable
+                    testID="edit-project-end-date"
                     onPress={() => {
                       setShowStartDatePicker(false);
                       setShowEndDatePicker((open) => !open);

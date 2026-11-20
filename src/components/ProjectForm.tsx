@@ -537,6 +537,7 @@ export default function ProjectForm({
             <View className="flex-1">
               <Text className="text-lg font-semibold text-slate-900 mb-2">Start Date</Text>
               <Pressable
+                testID="project-form-start-date"
                 onPress={() => {
                   setShowEndDatePicker(false);
                   setShowStartDatePicker((open) => !open);

@@ -62,7 +62,8 @@ tags:
 - runFlow: ../_shared/_dismiss-keyboard.yaml
 - takeScreenshot: "rc-C05-tags"
 
-# Due date
+# Due date — month calendar has no Done button (7548a87); close via the same
+# trigger toggle CreateTaskScreen Jest uses (create-task__due-date-trigger).
 - scrollUntilVisible:
     centerElement: true
     element:
@@ -70,13 +71,16 @@ tags:
     direction: DOWN
 - tapOn:
     id: "create-task__due-date-trigger"
-- runFlow:
-    when:
-      visible:
-        id: "create-task__due-date-done"
-    commands:
-      - tapOn:
-          id: "create-task__due-date-done"
+- extendedWaitUntil:
+    visible:
+      id: "month-date-calendar"
+    timeout: 5000
+- tapOn:
+    id: "create-task__due-date-trigger"
+- extendedWaitUntil:
+    notVisible:
+      id: "month-date-calendar"
+    timeout: 5000
 - waitForAnimationToEnd:
     timeout: 1500
 - takeScreenshot: "rc-C05-due-date"

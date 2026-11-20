@@ -21,7 +21,10 @@ export default function MonthDateCalendar({
   onClose,
 }: MonthDateCalendarProps) {
   return (
-    <View className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <View
+      testID="month-date-calendar"
+      className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white"
+    >
       <DateTimePicker
         value={value}
         mode="date"
